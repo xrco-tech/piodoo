@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- WhatsApp Messages Action -->
+        <record id="action_whatsapp_message" model="ir.actions.act_window">
+            <field name="name">WhatsApp Messages</field>
+            <field name="res_model">whatsapp.message</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_whatsapp_message_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No WhatsApp messages yet!
+                </p>
+                <p>
+                    Messages will appear here when users send messages to your WhatsApp number.
+                </p>
+            </field>
+        </record>
+
         <!-- WhatsApp Messages List View -->
         <record id="view_whatsapp_message_tree" model="ir.ui.view">
             <field name="name">whatsapp.message.list</field>
@@ -113,23 +130,6 @@
                         <filter string="Date" name="group_date" context="{'group_by': 'message_timestamp:day'}"/>
                     </group>
                 </search>
-            </field>
-        </record>
-
-        <!-- WhatsApp Messages Action -->
-        <record id="action_whatsapp_message" model="ir.actions.act_window">
-            <field name="name">WhatsApp Messages</field>
-            <field name="res_model">whatsapp.message</field>
-            <field name="view_mode">list,form</field>
-            <field name="search_view_id" ref="view_whatsapp_message_search"/>
-            <field name="context">{}</field>
-            <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
-                    No WhatsApp messages yet!
-                </p>
-                <p>
-                    Messages will appear here when users send messages to your WhatsApp number.
-                </p>
             </field>
         </record>
 
