@@ -1,6 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- WhatsApp Messages Search View -->
+        <record id="view_whatsapp_message_search" model="ir.ui.view">
+            <field name="name">whatsapp.message.search</field>
+            <field name="model">whatsapp.message</field>
+            <field name="arch" type="xml">
+                <search string="Search WhatsApp Messages">
+                    <field name="contact_name" string="Contact"/>
+                    <field name="phone_number" string="Phone"/>
+                    <field name="message_body" string="Message"/>
+                    <field name="message_id" string="Message ID"/>
+                    <field name="wa_id" string="WhatsApp ID"/>
+                    <separator/>
+                    <filter string="Received" name="received" domain="[('status', '=', 'received')]"/>
+                    <filter string="Processed" name="processed" domain="[('status', '=', 'processed')]"/>
+                    <filter string="Replied" name="replied" domain="[('status', '=', 'replied')]"/>
+                    <filter string="Error" name="error" domain="[('status', '=', 'error')]"/>
+                    <separator/>
+                    <filter string="Incoming" name="incoming" domain="[('is_incoming', '=', True)]"/>
+                    <filter string="Text Messages" name="text" domain="[('message_type', '=', 'text')]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+                        <filter string="Message Type" name="group_type" context="{'group_by': 'message_type'}"/>
+                        <filter string="Contact" name="group_contact" context="{'group_by': 'contact_name'}"/>
+                        <filter string="Date" name="group_date" context="{'group_by': 'message_timestamp:day'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
         <!-- WhatsApp Messages Action -->
         <record id="action_whatsapp_message" model="ir.actions.act_window">
             <field name="name">WhatsApp Messages</field>
@@ -101,35 +130,6 @@
                     </sheet>
                     <chatter/>
                 </form>
-            </field>
-        </record>
-
-        <!-- WhatsApp Messages Search View -->
-        <record id="view_whatsapp_message_search" model="ir.ui.view">
-            <field name="name">whatsapp.message.search</field>
-            <field name="model">whatsapp.message</field>
-            <field name="arch" type="xml">
-                <search string="Search WhatsApp Messages">
-                    <field name="contact_name" string="Contact"/>
-                    <field name="phone_number" string="Phone"/>
-                    <field name="message_body" string="Message"/>
-                    <field name="message_id" string="Message ID"/>
-                    <field name="wa_id" string="WhatsApp ID"/>
-                    <separator/>
-                    <filter string="Received" name="received" domain="[('status', '=', 'received')]"/>
-                    <filter string="Processed" name="processed" domain="[('status', '=', 'processed')]"/>
-                    <filter string="Replied" name="replied" domain="[('status', '=', 'replied')]"/>
-                    <filter string="Error" name="error" domain="[('status', '=', 'error')]"/>
-                    <separator/>
-                    <filter string="Incoming" name="incoming" domain="[('is_incoming', '=', True)]"/>
-                    <filter string="Text Messages" name="text" domain="[('message_type', '=', 'text')]"/>
-                    <group expand="0" string="Group By">
-                        <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
-                        <filter string="Message Type" name="group_type" context="{'group_by': 'message_type'}"/>
-                        <filter string="Contact" name="group_contact" context="{'group_by': 'contact_name'}"/>
-                        <filter string="Date" name="group_date" context="{'group_by': 'message_timestamp:day'}"/>
-                    </group>
-                </search>
             </field>
         </record>
 
