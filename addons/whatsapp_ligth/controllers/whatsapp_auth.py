@@ -161,14 +161,14 @@ class WhatsAppAuthController(http.Controller):
 
             if hub_mode == 'subscribe' and hub_verify_token == verify_token:
                 _logger.info("Webhook verification successful")
-                return hub_challenge
+                return request.make_response(hub_challenge, [('Content-Type', 'text/plain')])
             else:
                 _logger.warning(f"Webhook verification failed: mode={hub_mode}, token_match={hub_verify_token == verify_token}")
-                return 'Verification failed', 403
+                return request.make_response('Verification failed', [('Content-Type', 'text/plain')], status=403)
 
         except Exception as e:
             _logger.error(f"Error in webhook verification: {e}", exc_info=True)
-            return 'Error', 500
+            return request.make_response('Error', [('Content-Type', 'text/plain')], status=500)
 
     def _handle_webhook_event(self):
         """
@@ -176,7 +176,19 @@ class WhatsAppAuthController(http.Controller):
         Processes messages, status updates, etc.
         """
         try:
-            data = request.jsonrequest
+            # Parse JSON from request body
+            import json
+            data = request.httprequest.get_json(silent=True)
+            
+            if not data:
+                # Fallback: try to parse from raw data
+                try:
+                    raw_data = request.httprequest.get_data(as_text=True)
+                    data = json.loads(raw_data) if raw_data else {}
+                except (json.JSONDecodeError, ValueError) as e:
+                    _logger.error(f"Failed to parse webhook JSON: {e}")
+                    return request.make_response('Invalid JSON', [('Content-Type', 'text/plain')], status=400)
+            
             _logger.info(f"Received webhook event: {data}")
 
             # Meta sends events in this format:
@@ -198,11 +210,11 @@ class WhatsAppAuthController(http.Controller):
                         if 'statuses' in value:
                             self._process_statuses(value['statuses'])
 
-            return 'OK', 200
+            return request.make_response('OK', [('Content-Type', 'text/plain')], status=200)
 
         except Exception as e:
             _logger.error(f"Error handling webhook event: {e}", exc_info=True)
-            return 'Error', 500
+            return request.make_response('Error', [('Content-Type', 'text/plain')], status=500)
 
     def _process_messages(self, messages):
         """
