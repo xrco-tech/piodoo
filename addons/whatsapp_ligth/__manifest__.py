@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Light',
-    'version': '18.0.1.0.22',
+    'version': '18.0.1.0.23',
     'category': 'Tools',
     'summary': 'WhatsApp Light Integration Module',
     'description': """
