@@ -204,7 +204,7 @@ class WhatsAppAuthController(http.Controller):
                         
                         # Handle messages
                         if 'messages' in value:
-                            self._process_messages(value['messages'])
+                            self._process_messages(value['messages'], value, entry)
                         
                         # Handle status updates
                         if 'statuses' in value:
@@ -216,17 +216,30 @@ class WhatsAppAuthController(http.Controller):
             _logger.error(f"Error handling webhook event: {e}", exc_info=True)
             return request.make_response('Error', [('Content-Type', 'text/plain')], status=500)
 
-    def _process_messages(self, messages):
+    def _process_messages(self, messages, value_data, entry_data):
         """
         Process incoming WhatsApp messages.
         
         :param messages: List of message objects from webhook
+        :param value_data: The value object containing metadata and contacts
+        :param entry_data: The entry object containing business account info
         """
         try:
+            WhatsAppMessage = request.env['whatsapp.message'].sudo()
+            
             for message in messages:
                 _logger.info(f"Processing message: {message}")
-                # TODO: Implement message processing logic
-                # Store messages, trigger workflows, etc.
+                
+                # Create message record in database
+                message_record = WhatsAppMessage.create_from_webhook(message, value_data)
+                
+                if message_record:
+                    _logger.info(f"Message saved with ID: {message_record.id}")
+                    # Mark as processed
+                    message_record.write({'status': 'processed'})
+                else:
+                    _logger.error(f"Failed to save message: {message.get('id', 'unknown')}")
+                    
         except Exception as e:
             _logger.error(f"Error processing messages: {e}", exc_info=True)
 

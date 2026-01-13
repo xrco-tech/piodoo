@@ -16,6 +16,7 @@ A lightweight WhatsApp integration module for Odoo.
     'data': [
         'security/ir.model.access.csv',
         'views/whatsapp_templates.xml',
+        'views/whatsapp_message_views.xml',
     ],
     'installable': True,
     'application': False,

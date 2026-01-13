@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WhatsApp Messages Tree View -->
+        <record id="view_whatsapp_message_tree" model="ir.ui.view">
+            <field name="name">whatsapp.message.tree</field>
+            <field name="model">whatsapp.message</field>
+            <field name="arch" type="xml">
+                <tree string="WhatsApp Messages" decoration-info="status == 'received'" 
+                      decoration-success="status == 'processed'" 
+                      decoration-warning="status == 'replied'"
+                      decoration-danger="status == 'error'">
+                    <field name="message_timestamp" widget="datetime"/>
+                    <field name="contact_name"/>
+                    <field name="phone_number"/>
+                    <field name="message_type"/>
+                    <field name="message_body" widget="text"/>
+                    <field name="status" widget="badge" decoration-info="status == 'received'" 
+                           decoration-success="status == 'processed'" 
+                           decoration-warning="status == 'replied'"
+                           decoration-danger="status == 'error'"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- WhatsApp Messages Form View -->
+        <record id="view_whatsapp_message_form" model="ir.ui.view">
+            <field name="name">whatsapp.message.form</field>
+            <field name="model">whatsapp.message</field>
+            <field name="arch" type="xml">
+                <form string="WhatsApp Message">
+                    <header>
+                        <field name="status" widget="statusbar" statusbar_visible="received,processed,replied"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="%(action_whatsapp_message_tree)d" type="action" 
+                                    class="oe_stat_button" icon="fa-arrow-left" string="Back to Messages"/>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="contact_name"/>
+                                <field name="phone_number"/>
+                                <field name="wa_id"/>
+                                <field name="message_type"/>
+                            </group>
+                            <group>
+                                <field name="message_timestamp"/>
+                                <field name="timestamp_unix"/>
+                                <field name="status"/>
+                                <field name="is_incoming"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Message Content" name="content">
+                                <group>
+                                    <field name="message_body" widget="text" nolabel="1" placeholder="Message content will appear here..."/>
+                                </group>
+                            </page>
+                            <page string="Metadata" name="metadata">
+                                <group>
+                                    <group string="Business Account">
+                                        <field name="business_account_id"/>
+                                        <field name="phone_number_id"/>
+                                        <field name="display_phone_number"/>
+                                    </group>
+                                    <group string="Message Info">
+                                        <field name="message_id"/>
+                                        <field name="timestamp_unix"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Raw Data" name="raw_data">
+                                <group>
+                                    <field name="raw_message_data" widget="text" nolabel="1" readonly="1"/>
+                                </group>
+                            </page>
+                            <page string="Error Info" name="error" attrs="{'invisible': [('status', '!=', 'error')]}">
+                                <group>
+                                    <field name="error_message" widget="text" nolabel="1" readonly="1"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Messages Search View -->
+        <record id="view_whatsapp_message_search" model="ir.ui.view">
+            <field name="name">whatsapp.message.search</field>
+            <field name="model">whatsapp.message</field>
+            <field name="arch" type="xml">
+                <search string="Search WhatsApp Messages">
+                    <field name="contact_name" string="Contact"/>
+                    <field name="phone_number" string="Phone"/>
+                    <field name="message_body" string="Message"/>
+                    <field name="message_id" string="Message ID"/>
+                    <field name="wa_id" string="WhatsApp ID"/>
+                    <separator/>
+                    <filter string="Received" name="received" domain="[('status', '=', 'received')]"/>
+                    <filter string="Processed" name="processed" domain="[('status', '=', 'processed')]"/>
+                    <filter string="Replied" name="replied" domain="[('status', '=', 'replied')]"/>
+                    <filter string="Error" name="error" domain="[('status', '=', 'error')]"/>
+                    <separator/>
+                    <filter string="Incoming" name="incoming" domain="[('is_incoming', '=', True)]"/>
+                    <filter string="Text Messages" name="text" domain="[('message_type', '=', 'text')]"/>
+                    <separator/>
+                    <filter string="Today" name="today" domain="[('message_timestamp', '>=', datetime.datetime.now().replace(hour=0, minute=0, second=0))]"/>
+                    <filter string="This Week" name="this_week" domain="[('message_timestamp', '>=', (datetime.datetime.now() - datetime.timedelta(days=7)))]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+                        <filter string="Message Type" name="group_type" context="{'group_by': 'message_type'}"/>
+                        <filter string="Contact" name="group_contact" context="{'group_by': 'contact_name'}"/>
+                        <filter string="Date" name="group_date" context="{'group_by': 'message_timestamp:day'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- WhatsApp Messages Action -->
+        <record id="action_whatsapp_message" model="ir.actions.act_window">
+            <field name="name">WhatsApp Messages</field>
+            <field name="res_model">whatsapp.message</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_whatsapp_message_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No WhatsApp messages yet!
+                </p>
+                <p>
+                    Messages will appear here when users send messages to your WhatsApp number.
+                </p>
+            </field>
+        </record>
+
+        <!-- WhatsApp Root Menu -->
+        <menuitem id="menu_whatsapp_root"
+                  name="WhatsApp"
+                  sequence="100"/>
+        
+        <!-- WhatsApp Messages Menu Item -->
+        <menuitem id="menu_whatsapp_messages"
+                  name="Messages"
+                  action="action_whatsapp_message"
+                  parent="menu_whatsapp_root"
+                  sequence="10"/>
+    </data>
+</odoo>
