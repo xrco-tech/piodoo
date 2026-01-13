@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WhatsApp Message Reply Wizard Form View -->
+        <record id="view_whatsapp_message_reply_wizard_form" model="ir.ui.view">
+            <field name="name">whatsapp.message.reply.wizard.form</field>
+            <field name="model">whatsapp.message.reply.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Send WhatsApp Reply">
+                    <group>
+                        <group>
+                            <field name="message_id" readonly="1"/>
+                            <field name="recipient_phone" readonly="1"/>
+                            <field name="phone_number_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reply_text" placeholder="Type your reply message here..." nolabel="1" required="1"/>
+                    </group>
+                    <footer>
+                        <button name="action_send_reply" string="Send Reply" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Message Reply Wizard Action -->
+        <record id="action_whatsapp_message_reply_wizard" model="ir.actions.act_window">
+            <field name="name">Send WhatsApp Reply</field>
+            <field name="res_model">whatsapp.message.reply.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

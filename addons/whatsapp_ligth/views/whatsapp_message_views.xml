@@ -77,6 +77,9 @@
                 <form string="WhatsApp Message">
                     <header>
                         <field name="status" widget="statusbar" statusbar_visible="received,processed,replied"/>
+                        <button name="action_send_reply" string="Send Reply" type="object" 
+                                class="oe_highlight" icon="fa-reply" 
+                                invisible="is_incoming == False"/>
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">

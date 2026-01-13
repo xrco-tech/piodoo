@@ -148,3 +148,133 @@ class WhatsAppMessage(models.Model):
             except:
                 return False
 
+    def send_whatsapp_message(self, recipient_phone, message_text, phone_number_id=None):
+        """
+        Send a WhatsApp message using Meta Cloud API.
+        
+        Based on: https://developers.facebook.com/documentation/business-messaging/whatsapp/overview
+        
+        :param recipient_phone: Recipient phone number in international format (e.g., '27683264051')
+        :param message_text: Text content of the message
+        :param phone_number_id: Phone number ID (optional, will use from config if not provided)
+        :return: Dictionary with success status and message ID or error
+        """
+        try:
+            import requests
+            import json
+            
+            # Get access token and phone number ID
+            IrConfigParameter = self.env['ir.config_parameter'].sudo()
+            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
+            
+            if not access_token:
+                return {
+                    'success': False,
+                    'error': 'Access token not configured. Please authenticate first.'
+                }
+            
+            # Use provided phone_number_id or get from config
+            if not phone_number_id:
+                phone_number_id = IrConfigParameter.get_param('whatsapp_ligth.phone_number_id')
+            
+            if not phone_number_id:
+                return {
+                    'success': False,
+                    'error': 'Phone number ID not configured.'
+                }
+            
+            # Format recipient phone number (remove + and spaces)
+            recipient_phone = recipient_phone.replace('+', '').replace(' ', '').replace('-', '')
+            
+            # API endpoint
+            url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
+            
+            # Headers
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json',
+            }
+            
+            # Message payload
+            payload = {
+                'messaging_product': 'whatsapp',
+                'recipient_type': 'individual',
+                'to': recipient_phone,
+                'type': 'text',
+                'text': {
+                    'preview_url': False,
+                    'body': message_text
+                }
+            }
+            
+            _logger.info(f"Sending WhatsApp message to {recipient_phone} via {url}")
+            _logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
+            
+            # Send request
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                message_id = response_data.get('messages', [{}])[0].get('id')
+                
+                _logger.info(f"Message sent successfully. Message ID: {message_id}")
+                
+                # Create outgoing message record
+                self.create({
+                    'message_id': message_id or f'sent_{fields.Datetime.now()}',
+                    'wa_id': recipient_phone,
+                    'phone_number': recipient_phone,
+                    'contact_name': recipient_phone,
+                    'message_type': 'text',
+                    'message_body': message_text,
+                    'message_timestamp': fields.Datetime.now(),
+                    'phone_number_id': phone_number_id,
+                    'status': 'processed',
+                    'is_incoming': False,
+                })
+                
+                return {
+                    'success': True,
+                    'message_id': message_id,
+                    'response': response_data
+                }
+            else:
+                error_data = response.json() if response.text else {}
+                error_message = error_data.get('error', {}).get('message', response.text)
+                
+                _logger.error(f"Failed to send message: {response.status_code} - {error_message}")
+                
+                return {
+                    'success': False,
+                    'error': error_message,
+                    'status_code': response.status_code,
+                    'response': error_data
+                }
+                
+        except Exception as e:
+            _logger.error(f"Error sending WhatsApp message: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    def action_send_reply(self):
+        """
+        Action method to send a reply to the sender of this message.
+        Opens a wizard or sends a quick reply.
+        """
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Send WhatsApp Reply',
+            'res_model': 'whatsapp.message.reply.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_message_id': self.id,
+                'default_recipient_phone': self.wa_id,
+                'default_phone_number_id': self.phone_number_id,
+            }
+        }
+

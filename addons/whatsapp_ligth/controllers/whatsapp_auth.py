@@ -199,8 +199,27 @@ class WhatsAppAuthController(http.Controller):
 
             if data.get('object') == 'whatsapp_business_account':
                 for entry in data.get('entry', []):
+                    # Store business account ID from entry if not already set
+                    business_account_id = entry.get('id')
+                    if business_account_id:
+                        IrConfigParameter = request.env['ir.config_parameter'].sudo()
+                        existing_ba_id = IrConfigParameter.get_param('whatsapp_ligth.business_account_id')
+                        if not existing_ba_id:
+                            IrConfigParameter.set_param('whatsapp_ligth.business_account_id', business_account_id)
+                            _logger.info(f"Stored business account ID: {business_account_id}")
+                    
                     for change in entry.get('changes', []):
                         value = change.get('value', {})
+                        
+                        # Store phone_number_id from metadata if not already set
+                        metadata = value.get('metadata', {})
+                        phone_number_id = metadata.get('phone_number_id')
+                        if phone_number_id:
+                            IrConfigParameter = request.env['ir.config_parameter'].sudo()
+                            existing_pn_id = IrConfigParameter.get_param('whatsapp_ligth.phone_number_id')
+                            if not existing_pn_id:
+                                IrConfigParameter.set_param('whatsapp_ligth.phone_number_id', phone_number_id)
+                                _logger.info(f"Stored phone number ID: {phone_number_id}")
                         
                         # Handle messages
                         if 'messages' in value:
@@ -266,10 +285,14 @@ class WhatsAppAuthController(http.Controller):
         try:
             IrConfigParameter = request.env['ir.config_parameter'].sudo()
             app_id = IrConfigParameter.get_param('whatsapp_ligth.app_id')
-            redirect_uri = IrConfigParameter.get_param('whatsapp_ligth.redirect_uri',
-                                                       request.httprequest.url_root + 'whatsapp/auth/callback')
-            scope = IrConfigParameter.get_param('whatsapp_ligth.scope', 
-                                               'whatsapp_business_management,whatsapp_business_messaging')
+            redirect_uri = IrConfigParameter.get_param('whatsapp_ligth.redirect_uri')
+            if not redirect_uri:
+                redirect_uri = request.httprequest.url_root + 'whatsapp/auth/callback'
+                IrConfigParameter.set_param('whatsapp_ligth.redirect_uri', redirect_uri)
+            scope = IrConfigParameter.get_param('whatsapp_ligth.scope')
+            if not scope:
+                scope = 'whatsapp_business_management,whatsapp_business_messaging'
+                IrConfigParameter.set_param('whatsapp_ligth.scope', scope)
 
             if not app_id:
                 return request.render('whatsapp_ligth.config_error', {
