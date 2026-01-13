@@ -63,6 +63,7 @@ class WhatsAppMessageReplyWizard(models.TransientModel):
             if self.message_id:
                 self.message_id.write({'status': 'replied'})
             
+            # Return action that shows notification and closes wizard
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
@@ -71,7 +72,7 @@ class WhatsAppMessageReplyWizard(models.TransientModel):
                     'message': f'Message sent successfully! Message ID: {result.get("message_id", "N/A")}',
                     'type': 'success',
                     'sticky': False,
-                }
+                },
             }
         else:
             return {
