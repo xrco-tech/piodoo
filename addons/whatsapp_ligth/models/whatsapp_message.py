@@ -220,8 +220,8 @@ class WhatsAppMessage(models.Model):
                 
                 _logger.info(f"Message sent successfully. Message ID: {message_id}")
                 
-                # Create outgoing message record
-                self.create({
+                # Create outgoing message record (use sudo to ensure permissions)
+                self.sudo().create({
                     'message_id': message_id or f'sent_{fields.Datetime.now()}',
                     'wa_id': recipient_phone,
                     'phone_number': recipient_phone,
