@@ -34,7 +34,7 @@
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
-                            <button name="%(action_whatsapp_message_tree)d" type="action" 
+                            <button name="%(action_whatsapp_message)d" type="action" 
                                     class="oe_stat_button" icon="fa-arrow-left" string="Back to Messages"/>
                         </div>
                         <group>
