@@ -19,6 +19,7 @@ A lightweight WhatsApp integration module for Odoo.
         'views/whatsapp_templates.xml',
         'views/whatsapp_message_views.xml',
         'views/whatsapp_message_reply_wizard_views.xml',
+        'views/whatsapp_template_views.xml',
     ],
     'installable': True,
     'application': False,

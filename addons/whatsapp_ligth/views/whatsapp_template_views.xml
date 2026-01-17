@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WhatsApp Template Search View -->
+        <record id="view_whatsapp_template_search" model="ir.ui.view">
+            <field name="name">whatsapp.template.search</field>
+            <field name="model">whatsapp.template</field>
+            <field name="arch" type="xml">
+                <search string="Search WhatsApp Templates">
+                    <field name="name" string="Template Name"/>
+                    <field name="language"/>
+                    <field name="body" string="Body"/>
+                    <separator/>
+                    <filter string="Pending" name="pending" domain="[('status', '=', 'PENDING')]"/>
+                    <filter string="Approved" name="approved" domain="[('status', '=', 'APPROVED')]"/>
+                    <filter string="Rejected" name="rejected" domain="[('status', '=', 'REJECTED')]"/>
+                    <filter string="Paused" name="paused" domain="[('status', '=', 'PAUSED')]"/>
+                    <separator/>
+                    <filter string="Authentication" name="auth" domain="[('category', '=', 'AUTHENTICATION')]"/>
+                    <filter string="Utility" name="utility" domain="[('category', '=', 'UTILITY')]"/>
+                    <filter string="Marketing" name="marketing" domain="[('category', '=', 'MARKETING')]"/>
+                    <separator/>
+                    <filter string="High Quality" name="green" domain="[('quality_score', '=', 'GREEN')]"/>
+                    <filter string="Medium Quality" name="yellow" domain="[('quality_score', '=', 'YELLOW')]"/>
+                    <filter string="Low Quality" name="red" domain="[('quality_score', '=', 'RED')]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+                        <filter string="Category" name="group_category" context="{'group_by': 'category'}"/>
+                        <filter string="Language" name="group_language" context="{'group_by': 'language'}"/>
+                        <filter string="Quality" name="group_quality" context="{'group_by': 'quality_score'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- WhatsApp Template List View -->
+        <record id="view_whatsapp_template_tree" model="ir.ui.view">
+            <field name="name">whatsapp.template.list</field>
+            <field name="model">whatsapp.template</field>
+            <field name="arch" type="xml">
+                <list string="WhatsApp Templates" 
+                      decoration-info="status == 'PENDING'"
+                      decoration-success="status == 'APPROVED'"
+                      decoration-warning="status == 'PAUSED'"
+                      decoration-danger="status == 'REJECTED'">
+                    <field name="name"/>
+                    <field name="language"/>
+                    <field name="category"/>
+                    <field name="body" widget="text"/>
+                    <field name="status" widget="badge"
+                           decoration-info="status == 'PENDING'"
+                           decoration-success="status == 'APPROVED'"
+                           decoration-warning="status == 'PAUSED'"
+                           decoration-danger="status == 'REJECTED'"/>
+                    <field name="quality_score" widget="badge" optional="hide"
+                           decoration-success="quality_score == 'GREEN'"
+                           decoration-warning="quality_score == 'YELLOW'"
+                           decoration-danger="quality_score == 'RED'"/>
+                    <field name="usage_count" optional="hide"/>
+                    <field name="last_used" optional="hide" widget="datetime"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- WhatsApp Template Form View -->
+        <record id="view_whatsapp_template_form" model="ir.ui.view">
+            <field name="name">whatsapp.template.form</field>
+            <field name="model">whatsapp.template</field>
+            <field name="arch" type="xml">
+                <form string="WhatsApp Template">
+                    <header>
+                        <button name="action_submit_to_meta" string="Submit to Meta" type="object"
+                                class="oe_highlight" icon="fa-upload"
+                                invisible="status == 'APPROVED' or template_id_meta"/>
+                        <button name="action_fetch_from_meta" string="Sync from Meta" type="object"
+                                class="btn-secondary" icon="fa-refresh"/>
+                        <button name="action_send_template" string="Send Template" type="object"
+                                class="oe_highlight" icon="fa-paper-plane"
+                                invisible="status != 'APPROVED'"/>
+                        <field name="status" widget="statusbar" statusbar_visible="PENDING,APPROVED,REJECTED"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="%(action_whatsapp_template)d" type="action"
+                                    class="oe_stat_button" icon="fa-arrow-left" string="Back to Templates"/>
+                            <button name="action_send_template" type="object"
+                                    class="oe_stat_button" icon="fa-paper-plane" string="Send"
+                                    invisible="status != 'APPROVED'"/>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="name" placeholder="template_name_lowercase"/>
+                                <field name="language"/>
+                                <field name="category"/>
+                                <field name="template_id_meta" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="status" readonly="1"/>
+                                <field name="quality_score" readonly="1"/>
+                                <field name="usage_count" readonly="1"/>
+                                <field name="last_used" readonly="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Template Content" name="content">
+                                <group>
+                                    <group string="Header" invisible="not header_type">
+                                        <field name="header_type"/>
+                                        <field name="header_text" invisible="header_type != 'TEXT'"/>
+                                        <field name="header_media_handle" invisible="header_type == 'TEXT' or not header_type"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <field name="body" widget="text" nolabel="1" required="1"
+                                           placeholder="Enter template body with placeholders {{1}}, {{2}}, etc."/>
+                                </group>
+                                <group>
+                                    <field name="footer" placeholder="Footer text (max 60 characters, no variables)"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Buttons" name="buttons">
+                                <field name="button_ids" nolabel="1">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="button_type"/>
+                                        <field name="text"/>
+                                        <field name="url" invisible="button_type != 'URL'"/>
+                                        <field name="phone_number" invisible="button_type != 'PHONE_NUMBER'"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            
+                            <page string="Meta Information" name="meta">
+                                <group>
+                                    <group string="Template Status">
+                                        <field name="template_id_meta"/>
+                                        <field name="status"/>
+                                        <field name="quality_score"/>
+                                        <field name="rejection_reason" widget="text" invisible="status != 'REJECTED'"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Additional Info" name="additional">
+                                <group>
+                                    <field name="description" widget="text" nolabel="1" placeholder="Internal description"/>
+                                    <field name="example_data" widget="text" nolabel="1" placeholder="Example JSON data for template parameters"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Template Action -->
+        <record id="action_whatsapp_template" model="ir.actions.act_window">
+            <field name="name">WhatsApp Templates</field>
+            <field name="res_model">whatsapp.template</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_whatsapp_template_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No WhatsApp templates yet!
+                </p>
+                <p>
+                    Create message templates to send business-initiated messages outside the 24-hour window.
+                </p>
+            </field>
+        </record>
+
+        <!-- WhatsApp Template Send Wizard Form View -->
+        <record id="view_whatsapp_template_send_wizard_form" model="ir.ui.view">
+            <field name="name">whatsapp.template.send.wizard.form</field>
+            <field name="model">whatsapp.template.send.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Send Template Message">
+                    <group>
+                        <group>
+                            <field name="template_id" readonly="1"/>
+                            <field name="phone_number_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="recipient_phone" placeholder="27683264051" required="1"/>
+                    </group>
+                    <group string="Template Parameters" invisible="not parameter_ids">
+                        <field name="parameter_ids" nolabel="1">
+                            <tree editable="bottom">
+                                <field name="placeholder" readonly="1"/>
+                                <field name="value" required="1" placeholder="Enter value for this parameter"/>
+                            </tree>
+                        </field>
+                    </group>
+                    <footer>
+                        <button name="action_send_template" string="Send Template" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Template Send Wizard Action -->
+        <record id="action_whatsapp_template_send_wizard" model="ir.actions.act_window">
+            <field name="name">Send Template Message</field>
+            <field name="res_model">whatsapp.template.send.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <!-- WhatsApp Templates Menu Item -->
+        <menuitem id="menu_whatsapp_templates"
+                  name="Templates"
+                  action="action_whatsapp_template"
+                  parent="menu_whatsapp_root"
+                  sequence="20"/>
+    </data>
+</odoo>
