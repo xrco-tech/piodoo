@@ -50,6 +50,20 @@
             </field>
         </record>
 
+        <!-- WhatsApp Template Button Tree View -->
+        <record id="view_whatsapp_template_button_tree" model="ir.ui.view">
+            <field name="name">whatsapp.template.button.tree</field>
+            <field name="model">whatsapp.template.button</field>
+            <field name="arch" type="xml">
+                <tree editable="bottom">
+                    <field name="button_type"/>
+                    <field name="text"/>
+                    <field name="url"/>
+                    <field name="phone_number"/>
+                </tree>
+            </field>
+        </record>
+
         <!-- WhatsApp Template List View -->
         <record id="view_whatsapp_template_tree" model="ir.ui.view">
             <field name="name">whatsapp.template.list</field>
@@ -137,13 +151,23 @@
                             </page>
                             
                             <page string="Buttons" name="buttons">
-                                <field name="button_ids" nolabel="1">
-                                    <tree editable="bottom">
+                                <field name="button_ids" nolabel="1" context="{'default_template_id': id}">
+                                    <tree>
                                         <field name="button_type"/>
                                         <field name="text"/>
-                                        <field name="url" invisible="button_type != 'URL'"/>
-                                        <field name="phone_number" invisible="button_type != 'PHONE_NUMBER'"/>
+                                        <field name="url"/>
+                                        <field name="phone_number"/>
                                     </tree>
+                                    <form>
+                                        <sheet>
+                                            <group>
+                                                <field name="button_type"/>
+                                                <field name="text"/>
+                                                <field name="url" invisible="button_type != 'URL'"/>
+                                                <field name="phone_number" invisible="button_type != 'PHONE_NUMBER'"/>
+                                            </group>
+                                        </sheet>
+                                    </form>
                                 </field>
                             </page>
                             
