@@ -35,7 +35,9 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
             placeholders = re.findall(r'\{\{(\d+)\}\}', template.body or '')
             if placeholders:
                 parameters = []
-                for i, placeholder_num in enumerate(sorted(set(placeholders), key=int), 1):
+                # Get unique placeholder numbers and sort them
+                unique_placeholders = sorted(set(placeholders), key=int)
+                for placeholder_num in unique_placeholders:
                     parameters.append((0, 0, {
                         'sequence': int(placeholder_num),
                         'placeholder': f'{{{{{placeholder_num}}}}}',
@@ -189,7 +191,20 @@ class WhatsAppTemplateParameter(models.TransientModel):
     _order = 'sequence'
 
     wizard_id = fields.Many2one('whatsapp.template.send.wizard', string='Wizard', required=True, ondelete='cascade')
-    sequence = fields.Integer(string='Sequence', required=True)
+    sequence = fields.Integer(string='Sequence', required=True, default=1)
     placeholder = fields.Char(string='Placeholder', readonly=True)
     value = fields.Char(string='Value', required=True, help='Value to replace the placeholder')
+
+    @api.model
+    def create(self, vals):
+        """Auto-set sequence if not provided"""
+        if 'sequence' not in vals or not vals.get('sequence'):
+            if vals.get('wizard_id'):
+                # Get max sequence from existing parameters for this wizard
+                wizard = self.env['whatsapp.template.send.wizard'].browse(vals['wizard_id'])
+                max_seq = max([p.sequence for p in wizard.parameter_ids] + [0])
+                vals['sequence'] = max_seq + 1
+            else:
+                vals['sequence'] = 1
+        return super().create(vals)
 

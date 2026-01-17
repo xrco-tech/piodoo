@@ -212,12 +212,14 @@
                     <group string="Template Parameters" invisible="not parameter_ids">
                         <field name="parameter_ids" nolabel="1" context="{'default_wizard_id': id}">
                             <list>
+                                <field name="sequence" invisible="1"/>
                                 <field name="placeholder" readonly="1"/>
                                 <field name="value"/>
                             </list>
                             <form>
                                 <sheet>
                                     <group>
+                                        <field name="sequence" invisible="1"/>
                                         <field name="placeholder" readonly="1"/>
                                         <field name="value" required="1" placeholder="Enter value for this parameter"/>
                                     </group>
