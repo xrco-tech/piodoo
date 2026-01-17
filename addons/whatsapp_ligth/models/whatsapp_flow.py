@@ -238,22 +238,26 @@ class WhatsAppFlow(models.Model):
                     }
                 }
             
-            # Publish flow
+            # Publish flow - Use POST method to update flow status
+            # According to Meta docs: POST /v18.0/{flow-id} with status in body
             url = f"https://graph.facebook.com/v18.0/{self.flow_id_meta}"
             headers = {
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/json',
             }
+            # Status must be in request body
             payload = {
                 'status': 'PUBLISHED'
             }
             
             _logger.info(f"Publishing flow {self.flow_id_meta}")
+            _logger.debug(f"Publish URL: {url}, Payload: {json.dumps(payload, indent=2)}")
             response = requests.post(url, headers=headers, json=payload, timeout=30)
             
             if response.status_code == 200:
+                response_data = response.json()
                 self.write({'status': 'PUBLISHED'})
-                _logger.info(f"Flow published successfully")
+                _logger.info(f"Flow published successfully. Response: {response_data}")
                 
                 return {
                     'type': 'ir.actions.client',
@@ -267,16 +271,28 @@ class WhatsAppFlow(models.Model):
                 }
             else:
                 error_data = response.json() if response.text else {}
-                error_message = error_data.get('error', {}).get('message', response.text)
+                error_info = error_data.get('error', {})
+                error_message = error_info.get('message', response.text)
+                error_code = error_info.get('code', 'Unknown')
+                error_subcode = error_info.get('error_subcode', '')
                 
-                _logger.error(f"Failed to publish flow: {response.status_code} - {error_message}")
+                _logger.error(f"Failed to publish flow: {response.status_code} - {error_message} (Code: {error_code}, Subcode: {error_subcode})")
+                _logger.debug(f"Full error response: {json.dumps(error_data, indent=2)}")
+                
+                # Provide more helpful error message
+                if error_code == 100:
+                    detailed_msg = f"Validation error: {error_message}. Ensure flow is in DRAFT status and has no validation errors."
+                elif 'parameter' in error_message.lower():
+                    detailed_msg = f"Invalid parameter: {error_message}. Check that flow JSON is valid and all required fields are present."
+                else:
+                    detailed_msg = f"{error_message} (Error Code: {error_code})"
                 
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Error',
-                        'message': f'Failed to publish flow: {error_message}',
+                        'message': f'Failed to publish flow: {detailed_msg}',
                         'type': 'danger',
                         'sticky': True,
                     }
