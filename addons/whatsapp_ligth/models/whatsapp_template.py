@@ -48,6 +48,12 @@ class WhatsAppTemplate(models.Model):
     button_ids = fields.One2many('whatsapp.template.button', 'template_id', string='Buttons',
                                 help='Template buttons (quick reply, URL, phone number)')
     
+    # Flow integration
+    flow_id = fields.Many2one('whatsapp.flow', string='Flow', 
+                             help='WhatsApp Flow to attach to this template (for interactive experiences)')
+    use_flow = fields.Boolean(string='Use Flow', default=False,
+                             help='Enable to send this template with an attached flow')
+    
     # Template status and metadata
     status = fields.Selection([
         ('PENDING', 'Pending Approval'),

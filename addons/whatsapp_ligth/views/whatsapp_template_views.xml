@@ -171,6 +171,20 @@
                                 </field>
                             </page>
                             
+                            <page string="Flow Integration" name="flow">
+                                <group>
+                                    <field name="use_flow"/>
+                                    <field name="flow_id" invisible="not use_flow"
+                                           domain="[('status', '=', 'PUBLISHED')]"
+                                           options="{'no_create': True}"/>
+                                </group>
+                                <group string="Flow Information" invisible="not flow_id">
+                                    <group>
+                                        <field name="flow_id" readonly="1"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
                             <page string="Meta Information" name="meta">
                                 <group>
                                     <group string="Template Status">
