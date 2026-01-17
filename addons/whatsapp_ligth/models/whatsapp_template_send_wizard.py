@@ -52,6 +52,19 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
         """
         self.ensure_one()
         
+        # Validate template is approved
+        if self.template_id.status != 'APPROVED':
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Error',
+                    'message': f'Template is not approved. Current status: {self.template_id.status}. Please wait for Meta to approve the template before sending.',
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
+        
         if not self.recipient_phone.strip():
             return {
                 'type': 'ir.actions.client',
@@ -99,7 +112,21 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
                     'parameters': body_params
                 })
             
+            # Check if template is approved
+            if self.template_id.status != 'APPROVED':
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Error',
+                        'message': f'Template is not approved. Current status: {self.template_id.status}. Please wait for approval or submit the template first.',
+                        'type': 'danger',
+                        'sticky': True,
+                    }
+                }
+            
             # Build payload
+            # Use the exact template name and language as submitted to Meta
             payload = {
                 'messaging_product': 'whatsapp',
                 'recipient_type': 'individual',
@@ -111,6 +138,9 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
                     'components': components
                 }
             }
+            
+            # Log template details for debugging
+            _logger.info(f"Sending template: name={self.template_id.name}, language={self.template_id.language}, status={self.template_id.status}, meta_id={self.template_id.template_id_meta}")
             
             # API endpoint
             url = f"https://graph.facebook.com/v18.0/{self.phone_number_id}/messages"
