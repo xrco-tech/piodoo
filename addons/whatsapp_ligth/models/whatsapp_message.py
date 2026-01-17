@@ -148,7 +148,7 @@ class WhatsAppMessage(models.Model):
             except:
                 return False
 
-    def send_whatsapp_message(self, recipient_phone, message_text, phone_number_id=None):
+    def send_whatsapp_message(self, recipient_phone, message_text, phone_number_id=None, context_message_id=None):
         """
         Send a WhatsApp message using Meta Cloud API.
         
@@ -157,6 +157,7 @@ class WhatsAppMessage(models.Model):
         :param recipient_phone: Recipient phone number in international format (e.g., '27683264051')
         :param message_text: Text content of the message
         :param phone_number_id: Phone number ID (optional, will use from config if not provided)
+        :param context_message_id: Message ID to quote/reply to (optional, will show as quoted message)
         :return: Dictionary with success status and message ID or error
         """
         try:
@@ -207,6 +208,13 @@ class WhatsAppMessage(models.Model):
                     'body': message_text
                 }
             }
+            
+            # Add context to quote/reply to a message if provided
+            if context_message_id:
+                payload['context'] = {
+                    'message_id': context_message_id
+                }
+                _logger.info(f"Including context message_id: {context_message_id} for quoted reply")
             
             _logger.info(f"Sending WhatsApp message to {recipient_phone} via {url}")
             _logger.debug(f"Payload: {json.dumps(payload, indent=2)}")

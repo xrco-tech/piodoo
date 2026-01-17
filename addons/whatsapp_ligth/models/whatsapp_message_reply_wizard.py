@@ -51,11 +51,16 @@ class WhatsAppMessageReplyWizard(models.TransientModel):
                 }
             }
         
-        # Send message using the model method
+        # Send message using the model method with context to quote the original message
+        context_message_id = None
+        if self.message_id and self.message_id.message_id:
+            context_message_id = self.message_id.message_id
+        
         result = self.env['whatsapp.message'].send_whatsapp_message(
             recipient_phone=self.recipient_phone,
             message_text=self.reply_text,
-            phone_number_id=self.phone_number_id
+            phone_number_id=self.phone_number_id,
+            context_message_id=context_message_id
         )
         
         if result.get('success'):
@@ -63,17 +68,8 @@ class WhatsAppMessageReplyWizard(models.TransientModel):
             if self.message_id:
                 self.message_id.write({'status': 'replied'})
             
-            # Return action that shows notification and closes wizard
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'Success',
-                    'message': f'Message sent successfully! Message ID: {result.get("message_id", "N/A")}',
-                    'type': 'success',
-                    'sticky': False,
-                },
-            }
+            # Close the wizard dialog immediately after successful send
+            return {'type': 'ir.actions.act_window_close'}
         else:
             return {
                 'type': 'ir.actions.client',
