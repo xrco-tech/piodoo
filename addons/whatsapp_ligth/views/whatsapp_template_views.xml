@@ -139,7 +139,6 @@
                             <page string="Buttons" name="buttons">
                                 <field name="button_ids" nolabel="1">
                                     <tree editable="bottom">
-                                        <field name="sequence" widget="integer"/>
                                         <field name="button_type"/>
                                         <field name="text"/>
                                         <field name="url" invisible="button_type != 'URL'"/>
