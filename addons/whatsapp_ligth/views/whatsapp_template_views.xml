@@ -210,11 +210,19 @@
                         <field name="recipient_phone" placeholder="27683264051" required="1"/>
                     </group>
                     <group string="Template Parameters" invisible="not parameter_ids">
-                        <field name="parameter_ids" nolabel="1">
-                            <tree editable="bottom">
+                        <field name="parameter_ids" nolabel="1" context="{'default_wizard_id': id}">
+                            <list>
                                 <field name="placeholder" readonly="1"/>
-                                <field name="value" required="1" placeholder="Enter value for this parameter"/>
-                            </tree>
+                                <field name="value"/>
+                            </list>
+                            <form>
+                                <sheet>
+                                    <group>
+                                        <field name="placeholder" readonly="1"/>
+                                        <field name="value" required="1" placeholder="Enter value for this parameter"/>
+                                    </group>
+                                </sheet>
+                            </form>
                         </field>
                     </group>
                     <footer>
