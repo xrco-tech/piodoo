@@ -100,11 +100,11 @@ class WhatsAppTemplate(models.Model):
         self.ensure_one()
         
         try:
-            # Get access token and phone number ID
+            # Get access token and business account ID
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
             access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
                           IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
-            phone_number_id = IrConfigParameter.get_param('whatsapp_ligth.phone_number_id')
+            business_account_id = IrConfigParameter.get_param('whatsapp_ligth.business_account_id')
             
             if not access_token:
                 return {
@@ -118,13 +118,13 @@ class WhatsAppTemplate(models.Model):
                     }
                 }
             
-            if not phone_number_id:
+            if not business_account_id:
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Error',
-                        'message': 'Phone number ID not configured.',
+                        'message': 'Business Account ID not configured. Please ensure webhook has been received to set this automatically.',
                         'type': 'danger',
                         'sticky': True,
                     }
@@ -199,8 +199,9 @@ class WhatsAppTemplate(models.Model):
                 'components': components
             }
             
-            # API endpoint
-            url = f"https://graph.facebook.com/v18.0/{phone_number_id}/message_templates"
+            # API endpoint - Use business account ID, not phone number ID
+            # According to Meta docs: POST /v18.0/{whatsapp-business-account-id}/message_templates
+            url = f"https://graph.facebook.com/v18.0/{business_account_id}/message_templates"
             headers = {
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/json',
@@ -290,22 +291,23 @@ class WhatsAppTemplate(models.Model):
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
             access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
                           IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
-            phone_number_id = IrConfigParameter.get_param('whatsapp_ligth.phone_number_id')
+            business_account_id = IrConfigParameter.get_param('whatsapp_ligth.business_account_id')
             
-            if not access_token or not phone_number_id:
+            if not access_token or not business_account_id:
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Error',
-                        'message': 'Access token or phone number ID not configured.',
+                        'message': 'Access token or Business Account ID not configured.',
                         'type': 'danger',
                         'sticky': True,
                     }
                 }
             
-            # Fetch templates from Meta
-            url = f"https://graph.facebook.com/v18.0/{phone_number_id}/message_templates"
+            # Fetch templates from Meta - Use business account ID
+            # According to Meta docs: GET /v18.0/{whatsapp-business-account-id}/message_templates
+            url = f"https://graph.facebook.com/v18.0/{business_account_id}/message_templates"
             headers = {
                 'Authorization': f'Bearer {access_token}',
             }
