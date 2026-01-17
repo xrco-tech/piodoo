@@ -137,6 +137,10 @@
                                         <field name="media_size"/>
                                         <field name="media_sha256"/>
                                     </group>
+                                    <group string="Downloaded Attachment" invisible="not media_attachment_id">
+                                        <field name="media_attachment_id" widget="many2one" 
+                                               options="{'no_create': True, 'no_create_edit': True}"/>
+                                    </group>
                                     <group string="Media Details" invisible="message_type not in ['image', 'video']">
                                         <field name="caption" widget="text"/>
                                         <field name="image_width" invisible="message_type != 'image'"/>

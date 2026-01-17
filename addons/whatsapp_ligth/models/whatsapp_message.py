@@ -48,6 +48,8 @@ class WhatsAppMessage(models.Model):
     media_mime_type = fields.Char(string='MIME Type', readonly=True, help='MIME type of media')
     media_sha256 = fields.Char(string='SHA256 Hash', readonly=True, help='SHA256 hash of media')
     media_size = fields.Integer(string='Media Size (bytes)', readonly=True, help='Size of media in bytes')
+    media_attachment_id = fields.Many2one('ir.attachment', string='Media Attachment', readonly=True,
+                                          help='Downloaded media stored as attachment')
     
     # Image/Video specific fields
     caption = fields.Text(string='Caption', readonly=True, help='Caption for image/video')
@@ -120,6 +122,113 @@ class WhatsAppMessage(models.Model):
         """Compute whether message has context (is a reply/quote)"""
         for record in self:
             record.has_context = bool(record.context_message_id)
+
+    def _download_and_store_media(self, media_id, media_type='image', filename=None):
+        """
+        Download media from WhatsApp API and store as attachment.
+        
+        Based on: https://developers.facebook.com/docs/whatsapp/cloud-api/reference/media
+        
+        :param media_id: Media ID from WhatsApp
+        :param media_type: Type of media (image, video, audio, document, sticker)
+        :param filename: Optional filename for the attachment
+        :return: ir.attachment record or False
+        """
+        try:
+            import requests
+            import base64
+            
+            if not media_id:
+                return False
+            
+            # Get access token
+            IrConfigParameter = self.env['ir.config_parameter'].sudo()
+            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
+            
+            if not access_token:
+                _logger.error("Access token not configured for media download")
+                return False
+            
+            # Step 1: Get media URL from WhatsApp API
+            media_url_endpoint = f"https://graph.facebook.com/v18.0/{media_id}"
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+            }
+            
+            _logger.info(f"Fetching media URL for media_id: {media_id}")
+            response = requests.get(media_url_endpoint, headers=headers, timeout=30)
+            
+            if response.status_code != 200:
+                _logger.error(f"Failed to get media URL: {response.status_code} - {response.text}")
+                return False
+            
+            media_info = response.json()
+            download_url = media_info.get('url')
+            mime_type = media_info.get('mime_type', 'application/octet-stream')
+            file_size = media_info.get('file_size', 0)
+            sha256 = media_info.get('sha256')
+            
+            if not download_url:
+                _logger.error("No download URL in media info response")
+                return False
+            
+            # Step 2: Download the media binary content
+            _logger.info(f"Downloading media from: {download_url}")
+            download_response = requests.get(download_url, headers=headers, timeout=60)
+            
+            if download_response.status_code != 200:
+                _logger.error(f"Failed to download media: {download_response.status_code}")
+                return False
+            
+            media_content = download_response.content
+            
+            # Generate filename if not provided
+            if not filename:
+                extension_map = {
+                    'image': 'jpg',
+                    'video': 'mp4',
+                    'audio': 'mp3',
+                    'document': 'pdf',
+                    'sticker': 'webp',
+                }
+                extension = extension_map.get(media_type, 'bin')
+                # Try to get extension from mime type
+                if mime_type:
+                    mime_extensions = {
+                        'image/jpeg': 'jpg',
+                        'image/png': 'png',
+                        'image/gif': 'gif',
+                        'image/webp': 'webp',
+                        'video/mp4': 'mp4',
+                        'video/quicktime': 'mov',
+                        'audio/mpeg': 'mp3',
+                        'audio/ogg': 'ogg',
+                        'application/pdf': 'pdf',
+                        'application/msword': 'doc',
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+                    }
+                    extension = mime_extensions.get(mime_type, extension)
+                filename = f"whatsapp_{media_type}_{self.message_id or 'media'}.{extension}"
+            
+            # Step 3: Create attachment
+            attachment_vals = {
+                'name': filename,
+                'type': 'binary',
+                'datas': base64.b64encode(media_content).decode('utf-8'),
+                'mimetype': mime_type,
+                'res_model': 'whatsapp.message',
+                'res_id': self.id,
+            }
+            
+            attachment = self.env['ir.attachment'].sudo().create(attachment_vals)
+            _logger.info(f"Created attachment {attachment.id} for media {media_id}")
+            
+            return attachment
+            
+        except Exception as e:
+            _logger.error(f"Error downloading and storing media: {e}", exc_info=True)
+            return False
     
     # Metadata
     message_timestamp = fields.Datetime(string='Message Timestamp', required=True, readonly=True, index=True)
@@ -361,6 +470,21 @@ class WhatsAppMessage(models.Model):
             }
             
             message = self.create(values)
+            
+            # Download and store media if present
+            if media_id and message_type in ('image', 'video', 'audio', 'document', 'sticker'):
+                _logger.info(f"Downloading media for message {message_id}")
+                attachment = message._download_and_store_media(
+                    media_id=media_id,
+                    media_type=message_type,
+                    filename=document_filename if message_type == 'document' else None
+                )
+                if attachment:
+                    message.write({'media_attachment_id': attachment.id})
+                    _logger.info(f"Media downloaded and stored as attachment {attachment.id}")
+                else:
+                    _logger.warning(f"Failed to download media for message {message_id}")
+            
             return message
             
         except Exception as e:
