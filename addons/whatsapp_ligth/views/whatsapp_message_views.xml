@@ -19,7 +19,19 @@
                     <filter string="Error" name="error" domain="[('status', '=', 'error')]"/>
                     <separator/>
                     <filter string="Incoming" name="incoming" domain="[('is_incoming', '=', True)]"/>
-                    <filter string="Text Messages" name="text" domain="[('message_type', '=', 'text')]"/>
+                    <filter string="Outgoing" name="outgoing" domain="[('is_incoming', '=', False)]"/>
+                    <separator/>
+                    <filter string="Text" name="text" domain="[('message_type', '=', 'text')]"/>
+                    <filter string="Image" name="image" domain="[('message_type', '=', 'image')]"/>
+                    <filter string="Video" name="video" domain="[('message_type', '=', 'video')]"/>
+                    <filter string="Document" name="document" domain="[('message_type', '=', 'document')]"/>
+                    <filter string="Audio" name="audio" domain="[('message_type', '=', 'audio')]"/>
+                    <filter string="Location" name="location" domain="[('message_type', '=', 'location')]"/>
+                    <separator/>
+                    <filter string="Read" name="read" domain="[('message_status', '=', 'read')]"/>
+                    <filter string="Delivered" name="delivered" domain="[('message_status', '=', 'delivered')]"/>
+                    <filter string="Failed" name="failed" domain="[('message_status', '=', 'failed')]"/>
+                    <filter string="Has Quote" name="has_quote" domain="[('has_context', '=', True)]"/>
                     <group expand="0" string="Group By">
                         <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
                         <filter string="Message Type" name="group_type" context="{'group_by': 'message_type'}"/>
@@ -59,12 +71,18 @@
                     <field name="message_timestamp" widget="datetime"/>
                     <field name="contact_name"/>
                     <field name="phone_number"/>
-                    <field name="message_type"/>
+                    <field name="message_type" widget="badge"/>
                     <field name="message_body" widget="text"/>
                     <field name="status" widget="badge" decoration-info="status == 'received'" 
                            decoration-success="status == 'processed'" 
                            decoration-warning="status == 'replied'"
                            decoration-danger="status == 'error'"/>
+                    <field name="message_status" widget="badge" optional="hide"
+                           decoration-success="message_status == 'read'"
+                           decoration-info="message_status == 'delivered'"
+                           decoration-warning="message_status == 'sent'"
+                           decoration-danger="message_status == 'failed'"/>
+                    <field name="is_incoming" widget="boolean_toggle" optional="hide"/>
                 </list>
             </field>
         </record>
@@ -105,7 +123,120 @@
                                 <group>
                                     <field name="message_body" widget="text" nolabel="1" placeholder="Message content will appear here..."/>
                                 </group>
+                                <group invisible="message_type != 'text'">
+                                    <field name="text_preview_url" invisible="message_type != 'text'"/>
+                                </group>
                             </page>
+                            
+                            <page string="Media" name="media" invisible="message_type not in ['image', 'video', 'audio', 'document', 'sticker']">
+                                <group>
+                                    <group string="Media Information">
+                                        <field name="media_id"/>
+                                        <field name="media_url" widget="url"/>
+                                        <field name="media_mime_type"/>
+                                        <field name="media_size"/>
+                                        <field name="media_sha256"/>
+                                    </group>
+                                    <group string="Media Details" invisible="message_type not in ['image', 'video']">
+                                        <field name="caption" widget="text"/>
+                                        <field name="image_width" invisible="message_type != 'image'"/>
+                                        <field name="image_height" invisible="message_type != 'image'"/>
+                                    </group>
+                                </group>
+                                <group invisible="message_type != 'document'">
+                                    <group string="Document Information">
+                                        <field name="document_filename"/>
+                                        <field name="caption" widget="text"/>
+                                    </group>
+                                </group>
+                                <group invisible="message_type != 'audio'">
+                                    <group string="Audio Information">
+                                        <field name="audio_voice"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Location" name="location" invisible="message_type != 'location'">
+                                <group>
+                                    <group string="Location Details">
+                                        <field name="location_name"/>
+                                        <field name="location_address" widget="text"/>
+                                        <field name="location_latitude"/>
+                                        <field name="location_longitude"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Contacts" name="contacts" invisible="message_type != 'contacts'">
+                                <group>
+                                    <field name="contact_data" widget="text" nolabel="1" readonly="1"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Interactive" name="interactive" invisible="message_type != 'interactive'">
+                                <group>
+                                    <field name="interactive_type"/>
+                                    <field name="interactive_data" widget="text" nolabel="1" readonly="1"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Template" name="template" invisible="message_type != 'template'">
+                                <group>
+                                    <group string="Template Information">
+                                        <field name="template_name"/>
+                                        <field name="template_language"/>
+                                    </group>
+                                    <group>
+                                        <field name="template_params" widget="text" nolabel="1" readonly="1"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Context/Quote" name="context" invisible="not has_context">
+                                <group>
+                                    <group string="Quoted Message">
+                                        <field name="has_context"/>
+                                        <field name="context_message_id"/>
+                                        <field name="context_from"/>
+                                        <field name="context_referred_product_id" invisible="not context_referred_product_id"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Reaction" name="reaction" invisible="message_type != 'reaction'">
+                                <group>
+                                    <group string="Reaction Details">
+                                        <field name="reaction_emoji"/>
+                                        <field name="reaction_message_id"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Status &amp; Delivery" name="status_delivery">
+                                <group>
+                                    <group string="Message Status">
+                                        <field name="message_status" widget="badge" 
+                                               decoration-success="message_status == 'read'"
+                                               decoration-info="message_status == 'delivered'"
+                                               decoration-warning="message_status == 'sent'"
+                                               decoration-danger="message_status == 'failed'"/>
+                                        <field name="status_timestamp"/>
+                                        <field name="status_recipient_id"/>
+                                    </group>
+                                    <group string="Error Information" invisible="message_status != 'failed'">
+                                        <field name="status_error_code" invisible="message_status != 'failed'"/>
+                                        <field name="status_error_title" invisible="message_status != 'failed'"/>
+                                        <field name="status_error_message" widget="text" invisible="message_status != 'failed'"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <group string="Pricing">
+                                        <field name="pricing_category"/>
+                                        <field name="pricing_model"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
                             <page string="Metadata" name="metadata">
                                 <group>
                                     <group string="Business Account">
@@ -119,11 +250,13 @@
                                     </group>
                                 </group>
                             </page>
+                            
                             <page string="Raw Data" name="raw_data">
                                 <group>
                                     <field name="raw_message_data" widget="text" nolabel="1" readonly="1"/>
                                 </group>
                             </page>
+                            
                             <page string="Error Info" name="error" invisible="status != 'error'">
                                 <group>
                                     <field name="error_message" widget="text" nolabel="1" readonly="1"/>
