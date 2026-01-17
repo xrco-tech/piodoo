@@ -22,9 +22,104 @@ class WhatsAppMessage(models.Model):
     contact_name = fields.Char(string='Contact Name', readonly=True, help='Name from contact profile')
     
     # Message content
-    message_type = fields.Char(string='Message Type', readonly=True, help='Type of message (text, image, etc.)')
+    message_type = fields.Selection([
+        ('text', 'Text'),
+        ('image', 'Image'),
+        ('video', 'Video'),
+        ('audio', 'Audio'),
+        ('document', 'Document'),
+        ('location', 'Location'),
+        ('contacts', 'Contacts'),
+        ('interactive', 'Interactive'),
+        ('template', 'Template'),
+        ('sticker', 'Sticker'),
+        ('reaction', 'Reaction'),
+        ('unknown', 'Unknown'),
+    ], string='Message Type', readonly=True, default='text', index=True)
     message_body = fields.Text(string='Message Body', readonly=True, help='Content of the message')
     raw_message_data = fields.Text(string='Raw Message Data', readonly=True, help='Complete raw message data as JSON')
+    
+    # Text message fields
+    text_preview_url = fields.Boolean(string='Preview URL', readonly=True, help='Whether URL preview is enabled')
+    
+    # Media message fields (image, video, audio, document)
+    media_id = fields.Char(string='Media ID', readonly=True, help='Media ID from WhatsApp')
+    media_url = fields.Char(string='Media URL', readonly=True, help='URL to download media')
+    media_mime_type = fields.Char(string='MIME Type', readonly=True, help='MIME type of media')
+    media_sha256 = fields.Char(string='SHA256 Hash', readonly=True, help='SHA256 hash of media')
+    media_size = fields.Integer(string='Media Size (bytes)', readonly=True, help='Size of media in bytes')
+    
+    # Image/Video specific fields
+    caption = fields.Text(string='Caption', readonly=True, help='Caption for image/video')
+    image_width = fields.Integer(string='Image Width', readonly=True)
+    image_height = fields.Integer(string='Image Height', readonly=True)
+    
+    # Document specific fields
+    document_filename = fields.Char(string='Filename', readonly=True, help='Document filename')
+    
+    # Audio specific fields
+    audio_voice = fields.Boolean(string='Voice Message', readonly=True, help='Whether audio is a voice message')
+    
+    # Location message fields
+    location_latitude = fields.Float(string='Latitude', readonly=True, digits=(10, 7))
+    location_longitude = fields.Float(string='Longitude', readonly=True, digits=(10, 7))
+    location_name = fields.Char(string='Location Name', readonly=True)
+    location_address = fields.Text(string='Location Address', readonly=True)
+    
+    # Contact message fields
+    contact_data = fields.Text(string='Contact Data', readonly=True, help='JSON data for contacts')
+    
+    # Interactive message fields
+    interactive_type = fields.Char(string='Interactive Type', readonly=True, help='Type of interactive message (button, list, etc.)')
+    interactive_data = fields.Text(string='Interactive Data', readonly=True, help='JSON data for interactive message')
+    
+    # Template message fields
+    template_name = fields.Char(string='Template Name', readonly=True)
+    template_language = fields.Char(string='Template Language', readonly=True)
+    template_params = fields.Text(string='Template Parameters', readonly=True, help='JSON parameters for template')
+    
+    # Context/Quoted message fields
+    context_message_id = fields.Char(string='Context Message ID', readonly=True, 
+                                    help='ID of the message being replied to/quoted')
+    context_from = fields.Char(string='Context From', readonly=True, 
+                              help='Sender of the quoted message')
+    context_referred_product_id = fields.Char(string='Referred Product ID', readonly=True,
+                                             help='Product ID if message is product-related')
+    has_context = fields.Boolean(string='Is Reply/Quote', compute='_compute_has_context', store=True,
+                                help='Whether this message is a reply to another message')
+    
+    # Reaction message fields
+    reaction_message_id = fields.Char(string='Reaction Message ID', readonly=True,
+                                     help='ID of the message being reacted to')
+    reaction_emoji = fields.Char(string='Reaction Emoji', readonly=True, help='Emoji used in reaction')
+    
+    # Message status fields (from status webhooks)
+    message_status = fields.Selection([
+        ('sent', 'Sent'),
+        ('delivered', 'Delivered'),
+        ('read', 'Read'),
+        ('failed', 'Failed'),
+        ('deleted', 'Deleted'),
+    ], string='Message Status', readonly=True, index=True, help='Current delivery status of the message')
+    status_timestamp = fields.Datetime(string='Status Timestamp', readonly=True,
+                                      help='Timestamp when status was last updated')
+    status_recipient_id = fields.Char(string='Status Recipient ID', readonly=True,
+                                     help='Recipient ID for status updates')
+    status_error_code = fields.Integer(string='Error Code', readonly=True,
+                                      help='Error code if message failed')
+    status_error_title = fields.Char(string='Error Title', readonly=True, help='Error title if message failed')
+    status_error_message = fields.Text(string='Error Message', readonly=True, help='Error message if message failed')
+    
+    # Pricing information
+    pricing_category = fields.Char(string='Pricing Category', readonly=True,
+                                  help='Pricing category (e.g., business_initiated, user_initiated)')
+    pricing_model = fields.Char(string='Pricing Model', readonly=True, help='Pricing model')
+    
+    @api.depends('context_message_id')
+    def _compute_has_context(self):
+        """Compute whether message has context (is a reply/quote)"""
+        for record in self:
+            record.has_context = bool(record.context_message_id)
     
     # Metadata
     message_timestamp = fields.Datetime(string='Message Timestamp', required=True, readonly=True, index=True)
@@ -83,18 +178,119 @@ class WhatsAppMessage(models.Model):
             else:
                 message_timestamp = fields.Datetime.now()
             
-            # Extract message body based on type
+            # Extract message body and type-specific data
             message_body = ''
+            media_id = None
+            media_url = None
+            media_mime_type = None
+            media_sha256 = None
+            media_size = None
+            caption = None
+            image_width = None
+            image_height = None
+            document_filename = None
+            audio_voice = False
+            location_latitude = None
+            location_longitude = None
+            location_name = None
+            location_address = None
+            contact_data = None
+            interactive_type = None
+            interactive_data = None
+            template_name = None
+            template_language = None
+            template_params = None
+            context_message_id = None
+            context_from = None
+            context_referred_product_id = None
+            reaction_message_id = None
+            reaction_emoji = None
+            text_preview_url = False
+            
+            # Extract context if present
+            context = webhook_data.get('context', {})
+            if context:
+                context_message_id = context.get('message_id')
+                context_from = context.get('from')
+                context_referred_product_id = context.get('referred_product', {}).get('product_retailer_id')
+            
+            # Extract data based on message type
             if message_type == 'text':
-                message_body = webhook_data.get('text', {}).get('body', '')
+                text_data = webhook_data.get('text', {})
+                message_body = text_data.get('body', '')
+                text_preview_url = text_data.get('preview_url', False)
             elif message_type == 'image':
-                message_body = f"Image: {webhook_data.get('image', {}).get('caption', 'No caption')}"
-            elif message_type == 'document':
-                message_body = f"Document: {webhook_data.get('document', {}).get('filename', 'Unknown')}"
-            elif message_type == 'audio':
-                message_body = "Audio message"
+                image_data = webhook_data.get('image', {})
+                message_body = f"Image: {image_data.get('caption', 'No caption')}"
+                caption = image_data.get('caption')
+                media_id = image_data.get('id')
+                media_mime_type = image_data.get('mime_type')
+                media_sha256 = image_data.get('sha256')
+                media_size = image_data.get('file_size')
+                image_width = image_data.get('width')
+                image_height = image_data.get('height')
             elif message_type == 'video':
-                message_body = f"Video: {webhook_data.get('video', {}).get('caption', 'No caption')}"
+                video_data = webhook_data.get('video', {})
+                message_body = f"Video: {video_data.get('caption', 'No caption')}"
+                caption = video_data.get('caption')
+                media_id = video_data.get('id')
+                media_mime_type = video_data.get('mime_type')
+                media_sha256 = video_data.get('sha256')
+                media_size = video_data.get('file_size')
+            elif message_type == 'audio':
+                audio_data = webhook_data.get('audio', {})
+                message_body = "Audio message"
+                media_id = audio_data.get('id')
+                media_mime_type = audio_data.get('mime_type')
+                media_sha256 = audio_data.get('sha256')
+                media_size = audio_data.get('file_size')
+                audio_voice = audio_data.get('voice', False)
+            elif message_type == 'document':
+                doc_data = webhook_data.get('document', {})
+                document_filename = doc_data.get('filename', 'Unknown')
+                message_body = f"Document: {document_filename}"
+                media_id = doc_data.get('id')
+                media_mime_type = doc_data.get('mime_type')
+                media_sha256 = doc_data.get('sha256')
+                media_size = doc_data.get('file_size')
+                caption = doc_data.get('caption')
+            elif message_type == 'location':
+                loc_data = webhook_data.get('location', {})
+                location_latitude = loc_data.get('latitude')
+                location_longitude = loc_data.get('longitude')
+                location_name = loc_data.get('name')
+                location_address = loc_data.get('address')
+                message_body = f"Location: {location_name or f'{location_latitude}, {location_longitude}'}"
+            elif message_type == 'contacts':
+                contacts_data = webhook_data.get('contacts', [])
+                import json
+                contact_data = json.dumps(contacts_data, indent=2) if contacts_data else None
+                message_body = f"Contact(s): {len(contacts_data)} contact(s) shared"
+            elif message_type == 'interactive':
+                interactive_data_obj = webhook_data.get('interactive', {})
+                interactive_type = interactive_data_obj.get('type')
+                import json
+                interactive_data = json.dumps(interactive_data_obj, indent=2)
+                message_body = f"Interactive: {interactive_type}"
+            elif message_type == 'template':
+                template_data = webhook_data.get('template', {})
+                template_name = template_data.get('name')
+                template_language = template_data.get('language')
+                import json
+                template_params = json.dumps(template_data.get('components', []), indent=2)
+                message_body = f"Template: {template_name}"
+            elif message_type == 'sticker':
+                sticker_data = webhook_data.get('sticker', {})
+                media_id = sticker_data.get('id')
+                media_mime_type = sticker_data.get('mime_type')
+                media_sha256 = sticker_data.get('sha256')
+                media_size = sticker_data.get('file_size')
+                message_body = "Sticker"
+            elif message_type == 'reaction':
+                reaction_data = webhook_data.get('reaction', {})
+                reaction_message_id = reaction_data.get('message_id')
+                reaction_emoji = reaction_data.get('emoji')
+                message_body = f"Reaction: {reaction_emoji}"
             else:
                 message_body = f"{message_type} message"
             
@@ -126,6 +322,42 @@ class WhatsAppMessage(models.Model):
                 'business_account_id': entry_data.get('id', ''),
                 'status': 'received',
                 'is_incoming': True,
+                # Text fields
+                'text_preview_url': text_preview_url,
+                # Media fields
+                'media_id': media_id,
+                'media_mime_type': media_mime_type,
+                'media_sha256': media_sha256,
+                'media_size': media_size,
+                # Image/Video fields
+                'caption': caption,
+                'image_width': image_width,
+                'image_height': image_height,
+                # Document fields
+                'document_filename': document_filename,
+                # Audio fields
+                'audio_voice': audio_voice,
+                # Location fields
+                'location_latitude': location_latitude,
+                'location_longitude': location_longitude,
+                'location_name': location_name,
+                'location_address': location_address,
+                # Contact fields
+                'contact_data': contact_data,
+                # Interactive fields
+                'interactive_type': interactive_type,
+                'interactive_data': interactive_data,
+                # Template fields
+                'template_name': template_name,
+                'template_language': template_language,
+                'template_params': template_params,
+                # Context fields
+                'context_message_id': context_message_id,
+                'context_from': context_from,
+                'context_referred_product_id': context_referred_product_id,
+                # Reaction fields
+                'reaction_message_id': reaction_message_id,
+                'reaction_emoji': reaction_emoji,
             }
             
             message = self.create(values)
