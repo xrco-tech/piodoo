@@ -190,6 +190,39 @@ class WhatsAppTemplate(models.Model):
                             'text': button.text,
                             'phone_number': button.phone_number
                         })
+                    elif button.button_type == 'FLOW':
+                        # Flow button - according to WhatsApp Flows API docs
+                        flow_button = {
+                            'type': 'FLOW',
+                            'text': button.text,
+                        }
+                        
+                        # Add flow identifier (flow_id, flow_name, or flow_json)
+                        # Priority: flow_id > flow_name > flow_json
+                        if button.flow_id and button.flow_id.flow_id_meta:
+                            flow_button['flow_id'] = button.flow_id.flow_id_meta
+                        elif button.flow_id and button.flow_id.name:
+                            flow_button['flow_name'] = button.flow_id.name
+                        elif button.flow_id and button.flow_id.flow_json:
+                            # Use flow_json as string (must be escaped JSON)
+                            flow_button['flow_json'] = button.flow_id.flow_json
+                        else:
+                            # Skip this button if no flow is configured
+                            _logger.warning(f"Skipping FLOW button '{button.text}' - no flow configured")
+                            continue
+                        
+                        # Add flow_action if specified (default is 'navigate')
+                        if button.flow_action:
+                            flow_button['flow_action'] = button.flow_action
+                        
+                        # Add navigate_screen if specified
+                        if button.navigate_screen:
+                            flow_button['navigate_screen'] = button.navigate_screen
+                        elif button.flow_id and button.flow_id.first_page_id:
+                            # Use first page ID from flow if available
+                            flow_button['navigate_screen'] = button.flow_id.first_page_id
+                        
+                        buttons_list.append(flow_button)
                 
                 if buttons_list:
                     components.append({
@@ -447,9 +480,21 @@ class WhatsAppTemplateButton(models.Model):
         ('QUICK_REPLY', 'Quick Reply'),
         ('URL', 'URL'),
         ('PHONE_NUMBER', 'Phone Number'),
+        ('FLOW', 'Flow'),
     ], string='Button Type', required=True, default='QUICK_REPLY')
     text = fields.Char(string='Button Text', required=True, size=25,
                      help='Button label (max 25 characters)')
     url = fields.Char(string='URL', help='URL for URL button type')
     phone_number = fields.Char(string='Phone Number', help='Phone number for PHONE_NUMBER button type')
+    
+    # Flow button fields
+    flow_id = fields.Many2one('whatsapp.flow', string='Flow',
+                             help='Flow to attach to this button (for FLOW button type)')
+    flow_action = fields.Selection([
+        ('navigate', 'Navigate'),
+        ('data_exchange', 'Data Exchange'),
+    ], string='Flow Action', default='navigate',
+       help='Flow action type: navigate (default) or data_exchange')
+    navigate_screen = fields.Char(string='Navigate Screen',
+                                help='Screen ID to navigate to (optional, defaults to first entry screen)')
 

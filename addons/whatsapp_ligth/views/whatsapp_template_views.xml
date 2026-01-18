@@ -58,8 +58,9 @@
                 <list editable="bottom">
                     <field name="button_type"/>
                     <field name="text"/>
-                    <field name="url"/>
-                    <field name="phone_number"/>
+                    <field name="url" invisible="button_type != 'URL'"/>
+                    <field name="phone_number" invisible="button_type != 'PHONE_NUMBER'"/>
+                    <field name="flow_id" invisible="button_type != 'FLOW'"/>
                 </list>
             </field>
         </record>
@@ -155,8 +156,9 @@
                                     <list>
                                         <field name="button_type"/>
                                         <field name="text"/>
-                                        <field name="url"/>
-                                        <field name="phone_number"/>
+                                        <field name="url" invisible="button_type != 'URL'"/>
+                                        <field name="phone_number" invisible="button_type != 'PHONE_NUMBER'"/>
+                                        <field name="flow_id" invisible="button_type != 'FLOW'"/>
                                     </list>
                                     <form>
                                         <sheet>
@@ -165,6 +167,15 @@
                                                 <field name="text"/>
                                                 <field name="url" invisible="button_type != 'URL'"/>
                                                 <field name="phone_number" invisible="button_type != 'PHONE_NUMBER'"/>
+                                            </group>
+                                            <group string="Flow Settings" invisible="button_type != 'FLOW'">
+                                                <field name="flow_id" 
+                                                       domain="[('status', '=', 'PUBLISHED')]"
+                                                       options="{'no_create': True}"/>
+                                                <field name="flow_action" invisible="not flow_id"/>
+                                                <field name="navigate_screen" 
+                                                       invisible="not flow_id or flow_action != 'navigate'"
+                                                       placeholder="Leave empty to use flow's first page"/>
                                             </group>
                                         </sheet>
                                     </form>
