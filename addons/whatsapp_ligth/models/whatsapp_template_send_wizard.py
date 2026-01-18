@@ -155,6 +155,9 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
                         }
                     
                     # Build flow action data
+                    # According to WhatsApp Flows API docs, when sending a template:
+                    # - action object can only contain: flow_token and flow_action_data
+                    # - flow_action is only used when creating the template, not when sending
                     flow_action_data = {}
                     if button.navigate_screen:
                         flow_action_data['screen'] = button.navigate_screen
@@ -163,6 +166,15 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
                     
                     # Add button component with flow action
                     # According to docs: type="button", sub_type="flow", index="0" (or button index)
+                    # The action object can only contain: flow_token (optional) and flow_action_data (optional)
+                    action_obj = {
+                        'flow_token': 'unused',  # Default value, can be customized
+                    }
+                    
+                    # Only add flow_action_data if we have screen or other data
+                    if flow_action_data:
+                        action_obj['flow_action_data'] = flow_action_data
+                    
                     button_component = {
                         'type': 'button',
                         'sub_type': 'flow',
@@ -170,22 +182,10 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
                         'parameters': [
                             {
                                 'type': 'action',
-                                'action': {
-                                    'flow_token': 'unused',  # Default value, can be customized
-                                }
+                                'action': action_obj
                             }
                         ]
                     }
-                    
-                    # Add flow_action if specified (default is 'navigate')
-                    flow_action = button.flow_action or 'navigate'
-                    
-                    # Add flow_action_data if we have screen or data
-                    if flow_action_data:
-                        button_component['parameters'][0]['action']['flow_action'] = flow_action
-                        button_component['parameters'][0]['action']['flow_action_payload'] = flow_action_data
-                    else:
-                        button_component['parameters'][0]['action']['flow_action'] = flow_action
                     
                     template_payload['components'].append(button_component)
                     flow_button_index += 1
