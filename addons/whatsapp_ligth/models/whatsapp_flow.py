@@ -241,8 +241,7 @@ class WhatsAppFlow(models.Model):
                     }
                 }
             
-            # First, update the flow with the latest JSON to ensure it's valid
-            # This is required before publishing - Meta needs the flow to be up-to-date
+            # Validate JSON first
             try:
                 flow_data = json.loads(self.flow_json)
             except json.JSONDecodeError as e:
@@ -257,44 +256,116 @@ class WhatsAppFlow(models.Model):
                     }
                 }
             
-            # Update flow with latest JSON before publishing
-            # This ensures Meta has the latest version and validates it
-            update_url = f"https://graph.facebook.com/v18.0/{self.flow_id_meta}"
+            # Basic validation of flow structure
+            validation_errors = []
+            if 'version' not in flow_data:
+                validation_errors.append("Missing required field: 'version'")
+            if 'screens' not in flow_data:
+                validation_errors.append("Missing required field: 'screens'")
+            elif not isinstance(flow_data.get('screens'), list) or len(flow_data.get('screens', [])) == 0:
+                validation_errors.append("'screens' must be a non-empty array")
+            else:
+                # Validate each screen has required fields
+                for idx, screen in enumerate(flow_data.get('screens', [])):
+                    if 'id' not in screen:
+                        validation_errors.append(f"Screen {idx} is missing required field: 'id'")
+                    if 'layout' not in screen:
+                        validation_errors.append(f"Screen {idx} is missing required field: 'layout'")
+            
+            if validation_errors:
+                error_msg = "Flow JSON validation errors:\n" + "\n".join(f"- {err}" for err in validation_errors)
+                _logger.error(f"Flow JSON validation failed: {error_msg}")
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Validation Error',
+                        'message': error_msg,
+                        'type': 'danger',
+                        'sticky': True,
+                    }
+                }
+            
+            # Check current flow status from Meta before attempting to publish
+            # This helps identify if the flow is in the correct state
+            check_url = f"https://graph.facebook.com/v18.0/{self.flow_id_meta}?fields=id,name,status,version"
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+            }
+            
+            _logger.info(f"Checking flow {self.flow_id_meta} status before publishing")
+            check_response = requests.get(check_url, headers=headers, timeout=30)
+            
+            if check_response.status_code == 200:
+                flow_info = check_response.json()
+                current_status = flow_info.get('status', 'UNKNOWN')
+                _logger.info(f"Flow current status: {current_status}")
+                
+                if current_status not in ('DRAFT', 'UNKNOWN'):
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {
+                            'title': 'Error',
+                            'message': f'Flow is in {current_status} status. Only DRAFT flows can be published. Please create a new version or reset the flow to DRAFT status.',
+                            'type': 'danger',
+                            'sticky': True,
+                        }
+                    }
+            else:
+                _logger.warning(f"Could not check flow status: {check_response.status_code}")
+            
+            # Prepare headers for API calls
             headers = {
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/json',
             }
+            flow_url = f"https://graph.facebook.com/v18.0/{self.flow_id_meta}"
             
-            # Build update payload with flow JSON
-            update_payload = {
-                'json_flow': flow_data,
-            }
-            
-            # Add category if specified
-            if self.category:
-                update_payload['categories'] = [self.category]
-            
-            _logger.info(f"Updating flow {self.flow_id_meta} before publishing")
-            _logger.debug(f"Update URL: {update_url}, Payload keys: {list(update_payload.keys())}")
-            
-            update_response = requests.post(update_url, headers=headers, json=update_payload, timeout=30)
-            
-            if update_response.status_code not in (200, 201):
-                error_data = update_response.json() if update_response.text else {}
-                error_info = error_data.get('error', {})
-                error_message = error_info.get('message', update_response.text)
-                _logger.warning(f"Flow update returned {update_response.status_code}: {error_message}")
-                # Continue anyway - flow might already be up to date
-            
-            # Now publish the flow
+            # Try to publish directly first
             # According to Meta docs: POST /v18.0/{flow-id} with status in body
+            # If the flow JSON hasn't changed since creation, we can publish directly
             publish_payload = {
                 'status': 'PUBLISHED'
             }
             
-            _logger.info(f"Publishing flow {self.flow_id_meta}")
-            _logger.debug(f"Publish URL: {update_url}, Payload: {json.dumps(publish_payload, indent=2)}")
-            response = requests.post(update_url, headers=headers, json=publish_payload, timeout=30)
+            _logger.info(f"Attempting to publish flow {self.flow_id_meta}")
+            _logger.debug(f"Publish URL: {flow_url}, Payload: {json.dumps(publish_payload, indent=2)}")
+            response = requests.post(flow_url, headers=headers, json=publish_payload, timeout=30)
+            
+            # If publish fails with parameter error, try updating the flow first
+            if response.status_code != 200:
+                error_data = response.json() if response.text else {}
+                error_info = error_data.get('error', {})
+                error_code = error_info.get('code', '')
+                
+                # If it's a parameter error, try updating the flow JSON first
+                if error_code == 100:
+                    _logger.info(f"Publish failed with parameter error. Attempting to update flow JSON first, then retry publish.")
+                    
+                    # Try updating the flow with latest JSON
+                    update_payload = {
+                        'json_flow': flow_data,
+                    }
+                    
+                    # Add name and category if specified
+                    if self.name:
+                        update_payload['name'] = self.name
+                    if self.category:
+                        update_payload['categories'] = [self.category]
+                    
+                    _logger.debug(f"Update payload structure: {list(update_payload.keys())}")
+                    update_response = requests.post(flow_url, headers=headers, json=update_payload, timeout=30)
+                    
+                    if update_response.status_code in (200, 201):
+                        _logger.info("Flow updated successfully. Retrying publish...")
+                        # Retry publish after successful update
+                        response = requests.post(flow_url, headers=headers, json=publish_payload, timeout=30)
+                    else:
+                        update_error = update_response.json() if update_response.text else {}
+                        update_error_info = update_error.get('error', {})
+                        _logger.warning(f"Flow update also failed: {update_error_info.get('message', 'Unknown error')}")
+                        # Continue with original publish error
             
             if response.status_code == 200:
                 response_data = response.json()
@@ -318,9 +389,14 @@ class WhatsAppFlow(models.Model):
                 error_code = error_info.get('code', 'Unknown')
                 error_subcode = error_info.get('error_subcode', '')
                 error_data_details = error_info.get('error_data', {})
+                error_user_title = error_info.get('error_user_title', '')
+                error_user_msg = error_info.get('error_user_msg', '')
                 
                 _logger.error(f"Failed to publish flow: {response.status_code} - {error_message} (Code: {error_code}, Subcode: {error_subcode})")
-                _logger.debug(f"Full error response: {json.dumps(error_data, indent=2)}")
+                _logger.error(f"Full error response: {json.dumps(error_data, indent=2)}")
+                
+                # Log the raw response for debugging
+                _logger.error(f"Raw response text: {response.text}")
                 
                 # Provide more helpful error message based on error code and subcode
                 if error_code == 100:
