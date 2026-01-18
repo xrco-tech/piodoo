@@ -205,6 +205,9 @@ class WhatsAppFlow(models.Model):
         """
         Publish flow in Meta API.
         Only published flows can be used in approved templates.
+        
+        Before publishing, the flow is updated with the latest JSON to ensure
+        it's valid and in sync with Meta's servers.
         """
         self.ensure_one()
         
@@ -238,21 +241,60 @@ class WhatsAppFlow(models.Model):
                     }
                 }
             
-            # Publish flow - Use POST method to update flow status
-            # According to Meta docs: POST /v18.0/{flow-id} with status in body
-            url = f"https://graph.facebook.com/v18.0/{self.flow_id_meta}"
+            # First, update the flow with the latest JSON to ensure it's valid
+            # This is required before publishing - Meta needs the flow to be up-to-date
+            try:
+                flow_data = json.loads(self.flow_json)
+            except json.JSONDecodeError as e:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Error',
+                        'message': f'Invalid flow JSON format: {str(e)}. Please fix the JSON before publishing.',
+                        'type': 'danger',
+                        'sticky': True,
+                    }
+                }
+            
+            # Update flow with latest JSON before publishing
+            # This ensures Meta has the latest version and validates it
+            update_url = f"https://graph.facebook.com/v18.0/{self.flow_id_meta}"
             headers = {
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/json',
             }
-            # Status must be in request body
-            payload = {
+            
+            # Build update payload with flow JSON
+            update_payload = {
+                'json_flow': flow_data,
+            }
+            
+            # Add category if specified
+            if self.category:
+                update_payload['categories'] = [self.category]
+            
+            _logger.info(f"Updating flow {self.flow_id_meta} before publishing")
+            _logger.debug(f"Update URL: {update_url}, Payload keys: {list(update_payload.keys())}")
+            
+            update_response = requests.post(update_url, headers=headers, json=update_payload, timeout=30)
+            
+            if update_response.status_code not in (200, 201):
+                error_data = update_response.json() if update_response.text else {}
+                error_info = error_data.get('error', {})
+                error_message = error_info.get('message', update_response.text)
+                _logger.warning(f"Flow update returned {update_response.status_code}: {error_message}")
+                # Continue anyway - flow might already be up to date
+            
+            # Now publish the flow
+            # According to Meta docs: POST /v18.0/{flow-id} with status in body
+            publish_payload = {
                 'status': 'PUBLISHED'
             }
             
             _logger.info(f"Publishing flow {self.flow_id_meta}")
-            _logger.debug(f"Publish URL: {url}, Payload: {json.dumps(payload, indent=2)}")
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            _logger.debug(f"Publish URL: {update_url}, Payload: {json.dumps(publish_payload, indent=2)}")
+            response = requests.post(update_url, headers=headers, json=publish_payload, timeout=30)
             
             if response.status_code == 200:
                 response_data = response.json()
@@ -275,15 +317,38 @@ class WhatsAppFlow(models.Model):
                 error_message = error_info.get('message', response.text)
                 error_code = error_info.get('code', 'Unknown')
                 error_subcode = error_info.get('error_subcode', '')
+                error_data_details = error_info.get('error_data', {})
                 
                 _logger.error(f"Failed to publish flow: {response.status_code} - {error_message} (Code: {error_code}, Subcode: {error_subcode})")
                 _logger.debug(f"Full error response: {json.dumps(error_data, indent=2)}")
                 
-                # Provide more helpful error message
+                # Provide more helpful error message based on error code and subcode
                 if error_code == 100:
-                    detailed_msg = f"Validation error: {error_message}. Ensure flow is in DRAFT status and has no validation errors."
+                    if error_subcode == 4233023:
+                        detailed_msg = (
+                            f"Invalid parameter error. Common causes:\n"
+                            f"1. Flow JSON has validation errors - check all required fields are present\n"
+                            f"2. Business account is not fully verified in Meta Business Manager\n"
+                            f"3. Phone number display name is not approved\n"
+                            f"4. Flow contains unsupported components or invalid values\n\n"
+                            f"Error details: {error_message}"
+                        )
+                    else:
+                        detailed_msg = f"Validation error: {error_message}. Ensure flow is in DRAFT status and has no validation errors."
+                    
+                    # Add error_data details if available
+                    if error_data_details:
+                        detailed_msg += f"\n\nAdditional details: {json.dumps(error_data_details, indent=2)}"
                 elif 'parameter' in error_message.lower():
                     detailed_msg = f"Invalid parameter: {error_message}. Check that flow JSON is valid and all required fields are present."
+                elif 'integrity' in error_message.lower() or 'verification' in error_message.lower():
+                    detailed_msg = (
+                        f"Integrity/Verification error: {error_message}\n\n"
+                        f"Please ensure:\n"
+                        f"1. Your WhatsApp Business Account is fully verified in Meta Business Manager\n"
+                        f"2. Your phone number's display name is approved\n"
+                        f"3. Your business verification is complete"
+                    )
                 else:
                     detailed_msg = f"{error_message} (Error Code: {error_code})"
                 
