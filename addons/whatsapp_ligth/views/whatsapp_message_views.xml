@@ -274,7 +274,7 @@
 
         <!-- WhatsApp Root Menu -->
         <menuitem id="menu_whatsapp_root"
-                  name="WhatsApp"
+                  name="WhatsApp Light"
                   sequence="100"/>
         
         <!-- WhatsApp Messages Menu Item -->
