@@ -52,6 +52,12 @@ class WhatsAppFlow(models.Model):
     # First page ID (needed for sending)
     first_page_id = fields.Char(string='First Page ID', readonly=True,
                                help='ID of the first screen/page in the flow')
+    
+    # Preview information
+    preview_url = fields.Char(string='Preview URL', readonly=True,
+                             help='URL to preview the flow')
+    preview_url_expiry_date = fields.Datetime(string='Preview URL Expiry Date', readonly=True,
+                                            help='When the preview URL expires')
 
     @api.depends('flow_json')
     def _compute_flow_json_formatted(self):
@@ -452,9 +458,62 @@ class WhatsAppFlow(models.Model):
                 }
             }
 
+    def _get_flow_details(self, flow_id):
+        """
+        Get flow details from Meta API.
+        """
+        IrConfigParameter = self.env['ir.config_parameter'].sudo()
+        access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
+                      IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
+        
+        if not access_token:
+            raise ValueError('Access token not configured')
+        
+        url = f"https://graph.facebook.com/v18.0/{flow_id}?fields=id,name,categories,preview,status,validation_errors,json_version,data_api_version,endpoint_uri"
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+        }
+        
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    
+    def _get_flow_assets(self, flow_id):
+        """
+        Get flow assets from Meta API.
+        """
+        IrConfigParameter = self.env['ir.config_parameter'].sudo()
+        access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
+                      IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
+        
+        if not access_token:
+            raise ValueError('Access token not configured')
+        
+        url = f"https://graph.facebook.com/v18.0/{flow_id}/assets"
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+        }
+        
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    
+    def _get_flow_json(self, download_url):
+        """
+        Download flow JSON from the provided URL.
+        """
+        try:
+            response = requests.get(download_url, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"Error fetching flow JSON from {download_url}: {e}")
+            raise
+    
     def action_fetch_from_meta(self):
         """
         Fetch flows from Meta API and sync with local records.
+        This method fetches the flow JSON from Meta's assets API.
         """
         try:
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
@@ -488,49 +547,112 @@ class WhatsAppFlow(models.Model):
                 
                 created_count = 0
                 updated_count = 0
+                error_count = 0
+                error_messages = []
                 
                 for flow_data in flows:
-                    name = flow_data.get('name')
-                    flow_id = flow_data.get('id')
-                    status = flow_data.get('status')
-                    
-                    # Find or create flow
-                    flow = self.search([('flow_id_meta', '=', flow_id)], limit=1)
-                    
-                    vals = {
-                        'flow_id_meta': flow_id,
-                        'status': status,
-                        'version': flow_data.get('version'),
-                    }
-                    
-                    if flow:
-                        flow.write(vals)
-                        updated_count += 1
-                    else:
-                        # Extract first page ID
-                        first_page_id = None
-                        json_flow = flow_data.get('json_flow', {})
-                        screens = json_flow.get('screens', [])
-                        if screens:
-                            first_page_id = screens[0].get('id')
+                    try:
+                        flow_id = flow_data.get('id')
+                        name = flow_data.get('name')
+                        status = flow_data.get('status')
                         
-                        vals.update({
-                            'name': name,
-                            'flow_json': json.dumps(json_flow, indent=2),
-                            'first_page_id': first_page_id,
+                        # Find or create flow
+                        flow = self.search([('flow_id_meta', '=', flow_id)], limit=1)
+                        
+                        # Get flow details (includes json_version, preview, etc.)
+                        flow_details = self._get_flow_details(flow_id)
+                        _logger.info(f"Flow details for {flow_id}: {flow_details}")
+                        
+                        # Get flow assets to find the JSON download URL
+                        flow_assets = self._get_flow_assets(flow_id)
+                        _logger.info(f"Flow assets for {flow_id}: {flow_assets}")
+                        
+                        # Find the FLOW_JSON asset
+                        json_asset = None
+                        if flow_assets.get('data'):
+                            json_assets = [asset for asset in flow_assets['data'] if asset.get('asset_type') == 'FLOW_JSON']
+                            if json_assets:
+                                json_asset = json_assets[0]
+                        
+                        # Download the flow JSON
+                        flow_json = None
+                        if json_asset and json_asset.get('download_url'):
+                            flow_json = self._get_flow_json(json_asset['download_url'])
+                            _logger.info(f"Downloaded flow JSON for {flow_id}")
+                        else:
+                            _logger.warning(f"No FLOW_JSON asset found for flow {flow_id}")
+                        
+                        # Prepare values
+                        vals = {
+                            'flow_id_meta': flow_id,
+                            'status': status,
+                            'version': flow_details.get('json_version'),
                             'category': flow_data.get('categories', [None])[0] if flow_data.get('categories') else None,
-                        })
-                        self.create(vals)
-                        created_count += 1
+                        }
+                        
+                        # Add flow JSON if we got it
+                        if flow_json:
+                            # Extract first page ID from screens
+                            first_page_id = None
+                            screens = flow_json.get('screens', [])
+                            if screens:
+                                first_page_id = screens[0].get('id')
+                            
+                            vals.update({
+                                'flow_json': json.dumps(flow_json, indent=2),
+                                'first_page_id': first_page_id,
+                            })
+                        
+                        # Handle preview URL and expiry
+                        preview = flow_details.get('preview', {})
+                        if preview:
+                            preview_url = preview.get('preview_url')
+                            expires_at = preview.get('expires_at')
+                            if preview_url:
+                                vals['preview_url'] = preview_url
+                            if expires_at:
+                                try:
+                                    from datetime import datetime
+                                    expiry_datetime = datetime.strptime(expires_at, '%Y-%m-%dT%H:%M:%S%z')
+                                    vals['preview_url_expiry_date'] = expiry_datetime.strftime('%Y-%m-%d %H:%M:%S')
+                                except Exception as e:
+                                    _logger.warning(f"Could not parse expiry date {expires_at}: {e}")
+                        
+                        if flow:
+                            # Update existing flow
+                            flow.write(vals)
+                            updated_count += 1
+                            _logger.info(f"Updated flow {flow_id}: {name}")
+                        else:
+                            # Create new flow
+                            if not name:
+                                name = flow_id  # Fallback name
+                            vals['name'] = name
+                            self.create(vals)
+                            created_count += 1
+                            _logger.info(f"Created flow {flow_id}: {name}")
+                    
+                    except Exception as e:
+                        error_count += 1
+                        error_msg = f"Error syncing flow {flow_data.get('id', 'unknown')}: {str(e)}"
+                        error_messages.append(error_msg)
+                        _logger.error(error_msg, exc_info=True)
+                
+                # Build success message
+                message = f'Synced flows: {created_count} created, {updated_count} updated.'
+                if error_count > 0:
+                    message += f' {error_count} errors occurred.'
+                    if error_messages:
+                        message += '\n\nErrors:\n' + '\n'.join(error_messages[:5])  # Show first 5 errors
                 
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
-                        'title': 'Success',
-                        'message': f'Synced flows: {created_count} created, {updated_count} updated.',
-                        'type': 'success',
-                        'sticky': False,
+                        'title': 'Success' if error_count == 0 else 'Partial Success',
+                        'message': message,
+                        'type': 'success' if error_count == 0 else 'warning',
+                        'sticky': error_count > 0,
                     }
                 }
             else:
@@ -546,6 +668,18 @@ class WhatsAppFlow(models.Model):
                         'sticky': True,
                     }
                 }
+        except Exception as e:
+            _logger.error(f"Error in action_fetch_from_meta: {e}", exc_info=True)
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Error',
+                    'message': f'Failed to sync flows: {str(e)}',
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
                 
         except Exception as e:
             _logger.error(f"Error fetching flows: {e}", exc_info=True)
