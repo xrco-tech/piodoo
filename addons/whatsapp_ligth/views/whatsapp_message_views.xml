@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- WhatsApp Message Preview Template -->
+        <!-- WhatsApp Message Preview Template (Outgoing/Sent) -->
         <template id="whatsapp_message_preview" t-name="WhatsApp Message Preview">
-            <div t-attf-class="o_whatsapp_preview overflow-hidden {{ 'ps-3 pe-5' if not is_incoming else 'ps-5 pe-3' }}">
-                <div t-attf-class="o_whatsapp_message {{ 'sent' if is_incoming else '' }} mt-2 mb-1 fs-6 lh-1 {{ 'float-end' if is_incoming else 'float-start' }} text-break {{ 'text-white' if is_incoming else 'text-black' }} position-relative" 
-                     t-attf-style="background-color: {{ '#075E54' if is_incoming else '#ffffff' }}; {{ 'min-width: 100px;' if is_incoming else '' }}">
+            <div class="o_whatsapp_preview overflow-hidden ps-3 pe-5">
+                <div class="o_whatsapp_message mt-2 mb-1 fs-6 lh-1 float-start text-break text-black position-relative" style="background-color: #ffffff;">
                     <div class="o_whatsapp_message_core p-2 position-relative">
                         <!-- Header for media types -->
                         <div class="o_whatsapp_message_header bg-opacity-50" 
@@ -68,14 +67,89 @@
                         </div>
                         
                         <!-- Timestamp -->
-                        <span t-attf-class="position-absolute bottom-0 end-0 o-whatsapp-font-11 py-1 px-2 {{ 'text-white-50' if is_incoming else 'text-black-50' }}" 
-                              area-hidden="true">
+                        <span class="position-absolute bottom-0 end-0 o-whatsapp-font-11 py-1 px-2 text-black-50" area-hidden="true">
                             <t t-out="message_timestamp or ''"/>
                         </span>
                     </div>
                 </div>
             </div>
         </template>
+
+        <!-- WhatsApp Message Preview Template (Received/Incoming) -->
+        <template id="whatsapp_message_preview_received" t-name="WhatsApp Message Preview Received">
+            <div class="o_whatsapp_preview overflow-hidden ps-5 pe-3">
+                <div class="o_whatsapp_message sent mt-2 mb-1 fs-6 lh-1 float-end text-break text-white position-relative" style="background-color: #075E54; min-width: 100px;">
+                    <div class="o_whatsapp_message_core p-2 position-relative">
+                        <!-- Header for media types -->
+                        <div class="o_whatsapp_message_header bg-opacity-50" 
+                             t-if="message_type in ['image', 'video', 'document', 'audio', 'location']">
+                            <div t-attf-class="d-block bg-400 p-4 text-center {{ 'rounded-top-2' if message_type == 'location' else 'rounded-2' }}">
+                                <img class="m-2 img-fluid" 
+                                     t-attf-src="/whatsapp_ligth/static/img/{{message_type}}.png" 
+                                     t-att-alt="message_type"
+                                     t-if="message_type != 'location' or not location_name"/>
+                                <t t-if="message_type == 'location' and location_name">
+                                    <i class="fa fa-map-marker fs-1 text-600"/>
+                                </t>
+                            </div>
+                            <div t-if="message_type == 'location'" class="o_whatsapp_location_footer d-flex p-2 bg-200 rounded-bottom-2 flex-column">
+                                <span class="o-whatsapp-font-11" t-out="location_name or 'Location'"/>
+                                <t t-if="location_address">
+                                    <br/>
+                                    <span class="text-600 o-whatsapp-font-9" t-out="location_address"/>
+                                </t>
+                            </div>
+                        </div>
+                        
+                        <!-- Message Body -->
+                        <div class="o_whatsapp_message_body px-1 mt-2" 
+                             t-attf-style="white-space: normal; word-wrap: break-word; max-width: 100%;">
+                            <t t-if="message_body">
+                                <t t-out="message_body"/>
+                            </t>
+                            <t t-elif="message_type == 'document'">
+                                <i class="fa fa-file"/> <t t-out="document_filename or 'Document'"/>
+                            </t>
+                            <t t-elif="message_type == 'audio'">
+                                <i class="fa fa-volume-up"/> <t t-out="'Voice Message' if audio_voice else 'Audio'"/>
+                            </t>
+                            <t t-elif="message_type == 'location' and not location_name">
+                                <i class="fa fa-map-marker"/> Location
+                            </t>
+                            <t t-elif="message_type == 'contacts'">
+                                <i class="fa fa-address-book"/> Contact
+                            </t>
+                            <t t-elif="message_type == 'interactive'">
+                                <i class="fa fa-mouse-pointer"/> Interactive Message
+                            </t>
+                            <t t-elif="message_type == 'template'">
+                                <i class="fa fa-file-text"/> Template: <t t-out="template_name or 'Unknown'"/>
+                            </t>
+                            <t t-elif="message_type == 'sticker'">
+                                <i class="fa fa-smile-o"/> Sticker
+                            </t>
+                            <t t-elif="message_type == 'reaction'">
+                                <t t-out="reaction_emoji or 'Reaction'"/>
+                            </t>
+                        </div>
+                        
+                        <!-- Caption for images/videos (shown below media) -->
+                        <div t-if="caption and message_type in ['image', 'video']" 
+                             class="o_whatsapp_message_body px-1 mt-2" 
+                             t-attf-style="white-space: normal; word-wrap: break-word; max-width: 100%;">
+                            <t t-out="caption"/>
+                        </div>
+                        
+                        <!-- Timestamp -->
+                        <span class="position-absolute bottom-0 end-0 o-whatsapp-font-11 py-1 px-2 text-white-50" area-hidden="true">
+                            <t t-out="message_timestamp or ''"/>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        
         <!-- WhatsApp Messages Search View -->
         <record id="view_whatsapp_message_search" model="ir.ui.view">
             <field name="name">whatsapp.message.search</field>
