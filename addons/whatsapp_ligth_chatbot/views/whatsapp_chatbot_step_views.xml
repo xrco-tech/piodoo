@@ -81,14 +81,9 @@
                                 </group>
                                 
                                 <group string="Interactive Elements" invisible="wa_message_type == 'non_interactive'">
-                                    <field name="button_ids" nolabel="1" invisible="wa_message_type not in ['interactive_button', 'interactive_list']">
-                                        <tree create="1" delete="1" edit="1">
-                                            <field name="sequence" widget="handle"/>
-                                            <field name="button_id"/>
-                                            <field name="title"/>
-                                            <field name="description"/>
-                                        </tree>
-                                    </field>
+                                    <div class="alert alert-info" role="alert" invisible="wa_message_type not in ['interactive_button', 'interactive_list']">
+                                        <p>Buttons can be managed in the step form view. Use the "Child Steps" tab to configure button actions.</p>
+                                    </div>
                                     <field name="list_button_text" invisible="wa_message_type != 'interactive_list'"/>
                                 </group>
                                 
