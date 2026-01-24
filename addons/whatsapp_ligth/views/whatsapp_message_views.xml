@@ -3,9 +3,9 @@
     <data>
         <!-- WhatsApp Message Preview Template (Outgoing/Sent) -->
         <template id="whatsapp_message_preview" t-name="WhatsApp Message Preview">
-            <div class="o_whatsapp_preview overflow-hidden ps-3 pe-5">
-                <div class="o_whatsapp_message mt-2 mb-1 fs-6 lh-1 float-start text-break text-black position-relative" style="background-color: #ffffff;">
-                    <div class="o_whatsapp_message_core p-2 position-relative">
+            <div class="o_whatsapp_preview" style="max-width: 100%; overflow: hidden; padding-left: 12px; padding-right: 20px;">
+                <div class="o_whatsapp_message" style="margin-top: 8px; margin-bottom: 4px; font-size: 14px; line-height: 1.2; float: left; word-break: break-word; color: #000; position: relative; background-color: #ffffff; border-radius: 7.5px; padding: 8px; max-width: 85%; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);">
+                    <div class="o_whatsapp_message_core" style="position: relative;">
                         <!-- Header for media types -->
                         <div class="o_whatsapp_message_header bg-opacity-50" 
                              t-if="message_type in ['image', 'video', 'document', 'audio', 'location']">
@@ -75,7 +75,7 @@
                         </div>
                         
                         <!-- Timestamp -->
-                        <span class="position-absolute bottom-0 end-0 o-whatsapp-font-11 py-1 px-2 text-black-50" area-hidden="true">
+                        <span style="position: absolute; bottom: 0; right: 0; font-size: 11px; padding: 4px 8px; color: rgba(0,0,0,0.5);" area-hidden="true">
                             <t t-out="message_timestamp or ''"/>
                         </span>
                     </div>
@@ -85,41 +85,42 @@
 
         <!-- WhatsApp Message Preview Template (Received/Incoming) -->
         <template id="whatsapp_message_preview_received" t-name="WhatsApp Message Preview Received">
-            <div class="o_whatsapp_preview overflow-hidden ps-5 pe-3">
-                <div class="o_whatsapp_message sent mt-2 mb-1 fs-6 lh-1 float-end text-break text-white position-relative" style="background-color: #075E54; min-width: 100px;">
-                    <div class="o_whatsapp_message_core p-2 position-relative">
+            <div class="o_whatsapp_preview" style="max-width: 100%; overflow: hidden; padding-left: 20px; padding-right: 12px;">
+                <div class="o_whatsapp_message sent" style="margin-top: 8px; margin-bottom: 4px; font-size: 14px; line-height: 1.2; float: right; word-break: break-word; color: #fff; position: relative; background-color: #075E54; min-width: 100px; border-radius: 7.5px; padding: 8px; max-width: 85%; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);">
+                    <div class="o_whatsapp_message_core" style="position: relative;">
                         <!-- Header for media types -->
-                        <div class="o_whatsapp_message_header bg-opacity-50" 
-                             t-if="message_type in ['image', 'video', 'document', 'audio', 'location']">
-                            <div t-attf-class="d-block bg-400 p-4 text-center {{ 'rounded-top-2' if message_type == 'location' else 'rounded-2' }}">
+                        <div class="o_whatsapp_message_header" 
+                             t-if="message_type in ['image', 'video', 'document', 'audio', 'location']"
+                             style="background-color: rgba(0,0,0,0.05);">
+                            <div t-attf-style="display: block; background-color: #f0f0f0; padding: 16px; text-align: center; {{ 'border-radius: 7.5px 7.5px 0 0;' if message_type == 'location' else 'border-radius: 7.5px;' }}">
                                 <t t-if="message_type == 'image'">
-                                    <i class="fa fa-image fs-1 text-600"/>
+                                    <i class="fa fa-image" style="font-size: 48px; color: #666;"/>
                                 </t>
                                 <t t-elif="message_type == 'video'">
-                                    <i class="fa fa-video-camera fs-1 text-600"/>
+                                    <i class="fa fa-video-camera" style="font-size: 48px; color: #666;"/>
                                 </t>
                                 <t t-elif="message_type == 'document'">
-                                    <i class="fa fa-file fs-1 text-600"/>
+                                    <i class="fa fa-file" style="font-size: 48px; color: #666;"/>
                                 </t>
                                 <t t-elif="message_type == 'audio'">
-                                    <i class="fa fa-volume-up fs-1 text-600"/>
+                                    <i class="fa fa-volume-up" style="font-size: 48px; color: #666;"/>
                                 </t>
                                 <t t-elif="message_type == 'location'">
-                                    <i class="fa fa-map-marker fs-1 text-600"/>
+                                    <i class="fa fa-map-marker" style="font-size: 48px; color: #666;"/>
                                 </t>
                             </div>
-                            <div t-if="message_type == 'location'" class="o_whatsapp_location_footer d-flex p-2 bg-200 rounded-bottom-2 flex-column">
-                                <span class="o-whatsapp-font-11" t-out="location_name or 'Location'"/>
+                            <div t-if="message_type == 'location'" style="display: flex; padding: 8px; background-color: #e5e5e5; border-radius: 0 0 7.5px 7.5px; flex-direction: column;">
+                                <span style="font-size: 11px;" t-out="location_name or 'Location'"/>
                                 <t t-if="location_address">
                                     <br/>
-                                    <span class="text-600 o-whatsapp-font-9" t-out="location_address"/>
+                                    <span style="color: #666; font-size: 9px;" t-out="location_address"/>
                                 </t>
                             </div>
                         </div>
                         
                         <!-- Message Body -->
-                        <div class="o_whatsapp_message_body px-1 mt-2" 
-                             t-attf-style="white-space: normal; word-wrap: break-word; max-width: 100%;">
+                        <div class="o_whatsapp_message_body" 
+                             style="padding-left: 4px; padding-right: 4px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
                             <t t-if="message_body">
                                 <t t-out="message_body"/>
                             </t>
@@ -151,13 +152,12 @@
                         
                         <!-- Caption for images/videos (shown below media) -->
                         <div t-if="caption and message_type in ['image', 'video']" 
-                             class="o_whatsapp_message_body px-1 mt-2" 
-                             t-attf-style="white-space: normal; word-wrap: break-word; max-width: 100%;">
+                             style="padding-left: 4px; padding-right: 4px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
                             <t t-out="caption"/>
                         </div>
                         
                         <!-- Timestamp -->
-                        <span class="position-absolute bottom-0 end-0 o-whatsapp-font-11 py-1 px-2 text-white-50" area-hidden="true">
+                        <span style="position: absolute; bottom: 0; right: 0; font-size: 11px; padding: 4px 8px; color: rgba(255,255,255,0.5);" area-hidden="true">
                             <t t-out="message_timestamp or ''"/>
                         </span>
                     </div>
