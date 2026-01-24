@@ -83,7 +83,6 @@
                             <page string="Steps" name="steps">
                                 <field name="step_ids" nolabel="1">
                                     <tree create="1" delete="1" duplicate="1" edit="1" default_order="sequence asc">
-                                        <field name="sequence" widget="handle"/>
                                         <field name="name"/>
                                         <field name="step_type"/>
                                         <field name="body_plain" optional="hide"/>
