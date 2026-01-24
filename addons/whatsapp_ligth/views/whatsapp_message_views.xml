@@ -237,7 +237,8 @@
                     <field name="contact_name"/>
                     <field name="phone_number"/>
                     <field name="message_type" widget="badge"/>
-                    <field name="message_body" widget="text"/>
+                    <field name="message_preview_html" widget="html" optional="show" string="Preview"/>
+                    <field name="message_body" widget="text" optional="hide"/>
                     <field name="status" widget="badge" decoration-info="status == 'received'" 
                            decoration-success="status == 'processed'" 
                            decoration-warning="status == 'replied'"
