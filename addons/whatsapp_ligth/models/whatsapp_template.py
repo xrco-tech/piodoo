@@ -162,15 +162,18 @@ class WhatsAppTemplate(models.Model):
         for record in self:
             try:
                 # Get button information - ensure all required fields are present
+                # Convert to a format that QWeb can easily access
                 buttons = []
                 for idx, button in enumerate(record.button_ids):
                     if button.button_type and button.text:
-                        buttons.append({
-                            'type': button.button_type or 'QUICK_REPLY',
-                            'text': button.text or '',
-                            'name': button.text or '',  # For compatibility
+                        # Create a simple dict with all required keys
+                        button_dict = {
+                            'type': str(button.button_type) if button.button_type else 'QUICK_REPLY',
+                            'text': str(button.text) if button.text else '',
+                            'name': str(button.text) if button.text else '',  # For compatibility
                             'index': idx,
-                        })
+                        }
+                        buttons.append(button_dict)
                 
                 # Format body, header, and footer with WhatsApp styling
                 formatted_body = self._format_whatsapp_text(record.body or '')
