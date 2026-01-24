@@ -328,60 +328,34 @@ class WhatsAppFlow(models.Model):
             }
             flow_url = f"https://graph.facebook.com/v18.0/{self.flow_id_meta}"
             
-            # Try to publish directly first
-            # According to Meta docs: POST /v18.0/{flow-id} with status in body
-            # If the flow JSON hasn't changed since creation, we can publish directly
-            publish_payload = {
-                'status': 'PUBLISHED'
+            # Filter flow_data to only include fields allowed in json_flow
+            # According to Meta API, json_flow should only contain version and screens
+            # Remove routing_model, data_api_version, and other metadata fields
+            filtered_flow_data = {
+                'version': flow_data.get('version'),
+                'screens': flow_data.get('screens', []),
             }
             
-            _logger.info(f"Attempting to publish flow {self.flow_id_meta}")
-            _logger.debug(f"Publish URL: {flow_url}, Payload: {json.dumps(publish_payload, indent=2)}")
-            response = requests.post(flow_url, headers=headers, json=publish_payload, timeout=30)
+            # Update and publish in one request
+            # According to Meta docs, we can include both json_flow and status in the same request
+            _logger.info(f"Updating and publishing flow {self.flow_id_meta}")
             
-            # If publish fails with parameter error, try updating the flow first
-            if response.status_code != 200:
-                error_data = response.json() if response.text else {}
-                error_info = error_data.get('error', {})
-                error_code = error_info.get('code', '')
-                
-                # If it's a parameter error, try updating the flow JSON first
-                if error_code == 100:
-                    _logger.info(f"Publish failed with parameter error. Attempting to update flow JSON first, then retry publish.")
-                    
-                    # Filter flow_data to only include fields allowed in json_flow
-                    # According to Meta API, json_flow should only contain version and screens
-                    # Remove routing_model, data_api_version, and other metadata fields
-                    filtered_flow_data = {
-                        'version': flow_data.get('version'),
-                        'screens': flow_data.get('screens', []),
-                    }
-                    
-                    # Try updating the flow with filtered JSON
-                    update_payload = {
-                        'json_flow': filtered_flow_data,
-                    }
-                    
-                    # Add name and category if specified
-                    if self.name:
-                        update_payload['name'] = self.name
-                    if self.category:
-                        update_payload['categories'] = [self.category]
-                    
-                    _logger.debug(f"Update payload structure: {list(update_payload.keys())}")
-                    _logger.debug(f"Filtered flow data keys: {list(filtered_flow_data.keys())}")
-                    _logger.debug(f"Number of screens: {len(filtered_flow_data.get('screens', []))}")
-                    update_response = requests.post(flow_url, headers=headers, json=update_payload, timeout=30)
-                    
-                    if update_response.status_code in (200, 201):
-                        _logger.info("Flow updated successfully. Retrying publish...")
-                        # Retry publish after successful update
-                        response = requests.post(flow_url, headers=headers, json=publish_payload, timeout=30)
-                    else:
-                        update_error = update_response.json() if update_response.text else {}
-                        update_error_info = update_error.get('error', {})
-                        _logger.warning(f"Flow update also failed: {update_error_info.get('message', 'Unknown error')}")
-                        # Continue with original publish error
+            publish_payload = {
+                'json_flow': filtered_flow_data,
+                'status': 'PUBLISHED',
+            }
+            
+            # Add name and category if specified
+            if self.name:
+                publish_payload['name'] = self.name
+            if self.category:
+                publish_payload['categories'] = [self.category]
+            
+            _logger.debug(f"Publish URL: {flow_url}")
+            _logger.debug(f"Publish payload keys: {list(publish_payload.keys())}")
+            _logger.debug(f"Filtered flow data keys: {list(filtered_flow_data.keys())}")
+            _logger.debug(f"Number of screens: {len(filtered_flow_data.get('screens', []))}")
+            response = requests.post(flow_url, headers=headers, json=publish_payload, timeout=30)
             
             if response.status_code == 200:
                 response_data = response.json()
