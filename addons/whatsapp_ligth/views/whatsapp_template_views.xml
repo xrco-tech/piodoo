@@ -51,23 +51,25 @@
                              style="cursor: default; padding: 0; margin-top: 8px;">
                             <hr style="border: 0; height: 1px; background: #e5e7eb; margin: 0; position: relative; width: 100%;"/>
                             <t t-if="len(buttons) &lt;= 3">
-                                <t t-foreach="buttons" t-as="button">
+                                <t t-foreach="buttons" t-as="button" t-key="button_index">
+                                    <t t-set="btn_type" t-value="button.type"/>
+                                    <t t-set="btn_text" t-value="button.text or button.name or ''"/>
                                     <span style="display: block; text-align: center; margin: 12px 0; font-size: 13px; color: #0b56d0; user-select: none;">
-                                        <t t-if="button.type == 'PHONE_NUMBER'">
+                                        <t t-if="btn_type == 'PHONE_NUMBER'">
                                             <i class="fa fa-phone" style="font-size: 20px;"/>
                                         </t>
-                                        <t t-elif="button.type == 'URL'">
+                                        <t t-elif="btn_type == 'URL'">
                                             <i class="fa fa-external-link" style="font-size: 20px;"/>
                                         </t>
-                                        <t t-elif="button.type == 'FLOW'">
+                                        <t t-elif="btn_type == 'FLOW'">
                                             <i class="fa fa-sitemap" style="font-size: 20px;"/>
                                         </t>
                                         <t t-else="">
                                             <i class="fa fa-reply" style="font-size: 20px;"/>
                                         </t>
-                                        <t t-out="button.text or button.name"/>
+                                        <t t-out="btn_text"/>
                                     </span>
-                                    <hr t-if="button.index &lt; len(buttons) - 1" style="border: 0; height: 1px; background: #e5e7eb; margin: 0; position: relative; width: 100%;"/>
+                                    <hr t-if="button_index &lt; len(buttons) - 1" style="border: 0; height: 1px; background: #e5e7eb; margin: 0; position: relative; width: 100%;"/>
                                 </t>
                             </t>
                             <t t-elif="len(buttons) &lt;= 10">

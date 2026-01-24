@@ -100,20 +100,21 @@ class WhatsAppTemplate(models.Model):
         for record in self:
             record.display_name = f"{record.name} ({record.language})"
     
-    @api.depends('body', 'header_type', 'header_text', 'footer', 'button_ids')
+    @api.depends('body', 'header_type', 'header_text', 'footer', 'button_ids', 'button_ids.button_type', 'button_ids.text')
     def _compute_template_preview_html(self):
         """Compute HTML preview of the template using QWeb template"""
         for record in self:
             try:
-                # Get button information
+                # Get button information - ensure all required fields are present
                 buttons = []
                 for idx, button in enumerate(record.button_ids):
-                    buttons.append({
-                        'type': button.button_type,
-                        'text': button.text,
-                        'name': button.text,  # For compatibility
-                        'index': idx,
-                    })
+                    if button.button_type and button.text:
+                        buttons.append({
+                            'type': button.button_type or 'QUICK_REPLY',
+                            'text': button.text or '',
+                            'name': button.text or '',  # For compatibility
+                            'index': idx,
+                        })
                 
                 # Use ir.ui.view to render the template
                 preview = self.env['ir.ui.view']._render_template('whatsapp_ligth.whatsapp_template_preview', {
@@ -126,7 +127,7 @@ class WhatsAppTemplate(models.Model):
                 record.template_preview_html = preview.decode('utf-8') if isinstance(preview, bytes) else preview
             except Exception as e:
                 _logger.warning(f"Error rendering template preview: {e}", exc_info=True)
-                record.template_preview_html = f'<div>Error rendering preview: {str(e)}</div>'
+                record.template_preview_html = f'<div style="color: red;">Error rendering preview: {str(e)}</div>'
 
     def action_submit_to_meta(self):
         """
