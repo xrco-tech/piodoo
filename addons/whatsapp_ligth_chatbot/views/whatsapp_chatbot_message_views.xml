@@ -17,12 +17,12 @@
             </field>
         </record>
 
-        <!-- WhatsApp Chatbot Message Tree View -->
+        <!-- WhatsApp Chatbot Message List View -->
         <record id="view_whatsapp_chatbot_message_tree" model="ir.ui.view">
             <field name="name">whatsapp.chatbot.message.tree</field>
             <field name="model">whatsapp.chatbot.message</field>
             <field name="arch" type="xml">
-                <tree string="Chatbot Messages" default_order="create_date desc">
+                <list string="Chatbot Messages" default_order="create_date desc">
                     <field name="type" widget="badge" decoration-info="type == 'incoming'" decoration-success="type == 'outgoing'"/>
                     <field name="contact_id"/>
                     <field name="chatbot_id"/>
@@ -71,7 +71,7 @@
         <record id="action_whatsapp_chatbot_message" model="ir.actions.act_window">
             <field name="name">Chatbot Messages</field>
             <field name="res_model">whatsapp.chatbot.message</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_whatsapp_chatbot_message_search"/>
         </record>
     </data>

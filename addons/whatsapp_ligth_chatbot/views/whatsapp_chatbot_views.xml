@@ -20,7 +20,7 @@
             <field name="name">whatsapp.chatbot.tree</field>
             <field name="model">whatsapp.chatbot</field>
             <field name="arch" type="xml">
-                <tree string="WhatsApp Chatbots">
+                <list string="WhatsApp Chatbots">
                     <field name="name"/>
                     <field name="description"/>
                     <field name="step_count" widget="statinfo" string="Steps"/>
@@ -128,7 +128,7 @@
         <record id="action_whatsapp_chatbot" model="ir.actions.act_window">
             <field name="name">Chatbots</field>
             <field name="res_model">whatsapp.chatbot</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_whatsapp_chatbot_search"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- WhatsApp Chatbot Trigger Tree View -->
+        <!-- WhatsApp Chatbot Trigger List View -->
         <record id="view_whatsapp_chatbot_trigger_tree" model="ir.ui.view">
             <field name="name">whatsapp.chatbot.trigger.tree</field>
             <field name="model">whatsapp.chatbot.trigger</field>
             <field name="arch" type="xml">
-                <tree string="Chatbot Triggers">
+                <list string="Chatbot Triggers">
                     <field name="name"/>
                     <field name="chatbot_id"/>
                 </tree>

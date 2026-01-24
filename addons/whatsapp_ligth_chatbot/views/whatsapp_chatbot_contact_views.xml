@@ -14,12 +14,12 @@
             </field>
         </record>
 
-        <!-- WhatsApp Chatbot Contact Tree View -->
+        <!-- WhatsApp Chatbot Contact List View -->
         <record id="view_whatsapp_chatbot_contact_tree" model="ir.ui.view">
             <field name="name">whatsapp.chatbot.contact.tree</field>
             <field name="model">whatsapp.chatbot.contact</field>
             <field name="arch" type="xml">
-                <tree string="Chatbot Contacts">
+                <list string="Chatbot Contacts">
                     <field name="name"/>
                     <field name="mobile_number"/>
                     <field name="last_chatbot_id"/>
@@ -86,7 +86,7 @@
         <record id="action_whatsapp_chatbot_contact" model="ir.actions.act_window">
             <field name="name">Chatbot Contacts</field>
             <field name="res_model">whatsapp.chatbot.contact</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_whatsapp_chatbot_contact_search"/>
         </record>
     </data>

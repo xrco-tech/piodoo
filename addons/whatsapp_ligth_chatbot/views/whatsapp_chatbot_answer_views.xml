@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- WhatsApp Chatbot Answer Tree View -->
+        <!-- WhatsApp Chatbot Answer List View -->
         <record id="view_whatsapp_chatbot_answer_tree" model="ir.ui.view">
             <field name="name">whatsapp.chatbot.answer.tree</field>
             <field name="model">whatsapp.chatbot.answer</field>
             <field name="arch" type="xml">
-                <tree string="Chatbot Answers">
+                <list string="Chatbot Answers">
                     <field name="display_name"/>
                     <field name="step_id"/>
                     <field name="trigger_step_id"/>

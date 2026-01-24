@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- WhatsApp Chatbot Variable Tree View -->
+        <!-- WhatsApp Chatbot Variable List View -->
         <record id="view_whatsapp_chatbot_variable_tree" model="ir.ui.view">
             <field name="name">whatsapp.chatbot.variable.tree</field>
             <field name="model">whatsapp.chatbot.variable</field>
             <field name="arch" type="xml">
-                <tree string="Chatbot Variables">
+                <list string="Chatbot Variables">
                     <field name="name"/>
                     <field name="chatbot_id"/>
                     <field name="data_type"/>
