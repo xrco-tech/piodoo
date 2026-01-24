@@ -36,8 +36,8 @@
                         </div>
                         
                         <!-- Message Body -->
-                        <div class="o_whatsapp_message_body px-1 mt-2" 
-                             t-attf-style="white-space: normal; word-wrap: break-word; max-width: 100%;">
+                        <div class="o_whatsapp_message_body" 
+                             style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35;">
                             <t t-if="message_body">
                                 <t t-out="message_body"/>
                             </t>
@@ -69,13 +69,12 @@
                         
                         <!-- Caption for images/videos (shown below media) -->
                         <div t-if="caption and message_type in ['image', 'video']" 
-                             class="o_whatsapp_message_body px-1 mt-2" 
-                             t-attf-style="white-space: normal; word-wrap: break-word; max-width: 100%;">
+                             style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35;">
                             <t t-out="caption"/>
                         </div>
                         
                         <!-- Timestamp -->
-                        <span style="position: absolute; bottom: 0; right: 0; font-size: 11px; padding: 4px 8px; color: rgba(0,0,0,0.5);" area-hidden="true">
+                        <span style="position: absolute; bottom: 4px; right: 4px; font-size: 11px; padding: 2px 4px; color: rgba(0,0,0,0.5); pointer-events: none;" area-hidden="true">
                             <t t-out="message_timestamp or ''"/>
                         </span>
                     </div>
@@ -120,7 +119,7 @@
                         
                         <!-- Message Body -->
                         <div class="o_whatsapp_message_body" 
-                             style="padding-left: 4px; padding-right: 4px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
+                             style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
                             <t t-if="message_body">
                                 <t t-out="message_body"/>
                             </t>
@@ -152,12 +151,12 @@
                         
                         <!-- Caption for images/videos (shown below media) -->
                         <div t-if="caption and message_type in ['image', 'video']" 
-                             style="padding-left: 4px; padding-right: 4px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
+                             style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
                             <t t-out="caption"/>
                         </div>
                         
                         <!-- Timestamp -->
-                        <span style="position: absolute; bottom: 0; right: 0; font-size: 11px; padding: 4px 8px; color: rgba(255,255,255,0.5);" area-hidden="true">
+                        <span style="position: absolute; bottom: 4px; right: 4px; font-size: 11px; padding: 2px 4px; color: rgba(255,255,255,0.5); pointer-events: none;" area-hidden="true">
                             <t t-out="message_timestamp or ''"/>
                         </span>
                     </div>
