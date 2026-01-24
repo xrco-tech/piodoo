@@ -110,6 +110,18 @@
                                 </group>
                             </page>
                             
+                            <page string="Preview" name="preview" invisible="not preview_url">
+                                <group>
+                                    <group string="Preview Information">
+                                        <field name="preview_url" widget="url" readonly="1"/>
+                                        <field name="preview_url_expiry_date" readonly="1"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <field name="preview_url" widget="iframe" style="height: 850px; width: 100%;" nolabel="1"/>
+                                </group>
+                            </page>
+                            
                             <page string="Meta Information" name="meta">
                                 <group>
                                     <group string="Flow Status">
@@ -121,6 +133,10 @@
                                     <group string="Timestamps">
                                         <field name="created_time"/>
                                         <field name="updated_time"/>
+                                    </group>
+                                    <group string="Preview" invisible="not preview_url">
+                                        <field name="preview_url" widget="url" readonly="1"/>
+                                        <field name="preview_url_expiry_date" readonly="1"/>
                                     </group>
                                 </group>
                             </page>
