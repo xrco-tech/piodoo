@@ -475,30 +475,117 @@ class WhatsAppTemplate(models.Model):
                         'category': template_data.get('category', 'UTILITY'),
                     }
                     
+                    # Extract components (for both new and existing templates)
+                    components = template_data.get('components', [])
+                    body_text = ''
+                    footer_text = ''
+                    header_type = False
+                    header_text = ''
+                    buttons_data = []
+                    
+                    for component in components:
+                        if component.get('type') == 'BODY':
+                            body_text = component.get('text', '')
+                        elif component.get('type') == 'FOOTER':
+                            footer_text = component.get('text', '')
+                        elif component.get('type') == 'HEADER':
+                            header_format = component.get('format')
+                            if header_format == 'TEXT':
+                                header_type = 'TEXT'
+                                header_text = component.get('text', '')
+                            elif header_format in ('IMAGE', 'VIDEO', 'DOCUMENT'):
+                                header_type = header_format
+                        elif component.get('type') == 'BUTTONS':
+                            # Extract buttons from BUTTONS component
+                            buttons = component.get('buttons', [])
+                            for idx, button in enumerate(buttons):
+                                button_type = button.get('type')
+                                button_text = button.get('text', '')
+                                
+                                # Extract button-specific data based on type
+                                button_data = {
+                                    'sequence': idx * 10,  # 0, 10, 20, etc.
+                                    'button_type': button_type,
+                                    'text': button_text,
+                                }
+                                
+                                # Extract data based on button type
+                                if button_type == 'URL':
+                                    button_data['url'] = button.get('url', '')
+                                elif button_type == 'PHONE_NUMBER':
+                                    button_data['phone_number'] = button.get('phone_number', '')
+                                elif button_type == 'FLOW':
+                                    # For FLOW buttons, extract action data
+                                    action = button.get('action', {})
+                                    # Meta stores flow_id in the action
+                                    flow_id_meta = action.get('flow_id') or action.get('flow_token')
+                                    if flow_id_meta:
+                                        # Try to find the flow in our system by Meta flow ID
+                                        flow = self.env['whatsapp.flow'].search([
+                                            ('flow_id_meta', '=', flow_id_meta)
+                                        ], limit=1)
+                                        if flow:
+                                            button_data['flow_id'] = flow.id
+                                    
+                                    # Extract flow action type (default to 'navigate')
+                                    button_data['flow_action'] = action.get('flow_action', 'navigate')
+                                    
+                                    # Extract navigate screen if present
+                                    # Meta might store it as navigate_screen.screen.name or just navigate_screen
+                                    navigate_screen = action.get('navigate_screen')
+                                    if navigate_screen:
+                                        if isinstance(navigate_screen, dict):
+                                            screen = navigate_screen.get('screen', {})
+                                            if isinstance(screen, dict):
+                                                button_data['navigate_screen'] = screen.get('name', '')
+                                            else:
+                                                button_data['navigate_screen'] = str(screen)
+                                        else:
+                                            button_data['navigate_screen'] = str(navigate_screen)
+                                    else:
+                                        button_data['navigate_screen'] = ''
+                                
+                                buttons_data.append(button_data)
+                    
                     if template:
+                        # Update existing template
+                        vals.update({
+                            'body': body_text,
+                            'footer': footer_text,
+                            'header_type': header_type,
+                            'header_text': header_text,
+                        })
                         template.write(vals)
+                        
+                        # Update buttons - delete existing and recreate
+                        template.button_ids.unlink()
+                        for button_data in buttons_data:
+                            # Try to find flow if it's a FLOW button
+                            flow_id = False
+                            if button_data.get('button_type') == 'FLOW':
+                                # Try to find flow by Meta flow ID from the button action
+                                flow_token = button_data.get('flow_action')  # This might be in the action
+                                # Note: Meta stores flow_id in the action, but we need to match it
+                                # For now, we'll leave flow_id empty and let user set it manually
+                                pass
+                            
+                            button_vals = {
+                                'template_id': template.id,
+                                'sequence': button_data.get('sequence', 0),
+                                'button_type': button_data.get('button_type', 'QUICK_REPLY'),
+                                'text': button_data.get('text', ''),
+                                'url': button_data.get('url', ''),
+                                'phone_number': button_data.get('phone_number', ''),
+                                'flow_action': button_data.get('flow_action') or 'navigate',
+                                'navigate_screen': button_data.get('navigate_screen', ''),
+                            }
+                            if flow_id:
+                                button_vals['flow_id'] = flow_id
+                            self.env['whatsapp.template.button'].create(button_vals)
+                        
                         updated_count += 1
                     else:
-                        # Extract components
-                        components = template_data.get('components', [])
-                        body_text = ''
-                        footer_text = ''
-                        header_type = False
-                        header_text = ''
-                        
-                        for component in components:
-                            if component.get('type') == 'BODY':
-                                body_text = component.get('text', '')
-                            elif component.get('type') == 'FOOTER':
-                                footer_text = component.get('text', '')
-                            elif component.get('type') == 'HEADER':
-                                header_format = component.get('format')
-                                if header_format == 'TEXT':
-                                    header_type = 'TEXT'
-                                    header_text = component.get('text', '')
-                                elif header_format in ('IMAGE', 'VIDEO', 'DOCUMENT'):
-                                    header_type = header_format
-                        
+                        # Create new template
                         vals.update({
                             'name': name,
                             'language': language,
@@ -507,7 +594,32 @@ class WhatsAppTemplate(models.Model):
                             'header_type': header_type,
                             'header_text': header_text,
                         })
-                        self.create(vals)
+                        template = self.create(vals)
+                        
+                        # Create buttons
+                        for button_data in buttons_data:
+                            # Try to find flow if it's a FLOW button
+                            flow_id = False
+                            if button_data.get('button_type') == 'FLOW':
+                                # Try to find flow by Meta flow ID from the button action
+                                # Note: Meta stores flow_id in the action, but we need to match it
+                                # For now, we'll leave flow_id empty and let user set it manually
+                                pass
+                            
+                            button_vals = {
+                                'template_id': template.id,
+                                'sequence': button_data.get('sequence', 0),
+                                'button_type': button_data.get('button_type', 'QUICK_REPLY'),
+                                'text': button_data.get('text', ''),
+                                'url': button_data.get('url', ''),
+                                'phone_number': button_data.get('phone_number', ''),
+                                'flow_action': button_data.get('flow_action') or 'navigate',
+                                'navigate_screen': button_data.get('navigate_screen', ''),
+                            }
+                            if flow_id:
+                                button_vals['flow_id'] = flow_id
+                            self.env['whatsapp.template.button'].create(button_vals)
+                        
                         created_count += 1
                 
                 return {
