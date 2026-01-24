@@ -82,14 +82,10 @@
                             </page>
                             
                             <page string="Steps" name="steps">
-                                <field name="step_ids" nolabel="1" context="{'default_chatbot_id': id}">
-                                    <tree create="1" delete="1" duplicate="1" edit="1">
-                                        <field name="name"/>
-                                        <field name="step_type"/>
-                                        <field name="body_plain" optional="hide"/>
-                                        <field name="parent_id" string="Parent Step" optional="show"/>
-                                    </tree>
-                                </field>
+                                <div class="alert alert-info" role="alert">
+                                    <p>Use the "View Steps" button in the header to manage chatbot steps.</p>
+                                </div>
+                                <field name="step_count" readonly="1"/>
                             </page>
                             
                             <page string="Settings" name="settings">
