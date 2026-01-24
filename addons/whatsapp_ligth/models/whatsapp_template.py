@@ -87,6 +87,9 @@ class WhatsAppTemplate(models.Model):
                                 help='Number of times this template has been used')
     last_used = fields.Datetime(string='Last Used', readonly=True)
     
+    # Preview field
+    template_preview_html = fields.Html(string='Template Preview', compute='_compute_template_preview_html', sanitize=False)
+    
     _sql_constraints = [
         ('name_language_unique', 'unique(name, language)', 'Template name and language combination must be unique!')
     ]
@@ -96,6 +99,34 @@ class WhatsAppTemplate(models.Model):
         """Compute display name for template"""
         for record in self:
             record.display_name = f"{record.name} ({record.language})"
+    
+    @api.depends('body', 'header_type', 'header_text', 'footer', 'button_ids')
+    def _compute_template_preview_html(self):
+        """Compute HTML preview of the template using QWeb template"""
+        for record in self:
+            try:
+                # Get button information
+                buttons = []
+                for idx, button in enumerate(record.button_ids):
+                    buttons.append({
+                        'type': button.button_type,
+                        'text': button.text,
+                        'name': button.text,  # For compatibility
+                        'index': idx,
+                    })
+                
+                # Use ir.ui.view to render the template
+                preview = self.env['ir.ui.view']._render_template('whatsapp_ligth.whatsapp_template_preview', {
+                    'body': record.body or '',
+                    'header_type': record.header_type or False,
+                    'header_text': record.header_text or '',
+                    'footer_text': record.footer or '',
+                    'buttons': buttons,
+                })
+                record.template_preview_html = preview.decode('utf-8') if isinstance(preview, bytes) else preview
+            except Exception as e:
+                _logger.warning(f"Error rendering template preview: {e}", exc_info=True)
+                record.template_preview_html = f'<div>Error rendering preview: {str(e)}</div>'
 
     def action_submit_to_meta(self):
         """

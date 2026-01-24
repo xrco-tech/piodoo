@@ -1,6 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- WhatsApp Template Preview Template -->
+        <template id="whatsapp_template_preview" t-name="WhatsApp Template Preview">
+            <div class="o_whatsapp_preview" style="max-width: 100%; overflow: hidden; padding-left: 12px; padding-right: 20px;">
+                <div class="o_whatsapp_message" style="margin-top: 8px; margin-bottom: 4px; font-size: 14px; line-height: 1.2; float: left; word-break: break-word; color: #000; position: relative; background-color: #ffffff; border-radius: 7.5px; padding: 8px; max-width: 85%; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);">
+                    <div class="o_whatsapp_message_core" style="position: relative;">
+                        <!-- Header for media types -->
+                        <div class="o_whatsapp_message_header" 
+                             t-if="header_type and header_type != 'TEXT'"
+                             style="background-color: rgba(0,0,0,0.05);">
+                            <div style="display: block; background-color: #f0f0f0; padding: 16px; text-align: center; border-radius: 7.5px;">
+                                <t t-if="header_type == 'IMAGE'">
+                                    <i class="fa fa-image" style="font-size: 48px; color: #666;"/>
+                                </t>
+                                <t t-elif="header_type == 'VIDEO'">
+                                    <i class="fa fa-video-camera" style="font-size: 48px; color: #666;"/>
+                                </t>
+                                <t t-elif="header_type == 'DOCUMENT'">
+                                    <i class="fa fa-file" style="font-size: 48px; color: #666;"/>
+                                </t>
+                            </div>
+                        </div>
+                        
+                        <!-- Header text -->
+                        <div t-if="header_type == 'TEXT' and header_text" 
+                             style="padding-left: 4px; padding-right: 4px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35; font-weight: bold;">
+                            <t t-out="header_text"/>
+                        </div>
+                        
+                        <!-- Message Body -->
+                        <div class="o_whatsapp_message_body" 
+                             style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35;">
+                            <t t-if="body">
+                                <t t-out="body"/>
+                            </t>
+                            <t t-else="">
+                                <em style="color: #999;">No body text</em>
+                            </t>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div t-if="footer_text" 
+                             style="padding-left: 4px; padding-right: 4px; padding-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #999; font-size: 12px; line-height: 1.35; border-top: 1px solid #e5e7eb; margin-top: 8px;">
+                            <t t-out="footer_text"/>
+                        </div>
+                        
+                        <!-- Buttons -->
+                        <div class="o_whatsapp_message_links" t-if="buttons and len(buttons) > 0" 
+                             style="cursor: default; padding: 0; margin-top: 8px;">
+                            <hr style="border: 0; height: 1px; background: #e5e7eb; margin: 0; position: relative; width: 100%;"/>
+                            <t t-if="len(buttons) &lt;= 3">
+                                <t t-foreach="buttons" t-as="button">
+                                    <span style="display: block; text-align: center; margin: 12px 0; font-size: 13px; color: #0b56d0; user-select: none;">
+                                        <t t-if="button.type == 'PHONE_NUMBER'">
+                                            <i class="fa fa-phone" style="font-size: 20px;"/>
+                                        </t>
+                                        <t t-elif="button.type == 'URL'">
+                                            <i class="fa fa-external-link" style="font-size: 20px;"/>
+                                        </t>
+                                        <t t-elif="button.type == 'FLOW'">
+                                            <i class="fa fa-sitemap" style="font-size: 20px;"/>
+                                        </t>
+                                        <t t-else="">
+                                            <i class="fa fa-reply" style="font-size: 20px;"/>
+                                        </t>
+                                        <t t-out="button.text or button.name"/>
+                                    </span>
+                                    <hr t-if="button.index &lt; len(buttons) - 1" style="border: 0; height: 1px; background: #e5e7eb; margin: 0; position: relative; width: 100%;"/>
+                                </t>
+                            </t>
+                            <t t-elif="len(buttons) &lt;= 10">
+                                <span style="display: block; text-align: center; margin: 12px 0; font-size: 13px; color: #0b56d0; user-select: none;">
+                                    <i class="fa fa-list-ul" style="font-size: 20px;"/> See all options
+                                </span>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+        
         <!-- WhatsApp Template Search View -->
         <record id="view_whatsapp_template_search" model="ir.ui.view">
             <field name="name">whatsapp.template.search</field>
@@ -78,7 +158,8 @@
                     <field name="name"/>
                     <field name="language"/>
                     <field name="category"/>
-                    <field name="body" widget="text"/>
+                    <field name="template_preview_html" widget="html" optional="show" string="Preview"/>
+                    <field name="body" widget="text" optional="hide"/>
                     <field name="status" widget="badge"
                            decoration-info="status == 'PENDING'"
                            decoration-success="status == 'APPROVED'"
@@ -134,6 +215,12 @@
                             </group>
                         </group>
                         <notebook>
+                            <page string="Template Preview" name="preview">
+                                <group>
+                                    <field name="template_preview_html" widget="html" nolabel="1"/>
+                                </group>
+                            </page>
+                            
                             <page string="Template Content" name="content">
                                 <group>
                                     <group string="Header" invisible="not header_type">
