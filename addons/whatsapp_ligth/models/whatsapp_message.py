@@ -117,6 +117,35 @@ class WhatsAppMessage(models.Model):
                                   help='Pricing category (e.g., business_initiated, user_initiated)')
     pricing_model = fields.Char(string='Pricing Model', readonly=True, help='Pricing model')
     
+    # Preview field
+    message_preview_html = fields.Html(string='Message Preview', compute='_compute_message_preview_html', sanitize=False)
+    
+    @api.depends('message_body', 'message_type', 'is_incoming', 'message_timestamp', 
+                 'location_name', 'location_address', 'document_filename', 'audio_voice',
+                 'caption', 'template_name', 'reaction_emoji')
+    def _compute_message_preview_html(self):
+        """Compute HTML preview of the message using QWeb template"""
+        for record in self:
+            try:
+                # Use ir.ui.view to render the template
+                preview = self.env['ir.ui.view']._render_template('whatsapp_ligth.whatsapp_message_preview', {
+                    'message_body': record.message_body or '',
+                    'message_type': record.message_type or 'text',
+                    'is_incoming': record.is_incoming,
+                    'message_timestamp': record.message_timestamp.strftime('%H:%M') if record.message_timestamp else '',
+                    'location_name': record.location_name or '',
+                    'location_address': record.location_address or '',
+                    'document_filename': record.document_filename or '',
+                    'audio_voice': record.audio_voice,
+                    'caption': record.caption or '',
+                    'template_name': record.template_name or '',
+                    'reaction_emoji': record.reaction_emoji or '',
+                })
+                record.message_preview_html = preview.decode('utf-8') if isinstance(preview, bytes) else preview
+            except Exception as e:
+                _logger.warning(f"Error rendering message preview: {e}", exc_info=True)
+                record.message_preview_html = f'<div>Error rendering preview: {str(e)}</div>'
+    
     @api.depends('context_message_id')
     def _compute_has_context(self):
         """Compute whether message has context (is a reply/quote)"""
