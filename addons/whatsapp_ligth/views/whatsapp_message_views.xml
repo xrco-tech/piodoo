@@ -39,7 +39,7 @@
                         <div class="o_whatsapp_message_body" 
                              style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35;">
                             <t t-if="message_body">
-                                <t t-out="message_body"/>
+                                <t t-raw="message_body"/>
                             </t>
                             <t t-elif="message_type == 'document'">
                                 <i class="fa fa-file"/> <t t-out="document_filename or 'Document'"/>
@@ -70,7 +70,7 @@
                         <!-- Caption for images/videos (shown below media) -->
                         <div t-if="caption and message_type in ['image', 'video']" 
                              style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35;">
-                            <t t-out="caption"/>
+                            <t t-raw="caption"/>
                         </div>
                         
                         <!-- Timestamp -->
@@ -121,7 +121,7 @@
                         <div class="o_whatsapp_message_body" 
                              style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
                             <t t-if="message_body">
-                                <t t-out="message_body"/>
+                                <t t-raw="message_body"/>
                             </t>
                             <t t-elif="message_type == 'document'">
                                 <i class="fa fa-file"/> <t t-out="document_filename or 'Document'"/>
@@ -152,7 +152,7 @@
                         <!-- Caption for images/videos (shown below media) -->
                         <div t-if="caption and message_type in ['image', 'video']" 
                              style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
-                            <t t-out="caption"/>
+                            <t t-raw="caption"/>
                         </div>
                         
                         <!-- Timestamp -->

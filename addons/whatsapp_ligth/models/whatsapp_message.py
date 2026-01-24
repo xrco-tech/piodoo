@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import re
 from odoo import models, fields, api
 from datetime import datetime
+from markupsafe import Markup
 
 _logger = logging.getLogger(__name__)
 
@@ -120,6 +122,61 @@ class WhatsAppMessage(models.Model):
     # Preview field
     message_preview_html = fields.Html(string='Message Preview', compute='_compute_message_preview_html', sanitize=False)
     
+    def _format_whatsapp_text(self, text):
+        """
+        Format WhatsApp text with styling markers to HTML.
+        WhatsApp formatting:
+        - *text* for bold
+        - _text_ for italic
+        - ~text~ for strikethrough
+        - ```text``` for monospace
+        - > text for blockquotes (at start of line)
+        """
+        if not text:
+            return ''
+        
+        # Escape HTML first to prevent XSS, but preserve the text
+        text = str(text)
+        
+        # Handle blockquotes first (lines starting with >)
+        # Split by newlines, process each line
+        lines = text.split('\n')
+        formatted_lines = []
+        for line in lines:
+            stripped = line.lstrip()
+            if stripped.startswith('>'):
+                # Blockquote line - remove > and format
+                quote_text = stripped[1:].strip()
+                # Escape the quote text
+                quote_text = Markup(quote_text).escape()
+                formatted_lines.append(f'<div style="border-left: 3px solid #075E54; padding-left: 8px; margin: 4px 0; color: #666;">{quote_text}</div>')
+            else:
+                formatted_lines.append(line)
+        text = '\n'.join(formatted_lines)
+        
+        # Escape HTML to prevent XSS
+        text = Markup(text).escape()
+        text = str(text)
+        
+        # Convert newlines to <br>
+        text = text.replace('\n', '<br/>')
+        
+        # Handle monospace (```text```) - must be done before other formatting
+        # Match triple backticks with content (non-greedy)
+        text = re.sub(r'```([^`]+)```', r'<code style="background-color: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">\1</code>', text)
+        
+        # Handle strikethrough (~text~) - match tilde with content
+        text = re.sub(r'~([^~\n]+)~', r'<span style="text-decoration: line-through;">\1</span>', text)
+        
+        # Handle bold (*text*) - must be done before italic to avoid conflicts
+        # Match asterisk with content (not newlines to avoid breaking blockquotes)
+        text = re.sub(r'\*([^*\n]+)\*', r'<strong>\1</strong>', text)
+        
+        # Handle italic (_text_) - match underscore with content
+        text = re.sub(r'_([^_\n]+)_', r'<em>\1</em>', text)
+        
+        return Markup(text)
+    
     @api.depends('message_body', 'message_type', 'is_incoming', 'message_timestamp', 
                  'location_name', 'location_address', 'document_filename', 'audio_voice',
                  'caption', 'template_name', 'reaction_emoji')
@@ -130,9 +187,14 @@ class WhatsAppMessage(models.Model):
                 # Choose template based on message direction
                 template_name = 'whatsapp_ligth.whatsapp_message_preview_received' if record.is_incoming else 'whatsapp_ligth.whatsapp_message_preview'
                 
+                # Format message body and caption with WhatsApp styling
+                formatted_body = self._format_whatsapp_text(record.message_body or '')
+                formatted_caption = self._format_whatsapp_text(record.caption or '')
+                
                 # Use ir.ui.view to render the template
                 preview = self.env['ir.ui.view']._render_template(template_name, {
-                    'message_body': record.message_body or '',
+                    'message_body': formatted_body,
+                    'message_body_raw': record.message_body or '',  # Keep raw for fallback
                     'message_type': record.message_type or 'text',
                     'is_incoming': record.is_incoming,
                     'message_timestamp': record.message_timestamp.strftime('%H:%M') if record.message_timestamp else '',
@@ -140,7 +202,8 @@ class WhatsAppMessage(models.Model):
                     'location_address': record.location_address or '',
                     'document_filename': record.document_filename or '',
                     'audio_voice': record.audio_voice,
-                    'caption': record.caption or '',
+                    'caption': formatted_caption,
+                    'caption_raw': record.caption or '',  # Keep raw for fallback
                     'template_name': record.template_name or '',
                     'reaction_emoji': record.reaction_emoji or '',
                 })

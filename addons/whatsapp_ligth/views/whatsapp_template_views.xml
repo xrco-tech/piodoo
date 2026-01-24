@@ -26,14 +26,14 @@
                         <!-- Header text -->
                         <div t-if="header_type == 'TEXT' and header_text" 
                              style="padding-left: 4px; padding-right: 4px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35; font-weight: bold;">
-                            <t t-out="header_text"/>
+                            <t t-raw="header_text"/>
                         </div>
                         
                         <!-- Message Body -->
                         <div class="o_whatsapp_message_body" 
                              style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35;">
                             <t t-if="body">
-                                <t t-out="body"/>
+                                <t t-raw="body"/>
                             </t>
                             <t t-else="">
                                 <em style="color: #999;">No body text</em>
@@ -43,7 +43,7 @@
                         <!-- Footer -->
                         <div t-if="footer_text" 
                              style="padding-left: 4px; padding-right: 4px; padding-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #999; font-size: 12px; line-height: 1.35; border-top: 1px solid #e5e7eb; margin-top: 8px;">
-                            <t t-out="footer_text"/>
+                            <t t-raw="footer_text"/>
                         </div>
                         
                         <!-- Buttons -->
