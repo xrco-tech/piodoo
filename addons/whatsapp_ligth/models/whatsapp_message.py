@@ -135,7 +135,6 @@ class WhatsAppMessage(models.Model):
         if not text:
             return ''
         
-        # Escape HTML first to prevent XSS, but preserve the text
         text = str(text)
         
         # Handle blockquotes first (lines starting with >)
@@ -147,15 +146,15 @@ class WhatsAppMessage(models.Model):
             if stripped.startswith('>'):
                 # Blockquote line - remove > and format
                 quote_text = stripped[1:].strip()
-                # Escape the quote text
-                quote_text = Markup(quote_text).escape()
+                # Escape the quote text using Markup.escape() class method
+                quote_text = Markup.escape(quote_text)
                 formatted_lines.append(f'<div style="border-left: 3px solid #075E54; padding-left: 8px; margin: 4px 0; color: #666;">{quote_text}</div>')
             else:
                 formatted_lines.append(line)
         text = '\n'.join(formatted_lines)
         
-        # Escape HTML to prevent XSS
-        text = Markup(text).escape()
+        # Escape HTML to prevent XSS using Markup.escape() class method
+        text = Markup.escape(text)
         text = str(text)
         
         # Convert newlines to <br>
