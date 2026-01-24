@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WhatsApp Chatbot Message Search View -->
+        <record id="view_whatsapp_chatbot_message_search" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.message.search</field>
+            <field name="model">whatsapp.chatbot.message</field>
+            <field name="arch" type="xml">
+                <search string="Search Messages">
+                    <field name="contact_id"/>
+                    <field name="chatbot_id"/>
+                    <field name="step_id"/>
+                    <separator/>
+                    <filter string="Incoming" name="incoming" domain="[('type', '=', 'incoming')]"/>
+                    <filter string="Outgoing" name="outgoing" domain="[('type', '=', 'outgoing')]"/>
+                </search>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Message Tree View -->
+        <record id="view_whatsapp_chatbot_message_tree" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.message.tree</field>
+            <field name="model">whatsapp.chatbot.message</field>
+            <field name="arch" type="xml">
+                <tree string="Chatbot Messages" default_order="create_date desc">
+                    <field name="type" widget="badge" decoration-info="type == 'incoming'" decoration-success="type == 'outgoing'"/>
+                    <field name="contact_id"/>
+                    <field name="chatbot_id"/>
+                    <field name="step_id"/>
+                    <field name="message_html" widget="html"/>
+                    <field name="create_date" widget="datetime"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Message Form View -->
+        <record id="view_whatsapp_chatbot_message_form" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.message.form</field>
+            <field name="model">whatsapp.chatbot.message</field>
+            <field name="arch" type="xml">
+                <form string="Chatbot Message">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="contact_id"/>
+                                <field name="chatbot_id"/>
+                                <field name="step_id"/>
+                                <field name="type"/>
+                            </group>
+                            <group>
+                                <field name="wa_message_id"/>
+                                <field name="user_chatbot_answer_id"/>
+                                <field name="create_date" widget="datetime"/>
+                            </group>
+                        </group>
+                        
+                        <group>
+                            <field name="message_html" widget="html" nolabel="1"/>
+                        </group>
+                        
+                        <group string="Attachment" invisible="not attachment_id">
+                            <field name="attachment_id"/>
+                            <field name="attachment_type"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Message Action -->
+        <record id="action_whatsapp_chatbot_message" model="ir.actions.act_window">
+            <field name="name">Chatbot Messages</field>
+            <field name="res_model">whatsapp.chatbot.message</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_whatsapp_chatbot_message_search"/>
+        </record>
+    </data>
+</odoo>

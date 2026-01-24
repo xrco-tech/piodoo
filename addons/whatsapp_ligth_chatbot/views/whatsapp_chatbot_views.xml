@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WhatsApp Chatbot Search View -->
+        <record id="view_whatsapp_chatbot_search" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.search</field>
+            <field name="model">whatsapp.chatbot</field>
+            <field name="arch" type="xml">
+                <search string="Search Chatbots">
+                    <field name="name"/>
+                    <field name="description"/>
+                    <separator/>
+                    <filter string="Active Users" name="has_contacts" domain="[('chatbot_contact_count', '>', 0)]"/>
+                </search>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot List View -->
+        <record id="view_whatsapp_chatbot_tree" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.tree</field>
+            <field name="model">whatsapp.chatbot</field>
+            <field name="arch" type="xml">
+                <tree string="WhatsApp Chatbots">
+                    <field name="name"/>
+                    <field name="description"/>
+                    <field name="step_count" widget="statinfo" string="Steps"/>
+                    <field name="chatbot_contact_count" widget="statinfo" string="Active Users"/>
+                    <field name="chatbot_message_count" widget="statinfo" string="Messages"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Form View -->
+        <record id="view_whatsapp_chatbot_form" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.form</field>
+            <field name="model">whatsapp.chatbot</field>
+            <field name="arch" type="xml">
+                <form string="WhatsApp Chatbot">
+                    <header>
+                        <button name="action_view_step_hierarchy" string="View Steps" type="object" class="oe_highlight" icon="fa-sitemap"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_active_users" 
+                                    type="object" 
+                                    class="oe_stat_button" 
+                                    icon="fa-users"
+                                    invisible="chatbot_contact_count == 0">
+                                <field name="chatbot_contact_count" widget="statinfo" string="Active Users"/>
+                            </button>
+                            <button name="action_view_messages" 
+                                    type="object" 
+                                    class="oe_stat_button" 
+                                    icon="fa-comments"
+                                    invisible="chatbot_message_count == 0">
+                                <field name="chatbot_message_count" widget="statinfo" string="Messages"/>
+                            </button>
+                            <button name="action_view_step_hierarchy" 
+                                    type="object" 
+                                    class="oe_stat_button" 
+                                    icon="fa-sitemap"
+                                    invisible="step_count == 0">
+                                <field name="step_count" widget="statinfo" string="Steps"/>
+                            </button>
+                        </div>
+                        
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="description" widget="text"/>
+                            </group>
+                            <group>
+                                <field name="bot_trigger_ids" widget="many2many_tags" string="Triggers"/>
+                                <field name="bot_variable_ids" widget="many2many_tags" string="Variables"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Preview" name="preview" invisible="not preview_url">
+                                <field name="preview_url" widget="iframe" style="height: 850px; width: 100%;" nolabel="1"/>
+                            </page>
+                            
+                            <page string="Steps" name="steps">
+                                <field name="step_ids" nolabel="1">
+                                    <tree create="1" delete="1" duplicate="1" edit="1" default_order="sequence asc">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="name"/>
+                                        <field name="step_type"/>
+                                        <field name="body_plain" optional="hide"/>
+                                        <field name="parent_id" string="Parent Step" optional="show"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            
+                            <page string="Settings" name="settings">
+                                <group>
+                                    <group string="Default Messages">
+                                        <field name="default_confusion_message" widget="text"/>
+                                        <field name="default_error_message" widget="text"/>
+                                    </group>
+                                    <group string="Context Resources">
+                                        <field name="context_pdf"/>
+                                        <field name="context_url"/>
+                                        <field name="context_data" widget="text" readonly="1"/>
+                                    </group>
+                                </group>
+                                
+                                <group>
+                                    <group string="AI Agent Setup">
+                                        <field name="ai_agent_header"/>
+                                        <field name="ai_agent_footer"/>
+                                        <field name="ai_agent_prompt_text" widget="text"/>
+                                        <field name="ai_agent_rtc_button_label"/>
+                                    </group>
+                                    <group string="External Agent Setup">
+                                        <field name="forward_to_external_agent"/>
+                                        <field name="external_agent_partner_ids" widget="many2many_tags"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Action -->
+        <record id="action_whatsapp_chatbot" model="ir.actions.act_window">
+            <field name="name">Chatbots</field>
+            <field name="res_model">whatsapp.chatbot</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_whatsapp_chatbot_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first chatbot!
+                </p>
+                <p>
+                    Build conversational flows to automate WhatsApp messaging and engage with customers.
+                </p>
+            </field>
+        </record>
+
+        <!-- Menu Items -->
+        <menuitem id="menu_whatsapp_chatbots"
+                  name="Chatbots"
+                  parent="menu_whatsapp_root"
+                  action="action_whatsapp_chatbot"
+                  sequence="40"/>
+    </data>
+</odoo>
