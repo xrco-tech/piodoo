@@ -53,28 +53,17 @@
                         
                         <notebook>
                             <page string="Messages" name="messages">
-                                <field name="message_ids" nolabel="1">
-                                    <tree default_order="create_date desc">
-                                        <field name="type" widget="badge" decoration-info="type == 'incoming'" decoration-success="type == 'outgoing'"/>
-                                        <field name="message_html" widget="html"/>
-                                        <field name="step_id"/>
-                                        <field name="create_date" widget="datetime"/>
-                                    </tree>
-                                </field>
+                                <div class="alert alert-info" role="alert">
+                                    <p>Messages can be viewed in the Chatbot Messages menu.</p>
+                                </div>
+                                <field name="message_ids" nolabel="1" readonly="1" column_invisible="1"/>
                             </page>
                             
                             <page string="Variables" name="variables">
-                                <field name="variable_value_ids" nolabel="1">
-                                    <tree>
-                                        <field name="variable_id"/>
-                                        <field name="variable_type"/>
-                                        <field name="value"/>
-                                        <field name="value_text" invisible="variable_type != 'text'"/>
-                                        <field name="value_integer" invisible="variable_type != 'integer'"/>
-                                        <field name="value_date" invisible="variable_type != 'date'"/>
-                                        <field name="value_boolean" invisible="variable_type != 'boolean'"/>
-                                    </tree>
-                                </field>
+                                <div class="alert alert-info" role="alert">
+                                    <p>Variable values are stored per contact and can be managed through the chatbot flow.</p>
+                                </div>
+                                <field name="variable_value_ids" nolabel="1" readonly="1" column_invisible="1"/>
                             </page>
                         </notebook>
                     </sheet>
