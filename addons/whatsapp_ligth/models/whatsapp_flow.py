@@ -349,9 +349,17 @@ class WhatsAppFlow(models.Model):
                 if error_code == 100:
                     _logger.info(f"Publish failed with parameter error. Attempting to update flow JSON first, then retry publish.")
                     
-                    # Try updating the flow with latest JSON
+                    # Filter flow_data to only include fields allowed in json_flow
+                    # According to Meta API, json_flow should only contain version and screens
+                    # Remove routing_model, data_api_version, and other metadata fields
+                    filtered_flow_data = {
+                        'version': flow_data.get('version'),
+                        'screens': flow_data.get('screens', []),
+                    }
+                    
+                    # Try updating the flow with filtered JSON
                     update_payload = {
-                        'json_flow': flow_data,
+                        'json_flow': filtered_flow_data,
                     }
                     
                     # Add name and category if specified
@@ -361,6 +369,8 @@ class WhatsAppFlow(models.Model):
                         update_payload['categories'] = [self.category]
                     
                     _logger.debug(f"Update payload structure: {list(update_payload.keys())}")
+                    _logger.debug(f"Filtered flow data keys: {list(filtered_flow_data.keys())}")
+                    _logger.debug(f"Number of screens: {len(filtered_flow_data.get('screens', []))}")
                     update_response = requests.post(flow_url, headers=headers, json=update_payload, timeout=30)
                     
                     if update_response.status_code in (200, 201):
