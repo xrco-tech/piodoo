@@ -12,7 +12,7 @@
                              t-if="message_type in ['image', 'video', 'document', 'audio', 'location']">
                             <div t-attf-class="d-block bg-400 p-4 text-center {{ 'rounded-top-2' if message_type == 'location' else 'rounded-2' }}">
                                 <img class="m-2 img-fluid" 
-                                     t-attf-src="/whatsapp/static/img/{{message_type}}.png" 
+                                     t-attf-src="/whatsapp_ligth/static/img/{{message_type}}.png" 
                                      t-att-alt="message_type"
                                      t-if="message_type != 'location' or not location_name"/>
                                 <t t-if="message_type == 'location' and location_name">
