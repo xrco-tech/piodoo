@@ -127,8 +127,11 @@ class WhatsAppMessage(models.Model):
         """Compute HTML preview of the message using QWeb template"""
         for record in self:
             try:
+                # Choose template based on message direction
+                template_name = 'whatsapp_ligth.whatsapp_message_preview_received' if record.is_incoming else 'whatsapp_ligth.whatsapp_message_preview'
+                
                 # Use ir.ui.view to render the template
-                preview = self.env['ir.ui.view']._render_template('whatsapp_ligth.whatsapp_message_preview', {
+                preview = self.env['ir.ui.view']._render_template(template_name, {
                     'message_body': record.message_body or '',
                     'message_type': record.message_type or 'text',
                     'is_incoming': record.is_incoming,
