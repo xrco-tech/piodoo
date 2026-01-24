@@ -26,7 +26,7 @@
                     <field name="step_count" widget="statinfo" string="Steps"/>
                     <field name="chatbot_contact_count" widget="statinfo" string="Active Users"/>
                     <field name="chatbot_message_count" widget="statinfo" string="Messages"/>
-                </tree>
+                </list>
             </field>
         </record>
 

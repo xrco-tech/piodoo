@@ -35,7 +35,7 @@
                     <field name="step_type"/>
                     <field name="parent_id" string="Parent Step"/>
                     <field name="body_plain" optional="hide"/>
-                </tree>
+                </list>
             </field>
         </record>
 

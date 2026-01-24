@@ -9,7 +9,7 @@
                 <list string="Chatbot Triggers">
                     <field name="name"/>
                     <field name="chatbot_id"/>
-                </tree>
+                </list>
             </field>
         </record>
 

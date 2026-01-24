@@ -26,7 +26,7 @@
                     <field name="last_step_id"/>
                     <field name="last_seen_date" widget="datetime"/>
                     <field name="active_agent"/>
-                </tree>
+                </list>
             </field>
         </record>
 

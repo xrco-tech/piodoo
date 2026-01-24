@@ -13,7 +13,7 @@
                     <field name="value"/>
                     <field name="operator"/>
                     <field name="sequence"/>
-                </tree>
+                </list>
             </field>
         </record>
 

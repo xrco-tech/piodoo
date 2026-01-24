@@ -10,7 +10,7 @@
                     <field name="name"/>
                     <field name="chatbot_id"/>
                     <field name="data_type"/>
-                </tree>
+                </list>
             </field>
         </record>
 

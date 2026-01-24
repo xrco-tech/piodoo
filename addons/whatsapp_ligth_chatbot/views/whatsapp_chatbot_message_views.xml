@@ -29,7 +29,7 @@
                     <field name="step_id"/>
                     <field name="message_html" widget="html"/>
                     <field name="create_date" widget="datetime"/>
-                </tree>
+                </list>
             </field>
         </record>
 
