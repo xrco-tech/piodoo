@@ -30,6 +30,20 @@
             </field>
         </record>
 
+        <!-- WhatsApp Chatbot Step Tree View (for inline in chatbot form) -->
+        <record id="view_whatsapp_chatbot_step_tree_inline" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.step.tree.inline</field>
+            <field name="model">whatsapp.chatbot.step</field>
+            <field name="arch" type="xml">
+                <tree create="1" delete="1" duplicate="1" edit="1" default_order="sequence asc">
+                    <field name="name"/>
+                    <field name="step_type"/>
+                    <field name="body_plain" optional="hide"/>
+                    <field name="parent_id" string="Parent Step" optional="show"/>
+                </tree>
+            </field>
+        </record>
+
         <!-- WhatsApp Chatbot Form View -->
         <record id="view_whatsapp_chatbot_form" model="ir.ui.view">
             <field name="name">whatsapp.chatbot.form</field>
@@ -81,14 +95,7 @@
                             </page>
                             
                             <page string="Steps" name="steps">
-                                <field name="step_ids" nolabel="1">
-                                    <tree create="1" delete="1" duplicate="1" edit="1" default_order="sequence asc">
-                                        <field name="name"/>
-                                        <field name="step_type"/>
-                                        <field name="body_plain" optional="hide"/>
-                                        <field name="parent_id" string="Parent Step" optional="show"/>
-                                    </tree>
-                                </field>
+                                <field name="step_ids" nolabel="1" context="{'default_chatbot_id': id}" view_id="view_whatsapp_chatbot_step_tree_inline"/>
                             </page>
                             
                             <page string="Settings" name="settings">
