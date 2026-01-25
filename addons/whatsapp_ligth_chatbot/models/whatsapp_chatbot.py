@@ -78,7 +78,7 @@ class WhatsAppChatbot(models.Model):
             'name': _('Active Users'),
             'type': 'ir.actions.act_window',
             'res_model': 'whatsapp.chatbot.contact',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('last_chatbot_id', '=', self.id)],
         }
 
@@ -88,7 +88,7 @@ class WhatsAppChatbot(models.Model):
             'name': _('Messages'),
             'type': 'ir.actions.act_window',
             'res_model': 'whatsapp.chatbot.message',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('chatbot_id', '=', self.id)],
         }
 
@@ -99,11 +99,11 @@ class WhatsAppChatbot(models.Model):
             'name': f'Step Hierarchy - {self.name}',
             'type': 'ir.actions.act_window',
             'res_model': 'whatsapp.chatbot.step',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('chatbot_id', '=', self.id)],
             'context': {
                 'default_chatbot_id': self.id,
-                'search_default_filter_root_steps': 1,
+                'search_default_root_steps': 1,
             },
         }
 
