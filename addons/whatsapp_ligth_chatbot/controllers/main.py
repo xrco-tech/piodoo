@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import json
 from odoo import http
 from odoo.http import request
+from markupsafe import Markup
+from odoo.tools import html_sanitize
 
 _logger = logging.getLogger(__name__)
 
@@ -152,4 +155,63 @@ class WhatsAppChatbotController(http.Controller):
         except Exception as e:
             _logger.error(f"Error finding/creating partner: {e}")
             return False
+
+    @http.route('/chatbot/steps/<int:chatbot_id>', type='http', auth='user')
+    def chatbot_steps(self, chatbot_id, **kw):
+        """
+        Display chatbot steps hierarchy in a visual tree/flow view.
+        This route works with the website module installed.
+        """
+        try:
+            chatbot = request.env['whatsapp.chatbot'].browse(chatbot_id).sudo()
+            if not chatbot.exists():
+                return request.not_found()
+            
+            Step = request.env['whatsapp.chatbot.step'].sudo()
+            steps = Step.search([('chatbot_id', '=', chatbot.id)], order='parent_path, sequence, id')
+
+            by_parent = {}
+            for s in steps:
+                by_parent.setdefault(s.parent_id.id if s.parent_id else 0, []).append(s)
+
+            def build(node_id):
+                nodes = []
+                for s in by_parent.get(node_id, []):
+                    show_preview = s.step_type not in ('execute_code', 'set_variable', 'end_flow')
+                    preview_html = _preview_html(s) if show_preview else ""
+                    
+                    # Get answer triggers if any
+                    answers = []
+                    if hasattr(s, 'trigger_answer_ids') and s.trigger_answer_ids:
+                        answers = s.trigger_answer_ids.mapped("display_name")
+                    
+                    # Variables are not stored as triggers in this model
+                    variables = []
+                    
+                    nodes.append({
+                        "id": s.id,
+                        "name": s.name or f"Step #{s.id}",
+                        "type": s.step_type or "",
+                        "answers": answers,
+                        "variables": variables,
+                        "preview_html": preview_html,
+                        "children": build(s.id),
+                    })
+                return nodes
+
+            tree = build(0)
+            return request.render('whatsapp_ligth_chatbot.chatbot_steps_tree_page', {
+                "chatbot": chatbot,
+                "tree_json": Markup(json.dumps(tree, ensure_ascii=False)),
+            })
+        except Exception as e:
+            _logger.error(f"Error rendering chatbot steps: {e}", exc_info=True)
+            return request.not_found()
+
+
+def _preview_html(step):
+    """Take body_html or body_plain and sanitize it for safe embed."""
+    src = step.body_html or step.body_plain or ''
+    # Remove scripts/css, keep safe tags/attrs
+    return html_sanitize(src or '')
 
