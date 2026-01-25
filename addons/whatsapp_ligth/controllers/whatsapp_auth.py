@@ -257,11 +257,37 @@ class WhatsAppAuthController(http.Controller):
                     _logger.info(f"Message saved with ID: {message_record.id}")
                     # Mark as processed
                     message_record.write({'status': 'processed'})
+                    
+                    # Process chatbot messages if chatbot module is installed
+                    self._process_chatbot_message(message_record, message, value_data, entry_data)
                 else:
                     _logger.error(f"Failed to save message: {message.get('id', 'unknown')}")
                     
         except Exception as e:
             _logger.error(f"Error processing messages: {e}", exc_info=True)
+    
+    def _process_chatbot_message(self, message_record, webhook_message, value_data, entry_data):
+        """
+        Process incoming message through chatbot system if chatbot module is installed.
+        
+        :param message_record: The created WhatsApp message record
+        :param webhook_message: The original webhook message data
+        :param value_data: The value object containing metadata and contacts
+        :param entry_data: The entry object containing business account info
+        """
+        try:
+            # Check if chatbot module is installed
+            if 'whatsapp.chatbot.message' not in request.env:
+                return
+            
+            # Process through chatbot system using a model method
+            request.env['whatsapp.chatbot.message'].sudo().process_incoming_webhook_message(
+                message_record, webhook_message, value_data, entry_data
+            )
+            
+        except Exception as e:
+            # Chatbot module not installed or error, skip silently
+            _logger.debug(f"Chatbot processing skipped: {e}")
 
     def _process_statuses(self, statuses):
         """

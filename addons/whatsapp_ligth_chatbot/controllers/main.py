@@ -93,14 +93,43 @@ class WhatsAppChatbotController(http.Controller):
                         'partner_id': partner.id,
                     })
                 
-                # Determine which chatbot to use (for now, use the last active chatbot or first available)
-                # In the future, this can be based on triggers, keywords, etc.
-                chatbot = chatbot_contact.last_chatbot_id
+                # Extract message text for trigger matching
+                message_text = message_body.strip() if message_body else ''
+                
+                # Check if contact is actively engaged in a chatbot conversation
+                chatbot = None
+                if chatbot_contact.last_chatbot_id and chatbot_contact.last_step_id:
+                    # Check if the last step is not an end_flow step
+                    if chatbot_contact.last_step_id.step_type != 'end_flow':
+                        chatbot = chatbot_contact.last_chatbot_id
+                        _logger.info(f"Contact is actively engaged with chatbot: {chatbot.name}")
+                
+                # If not actively engaged, check for trigger words
+                if not chatbot and message_text:
+                    # Search for matching trigger (case-insensitive)
+                    matching_trigger = request.env['whatsapp.chatbot.trigger'].sudo().search([
+                        ('name', '=ilike', message_text)
+                    ], limit=1)
+                    
+                    if matching_trigger:
+                        chatbot = matching_trigger.chatbot_id
+                        _logger.info(f"Trigger '{message_text}' matched to chatbot: {chatbot.name}")
+                        # Clear all variables when starting a new chatbot flow
+                        chatbot_contact.variable_value_ids.unlink()
+                        # Reset last step
+                        chatbot_contact.write({
+                            'last_chatbot_id': chatbot.id,
+                            'last_step_id': False,
+                        })
+                
+                # If still no chatbot, use the last active chatbot or first available
                 if not chatbot:
-                    # Find first active chatbot (you can add more logic here)
-                    chatbot = request.env['whatsapp.chatbot'].sudo().search([], limit=1)
-                    if chatbot:
-                        chatbot_contact.write({'last_chatbot_id': chatbot.id})
+                    chatbot = chatbot_contact.last_chatbot_id
+                    if not chatbot:
+                        # Find first available chatbot
+                        chatbot = request.env['whatsapp.chatbot'].sudo().search([], limit=1)
+                        if chatbot:
+                            chatbot_contact.write({'last_chatbot_id': chatbot.id})
                 
                 if not chatbot:
                     _logger.warning("No chatbot found to process message")
