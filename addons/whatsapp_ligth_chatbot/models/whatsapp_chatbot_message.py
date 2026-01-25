@@ -69,8 +69,16 @@ class WhatsAppChatbotMessage(models.Model):
             raise UserError("Message does not have a valid chatbot ID!")
         
         # Find next step based on current step and user answer
-        if message.step_id and message.step_id.child_ids:
-            message = self._process_chatbot_flow(message, depth=depth + 1, visited_steps=visited_steps)
+        if message.step_id:
+            # If step has children, process the flow
+            if message.step_id.child_ids:
+                message = self._process_chatbot_flow(message, depth=depth + 1, visited_steps=visited_steps)
+            else:
+                # Step has no children, send the step message
+                _logger.info(f"Step {message.step_id.name} has no children, sending step message")
+                if message.step_id.step_type in ['set_variable', 'execute_code']:
+                    return self._process_variable_or_code_step(message, message.step_id, depth=depth + 1, visited_steps=visited_steps)
+                return self._send_step_message(message, message.step_id)
         elif not message.step_id:
             # Start from first step
             first_step = self.env['whatsapp.chatbot.step'].search([
@@ -78,11 +86,14 @@ class WhatsAppChatbotMessage(models.Model):
                 ('parent_id', '=', False)
             ], order='sequence asc', limit=1)
             if first_step:
+                _logger.info(f"Starting chatbot flow with first step: {first_step.name} (ID: {first_step.id})")
                 message.step_id = first_step.id
                 if first_step.step_type in ['set_variable', 'execute_code']:
                     return self._process_variable_or_code_step(message, first_step, depth=depth + 1, visited_steps=visited_steps)
                 # Send first message
                 return self._send_step_message(message, first_step)
+            else:
+                _logger.warning(f"No first step found for chatbot {message.chatbot_id.name}")
         
         self._update_contact_last_interaction(message)
         return message
@@ -112,31 +123,89 @@ class WhatsAppChatbotMessage(models.Model):
 
     def _send_step_message(self, message, step):
         """Send a message for a chatbot step"""
-        # This will integrate with whatsapp_ligth to send messages
-        # For now, create an outgoing message record
-        variables_dict = step._get_variables_dict(message)
-        processed_body = self._replace_variables_in_message(step.body_html or '', variables_dict)
-        
-        return self.create({
-            'contact_id': message.contact_id.id,
-            'mobile_number': message.mobile_number,
-            'step_id': step.id,
-            'chatbot_id': step.chatbot_id.id,
-            'message_html': processed_body,
-            'type': 'outgoing',
-        })
+        try:
+            from markupsafe import Markup
+            
+            _logger.info(f"Sending message for step: {step.name} (ID: {step.id}, Type: {step.step_type})")
+            
+            # Get message body (prefer plain text, fallback to HTML)
+            body_text = step.body_plain or ''
+            if not body_text and step.body_html:
+                # Extract plain text from HTML
+                body_text = Markup(step.body_html).striptags()
+            
+            if not body_text:
+                _logger.warning(f"Step {step.id} ({step.name}) has no message body (body_plain or body_html) to send")
+                return message
+            
+            # Replace variables in message
+            variables_dict = step._get_variables_dict(message)
+            processed_body = self._replace_variables_in_message(body_text, variables_dict)
+            
+            if not processed_body or not processed_body.strip():
+                _logger.warning(f"Step {step.id} processed message body is empty after variable replacement")
+                return message
+            
+            _logger.info(f"Processed message body: {processed_body[:100]}...")
+            
+            # Get phone number and phone_number_id from the original WhatsApp message
+            phone_number = message.mobile_number
+            phone_number_id = None
+            context_message_id = None
+            
+            if message.wa_message_id:
+                phone_number_id = message.wa_message_id.phone_number_id
+                context_message_id = message.wa_message_id.message_id
+            
+            # Send message via WhatsApp API
+            WhatsAppMessage = self.env['whatsapp.message'].sudo()
+            result = WhatsAppMessage.send_whatsapp_message(
+                recipient_phone=phone_number,
+                message_text=processed_body,
+                phone_number_id=phone_number_id,
+                context_message_id=context_message_id
+            )
+            
+            if result.get('success'):
+                _logger.info(f"Chatbot message sent successfully: {result.get('message_id')}")
+                
+                # Create outgoing chatbot message record
+                outgoing_message = self.create({
+                    'contact_id': message.contact_id.id,
+                    'mobile_number': phone_number,
+                    'step_id': step.id,
+                    'chatbot_id': step.chatbot_id.id,
+                    'message_html': processed_body,
+                    'message_plain': processed_body,
+                    'type': 'outgoing',
+                })
+                
+                # Update contact's last step
+                self._update_contact_last_interaction(outgoing_message)
+                
+                return outgoing_message
+            else:
+                _logger.error(f"Failed to send chatbot message: {result.get('error')}")
+                return message
+                
+        except Exception as e:
+            _logger.error(f"Error sending step message: {e}", exc_info=True)
+            return message
 
-    def _replace_variables_in_message(self, message_html, variables_dict):
-        """Replace variables in message HTML"""
+    def _replace_variables_in_message(self, message_text, variables_dict):
+        """Replace variables in message text (plain text or HTML)"""
         import re
         pattern = r"\{\{variables\.([\w]+)\}\}"
         def replacer(match):
             var_name = match.group(1)
             var_value = variables_dict.get(var_name)
             if var_value:
-                return str(var_value.value if hasattr(var_value, 'value') else var_value)
+                # Get the actual value from the variable value record
+                if hasattr(var_value, 'value'):
+                    return str(var_value.value or '')
+                return str(var_value)
             return f"{{{{variables.{var_name}}}}}"
-        return re.sub(pattern, replacer, message_html)
+        return re.sub(pattern, replacer, message_text or '')
 
     def _update_contact_last_interaction(self, message):
         """Update contact's last interaction details"""
