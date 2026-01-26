@@ -345,9 +345,7 @@ class WhatsAppMessage(models.Model):
     is_incoming = fields.Boolean(string='Incoming Message', default=True, readonly=True, help='True if message is incoming, False if outgoing')
     error_message = fields.Text(string='Error Message', readonly=True, help='Error message if processing failed')
 
-    _sql_constraints = [
-        ('message_id_unique', 'unique(message_id)', 'Message ID must be unique!')
-    ]
+    # Note: No unique constraint on message_id to allow handling of duplicate webhook deliveries
 
     @api.model
     def create_from_webhook(self, webhook_data, entry_data):
