@@ -296,25 +296,50 @@ class WhatsAppChatbotMessage(models.Model):
                 _logger.warning("No chatbot found to process message")
                 return
             
+            # Check if chatbot message already exists for this WhatsApp message
+            # This prevents duplicate chatbot messages from the same WhatsApp message
+            existing_chatbot_message = self.sudo().search([
+                ('wa_message_id', '=', wa_message.id),
+                ('type', '=', 'incoming')
+            ], limit=1)
+            
+            if existing_chatbot_message:
+                _logger.info(f"Chatbot message already exists for WhatsApp message {wa_message.id} (chatbot message ID: {existing_chatbot_message.id}). Skipping duplicate creation.")
+                return existing_chatbot_message
+            
             # Find first step of chatbot (will be set by _handle_incoming_message if not set)
             first_step = self.env['whatsapp.chatbot.step'].sudo().search([
                 ('chatbot_id', '=', chatbot.id),
                 ('parent_id', '=', False)
             ], order='sequence asc', limit=1)
             
-            # Create chatbot message record
-            # chatbot_id is a related field from step_id.chatbot_id, so we'll let _handle_incoming_message set it
-            chatbot_message = self.create({
-                'contact_id': chatbot_contact.id,
-                'mobile_number': wa_id,
-                'wa_message_id': wa_message.id,
-                'message_plain': message_body,
-                'message_html': message_body,  # Simple conversion, can be enhanced
-                'type': 'incoming',
-                'step_id': first_step.id if first_step else False,
-            })
-            
-            _logger.info(f"Created chatbot message: {chatbot_message.id}")
+            # Create chatbot message record with duplicate handling for race conditions
+            try:
+                # chatbot_id is a related field from step_id.chatbot_id, so we'll let _handle_incoming_message set it
+                chatbot_message = self.create({
+                    'contact_id': chatbot_contact.id,
+                    'mobile_number': wa_id,
+                    'wa_message_id': wa_message.id,
+                    'message_plain': message_body,
+                    'message_html': message_body,  # Simple conversion, can be enhanced
+                    'type': 'incoming',
+                    'step_id': first_step.id if first_step else False,
+                })
+                _logger.info(f"Created chatbot message: {chatbot_message.id}")
+            except Exception as create_error:
+                # Handle race condition where another request created it first
+                error_str = str(create_error)
+                if 'duplicate' in error_str.lower() or 'unique constraint' in error_str.lower():
+                    # Another request created it first, fetch the existing record
+                    _logger.info(f"Chatbot message was created by another request for WhatsApp message {wa_message.id}, fetching existing record")
+                    existing = self.sudo().search([
+                        ('wa_message_id', '=', wa_message.id),
+                        ('type', '=', 'incoming')
+                    ], limit=1)
+                    if existing:
+                        return existing
+                # Re-raise if it's a different error
+                raise
             
         except Exception as e:
             _logger.error(f"Error processing chatbot message: {e}", exc_info=True)

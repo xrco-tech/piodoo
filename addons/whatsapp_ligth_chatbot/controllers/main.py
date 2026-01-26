@@ -133,19 +133,38 @@ class WhatsAppChatbotController(http.Controller):
                     _logger.warning("No chatbot found to process message")
                     continue
                 
-                # Create chatbot message record
-                message_body = wa_message.message_body or ''
-                chatbot_message = ChatbotMessage.create({
-                    'contact_id': chatbot_contact.id,
-                    'mobile_number': wa_id,
-                    'chatbot_id': chatbot.id,
-                    'wa_message_id': wa_message.id,
-                    'message_plain': message_body,
-                    'message_html': message_body,  # Simple conversion, can be enhanced
-                    'type': 'incoming',
-                })
+                # Check if chatbot message already exists for this WhatsApp message
+                # This prevents duplicate chatbot messages from the same WhatsApp message
+                existing_chatbot_message = ChatbotMessage.sudo().search([
+                    ('wa_message_id', '=', wa_message.id),
+                    ('type', '=', 'incoming')
+                ], limit=1)
                 
-                _logger.info(f"Created chatbot message: {chatbot_message.id}")
+                if existing_chatbot_message:
+                    _logger.info(f"Chatbot message already exists for WhatsApp message {wa_message.id} (chatbot message ID: {existing_chatbot_message.id}). Skipping duplicate creation.")
+                    continue
+                
+                # Create chatbot message record with duplicate handling for race conditions
+                try:
+                    message_body = wa_message.message_body or ''
+                    chatbot_message = ChatbotMessage.create({
+                        'contact_id': chatbot_contact.id,
+                        'mobile_number': wa_id,
+                        'chatbot_id': chatbot.id,
+                        'wa_message_id': wa_message.id,
+                        'message_plain': message_body,
+                        'message_html': message_body,  # Simple conversion, can be enhanced
+                        'type': 'incoming',
+                    })
+                    _logger.info(f"Created chatbot message: {chatbot_message.id}")
+                except Exception as create_error:
+                    # Handle race condition where another request created it first
+                    error_str = str(create_error)
+                    if 'duplicate' in error_str.lower() or 'unique constraint' in error_str.lower():
+                        _logger.info(f"Chatbot message was created by another request for WhatsApp message {wa_message.id}, skipping")
+                        continue
+                    # Re-raise if it's a different error
+                    raise
                 
         except Exception as e:
             _logger.error(f"Error processing chatbot messages: {e}", exc_info=True)
