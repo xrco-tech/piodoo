@@ -28,7 +28,7 @@ class WhatsAppMessage(models.Model):
         help='Name of the chatbot associated with this message'
     )
 
-    @api.depends('chatbot_message_ids', 'chatbot_message_ids.chatbot_id', 'wa_id', 'message_timestamp')
+    @api.depends('wa_id', 'phone_number', 'message_timestamp', 'is_incoming')
     def _compute_chatbot_info(self):
         """Compute chatbot information from related chatbot messages or active chatbot contact"""
         for record in self:
@@ -44,9 +44,6 @@ class WhatsAppMessage(models.Model):
                 if chatbot_message and chatbot_message.chatbot_id:
                     chatbot_id = chatbot_message.chatbot_id.id
                     chatbot_name = chatbot_message.chatbot_id.name
-            else:
-                # Fallback if chatbot module not available
-                pass
             
             if not chatbot_id:
                 # If no direct link, check if contact is actively engaged with a chatbot
