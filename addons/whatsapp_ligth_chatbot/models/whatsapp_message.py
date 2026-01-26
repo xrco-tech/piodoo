@@ -10,15 +10,23 @@ class WhatsAppMessage(models.Model):
     _inherit = 'whatsapp.message'
 
     # Chatbot fields
-    chatbot_message_ids = fields.One2many('whatsapp.chatbot.message', 'wa_message_id', 
-                                         string='Chatbot Messages', readonly=True,
-                                         help='Related chatbot messages')
-    chatbot_id = fields.Many2one('whatsapp.chatbot', string='Chatbot', 
-                                 compute='_compute_chatbot_info', store=True, readonly=True,
-                                 help='Chatbot associated with this message')
-    chatbot_name = fields.Char(string='Chatbot Name', 
-                               compute='_compute_chatbot_info', store=True, readonly=True,
-                               help='Name of the chatbot associated with this message')
+    # Note: chatbot_message_ids is not defined here to avoid setup order issues
+    # Instead, we search for chatbot messages directly in the compute method
+    chatbot_id = fields.Many2one(
+        'whatsapp.chatbot',
+        string='Chatbot',
+        compute='_compute_chatbot_info',
+        store=True,
+        readonly=True,
+        help='Chatbot associated with this message'
+    )
+    chatbot_name = fields.Char(
+        string='Chatbot Name',
+        compute='_compute_chatbot_info',
+        store=True,
+        readonly=True,
+        help='Name of the chatbot associated with this message'
+    )
 
     @api.depends('chatbot_message_ids', 'chatbot_message_ids.chatbot_id', 'wa_id', 'message_timestamp')
     def _compute_chatbot_info(self):
@@ -28,11 +36,19 @@ class WhatsAppMessage(models.Model):
             chatbot_name = False
             
             # First, try to get chatbot from direct chatbot message link
-            chatbot_message = record.chatbot_message_ids[:1]  # Get first chatbot message
-            if chatbot_message and chatbot_message.chatbot_id:
-                chatbot_id = chatbot_message.chatbot_id.id
-                chatbot_name = chatbot_message.chatbot_id.name
+            # Use search instead of accessing the One2many to avoid setup issues
+            if 'whatsapp.chatbot.message' in self.env:
+                chatbot_message = self.env['whatsapp.chatbot.message'].sudo().search([
+                    ('wa_message_id', '=', record.id)
+                ], limit=1)
+                if chatbot_message and chatbot_message.chatbot_id:
+                    chatbot_id = chatbot_message.chatbot_id.id
+                    chatbot_name = chatbot_message.chatbot_id.name
             else:
+                # Fallback if chatbot module not available
+                pass
+            
+            if not chatbot_id:
                 # If no direct link, check if contact is actively engaged with a chatbot
                 # This handles messages that are part of an active conversation
                 # We check both incoming (wa_id) and outgoing (phone_number) messages
