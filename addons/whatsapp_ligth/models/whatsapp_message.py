@@ -502,8 +502,8 @@ class WhatsAppMessage(models.Model):
             if not contact_name:
                 contact_name = wa_id
             
-            # Check if message already exists
-            existing = self.search([('message_id', '=', message_id)], limit=1)
+            # Check if message already exists (use sudo to ensure we can search)
+            existing = self.sudo().search([('message_id', '=', message_id)], limit=1)
             if existing:
                 _logger.info(f"Message {message_id} already exists, skipping")
                 return existing
@@ -563,7 +563,23 @@ class WhatsAppMessage(models.Model):
                 'reaction_emoji': reaction_emoji,
             }
             
-            message = self.create(values)
+            # Try to create, but handle race condition where another request creates it first
+            try:
+                message = self.sudo().create(values)
+            except Exception as create_error:
+                # Check if it's a duplicate key violation
+                error_str = str(create_error)
+                if 'duplicate key' in error_str.lower() or 'unique constraint' in error_str.lower() or 'already exists' in error_str.lower():
+                    # Another request created it first, fetch the existing record
+                    _logger.info(f"Message {message_id} was created by another request, fetching existing record")
+                    existing = self.sudo().search([('message_id', '=', message_id)], limit=1)
+                    if existing:
+                        return existing
+                    # If we still can't find it, re-raise the error
+                    raise
+                else:
+                    # Different error, re-raise it
+                    raise
             
             # Download and store media if present
             if media_id and message_type in ('image', 'video', 'audio', 'document', 'sticker'):
@@ -583,10 +599,35 @@ class WhatsAppMessage(models.Model):
             
         except Exception as e:
             _logger.error(f"Error creating message from webhook: {e}", exc_info=True)
-            # Try to create a minimal record with error status
+            
+            # Check if it's a duplicate key error - if so, return the existing record
+            error_str = str(e)
+            if 'duplicate key' in error_str.lower() or 'unique constraint' in error_str.lower():
+                message_id = webhook_data.get('id')
+                if message_id:
+                    existing = self.sudo().search([('message_id', '=', message_id)], limit=1)
+                    if existing:
+                        _logger.info(f"Found existing message {message_id} after duplicate key error")
+                        return existing
+            
+            # Try to create a minimal record with error status (only if message_id doesn't exist)
+            message_id = webhook_data.get('id')
+            if message_id:
+                # Check if message already exists before trying to create error record
+                existing = self.sudo().search([('message_id', '=', message_id)], limit=1)
+                if existing:
+                    return existing
+            
+            # Only create error record if we don't have a message_id or it doesn't exist
             try:
-                return self.create({
-                    'message_id': webhook_data.get('id', f'error_{fields.Datetime.now()}'),
+                error_message_id = message_id or f'error_{fields.Datetime.now()}'
+                # Check one more time to avoid duplicate
+                existing = self.sudo().search([('message_id', '=', error_message_id)], limit=1)
+                if existing:
+                    return existing
+                    
+                return self.sudo().create({
+                    'message_id': error_message_id,
                     'wa_id': webhook_data.get('from', 'unknown'),
                     'message_type': webhook_data.get('type', 'unknown'),
                     'message_body': f'Error processing message: {str(e)}',
@@ -595,7 +636,15 @@ class WhatsAppMessage(models.Model):
                     'error_message': str(e),
                     'is_incoming': True,
                 })
-            except:
+            except Exception as create_error:
+                # If we still get a duplicate error, try to find the existing record
+                error_str = str(create_error)
+                if 'duplicate key' in error_str.lower() or 'unique constraint' in error_str.lower():
+                    if message_id:
+                        existing = self.sudo().search([('message_id', '=', message_id)], limit=1)
+                        if existing:
+                            return existing
+                _logger.error(f"Failed to create error record: {create_error}", exc_info=True)
                 return False
 
     def send_whatsapp_message(self, recipient_phone, message_text, phone_number_id=None, context_message_id=None):
