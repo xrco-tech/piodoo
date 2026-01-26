@@ -24,6 +24,7 @@ and automate WhatsApp messaging.
         'views/whatsapp_chatbot_trigger_views.xml',
         'views/whatsapp_chatbot_variable_views.xml',
         'views/whatsapp_chatbot_answer_views.xml',
+        'views/whatsapp_message_views.xml',
         'views/chatbot_steps_templates.xml',
         'data/chatbot_data.xml',
     ],

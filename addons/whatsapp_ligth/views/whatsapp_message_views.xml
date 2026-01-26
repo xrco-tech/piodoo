@@ -173,7 +173,6 @@
                 <search string="Search WhatsApp Messages">
                     <field name="contact_name" string="Contact"/>
                     <field name="phone_number" string="Phone"/>
-                    <field name="chatbot_name" string="Chatbot"/>
                     <field name="message_body" string="Message"/>
                     <field name="message_id" string="Message ID"/>
                     <field name="wa_id" string="WhatsApp ID"/>
@@ -201,7 +200,6 @@
                         <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
                         <filter string="Message Type" name="group_type" context="{'group_by': 'message_type'}"/>
                         <filter string="Contact" name="group_contact" context="{'group_by': 'contact_name'}"/>
-                        <filter string="Chatbot" name="group_chatbot" context="{'group_by': 'chatbot_name'}"/>
                         <filter string="Date" name="group_date" context="{'group_by': 'message_timestamp:day'}"/>
                     </group>
                 </search>
@@ -237,7 +235,6 @@
                     <field name="message_timestamp" widget="datetime"/>
                     <field name="contact_name"/>
                     <field name="phone_number"/>
-                    <field name="chatbot_name" optional="show" string="Chatbot"/>
                     <field name="message_type" widget="badge"/>
                     <field name="message_preview_html" widget="html" optional="show" string="Preview"/>
                     <field name="message_body" widget="text" optional="hide"/>
@@ -278,8 +275,6 @@
                                 <field name="phone_number"/>
                                 <field name="wa_id"/>
                                 <field name="message_type"/>
-                                <field name="chatbot_id" invisible="not chatbot_id"/>
-                                <field name="chatbot_name" invisible="not chatbot_name"/>
                             </group>
                             <group>
                                 <field name="message_timestamp"/>

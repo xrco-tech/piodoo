@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Extend WhatsApp Message Search View -->
+        <record id="view_whatsapp_message_search_chatbot" model="ir.ui.view">
+            <field name="name">whatsapp.message.search.chatbot</field>
+            <field name="model">whatsapp.message</field>
+            <field name="inherit_id" ref="whatsapp_ligth.view_whatsapp_message_search"/>
+            <field name="arch" type="xml">
+                <field name="phone_number" position="after">
+                    <field name="chatbot_name" string="Chatbot"/>
+                </field>
+                <filter name="group_contact" position="after">
+                    <filter string="Chatbot" name="group_chatbot" context="{'group_by': 'chatbot_name'}"/>
+                </filter>
+            </field>
+        </record>
+
+        <!-- Extend WhatsApp Message List View -->
+        <record id="view_whatsapp_message_tree_chatbot" model="ir.ui.view">
+            <field name="name">whatsapp.message.list.chatbot</field>
+            <field name="model">whatsapp.message</field>
+            <field name="inherit_id" ref="whatsapp_ligth.view_whatsapp_message_tree"/>
+            <field name="arch" type="xml">
+                <field name="phone_number" position="after">
+                    <field name="chatbot_name" optional="show" string="Chatbot"/>
+                </field>
+            </field>
+        </record>
+
+        <!-- Extend WhatsApp Message Form View -->
+        <record id="view_whatsapp_message_form_chatbot" model="ir.ui.view">
+            <field name="name">whatsapp.message.form.chatbot</field>
+            <field name="model">whatsapp.message</field>
+            <field name="inherit_id" ref="whatsapp_ligth.view_whatsapp_message_form"/>
+            <field name="arch" type="xml">
+                <field name="message_type" position="after">
+                    <field name="chatbot_id" invisible="not chatbot_id"/>
+                    <field name="chatbot_name" invisible="not chatbot_name"/>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>
