@@ -269,9 +269,10 @@ class WhatsAppChatbotMessage(models.Model):
             
             # If not actively engaged, check for trigger words
             if not chatbot and message_text:
-                # Search for matching trigger (case-insensitive)
+                # Search for matching trigger (exact case-insensitive match)
+                # Use uppercase comparison like whatsapp_custom does for exact matching
                 matching_trigger = self.env['whatsapp.chatbot.trigger'].sudo().search([
-                    ('name', '=ilike', message_text)
+                    ('name', '=', message_text.upper())
                 ], limit=1)
                 
                 if matching_trigger:
@@ -284,16 +285,13 @@ class WhatsAppChatbotMessage(models.Model):
                         'last_chatbot_id': chatbot.id,
                         'last_step_id': False,
                     })
+                else:
+                    # No trigger matched - don't assign a chatbot
+                    # Only process messages that match triggers or are already in a conversation
+                    _logger.info(f"No trigger matched for message '{message_text}'. Skipping chatbot processing.")
+                    return
             
-            # If still no chatbot, use the last active chatbot or first available
-            if not chatbot:
-                chatbot = chatbot_contact.last_chatbot_id
-                if not chatbot:
-                    # Find first available chatbot
-                    chatbot = Chatbot.search([], limit=1)
-                    if chatbot:
-                        chatbot_contact.write({'last_chatbot_id': chatbot.id})
-            
+            # Only continue if we have a chatbot (either from active conversation or trigger match)
             if not chatbot:
                 _logger.warning("No chatbot found to process message")
                 return
