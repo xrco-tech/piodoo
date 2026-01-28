@@ -320,10 +320,10 @@ class WhatsAppChatbotMessage(models.Model):
             
             # Create chatbot message record with duplicate handling for race conditions
             try:
-                # chatbot_id is a related field from step_id.chatbot_id, so we'll let _handle_incoming_message set it
                 chatbot_message = self.create({
                     'contact_id': chatbot_contact.id,
                     'mobile_number': wa_id,
+                    'chatbot_id': chatbot.id,
                     'wa_message_id': wa_message.id,
                     'message_plain': message_body,
                     'message_html': message_body,  # Simple conversion, can be enhanced
