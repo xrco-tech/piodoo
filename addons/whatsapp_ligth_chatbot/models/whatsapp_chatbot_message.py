@@ -18,7 +18,8 @@ class WhatsAppChatbotMessage(models.Model):
     contact_id = fields.Many2one("whatsapp.chatbot.contact", string="Contact", required=True, tracking=True, ondelete='cascade')
     mobile_number = fields.Char(string="WhatsApp Number", tracking=True)
     step_id = fields.Many2one("whatsapp.chatbot.step", string="Chatbot Step", tracking=True)
-    chatbot_id = fields.Many2one("whatsapp.chatbot", related="step_id.chatbot_id", string="Chatbot", tracking=True, store=True)
+    # Make chatbot_id a regular Many2one instead of a related field so it's always available
+    chatbot_id = fields.Many2one("whatsapp.chatbot", string="Chatbot", required=True, tracking=True)
     
     # Link to whatsapp_ligth message
     wa_message_id = fields.Many2one("whatsapp.message", string="Related WhatsApp Message", tracking=True)
@@ -65,8 +66,12 @@ class WhatsAppChatbotMessage(models.Model):
             return message
         visited_steps = visited_steps or set()
         
+        # Ensure chatbot_id is set; if missing but step_id is present, derive it
+        if not message.chatbot_id and message.step_id and message.step_id.chatbot_id:
+            message.chatbot_id = message.step_id.chatbot_id
         if not message.chatbot_id:
-            raise UserError("Message does not have a valid chatbot ID!")
+            _logger.error("Incoming chatbot message has no chatbot_id; skipping processing.")
+            return message
         
         # Find next step based on current step and user answer
         if message.step_id:
