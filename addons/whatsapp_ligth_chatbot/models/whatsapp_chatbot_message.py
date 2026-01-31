@@ -75,15 +75,11 @@ class WhatsAppChatbotMessage(models.Model):
         
         # Find next step based on current step and user answer
         if message.step_id:
-            # If step has children, process the flow
-            if message.step_id.child_ids:
-                message = self._process_chatbot_flow(message, depth=depth + 1, visited_steps=visited_steps)
-            else:
-                # Step has no children, send the step message
-                _logger.info(f"Step {message.step_id.name} has no children, sending step message")
-                if message.step_id.step_type in ['set_variable', 'execute_code']:
-                    return self._process_variable_or_code_step(message, message.step_id, depth=depth + 1, visited_steps=visited_steps)
-                return self._send_step_message(message, message.step_id)
+            # Always send this step's message first when we're at a step (including first step with children).
+            # Steps with children are typically menus: we send the prompt, then wait for user choice.
+            if message.step_id.step_type in ['set_variable', 'execute_code']:
+                return self._process_variable_or_code_step(message, message.step_id, depth=depth + 1, visited_steps=visited_steps)
+            return self._send_step_message(message, message.step_id)
         elif not message.step_id:
             # Start from first step
             first_step = self.env['whatsapp.chatbot.step'].search([
