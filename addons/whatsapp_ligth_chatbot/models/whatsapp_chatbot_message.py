@@ -61,8 +61,10 @@ class WhatsAppChatbotMessage(models.Model):
             return self._handle_outgoing_message(message, depth=0, visited_steps=set())
         return message
 
-    def _handle_incoming_message(self, message, depth=0, visited_steps=None):
-        """Handle incoming messages from users"""
+    def _handle_incoming_message(self, message, depth=0, visited_steps=None, from_trigger=True):
+        """Handle incoming messages from users.
+        from_trigger: True when user sent trigger word (send this step); False when replying (process reply, don't resend).
+        """
         if depth > MAX_RECURSION_DEPTH:
             _logger.warning("Max recursion depth reached in _handle_incoming_message")
             return message
@@ -77,8 +79,10 @@ class WhatsAppChatbotMessage(models.Model):
         
         # Find next step based on current step and user answer
         if message.step_id:
-            # Always send this step's message first when we're at a step (including first step with children).
-            # Steps with children are typically menus: we send the prompt, then wait for user choice.
+            # User replying (actively engaged): process their answer, don't resend the same step
+            if not from_trigger:
+                return self._process_chatbot_flow(message, depth=depth + 1, visited_steps=visited_steps)
+            # From trigger: send this step's message (first step)
             if message.step_id.step_type in ['set_variable', 'execute_code']:
                 return self._process_variable_or_code_step(message, message.step_id, depth=depth + 1, visited_steps=visited_steps)
             return self._send_step_message(message, message.step_id)
@@ -262,7 +266,8 @@ class WhatsAppChatbotMessage(models.Model):
             # Extract message text for trigger matching
             message_text = message_body.strip() if message_body else ''
             
-            # Check if contact is actively engaged in a chatbot conversation
+            # Track whether we're starting from a trigger (send first step) or continuing (process reply)
+            from_trigger = False
             chatbot = None
             if chatbot_contact.last_chatbot_id and chatbot_contact.last_step_id:
                 # Check if the last step is not an end_flow step
@@ -279,6 +284,7 @@ class WhatsAppChatbotMessage(models.Model):
                 ], limit=1)
                 
                 if matching_trigger:
+                    from_trigger = True
                     chatbot = matching_trigger.chatbot_id
                     _logger.info(f"Trigger '{message_text}' matched to chatbot: {chatbot.name}")
                     # Clear all variables when starting a new chatbot flow
@@ -319,11 +325,14 @@ class WhatsAppChatbotMessage(models.Model):
                 _logger.info(f"Chatbot message already exists for WhatsApp message {wa_message.id} (chatbot message ID: {existing_chatbot_message.id}). Skipping duplicate creation.")
                 return existing_chatbot_message
             
-            # Find first step of chatbot (will be set by _handle_incoming_message if not set)
-            first_step = self.env['whatsapp.chatbot.step'].sudo().search([
-                ('chatbot_id', '=', chatbot.id),
-                ('parent_id', '=', False)
-            ], order='sequence asc', limit=1)
+            # Step to use: first step when from trigger, last step when actively engaged (reply)
+            if from_trigger:
+                step_to_use = self.env['whatsapp.chatbot.step'].sudo().search([
+                    ('chatbot_id', '=', chatbot.id),
+                    ('parent_id', '=', False)
+                ], order='sequence asc', limit=1)
+            else:
+                step_to_use = chatbot_contact.last_step_id
             
             # Create chatbot message record with duplicate handling for race conditions
             try:
@@ -335,13 +344,14 @@ class WhatsAppChatbotMessage(models.Model):
                     'message_plain': message_body,
                     'message_html': message_body,  # Simple conversion, can be enhanced
                     'type': 'incoming',
-                    'step_id': first_step.id if first_step else False,
+                    'step_id': step_to_use.id if step_to_use else False,
                 })
                 _logger.info(f"Created chatbot message: {chatbot_message.id}")
                 # Send only here (not in create()) so duplicate webhook deliveries
                 # that return existing_chatbot_message never send.
+                # When from_trigger=True we send the step; when False (reply) we process flow, don't resend.
                 chatbot_message = self._handle_incoming_message(
-                    chatbot_message, depth=0, visited_steps=set()
+                    chatbot_message, depth=0, visited_steps=set(), from_trigger=from_trigger
                 )
             except Exception as create_error:
                 # Handle race condition where another request created it first
