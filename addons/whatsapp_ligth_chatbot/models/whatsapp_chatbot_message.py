@@ -299,6 +299,15 @@ class WhatsAppChatbotMessage(models.Model):
                 _logger.warning("No chatbot found to process message")
                 return
             
+            # Lock this WhatsApp message row so only one webhook delivery creates and sends.
+            # The second delivery will block here until the first commits, then see existing.
+            self.env.cr.execute(
+                "SELECT id FROM whatsapp_message WHERE id = %s FOR UPDATE",
+                (wa_message.id,),
+            )
+            if not self.env.cr.rowcount:
+                return
+            
             # Check if chatbot message already exists for this WhatsApp message
             # This prevents duplicate chatbot messages from the same WhatsApp message
             existing_chatbot_message = self.sudo().search([
