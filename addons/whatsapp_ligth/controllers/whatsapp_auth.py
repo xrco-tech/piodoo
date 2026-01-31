@@ -246,8 +246,16 @@ class WhatsAppAuthController(http.Controller):
         """
         try:
             WhatsAppMessage = request.env['whatsapp.message'].sudo()
+            seen_message_ids = set()
             
             for message in messages:
+                message_id = message.get('id')
+                if message_id and message_id in seen_message_ids:
+                    _logger.info(f"Skipping duplicate message id in same request: {message_id}")
+                    continue
+                if message_id:
+                    seen_message_ids.add(message_id)
+                
                 _logger.info(f"Processing message: {message}")
                 
                 # Create message record in database
