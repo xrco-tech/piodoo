@@ -53,9 +53,11 @@ class WhatsAppChatbotMessage(models.Model):
     @api.model
     def create(self, vals):
         message = super().create(vals)
-        if message.type == "incoming":
-            return self._handle_incoming_message(message, depth=0, visited_steps=set())
-        elif message.type == "outgoing":
+        # Do not run _handle_incoming_message here: sending is done in
+        # process_incoming_webhook_message after create(). That way only the
+        # request that actually creates the record sends; duplicate webhook
+        # deliveries that hit "existing_chatbot_message" return early and never send.
+        if message.type == "outgoing":
             return self._handle_outgoing_message(message, depth=0, visited_steps=set())
         return message
 
@@ -327,6 +329,11 @@ class WhatsAppChatbotMessage(models.Model):
                     'step_id': first_step.id if first_step else False,
                 })
                 _logger.info(f"Created chatbot message: {chatbot_message.id}")
+                # Send only here (not in create()) so duplicate webhook deliveries
+                # that return existing_chatbot_message never send.
+                chatbot_message = self._handle_incoming_message(
+                    chatbot_message, depth=0, visited_steps=set()
+                )
             except Exception as create_error:
                 # Handle race condition where another request created it first
                 error_str = str(create_error)
