@@ -345,9 +345,16 @@ class WhatsAppChatbotMessage(models.Model):
                 )
             except Exception as create_error:
                 # Handle race condition where another request created it first
+                # (unique index on wa_message_id for type=incoming, or IntegrityError)
                 error_str = str(create_error)
-                if 'duplicate' in error_str.lower() or 'unique constraint' in error_str.lower():
-                    # Another request created it first, fetch the existing record
+                if (
+                    'duplicate' in error_str.lower()
+                    or 'unique constraint' in error_str.lower()
+                    or 'unique index' in error_str.lower()
+                    or getattr(create_error, 'pgcode', None) == '23505'  # unique_violation
+                ):
+                    # Transaction may be aborted (PostgreSQL); rollback so we can query
+                    self.env.cr.rollback()
                     _logger.info(f"Chatbot message was created by another request for WhatsApp message {wa_message.id}, fetching existing record")
                     existing = self.sudo().search([
                         ('wa_message_id', '=', wa_message.id),

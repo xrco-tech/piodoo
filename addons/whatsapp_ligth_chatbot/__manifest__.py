@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Light Chatbot',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Tools',
     'summary': 'Chatbot functionality for WhatsApp Light',
     'description': """
