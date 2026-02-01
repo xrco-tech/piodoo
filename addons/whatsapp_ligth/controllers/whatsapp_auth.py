@@ -199,6 +199,9 @@ class WhatsAppAuthController(http.Controller):
             # }
 
             if data.get('object') == 'whatsapp_business_account':
+                # Collect all (value, entry, message) so we can deduplicate by message id
+                # across the whole request (Meta may send same message in multiple entry/change)
+                collected_messages = []
                 for entry in data.get('entry', []):
                     # Store business account ID from entry if not already set
                     business_account_id = entry.get('id')
@@ -222,13 +225,24 @@ class WhatsAppAuthController(http.Controller):
                                 IrConfigParameter.set_param('whatsapp_ligth.phone_number_id', phone_number_id)
                                 _logger.info(f"Stored phone number ID: {phone_number_id}")
                         
-                        # Handle messages
                         if 'messages' in value:
-                            self._process_messages(value['messages'], value, entry)
+                            for msg in value['messages']:
+                                collected_messages.append((value, entry, msg))
                         
                         # Handle status updates
                         if 'statuses' in value:
                             self._process_statuses(value['statuses'])
+                
+                # Process each unique message id only once (avoids duplicate first message)
+                seen_message_ids = set()
+                for value, entry, message in collected_messages:
+                    message_id = message.get('id')
+                    if message_id and message_id in seen_message_ids:
+                        _logger.info(f"Skipping duplicate message id in webhook request: {message_id}")
+                        continue
+                    if message_id:
+                        seen_message_ids.add(message_id)
+                    self._process_single_message(message, value, entry)
 
             return request.make_response('OK', [('Content-Type', 'text/plain')], status=200)
 
@@ -236,43 +250,23 @@ class WhatsAppAuthController(http.Controller):
             _logger.error(f"Error handling webhook event: {e}", exc_info=True)
             return request.make_response('Error', [('Content-Type', 'text/plain')], status=500)
 
-    def _process_messages(self, messages, value_data, entry_data):
+    def _process_single_message(self, message, value_data, entry_data):
         """
-        Process incoming WhatsApp messages.
-        
-        :param messages: List of message objects from webhook
-        :param value_data: The value object containing metadata and contacts
-        :param entry_data: The entry object containing business account info
+        Process a single incoming WhatsApp message (create record + chatbot).
+        Called once per unique message id after webhook-level deduplication.
         """
         try:
             WhatsAppMessage = request.env['whatsapp.message'].sudo()
-            seen_message_ids = set()
-            
-            for message in messages:
-                message_id = message.get('id')
-                if message_id and message_id in seen_message_ids:
-                    _logger.info(f"Skipping duplicate message id in same request: {message_id}")
-                    continue
-                if message_id:
-                    seen_message_ids.add(message_id)
-                
-                _logger.info(f"Processing message: {message}")
-                
-                # Create message record in database
-                message_record = WhatsAppMessage.create_from_webhook(message, value_data)
-                
-                if message_record:
-                    _logger.info(f"Message saved with ID: {message_record.id}")
-                    # Mark as processed
-                    message_record.write({'status': 'processed'})
-                    
-                    # Process chatbot messages if chatbot module is installed
-                    self._process_chatbot_message(message_record, message, value_data, entry_data)
-                else:
-                    _logger.error(f"Failed to save message: {message.get('id', 'unknown')}")
-                    
+            _logger.info(f"Processing message: {message}")
+            message_record = WhatsAppMessage.create_from_webhook(message, value_data)
+            if message_record:
+                _logger.info(f"Message saved with ID: {message_record.id}")
+                message_record.write({'status': 'processed'})
+                self._process_chatbot_message(message_record, message, value_data, entry_data)
+            else:
+                _logger.error(f"Failed to save message: {message.get('id', 'unknown')}")
         except Exception as e:
-            _logger.error(f"Error processing messages: {e}", exc_info=True)
+            _logger.error(f"Error processing message: {e}", exc_info=True)
     
     def _process_chatbot_message(self, message_record, webhook_message, value_data, entry_data):
         """

@@ -112,10 +112,39 @@ class WhatsAppChatbotMessage(models.Model):
         return message
 
     def _process_chatbot_flow(self, message, depth=0, visited_steps=None):
-        """Process the chatbot flow based on user input"""
-        # This will be implemented to handle step transitions
-        # For now, return the message as-is
-        return message
+        """
+        Process user reply: advance to next step (first child by sequence) and send it.
+        For question_text / message steps, any reply goes to the first child step.
+        """
+        if depth > MAX_RECURSION_DEPTH:
+            _logger.warning("Max recursion depth reached in _process_chatbot_flow")
+            return message
+        visited_steps = visited_steps or set()
+        current_step = message.step_id
+        if not current_step:
+            self._update_contact_last_interaction(message)
+            return message
+        if current_step.id in visited_steps:
+            _logger.warning(f"Already visited step {current_step.id}, stopping")
+            return message
+        visited_steps.add(current_step.id)
+        # Next step = first child by sequence (for question_text / message, any reply goes to next)
+        children = current_step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+        if not children:
+            self._update_contact_last_interaction(message)
+            return message
+        next_step = children[0]
+        if next_step.step_type == 'end_flow':
+            message.contact_id.write({
+                'last_chatbot_id': message.chatbot_id.id,
+                'last_step_id': next_step.id,
+                'last_seen_date': fields.Datetime.now(),
+            })
+            return message
+        if next_step.step_type in ['set_variable', 'execute_code']:
+            return self._process_variable_or_code_step(message, next_step, depth=depth + 1, visited_steps=visited_steps)
+        _logger.info(f"Advancing from step {current_step.name} to {next_step.name} (ID: {next_step.id})")
+        return self._send_step_message(message, next_step)
 
     def _process_variable_or_code_step(self, message, step, depth=0, visited_steps=None):
         """Process variable setting or code execution steps"""
@@ -304,6 +333,21 @@ class WhatsAppChatbotMessage(models.Model):
             if not chatbot:
                 _logger.warning("No chatbot found to process message")
                 return
+            
+            # If user is engaged but sends the trigger word again, restart the flow (from_trigger=True)
+            if chatbot and message_text and not from_trigger:
+                matching_trigger = self.env['whatsapp.chatbot.trigger'].sudo().search([
+                    ('name', '=', message_text.upper()),
+                    ('chatbot_id', '=', chatbot.id),
+                ], limit=1)
+                if matching_trigger:
+                    from_trigger = True
+                    _logger.info(f"Trigger '{message_text}' while engaged: restarting flow for {chatbot.name}")
+                    chatbot_contact.variable_value_ids.unlink()
+                    chatbot_contact.write({
+                        'last_chatbot_id': chatbot.id,
+                        'last_step_id': False,
+                    })
             
             # Lock this WhatsApp message row so only one webhook delivery creates and sends.
             # The second delivery will block here until the first commits, then see existing.
