@@ -70,13 +70,6 @@
                                 <field name="preview_url" widget="iframe" style="height: 850px; width: 100%;" nolabel="1"/>
                             </page>
                             
-                            <page string="Steps" name="steps">
-                                <div class="alert alert-info" role="alert">
-                                    <p>Use the "View Steps" button in the header to manage chatbot steps.</p>
-                                </div>
-                                <field name="step_count" readonly="1"/>
-                            </page>
-                            
                             <page string="Settings" name="settings">
                                 <group>
                                     <group string="Basic Information">
