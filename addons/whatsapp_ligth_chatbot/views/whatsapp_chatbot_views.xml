@@ -65,12 +65,6 @@
                             </button>
                         </div>
                         
-                        <group>
-                            <group>
-                                <field name="name"/>
-                            </group>
-                        </group>
-                        
                         <notebook>
                             <page string="Preview" name="preview" invisible="not preview_url">
                                 <field name="preview_url" widget="iframe" style="height: 850px; width: 100%;" nolabel="1"/>
