@@ -37,9 +37,9 @@
             <field name="model">whatsapp.chatbot</field>
             <field name="arch" type="xml">
                 <form string="WhatsApp Chatbot">
-                    <header>
+                    <!-- <header>
                         <button name="action_view_step_hierarchy" string="View Steps" type="object" class="oe_highlight" icon="fa-sitemap"/>
-                    </header>
+                    </header> -->
                     <sheet>
                         <div class="oe_button_box" name="button_box">
                             <button name="action_view_active_users" 
@@ -68,12 +68,6 @@
                         <group>
                             <group>
                                 <field name="name"/>
-                                <field name="description" widget="text"/>
-                                <field name="preview_url" widget="url" readonly="1"/>
-                            </group>
-                            <group>
-                                <field name="bot_trigger_ids" widget="many2many_tags" string="Triggers"/>
-                                <field name="bot_variable_ids" widget="many2many_tags" string="Variables"/>
                             </group>
                         </group>
                         
@@ -90,6 +84,16 @@
                             </page>
                             
                             <page string="Settings" name="settings">
+                                <group>
+                                    <group string="Basic Information">
+                                        <field name="name"/>
+                                        <field name="description" widget="text"/>
+                                    </group>
+                                    <group string="Keywords and Variables">
+                                        <field name="bot_trigger_ids" widget="many2many_tags" string="Triggers"/>
+                                <field name="bot_variable_ids" widget="many2many_tags" string="Variables"/>
+                                    </group>
+                                </group>
                                 <group>
                                     <group string="Default Messages">
                                         <field name="default_confusion_message" widget="text"/>
