@@ -115,11 +115,12 @@
                             
                             <page string="Child Steps" name="children">
                                 <field name="child_ids" nolabel="1">
-                                    <list create="1" delete="1" edit="1" default_order="sequence asc">
+                                    <list create="1" delete="1" edit="1" editable="bottom" default_order="sequence asc">
+                                        <field name="id" column_invisible="1"/>
                                         <field name="sequence" widget="handle"/>
                                         <field name="name"/>
                                         <field name="step_type"/>
-                                        <field name="trigger_answer_ids" widget="many2many_tags" optional="show"/>
+                                        <field name="trigger_answer_ids" widget="many2many_tags" optional="hide" options="{'no_create': False}" context="{'default_step_id': id}"/>
                                     </list>
                                 </field>
                             </page>

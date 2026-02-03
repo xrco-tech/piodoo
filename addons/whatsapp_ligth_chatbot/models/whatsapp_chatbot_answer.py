@@ -13,7 +13,14 @@ class WhatsAppChatbotAnswer(models.Model):
 
     display_name = fields.Char(compute="_compute_display_name", store=True)
     value = fields.Char(string="Value", tracking=True, required=True)
-    step_id = fields.Many2one("whatsapp.chatbot.step", string="Chatbot Step", required=True, tracking=True, ondelete='cascade')
+    step_id = fields.Many2one(
+        "whatsapp.chatbot.step",
+        string="Chatbot Step",
+        required=True,
+        tracking=True,
+        ondelete='cascade',
+        default=lambda self: self.env.context.get('default_step_id'),
+    )
     trigger_step_id = fields.Many2one("whatsapp.chatbot.step", related="step_id.parent_id", string="Trigger Step", required=True, tracking=True)
     chatbot_id = fields.Many2one("whatsapp.chatbot", related="step_id.chatbot_id", string="Chatbot", required=True, tracking=True)
     sequence = fields.Integer(string="Sequence", tracking=True, default=10)
