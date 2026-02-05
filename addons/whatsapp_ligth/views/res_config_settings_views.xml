@@ -7,7 +7,7 @@
             <field name="inherit_id" ref="base.res_config_settings_view_form"/>
             <field name="arch" type="xml">
                 <xpath expr="//form" position="inside">
-                    <app data-string="WhatsApp Light" string="WhatsApp Light" name="whatsapp_ligth">
+                    <app data-string="WhatsApp Light" string="WhatsApp Light" name="whatsapp_ligth" logo="/whatsapp_ligth/static/description/icon.svg">
                         <block title="Meta App (OAuth)">
                             <setting title="Meta App ID" help="From Meta for Developers">
                                 <field name="whatsapp_ligth_app_id"/>
