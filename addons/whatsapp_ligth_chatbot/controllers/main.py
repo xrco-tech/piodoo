@@ -248,11 +248,50 @@ class WhatsAppChatbotController(http.Controller):
             tree = build(0)
             return request.render('whatsapp_ligth_chatbot.chatbot_steps_tree_page', {
                 "chatbot": chatbot,
+                "chatbot_id": chatbot.id,
                 "tree_json": Markup(json.dumps(tree, ensure_ascii=False)),
+                "csrf_token": request.csrf_token(),
             })
         except Exception as e:
             _logger.error(f"Error rendering chatbot steps: {e}", exc_info=True)
             return request.not_found()
+
+    @http.route('/chatbot/step/<int:step_id>/delete', type='http', auth='user', methods=['POST'], csrf=True)
+    def chatbot_step_delete(self, step_id, **kw):
+        """
+        Delete a chatbot step. Returns JSON.
+        Raises 400 with error message if the step has linked children steps.
+        """
+        try:
+            step = request.env['whatsapp.chatbot.step'].browse(step_id)
+            if not step.exists():
+                return request.make_response(
+                    json.dumps({'success': False, 'error': 'Step not found'}),
+                    headers=[('Content-Type', 'application/json')],
+                    status=404,
+                )
+            if step.child_ids:
+                return request.make_response(
+                    json.dumps({
+                        'success': False,
+                        'error': 'Cannot delete this step because it has linked child steps. Remove or reassign the child steps first.',
+                    }),
+                    headers=[('Content-Type', 'application/json')],
+                    status=400,
+                )
+            step.unlink()
+            return request.make_response(
+                json.dumps({'success': True}),
+                headers=[('Content-Type', 'application/json')],
+                status=200,
+            )
+        except Exception as e:
+            _logger.error(f"Error deleting chatbot step: {e}", exc_info=True)
+            return request.make_response(
+                json.dumps({'success': False, 'error': str(e)}),
+                headers=[('Content-Type', 'application/json')],
+                status=500,
+            )
 
 
 def _preview_html(step):
