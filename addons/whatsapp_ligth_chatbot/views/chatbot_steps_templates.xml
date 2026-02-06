@@ -43,23 +43,11 @@
                       root.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
                     }
                     function openStepModal(stepId) {
-                      var existing = document.getElementById('bb-step-modal');
-                      if (existing) existing.remove();
-                      var overlay = document.createElement('div');
-                      overlay.id = 'bb-step-modal';
-                      overlay.className = 'bb-step-modal';
-                      overlay.innerHTML = '&lt;div class="bb-step-modal-dialog"&gt;&lt;button type="button" class="bb-step-modal-close" aria-label="Close"&gt;&amp;times;&lt;/button&gt;&lt;iframe class="bb-step-modal-iframe" src="/web#model=whatsapp.chatbot.step&amp;amp;view_type=form&amp;amp;id=' + stepId + '"&gt;&lt;/iframe&gt;&lt;/div&gt;';
-                      function closeModal() {
-                        var el = document.getElementById('bb-step-modal');
-                        if (el) el.remove();
-                        document.body.style.overflow = '';
-                      }
-                      overlay.addEventListener('click', function(e) {
-                        if (e.target === overlay) closeModal();
-                      });
-                      overlay.querySelector('.bb-step-modal-close').addEventListener('click', closeModal);
-                      document.body.style.overflow = 'hidden';
-                      document.body.appendChild(overlay);
+                      var w = 920, h = 720;
+                      var left = (window.screen.width - w) / 2;
+                      var top = (window.screen.height - h) / 2;
+                      var url = '/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;id=' + stepId;
+                      window.open(url, 'bb-step-form-' + stepId, 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
                     }
               
                     // ---- flow view ----
@@ -372,11 +360,6 @@
                 .bb-open:hover{text-decoration:underline}
                 .bb-delete{font-size:12px;line-height:1;color:#dc3545;text-decoration:none;cursor:pointer;border:none;background:none;padding:0;display:inline-flex;align-items:center}
                 .bb-delete:hover{text-decoration:underline;color:#bb2d3b}
-                .bb-step-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);padding:20px;box-sizing:border-box}
-                .bb-step-modal-dialog{position:relative;background:#fff;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.15);width:100%;max-width:900px;height:85vh;max-height:700px;overflow:hidden;display:flex;flex-direction:column}
-                .bb-step-modal-close{position:absolute;top:8px;right:12px;z-index:10;width:32px;height:32px;border:none;background:#f3f4f6;border-radius:4px;font-size:24px;line-height:1;cursor:pointer;color:#374151;padding:0}
-                .bb-step-modal-close:hover{background:#e5e7eb}
-                .bb-step-modal-iframe{flex:1;width:100%;border:0;border-radius:0}
                 .badge-secondary{background:#e9ecef}.badge-info{background:#cff4fc}.badge-warning{background:#fff3cd}.badge-dark{background:#ced4da}.badge-success{background:#d1e7dd}.badge-light{background:#f8f9fa}
                 .bb-lines{position:absolute;left:0;top:0;pointer-events:none;width:100%;height:100%;z-index:10}
                 .bb-connector{fill:none;stroke:#c0c4cc;stroke-width:2}
