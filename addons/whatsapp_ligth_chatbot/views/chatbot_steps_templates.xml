@@ -162,7 +162,7 @@
                                 return r.text().then(function(text) {
                                   var data = {};
                                   try { data = JSON.parse(text); } catch (e) {}
-                                  if (r.ok && data.success) {
+                                  if (r.ok &amp;&amp; data.success) {
                                     window.location.href = '/chatbot/steps/' + chatbotId;
                                   } else {
                                     alert(data.error || 'Could not delete step.');
