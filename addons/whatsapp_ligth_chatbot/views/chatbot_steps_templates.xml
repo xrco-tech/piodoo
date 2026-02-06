@@ -5,7 +5,7 @@
             <t t-set="title">Chatbot Steps - <t t-esc="chatbot.name"/></t>
         
             <div class="o_container mt-4 mb-4">
-              <div id="steps-flow-wrap" class="mt-3" data-csrf="<t t-esc="csrf_token or ''"/>" data-chatbot-id="<t t-esc="chatbot_id or 0"/>">
+              <div id="steps-flow-wrap" class="mt-3" t-att-data-csrf="csrf_token or ''" t-att-data-chatbot-id="chatbot_id or 0">
                 <div id="steps-flow" class="bb-flow">
                   <!-- SVG must be a child of the scrollable grid so it scrolls with it -->
                   <svg id="bb-lines" class="bb-lines"></svg>
