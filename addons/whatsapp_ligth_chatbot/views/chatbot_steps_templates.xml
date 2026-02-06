@@ -126,40 +126,43 @@
                                 card.appendChild(wrap);
                               }
 
+                            const chipRow = document.createElement('div');
+                            chipRow.className = 'bb-chip-row';
                             if (node.type) {
                               const chip = document.createElement('span');
                               chip.className = 'bb-chip ' + (TYPE_TO_BADGE[node.type] || 'badge-light');
                               chip.textContent = node.type.replace(/_/g,' ');
-                              card.appendChild(chip);
+                              chipRow.appendChild(chip);
                             }
-                      
                             const actions = document.createElement('div');
                             actions.className = 'bb-actions';
-
                             const open = document.createElement('a');
                             open.href = '/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;id='+node.id;
                             open.target = '_blank';
                             open.className = 'bb-open';
                             open.textContent = 'Open';
                             actions.appendChild(open);
-
                             const delBtn = document.createElement('button');
                             delBtn.type = 'button';
-                            delBtn.className = 'bb-delete btn btn-link btn-sm p-0 ms-2';
+                            delBtn.className = 'bb-delete';
                             delBtn.textContent = 'Delete';
                             delBtn.dataset.stepId = node.id;
                             delBtn.onclick = function() {
                               if (!confirm('Delete this step? This cannot be undone.')) return;
                               const stepId = this.dataset.stepId;
+                              const body = new URLSearchParams({ csrf_token: csrfToken });
                               fetch('/chatbot/step/' + stepId + '/delete', {
                                 method: 'POST',
                                 headers: {
-                                  'Content-Type': 'application/json',
+                                  'Content-Type': 'application/x-www-form-urlencoded',
                                   'X-CSRF-TOKEN': csrfToken,
                                 },
+                                body: body.toString(),
                               }).then(function(r) {
-                                return r.json().then(function(data) {
-                                  if (data.success) {
+                                return r.text().then(function(text) {
+                                  var data = {};
+                                  try { data = JSON.parse(text); } catch (e) {}
+                                  if (r.ok && data.success) {
                                     window.location.href = '/chatbot/steps/' + chatbotId;
                                   } else {
                                     alert(data.error || 'Could not delete step.');
@@ -170,8 +173,8 @@
                               });
                             };
                             actions.appendChild(delBtn);
-
-                            card.appendChild(actions);
+                            chipRow.appendChild(actions);
+                            card.appendChild(chipRow);
                       
                             column.appendChild(card);
                           });
@@ -339,10 +342,12 @@
                 .bb-card{width:300px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:10px 12px 12px}
                 .bb-title{font-weight:600;margin-bottom:6px}
                 .bb-chip{display:inline-block;font-size:12px;line-height:1;border-radius:999px;padding:4px 8px;margin-right:6px;margin-top:6px}
-                .bb-actions{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:6px}
+                .bb-chip-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:6px}
+                .bb-chip-row .bb-chip{margin-right:0}
+                .bb-actions{display:inline-flex;align-items:center;gap:8px}
                 .bb-open{display:inline-block;font-size:12px;color:#0b56d0;text-decoration:none}
                 .bb-open:hover{text-decoration:underline}
-                .bb-delete{font-size:12px;color:#dc3545;text-decoration:none;cursor:pointer;border:none;background:none}
+                .bb-delete{font-size:12px;color:#dc3545;text-decoration:none;cursor:pointer;border:none;background:none;padding:0}
                 .bb-delete:hover{text-decoration:underline;color:#bb2d3b}
                 .badge-secondary{background:#e9ecef}.badge-info{background:#cff4fc}.badge-warning{background:#fff3cd}.badge-dark{background:#ced4da}.badge-success{background:#d1e7dd}.badge-light{background:#f8f9fa}
                 .bb-lines{position:absolute;left:0;top:0;pointer-events:none;width:100%;height:100%;z-index:10}
