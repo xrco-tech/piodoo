@@ -335,19 +335,19 @@
         
             <t t-jquery="head" t-operation="append">
               <style>
-                #steps-flow-wrap{position:relative;overflow:auto;min-height:200px;cursor:grab}
+                #steps-flow-wrap{position:relative;overflow:auto;min-height:200px;max-height:calc(100vh - 180px);cursor:grab}
                 #steps-flow-wrap.bb-dragging{cursor:grabbing}
-                .bb-flow{display:grid;align-items:start;gap:48px;position:relative;padding:8px 8px 32px 8px}
+                .bb-flow{display:grid;align-items:start;gap:48px;position:relative;padding:8px 8px 32px 8px;min-width:min-content;width:max-content}
                 .bb-col{display:flex;flex-direction:column;gap:16px}
                 .bb-card{width:300px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:10px 12px 12px}
                 .bb-title{font-weight:600;margin-bottom:6px}
                 .bb-chip{display:inline-block;font-size:12px;line-height:1;border-radius:999px;padding:4px 8px;margin-right:6px;margin-top:6px}
-                .bb-chip-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:6px}
-                .bb-chip-row .bb-chip{margin-right:0}
-                .bb-actions{display:inline-flex;align-items:center;gap:8px}
-                .bb-open{display:inline-block;font-size:12px;color:#0b56d0;text-decoration:none}
+                .bb-chip-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px}
+                .bb-chip-row .bb-chip{margin-right:0;margin-top:0}
+                .bb-actions{display:inline-flex;align-items:center;gap:8px;line-height:1;font-size:12px;min-height:20px}
+                .bb-open{display:inline-flex;align-items:center;font-size:12px;line-height:1;color:#0b56d0;text-decoration:none}
                 .bb-open:hover{text-decoration:underline}
-                .bb-delete{font-size:12px;color:#dc3545;text-decoration:none;cursor:pointer;border:none;background:none;padding:0}
+                .bb-delete{font-size:12px;line-height:1;color:#dc3545;text-decoration:none;cursor:pointer;border:none;background:none;padding:0;display:inline-flex;align-items:center}
                 .bb-delete:hover{text-decoration:underline;color:#bb2d3b}
                 .badge-secondary{background:#e9ecef}.badge-info{background:#cff4fc}.badge-warning{background:#fff3cd}.badge-dark{background:#ced4da}.badge-success{background:#d1e7dd}.badge-light{background:#f8f9fa}
                 .bb-lines{position:absolute;left:0;top:0;pointer-events:none;width:100%;height:100%;z-index:10}
