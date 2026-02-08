@@ -53,8 +53,10 @@
                       var w = 920, h = 720;
                       var left = (window.screen.width - w) / 2;
                       var top = (window.screen.height - h) / 2;
-                      // Redirect route builds form URL with default_chatbot_id and default_parent_id so form is prepopulated
-                      var url = '/chatbot/step/new?chatbot_id=' + encodeURIComponent(chatbotId) + '&amp;parent_id=' + encodeURIComponent(parentStepId);
+                      // Use same base path as current page (e.g. /odoo) so the route hits our controller
+                      var pathname = window.location.pathname || '';
+                      var base = (pathname.indexOf('/chatbot/') >= 0) ? pathname.replace(/\/chatbot\/.*$/, '') : '';
+                      var url = base + '/chatbot/step/new?chatbot_id=' + encodeURIComponent(chatbotId) + '&amp;parent_id=' + encodeURIComponent(parentStepId);
                       window.open(url, 'bb-step-form-new', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
                     }
               
