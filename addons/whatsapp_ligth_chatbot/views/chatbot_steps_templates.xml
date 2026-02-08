@@ -49,6 +49,14 @@
                       var url = '/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;id=' + stepId;
                       window.open(url, 'bb-step-form-' + stepId, 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
                     }
+                    function openAddStepModal(parentStepId) {
+                      var w = 920, h = 720;
+                      var left = (window.screen.width - w) / 2;
+                      var top = (window.screen.height - h) / 2;
+                      var ctx = JSON.stringify({ default_parent_id: parentStepId, default_chatbot_id: chatbotId });
+                      var url = '/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;context=' + encodeURIComponent(ctx);
+                      window.open(url, 'bb-step-form-new', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
+                    }
               
                     // ---- flow view ----
                     const TYPE_TO_BADGE = {
@@ -186,6 +194,19 @@
                             actions.appendChild(delBtn);
                             chipRow.appendChild(actions);
                             card.appendChild(chipRow);
+
+                            const addBtn = document.createElement('button');
+                            addBtn.type = 'button';
+                            addBtn.className = 'bb-add-step';
+                            addBtn.title = 'Add child step';
+                            addBtn.textContent = '+';
+                            addBtn.dataset.parentId = node.id;
+                            addBtn.onclick = function(e) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openAddStepModal(parseInt(this.dataset.parentId, 10));
+                            };
+                            card.appendChild(addBtn);
                       
                             column.appendChild(card);
                           });
@@ -202,26 +223,8 @@
                           svg.style.height = h + 'px';
                           svg.innerHTML = '';
                       
-                          // Create marker definitions for dot and arrow
+                          // Create marker definitions for arrow (dot replaced by "+" button on card)
                           const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-                          
-                          // Dot marker at start
-                          const dotMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-                          dotMarker.setAttribute('id', 'dot-marker');
-                          dotMarker.setAttribute('markerWidth', '8');
-                          dotMarker.setAttribute('markerHeight', '8');
-                          dotMarker.setAttribute('refX', '4');
-                          dotMarker.setAttribute('refY', '4');
-                          dotMarker.setAttribute('markerUnits', 'strokeWidth');
-                          const dotCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                          dotCircle.setAttribute('cx', '4');
-                          dotCircle.setAttribute('cy', '4');
-                          dotCircle.setAttribute('r', '3');
-                          dotCircle.setAttribute('fill', '#374151');
-                          dotCircle.setAttribute('stroke', '#ffffff');
-                          dotCircle.setAttribute('stroke-width', '1');
-                          dotMarker.appendChild(dotCircle);
-                          defs.appendChild(dotMarker);
                           
                           // Arrow marker at end
                           const arrowMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
@@ -264,7 +267,6 @@
                             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                             path.setAttribute('d', `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`);
                             path.setAttribute('class', 'bb-connector');
-                            path.setAttribute('marker-start', 'url(#dot-marker)');
                             path.setAttribute('marker-end', 'url(#arrow-marker)');
                             svg.appendChild(path);
                           });
@@ -380,6 +382,32 @@
                 z-index:10;
                 }
                 .bb-card { position: relative; z-index: 1; }
+                .bb-add-step {
+                  position: absolute;
+                  right: -14px;
+                  top: 50%;
+                  transform: translateY(-50%);
+                  width: 24px;
+                  height: 24px;
+                  border-radius: 50%;
+                  border: 1px solid #e5e7eb;
+                  background: #fff;
+                  color: #374151;
+                  font-size: 16px;
+                  line-height: 1;
+                  padding: 0;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  cursor: pointer;
+                  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+                  z-index: 20;
+                }
+                .bb-add-step:hover {
+                  background: #0b56d0;
+                  color: #fff;
+                  border-color: #0b56d0;
+                }
                 .bb-tags {
                 display: flex;
                 flex-wrap: wrap;
