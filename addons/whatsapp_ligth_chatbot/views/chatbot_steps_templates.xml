@@ -53,14 +53,8 @@
                       var w = 920, h = 720;
                       var left = (window.screen.width - w) / 2;
                       var top = (window.screen.height - h) / 2;
-                      // Pass default chatbot and the step (this card) as parent so the new form is prepopulated
-                      var ctx = JSON.stringify({
-                        default_chatbot_id: chatbotId,
-                        default_parent_id: parentStepId
-                      });
-                      console.log(ctx);
-                      var url = '/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;context=' + encodeURIComponent(ctx);
-                      console.log(url);
+                      // Redirect route builds form URL with default_chatbot_id and default_parent_id so form is prepopulated
+                      var url = '/chatbot/step/new?chatbot_id=' + encodeURIComponent(chatbotId) + '&amp;parent_id=' + encodeURIComponent(parentStepId);
                       window.open(url, 'bb-step-form-new', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
                     }
               

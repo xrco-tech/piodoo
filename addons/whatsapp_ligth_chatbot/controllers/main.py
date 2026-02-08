@@ -256,6 +256,26 @@ class WhatsAppChatbotController(http.Controller):
             _logger.error(f"Error rendering chatbot steps: {e}", exc_info=True)
             return request.not_found()
 
+    @http.route('/chatbot/step/new', type='http', auth='user')
+    def chatbot_step_new(self, chatbot_id, parent_id, **kw):
+        """
+        Redirect to the new step form with default_chatbot_id and default_parent_id
+        in context so the form is prepopulated when opened (e.g. from the flow view + button).
+        """
+        try:
+            chatbot_id = int(chatbot_id)
+            parent_id = int(parent_id)
+        except (TypeError, ValueError):
+            return request.redirect('/web')
+        import json
+        from urllib.parse import quote
+        ctx = json.dumps({
+            'default_chatbot_id': chatbot_id,
+            'default_parent_id': parent_id,
+        })
+        hash_part = f"model=whatsapp.chatbot.step&view_type=form&context={quote(ctx)}"
+        return request.redirect(f'/web#{hash_part}')
+
     @http.route('/chatbot/step/<int:step_id>/delete', type='http', auth='user', methods=['POST'], csrf=True)
     def chatbot_step_delete(self, step_id, **kw):
         """
