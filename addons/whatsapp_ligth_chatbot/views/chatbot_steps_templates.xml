@@ -256,9 +256,10 @@
                       
                             const pr = parent.getBoundingClientRect();
                             const cr = child.getBoundingClientRect();
-                      
+                            // +14px so line starts at right edge of .bb-add-step (right: -14px places circle 14px past card)
+                            const addBtnOffset = 14;
                             // Coordinates relative to grid's top-left
-                            const x1 = pr.right - gr.left;
+                            const x1 = pr.right - gr.left + addBtnOffset;
                             const y1 = pr.top + pr.height / 2 - gr.top;
                             const x2 = cr.left - gr.left;  // Arrow will touch the left edge
                             const y2 = cr.top + cr.height / 2 - gr.top;
