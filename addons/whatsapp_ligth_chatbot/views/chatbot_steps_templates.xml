@@ -53,7 +53,11 @@
                       var w = 920, h = 720;
                       var left = (window.screen.width - w) / 2;
                       var top = (window.screen.height - h) / 2;
-                      var ctx = JSON.stringify({ default_parent_id: parentStepId, default_chatbot_id: chatbotId });
+                      // Pass default chatbot and the step (this card) as parent so the new form is prepopulated
+                      var ctx = JSON.stringify({
+                        default_chatbot_id: chatbotId,
+                        default_parent_id: parentStepId
+                      });
                       var url = '/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;context=' + encodeURIComponent(ctx);
                       window.open(url, 'bb-step-form-new', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
                     }
