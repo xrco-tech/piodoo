@@ -68,6 +68,12 @@ const HAS_DEFAULTS =
     Object.keys(INITIAL_URL_DEFAULTS).length > 0 ||
     Object.keys(INITIAL_LEGACY_PARAMS).length > 0;
 
+// Log initial capture
+console.log('[url_default_values] Module loaded. URL:', window.location.href);
+console.log('[url_default_values] Captured defaults:', INITIAL_URL_DEFAULTS);
+console.log('[url_default_values] Captured legacy params:', INITIAL_LEGACY_PARAMS);
+console.log('[url_default_values] Has defaults:', HAS_DEFAULTS);
+
 // ---------------------------------------------------------------------------
 // Step 2 – Patch the action service to inject defaults into form contexts.
 // ---------------------------------------------------------------------------
@@ -124,7 +130,16 @@ if (HAS_DEFAULTS) {
             extraContext.params = { ...INITIAL_LEGACY_PARAMS };
         }
 
+        console.log('[url_default_values] Injecting defaults into action:', {
+            model: action.res_model || action.type,
+            res_id: action.res_id,
+            extraContext: extraContext,
+            originalContext: action.context,
+        });
+
         action.context = Object.assign({}, action.context || {}, extraContext);
+        
+        console.log('[url_default_values] Final action context:', action.context);
         return action;
     }
 
@@ -133,17 +148,30 @@ if (HAS_DEFAULTS) {
     registry.category("services").add("url_default_values", {
         dependencies: ["action"],
         async start(env, { action: actionService }) {
+            console.log('[url_default_values] Service starting, patching action service');
             const originalDoAction = actionService.doAction.bind(actionService);
 
             patch(actionService, {
                 async doAction(actionRequest, options = {}) {
+                    console.log('[url_default_values] doAction called:', {
+                        type: actionRequest?.type,
+                        res_model: actionRequest?.res_model,
+                        res_id: actionRequest?.res_id,
+                        view_type: actionRequest?.view_type,
+                        options_viewType: options?.viewType,
+                    });
+
                     // Only inject for new-record form actions.
-                    if (isNewRecordAction(actionRequest, options)) {
+                    const isNew = isNewRecordAction(actionRequest, options);
+                    console.log('[url_default_values] Is new record action:', isNew);
+
+                    if (isNew) {
                         injectDefaultsIntoAction(actionRequest);
                     }
                     return originalDoAction(actionRequest, options);
                 },
             });
+            console.log('[url_default_values] Action service patched successfully');
         },
     });
 }
@@ -164,10 +192,19 @@ if (HAS_DEFAULTS) {
 registry.category("services").add("url_defaults_router_bridge", {
     dependencies: [],
     start(env) {
-        if (!HAS_DEFAULTS) return;
+        console.log('[url_default_values] Router bridge starting, HAS_DEFAULTS:', HAS_DEFAULTS);
+        if (!HAS_DEFAULTS) {
+            console.log('[url_default_values] No defaults found, skipping router bridge');
+            return;
+        }
 
         const router = env.services.router;
-        if (!router) return;
+        if (!router) {
+            console.log('[url_default_values] Router service not available');
+            return;
+        }
+
+        console.log('[url_default_values] Router service found, injecting defaults into router state');
 
         // Odoo 17/18 router exposes `current` with `search` (query params).
         // Inject our defaults into the router's current state so action
@@ -175,12 +212,17 @@ registry.category("services").add("url_defaults_router_bridge", {
         try {
             if (router.current) {
                 const currentSearch = router.current.search || {};
+                console.log('[url_default_values] Current router search before:', currentSearch);
                 for (const [field, value] of Object.entries(INITIAL_URL_DEFAULTS)) {
                     currentSearch[`default_${field}`] = value;
                 }
                 router.current.search = currentSearch;
+                console.log('[url_default_values] Current router search after:', router.current.search);
+            } else {
+                console.log('[url_default_values] Router.current is not available');
             }
-        } catch {
+        } catch (error) {
+            console.error('[url_default_values] Error in router bridge:', error);
             // Non-fatal – primary mechanism handles this case
         }
     },
