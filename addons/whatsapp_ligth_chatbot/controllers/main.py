@@ -260,21 +260,22 @@ class WhatsAppChatbotController(http.Controller):
     def chatbot_step_new(self, chatbot_id, parent_id, **kw):
         """
         Redirect to the new step form with default_chatbot_id and default_parent_id
-        in context so the form is prepopulated when opened (e.g. from the flow view + button).
+        as URL query parameters (compatible with url_default_values module).
+        The query params must be in window.location.search (not hash) for the module to capture them.
         """
         try:
             chatbot_id = int(chatbot_id)
             parent_id = int(parent_id)
         except (TypeError, ValueError):
             return request.redirect('/web')
-        import json
-        from urllib.parse import quote
-        ctx = json.dumps({
+        from urllib.parse import urlencode
+        # Put params in query string (not hash) so url_default_values.js can capture from window.location.search
+        params = urlencode({
             'default_chatbot_id': chatbot_id,
             'default_parent_id': parent_id,
         })
-        hash_part = f"model=whatsapp.chatbot.step&view_type=form&context={quote(ctx)}"
-        return request.redirect(f'/web#{hash_part}')
+        # Format: /web?default_chatbot_id=1&default_parent_id=2#model=whatsapp.chatbot.step&view_type=form
+        return request.redirect(f'/web?{params}#model=whatsapp.chatbot.step&view_type=form')
 
     @http.route('/chatbot/step/<int:step_id>/delete', type='http', auth='user', methods=['POST'], csrf=True)
     def chatbot_step_delete(self, step_id, **kw):
