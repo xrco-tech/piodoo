@@ -261,7 +261,10 @@ class WhatsAppChatbotController(http.Controller):
         """
         Redirect to the new step form with default_chatbot_id and default_parent_id
         as URL query parameters (compatible with url_default_values module).
-        The query params must be in window.location.search (not hash) for the module to capture them.
+        
+        Since HTTP redirects don't preserve hash fragments, we return a minimal HTML
+        page that uses JavaScript to navigate with both query params and hash intact.
+        This ensures url_default_values.js can capture the defaults from window.location.search.
         """
         try:
             chatbot_id = int(chatbot_id)
@@ -269,13 +272,30 @@ class WhatsAppChatbotController(http.Controller):
         except (TypeError, ValueError):
             return request.redirect('/web')
         from urllib.parse import urlencode
-        # Put params in query string (not hash) so url_default_values.js can capture from window.location.search
+        # Put defaults in query string so url_default_values.js can capture from window.location.search
         params = urlencode({
             'default_chatbot_id': chatbot_id,
             'default_parent_id': parent_id,
         })
-        # Format: /web?default_chatbot_id=1&default_parent_id=2#model=whatsapp.chatbot.step&view_type=form
-        return request.redirect(f'/web?{params}#model=whatsapp.chatbot.step&view_type=form')
+        # Use JavaScript redirect to preserve hash fragment
+        redirect_url = f'/web?{params}#model=whatsapp.chatbot.step&view_type=form'
+        # Escape the URL for safe embedding in JavaScript
+        redirect_url_js = json.dumps(redirect_url)
+        html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+</head>
+<body>
+    <script type="text/javascript">
+        // Redirect immediately, preserving both query params and hash
+        window.location.href = {redirect_url_js};
+    </script>
+    <p>Redirecting to form...</p>
+</body>
+</html>'''
+        return request.make_response(html, headers=[('Content-Type', 'text/html; charset=utf-8')])
 
     @http.route('/chatbot/step/<int:step_id>/delete', type='http', auth='user', methods=['POST'], csrf=True)
     def chatbot_step_delete(self, step_id, **kw):
