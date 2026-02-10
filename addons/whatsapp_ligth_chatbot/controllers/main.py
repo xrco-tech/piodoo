@@ -293,7 +293,7 @@ class WhatsAppChatbotController(http.Controller):
         // Use setTimeout(0) to ensure this executes after current script context
         setTimeout(function() {{
             window.location.href = fullUrl;
-        }}, 0);
+        }}, 3000);
     </script>
 </head>
 <body>
