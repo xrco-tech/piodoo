@@ -57,7 +57,8 @@
                       var pathname = window.location.pathname || '';
                       var base = (pathname.indexOf('/chatbot/') >= 0) ? pathname.replace(/\/chatbot\/.*$/, '') : '';
                       var url = base + '/chatbot/step/new?chatbot_id=' + encodeURIComponent(chatbotId) + '&amp;parent_id=' + encodeURIComponent(parentStepId);
-                      window.open(url, 'bb-step-form-new', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
+                      //window.open(url, 'bb-step-form-new', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
+                      window.location.href = url;
                     }
               
                     // ---- flow view ----
