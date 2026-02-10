@@ -350,8 +350,23 @@ class WhatsAppChatbotController(http.Controller):
 
 
 def _preview_html(step):
-    """Take body_html or body_plain and sanitize it for safe embed."""
+    """Take body_html or body_plain, convert markdown formatting to HTML, and sanitize for safe embed."""
+    import re
     src = step.body_html or step.body_plain or ''
-    # Remove scripts/css, keep safe tags/attrs
-    return html_sanitize(src or '')
+    if not src:
+        return ''
+    
+    # Convert markdown-style formatting to HTML before sanitizing
+    # Handle bold (*text*) - must be done before italic to avoid conflicts
+    # Match asterisk with content (not newlines to avoid breaking blockquotes)
+    src = re.sub(r'\*([^*\n]+)\*', r'<strong>\1</strong>', src)
+    
+    # Handle italic (_text_) - match underscore with content
+    src = re.sub(r'_([^_\n]+)_', r'<em>\1</em>', src)
+    
+    # Convert newlines to <br/> tags for proper display
+    src = src.replace('\n', '<br/>')
+    
+    # Remove scripts/css, keep safe tags/attrs (including <strong>, <em>, <br/>)
+    return html_sanitize(src)
 
