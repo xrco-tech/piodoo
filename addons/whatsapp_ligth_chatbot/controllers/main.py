@@ -277,10 +277,13 @@ class WhatsAppChatbotController(http.Controller):
             'default_chatbot_id': chatbot_id,
             'default_parent_id': parent_id,
         })
+        _logger.info(f"Redirecting to form with params: {params}")
         # Use JavaScript redirect to preserve hash fragment
         redirect_url = f'/web?{params}#model=whatsapp.chatbot.step&view_type=form'
         # Escape the URL for safe embedding in JavaScript
+        _logger.info(f"Redirecting to form with URL: {redirect_url}")
         redirect_url_js = json.dumps(redirect_url)
+        _logger.info(f"Redirecting to form with URL JS: {redirect_url_js}")
         html = f'''<!DOCTYPE html>
 <html>
 <head>
