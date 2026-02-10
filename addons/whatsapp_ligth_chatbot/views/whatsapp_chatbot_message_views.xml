@@ -19,9 +19,7 @@
                         
                         <!-- Timestamp -->
                         <span style="position: absolute; bottom: 4px; right: 4px; font-size: 11px; padding: 2px 4px; color: rgba(0,0,0,0.5); pointer-events: none;" area-hidden="true">
-                            <t t-if="create_date">
-                                <t t-out="create_date.strftime('%H:%M') if hasattr(create_date, 'strftime') else create_date"/>
-                            </t>
+                            <t t-out="timestamp or ''"/>
                         </span>
                     </div>
                 </div>
@@ -46,9 +44,7 @@
                         
                         <!-- Timestamp -->
                         <span style="position: absolute; bottom: 4px; right: 4px; font-size: 11px; padding: 2px 4px; color: rgba(255,255,255,0.7); pointer-events: none;" area-hidden="true">
-                            <t t-if="create_date">
-                                <t t-out="create_date.strftime('%H:%M') if hasattr(create_date, 'strftime') else create_date"/>
-                            </t>
+                            <t t-out="timestamp or ''"/>
                         </span>
                     </div>
                 </div>

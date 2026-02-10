@@ -126,11 +126,22 @@ class WhatsAppChatbotMessage(models.Model):
                     # Format plain text
                     message_body = self._format_whatsapp_text(message_plain)
                 
+                # Format timestamp for display
+                timestamp_str = ''
+                if record.create_date:
+                    try:
+                        # Format as HH:MM
+                        timestamp_str = record.create_date.strftime('%H:%M')
+                    except (AttributeError, ValueError):
+                        # Fallback if create_date is not a datetime
+                        timestamp_str = str(record.create_date) if record.create_date else ''
+                
                 # Render preview using QWeb template
                 preview = self.env['ir.ui.view']._render_template(template_name, {
                     'message_body': message_body,
                     'message_plain': message_plain,
-                    'create_date': record.create_date,
+                    'timestamp': timestamp_str,
+                    'create_date': record.create_date,  # Keep for backward compatibility
                     'type': record.type,
                 })
                 
