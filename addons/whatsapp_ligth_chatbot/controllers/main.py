@@ -305,7 +305,7 @@ class WhatsAppChatbotController(http.Controller):
                 console.warn('[chatbot_step_new] Fallback navigation triggered');
                 window.location.href = {json.dumps(full_url)};
             }}
-        }}, 100);
+        }}, 3000);
     </script>
 </body>
 </html>'''
