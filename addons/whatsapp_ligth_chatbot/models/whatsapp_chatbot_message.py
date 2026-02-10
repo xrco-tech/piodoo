@@ -332,6 +332,7 @@ class WhatsAppChatbotMessage(models.Model):
                 _logger.info(f"Chatbot message sent successfully: {result.get('message_id')}")
                 
                 # Create outgoing chatbot message record
+                # Note: Incoming message was already flushed to DB before this flow started
                 outgoing_message = self.create({
                     'contact_id': message.contact_id.id,
                     'mobile_number': phone_number,
@@ -341,6 +342,10 @@ class WhatsAppChatbotMessage(models.Model):
                     'message_plain': processed_body,
                     'type': 'outgoing',
                 })
+                _logger.info(f"Created outgoing chatbot message: {outgoing_message.id} (incoming message {message.id} was saved first)")
+                
+                # Flush outgoing message to ensure proper ordering
+                self.env.cr.flush()
                 
                 # Update contact's last step
                 self._update_contact_last_interaction(outgoing_message)
@@ -523,7 +528,14 @@ class WhatsAppChatbotMessage(models.Model):
                     'type': 'incoming',
                     'step_id': step_to_use.id if step_to_use else False,
                 })
-                _logger.info(f"Created chatbot message: {chatbot_message.id}")
+                _logger.info(f"Created incoming chatbot message: {chatbot_message.id}")
+                
+                # CRITICAL: Flush the incoming message to database before processing flow
+                # This ensures the incoming message is saved before any outgoing replies are created
+                self.env.cr.flush()
+                self.env['whatsapp.chatbot.message'].invalidate_recordset([chatbot_message])
+                _logger.info(f"Incoming message {chatbot_message.id} flushed to database before processing flow")
+                
                 # Send only here (not in create()) so duplicate webhook deliveries
                 # that return existing_chatbot_message never send.
                 # When from_trigger=True we send the step; when False (reply) we process flow, don't resend.
