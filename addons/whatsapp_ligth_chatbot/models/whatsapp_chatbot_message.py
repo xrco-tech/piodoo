@@ -27,6 +27,7 @@ class WhatsAppChatbotMessage(models.Model):
     
     message_plain = fields.Char(string="Plain Message", tracking=True)
     message_html = fields.Html(string="HTML Message", tracking=True)
+    message_formatted_html = fields.Html(string="Formatted HTML Message", compute='_compute_message_formatted_html', sanitize=False, store=False)
     message_preview_html = fields.Html(string='Message Preview', compute='_compute_message_preview_html', sanitize=False)
     
     user_chatbot_answer_id = fields.Many2one("whatsapp.chatbot.answer", string="User's Chatbot Answer", tracking=True)
@@ -99,6 +100,25 @@ class WhatsAppChatbotMessage(models.Model):
         text = re.sub(r'_([^_\n]+)_', r'<em>\1</em>', text)
         
         return Markup(text)
+    
+    @api.depends('message_html', 'message_plain')
+    def _compute_message_formatted_html(self):
+        """Compute formatted HTML version of message for display in form view"""
+        for record in self:
+            if record.message_html:
+                # Check if message_html is already HTML (contains tags) or plain text
+                html_content = str(record.message_html)
+                if '<' in html_content and '>' in html_content:
+                    # Already HTML, use as-is
+                    record.message_formatted_html = Markup(html_content)
+                else:
+                    # Plain text in HTML field, format it
+                    record.message_formatted_html = self._format_whatsapp_text(html_content)
+            elif record.message_plain:
+                # Format plain text
+                record.message_formatted_html = self._format_whatsapp_text(record.message_plain)
+            else:
+                record.message_formatted_html = False
     
     @api.depends('message_html', 'message_plain', 'type', 'create_date')
     def _compute_message_preview_html(self):
