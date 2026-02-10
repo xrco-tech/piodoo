@@ -53,12 +53,53 @@
                       var w = 920, h = 720;
                       var left = (window.screen.width - w) / 2;
                       var top = (window.screen.height - h) / 2;
-                      // Use same base path as current page (e.g. /odoo) so the route hits our controller
+                      // Construct the data payload
+                      var data = {
+                        chatbot_id: chatbotId,
+                        parent_id: parentStepId,
+                        name: "New Step"
+                      };
+                      // Get same base path as current page (e.g. /odoo) so the route hits our controller
                       var pathname = window.location.pathname || '';
                       var base = (pathname.indexOf('/chatbot/') >= 0) ? pathname.replace(/\/chatbot\/.*$/, '') : '';
-                      var url = base + '/chatbot/step/new?chatbot_id=' + encodeURIComponent(chatbotId) + '&amp;parent_id=' + encodeURIComponent(parentStepId);
-                      //window.open(url, 'bb-step-form-new', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
-                      window.location.href = url;
+                      var createUrl = base + '/web/dataset/call_kw/whatsapp.chatbot.step/create';
+                      // Odoo expects POST JSON-RPC: {"model": ..., "method":"create", ...}
+                      var payload = {
+                        "jsonrpc": "2.0",
+                        "method": "call",
+                        "params": {
+                          "model": "whatsapp.chatbot.step",
+                          "method": "create",
+                          "args": [data],
+                          "kwargs": {}
+                        },
+                        // NOTE: The "id" field is required by Odoo's JSON-RPC protocol, but its value can be arbitrary.
+                        // It is used by the client/server to match requests and responses, but does not impact model data.
+                        "id": Math.floor(Math.random()*99999999)
+                      };
+                      fetch(createUrl, {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: {
+                          "Content-Type": "application/json",
+                          "X-Requested-With": "XMLHttpRequest",
+                          "X-CSRFToken": csrfToken || ""
+                        },
+                        body: JSON.stringify(payload)
+                      })
+                        .then(function(response){ return response.json(); })
+                        .then(function(result){
+                          var stepId = (result &amp;&amp; result.result) ? result.result : false;
+                          if (stepId) {
+                            var url = '/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;id=' + stepId;
+                            window.open(url, 'bb-step-form-' + stepId, 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
+                          } else {
+                            alert('Failed to create step: ' + (result &amp;&amp; result.error &amp;&amp; result.error.message || "Unknown error."));
+                          }
+                        })
+                        .catch(function(error){
+                          alert('Failed to create step (network error): ' + error);
+                        });
                     }
               
                     // ---- flow view ----
