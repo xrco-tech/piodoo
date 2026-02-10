@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import re
 from odoo import api, models, fields, _
 from odoo.exceptions import UserError
 from markupsafe import Markup
@@ -26,6 +27,7 @@ class WhatsAppChatbotMessage(models.Model):
     
     message_plain = fields.Char(string="Plain Message", tracking=True)
     message_html = fields.Html(string="HTML Message", tracking=True)
+    message_preview_html = fields.Html(string='Message Preview', compute='_compute_message_preview_html', sanitize=False)
     
     user_chatbot_answer_id = fields.Many2one("whatsapp.chatbot.answer", string="User's Chatbot Answer", tracking=True)
     
@@ -44,6 +46,99 @@ class WhatsAppChatbotMessage(models.Model):
         ('audio', 'Audio'),
     ], string="Attachment Type")
 
+    def _format_whatsapp_text(self, text):
+        """
+        Format WhatsApp text with styling markers to HTML.
+        WhatsApp formatting:
+        - *text* for bold
+        - _text_ for italic
+        - ~text~ for strikethrough
+        - ```text``` for monospace
+        - > text for blockquotes (at start of line)
+        """
+        if not text:
+            return ''
+        
+        text = str(text)
+        
+        # Handle blockquotes first (lines starting with >)
+        # Split by newlines, process each line
+        lines = text.split('\n')
+        formatted_lines = []
+        for line in lines:
+            stripped = line.lstrip()
+            if stripped.startswith('>'):
+                # Blockquote line - remove > and format
+                quote_text = stripped[1:].strip()
+                # Escape the quote text using Markup.escape() class method
+                quote_text = Markup.escape(quote_text)
+                formatted_lines.append(f'<div style="border-left: 3px solid #075E54; padding-left: 8px; margin: 4px 0; color: #666;">{quote_text}</div>')
+            else:
+                formatted_lines.append(line)
+        text = '\n'.join(formatted_lines)
+        
+        # Escape HTML to prevent XSS using Markup.escape() class method
+        text = Markup.escape(text)
+        text = str(text)
+        
+        # Convert newlines to <br>
+        text = text.replace('\n', '<br/>')
+        
+        # Handle monospace (```text```) - must be done before other formatting
+        # Match triple backticks with content (non-greedy)
+        text = re.sub(r'```([^`]+)```', r'<code style="background-color: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">\1</code>', text)
+        
+        # Handle strikethrough (~text~) - match tilde with content
+        text = re.sub(r'~([^~\n]+)~', r'<span style="text-decoration: line-through;">\1</span>', text)
+        
+        # Handle bold (*text*) - must be done before italic to avoid conflicts
+        # Match asterisk with content (not newlines to avoid breaking blockquotes)
+        text = re.sub(r'\*([^*\n]+)\*', r'<strong>\1</strong>', text)
+        
+        # Handle italic (_text_) - match underscore with content
+        text = re.sub(r'_([^_\n]+)_', r'<em>\1</em>', text)
+        
+        return Markup(text)
+    
+    @api.depends('message_html', 'message_plain', 'type', 'create_date')
+    def _compute_message_preview_html(self):
+        """Compute HTML preview of the message using QWeb template"""
+        for record in self:
+            try:
+                # Choose template based on message direction
+                template_name = 'whatsapp_ligth_chatbot.chatbot_message_preview_received' if record.type == 'incoming' else 'whatsapp_ligth_chatbot.chatbot_message_preview'
+                
+                # Get message content - prefer plain text for formatting, fallback to HTML
+                # If message_html exists and contains HTML tags, use it directly; otherwise format plain text
+                message_body = ''
+                message_plain = record.message_plain or ''
+                
+                if record.message_html:
+                    # Check if message_html is already HTML (contains tags) or plain text
+                    html_content = str(record.message_html)
+                    if '<' in html_content and '>' in html_content:
+                        # Already HTML, use as-is
+                        message_body = Markup(html_content)
+                    else:
+                        # Plain text in HTML field, format it
+                        message_body = self._format_whatsapp_text(html_content)
+                elif message_plain:
+                    # Format plain text
+                    message_body = self._format_whatsapp_text(message_plain)
+                
+                # Render preview using QWeb template
+                preview = self.env['ir.ui.view']._render_template(template_name, {
+                    'message_body': message_body,
+                    'message_plain': message_plain,
+                    'create_date': record.create_date,
+                    'type': record.type,
+                })
+                
+                record.message_preview_html = preview.decode('utf-8') if isinstance(preview, bytes) else preview
+            except Exception as e:
+                _logger.error(f"Error rendering chatbot message preview: {e}", exc_info=True)
+                record.message_preview_html = f'<div style="color: red;">Error rendering preview: {str(e)}</div>'
+    
     @api.depends('message_html')
     def _compute_display_name(self):
         for record in self:

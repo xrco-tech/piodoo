@@ -1,6 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- WhatsApp Chatbot Message Preview Template (Outgoing/Sent) -->
+        <template id="chatbot_message_preview" t-name="Chatbot Message Preview">
+            <div class="o_whatsapp_preview" style="max-width: 100%; overflow: hidden; padding-left: 12px; padding-right: 20px;">
+                <div class="o_whatsapp_message" style="margin-top: 8px; margin-bottom: 4px; font-size: 14px; line-height: 1.2; float: left; word-break: break-word; color: #000; position: relative; background-color: #ffffff; border-radius: 7.5px; padding: 8px; max-width: 85%; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);">
+                    <div class="o_whatsapp_message_core" style="position: relative;">
+                        <!-- Message Body -->
+                        <div class="o_whatsapp_message_body" 
+                             style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35;">
+                            <t t-if="message_body">
+                                <t t-raw="message_body"/>
+                            </t>
+                            <t t-else="">
+                                <t t-out="message_plain or 'No message content'"/>
+                            </t>
+                        </div>
+                        
+                        <!-- Timestamp -->
+                        <span style="position: absolute; bottom: 4px; right: 4px; font-size: 11px; padding: 2px 4px; color: rgba(0,0,0,0.5); pointer-events: none;" area-hidden="true">
+                            <t t-if="create_date">
+                                <t t-out="create_date.strftime('%H:%M') if hasattr(create_date, 'strftime') else create_date"/>
+                            </t>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- WhatsApp Chatbot Message Preview Template (Received/Incoming) -->
+        <template id="chatbot_message_preview_received" t-name="Chatbot Message Preview Received">
+            <div class="o_whatsapp_preview" style="max-width: 100%; overflow: hidden; padding-left: 20px; padding-right: 12px;">
+                <div class="o_whatsapp_message sent" style="margin-top: 8px; margin-bottom: 4px; font-size: 14px; line-height: 1.2; float: right; word-break: break-word; color: #fff; position: relative; background-color: #075E54; min-width: 100px; border-radius: 7.5px; padding: 8px; max-width: 85%; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);">
+                    <div class="o_whatsapp_message_core" style="position: relative;">
+                        <!-- Message Body -->
+                        <div class="o_whatsapp_message_body" 
+                             style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
+                            <t t-if="message_body">
+                                <t t-raw="message_body"/>
+                            </t>
+                            <t t-else="">
+                                <t t-out="message_plain or 'No message content'"/>
+                            </t>
+                        </div>
+                        
+                        <!-- Timestamp -->
+                        <span style="position: absolute; bottom: 4px; right: 4px; font-size: 11px; padding: 2px 4px; color: rgba(255,255,255,0.7); pointer-events: none;" area-hidden="true">
+                            <t t-if="create_date">
+                                <t t-out="create_date.strftime('%H:%M') if hasattr(create_date, 'strftime') else create_date"/>
+                            </t>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </template>
+
         <!-- WhatsApp Chatbot Message Search View -->
         <record id="view_whatsapp_chatbot_message_search" model="ir.ui.view">
             <field name="name">whatsapp.chatbot.message.search</field>
@@ -27,7 +81,8 @@
                     <field name="contact_id"/>
                     <field name="chatbot_id"/>
                     <field name="step_id"/>
-                    <field name="message_html" widget="html"/>
+                    <field name="message_preview_html" widget="html" optional="show" string="Preview"/>
+                    <field name="message_plain" widget="text" optional="hide"/>
                     <field name="create_date" widget="datetime"/>
                 </list>
             </field>
@@ -54,9 +109,22 @@
                             </group>
                         </group>
                         
-                        <group>
-                            <field name="message_html" widget="html" nolabel="1"/>
-                        </group>
+                        <notebook>
+                            <page string="Message Preview" name="preview">
+                                <group>
+                                    <field name="message_preview_html" widget="html" nolabel="1"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Message Content" name="content">
+                                <group>
+                                    <field name="message_html" widget="html" nolabel="1" placeholder="Message content will appear here..."/>
+                                </group>
+                                <group>
+                                    <field name="message_plain" widget="text" nolabel="1" placeholder="Plain text message..."/>
+                                </group>
+                            </page>
+                        </notebook>
                         
                         <group string="Attachment" invisible="not attachment_id">
                             <field name="attachment_id"/>
