@@ -300,12 +300,12 @@ class WhatsAppChatbotController(http.Controller):
     <p>Redirecting to form...</p>
     <script type="text/javascript">
         // Fallback: if still on this page after 100ms, force navigation
-        setTimeout(function() {{
+        /*setTimeout(function() {{
             if (window.location.pathname === '/chatbot/step/new') {{
                 console.warn('[chatbot_step_new] Fallback navigation triggered');
                 window.location.href = {json.dumps(full_url)};
             }}
-        }}, 3000);
+        }}, 3000);*/
     </script>
 </body>
 </html>'''
