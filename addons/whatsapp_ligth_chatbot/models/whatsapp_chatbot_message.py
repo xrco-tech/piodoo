@@ -532,8 +532,7 @@ class WhatsAppChatbotMessage(models.Model):
                 
                 # CRITICAL: Flush the incoming message to database before processing flow
                 # This ensures the incoming message is saved before any outgoing replies are created
-                self.env.cr.flush()
-                self.env['whatsapp.chatbot.message'].invalidate_recordset([chatbot_message])
+                chatbot_message.flush_recordset()
                 _logger.info(f"Incoming message {chatbot_message.id} flushed to database before processing flow")
                 
                 # Send only here (not in create()) so duplicate webhook deliveries
