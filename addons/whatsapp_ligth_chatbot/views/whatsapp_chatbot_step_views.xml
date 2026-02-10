@@ -65,7 +65,10 @@
                                 <group>
                                     <group string="Body">
                                         <field name="body_plain" widget="text" nolabel="1" placeholder="Enter message body..."/>
-                                        <field name="body_html" widget="html" nolabel="1" readonly="1" invisible="not body_html"/>
+                                        <div class="alert alert-info" role="alert" invisible="not body_plain">
+                                            <p><strong>Preview:</strong> Markdown formatting (*bold*, _italic_, ~strikethrough~, ```code```) will be applied in the message.</p>
+                                        </div>
+                                        <field name="body_html" widget="html" nolabel="1" readonly="1" invisible="not body_plain" string="Formatted Preview"/>
                                     </group>
                                 </group>
                                 

@@ -6,6 +6,7 @@ import json
 from odoo import api, models, fields, _
 from odoo.exceptions import ValidationError
 from lxml import etree
+from markupsafe import Markup
 
 _logger = logging.getLogger(__name__)
 
@@ -157,13 +158,67 @@ class WhatsAppChatbotStep(models.Model):
             else:
                 rec.hierarchy_level = 0
 
+    def _format_whatsapp_text(self, text):
+        """
+        Format WhatsApp text with styling markers to HTML.
+        WhatsApp formatting:
+        - *text* for bold
+        - _text_ for italic
+        - ~text~ for strikethrough
+        - ```text``` for monospace
+        - > text for blockquotes (at start of line)
+        """
+        if not text:
+            return ''
+        
+        text = str(text)
+        
+        # Handle blockquotes first (lines starting with >)
+        # Split by newlines, process each line
+        lines = text.split('\n')
+        formatted_lines = []
+        for line in lines:
+            stripped = line.lstrip()
+            if stripped.startswith('>'):
+                # Blockquote line - remove > and format
+                quote_text = stripped[1:].strip()
+                # Escape the quote text using Markup.escape() class method
+                quote_text = Markup.escape(quote_text)
+                formatted_lines.append(f'<div style="border-left: 3px solid #075E54; padding-left: 8px; margin: 4px 0; color: #666;">{quote_text}</div>')
+            else:
+                formatted_lines.append(line)
+        text = '\n'.join(formatted_lines)
+        
+        # Escape HTML to prevent XSS using Markup.escape() class method
+        text = Markup.escape(text)
+        text = str(text)
+        
+        # Convert newlines to <br>
+        text = text.replace('\n', '<br/>')
+        
+        # Handle monospace (```text```) - must be done before other formatting
+        # Match triple backticks with content (non-greedy)
+        text = re.sub(r'```([^`]+)```', r'<code style="background-color: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">\1</code>', text)
+        
+        # Handle strikethrough (~text~) - match tilde with content
+        text = re.sub(r'~([^~\n]+)~', r'<span style="text-decoration: line-through;">\1</span>', text)
+        
+        # Handle bold (*text*) - must be done before italic to avoid conflicts
+        # Match asterisk with content (not newlines to avoid breaking blockquotes)
+        text = re.sub(r'\*([^*\n]+)\*', r'<strong>\1</strong>', text)
+        
+        # Handle italic (_text_) - match underscore with content
+        text = re.sub(r'_([^_\n]+)_', r'<em>\1</em>', text)
+        
+        return Markup(text)
+    
     @api.depends('body_plain')
     def _compute_body_html(self):
-        """Convert plain text body to HTML"""
+        """Convert plain text body to HTML with markdown formatting"""
         for rec in self:
             if rec.body_plain:
-                # Simple conversion: preserve line breaks
-                rec.body_html = rec.body_plain.replace('\n', '<br/>')
+                # Format markdown and convert to HTML
+                rec.body_html = self._format_whatsapp_text(rec.body_plain)
             else:
                 rec.body_html = False
 
