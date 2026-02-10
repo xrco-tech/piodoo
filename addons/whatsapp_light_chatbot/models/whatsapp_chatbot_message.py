@@ -22,7 +22,7 @@ class WhatsAppChatbotMessage(models.Model):
     # Make chatbot_id a regular Many2one instead of a related field so it's always available
     chatbot_id = fields.Many2one("whatsapp.chatbot", string="Chatbot", required=True, tracking=True)
     
-    # Link to whatsapp_ligth message
+    # Link to whatsapp_light message
     wa_message_id = fields.Many2one("whatsapp.message", string="Related WhatsApp Message", tracking=True)
     
     message_plain = fields.Char(string="Plain Message", tracking=True)
@@ -126,7 +126,7 @@ class WhatsAppChatbotMessage(models.Model):
         for record in self:
             try:
                 # Choose template based on message direction
-                template_name = 'whatsapp_ligth_chatbot.chatbot_message_preview_received' if record.type == 'incoming' else 'whatsapp_ligth_chatbot.chatbot_message_preview'
+                template_name = 'whatsapp_light_chatbot.chatbot_message_preview_received' if record.type == 'incoming' else 'whatsapp_light_chatbot.chatbot_message_preview'
                 
                 # Get message content - prefer plain text for formatting, fallback to HTML
                 # If message_html exists and contains HTML tags, use it directly; otherwise format plain text

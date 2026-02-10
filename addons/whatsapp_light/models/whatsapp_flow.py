@@ -83,9 +83,9 @@ class WhatsAppFlow(models.Model):
         try:
             # Get access token and business account ID
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('whatsapp_ligth.business_account_id')
+            access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_light.long_lived_token')
+            business_account_id = IrConfigParameter.get_param('whatsapp_light.business_account_id')
             
             if not access_token:
                 return {
@@ -231,9 +231,9 @@ class WhatsAppFlow(models.Model):
         
         try:
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('whatsapp_ligth.business_account_id')
+            access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_light.long_lived_token')
+            business_account_id = IrConfigParameter.get_param('whatsapp_light.business_account_id')
             
             if not access_token or not business_account_id:
                 return {
@@ -447,8 +447,8 @@ class WhatsAppFlow(models.Model):
         Get flow details from Meta API.
         """
         IrConfigParameter = self.env['ir.config_parameter'].sudo()
-        access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                      IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
+        access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                      IrConfigParameter.get_param('whatsapp_light.long_lived_token')
         
         if not access_token:
             raise ValueError('Access token not configured')
@@ -467,8 +467,8 @@ class WhatsAppFlow(models.Model):
         Get flow assets from Meta API.
         """
         IrConfigParameter = self.env['ir.config_parameter'].sudo()
-        access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                      IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
+        access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                      IrConfigParameter.get_param('whatsapp_light.long_lived_token')
         
         if not access_token:
             raise ValueError('Access token not configured')
@@ -501,9 +501,9 @@ class WhatsAppFlow(models.Model):
         """
         try:
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('whatsapp_ligth.business_account_id')
+            access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_light.long_lived_token')
+            business_account_id = IrConfigParameter.get_param('whatsapp_light.business_account_id')
             
             if not access_token or not business_account_id:
                 return {

@@ -28,7 +28,7 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
         if self.env.context.get('default_template_id'):
             template = self.env['whatsapp.template'].browse(self.env.context['default_template_id'])
             res['template_id'] = template.id
-            res['phone_number_id'] = self.env['ir.config_parameter'].sudo().get_param('whatsapp_ligth.phone_number_id')
+            res['phone_number_id'] = self.env['ir.config_parameter'].sudo().get_param('whatsapp_light.phone_number_id')
             
             # Create parameter records for placeholders
             import re
@@ -80,8 +80,8 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
         try:
             # Get access token
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
+            access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_light.long_lived_token')
             
             if not access_token:
                 return {

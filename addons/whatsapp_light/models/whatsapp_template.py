@@ -188,7 +188,7 @@ class WhatsAppTemplate(models.Model):
                 formatted_footer = self._format_whatsapp_text(record.footer or '')
                 
                 # Use ir.ui.view to render the template
-                preview = self.env['ir.ui.view']._render_template('whatsapp_ligth.whatsapp_template_preview', {
+                preview = self.env['ir.ui.view']._render_template('whatsapp_light.whatsapp_template_preview', {
                     'body': formatted_body,
                     'body_raw': record.body or '',  # Keep raw for fallback
                     'header_type': record.header_type or False,
@@ -214,9 +214,9 @@ class WhatsAppTemplate(models.Model):
         try:
             # Get access token and business account ID
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('whatsapp_ligth.business_account_id')
+            access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_light.long_lived_token')
+            business_account_id = IrConfigParameter.get_param('whatsapp_light.business_account_id')
             
             if not access_token:
                 return {
@@ -434,9 +434,9 @@ class WhatsAppTemplate(models.Model):
         """
         try:
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('whatsapp_ligth.business_account_id')
+            access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_light.long_lived_token')
+            business_account_id = IrConfigParameter.get_param('whatsapp_light.business_account_id')
             
             if not access_token or not business_account_id:
                 return {

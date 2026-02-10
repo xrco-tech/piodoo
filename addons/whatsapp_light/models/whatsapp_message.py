@@ -184,7 +184,7 @@ class WhatsAppMessage(models.Model):
         for record in self:
             try:
                 # Choose template based on message direction
-                template_name = 'whatsapp_ligth.whatsapp_message_preview_received' if record.is_incoming else 'whatsapp_ligth.whatsapp_message_preview'
+                template_name = 'whatsapp_light.whatsapp_message_preview_received' if record.is_incoming else 'whatsapp_light.whatsapp_message_preview'
                 
                 # Format message body and caption with WhatsApp styling
                 formatted_body = self._format_whatsapp_text(record.message_body or '')
@@ -237,8 +237,8 @@ class WhatsAppMessage(models.Model):
             
             # Get access token
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
+            access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_light.long_lived_token')
             
             if not access_token:
                 _logger.error("Access token not configured for media download")
@@ -663,8 +663,8 @@ class WhatsAppMessage(models.Model):
             
             # Get access token and phone number ID
             IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('whatsapp_ligth.access_token') or \
-                          IrConfigParameter.get_param('whatsapp_ligth.long_lived_token')
+            access_token = IrConfigParameter.get_param('whatsapp_light.access_token') or \
+                          IrConfigParameter.get_param('whatsapp_light.long_lived_token')
             
             if not access_token:
                 return {
@@ -674,7 +674,7 @@ class WhatsAppMessage(models.Model):
             
             # Use provided phone_number_id or get from config
             if not phone_number_id:
-                phone_number_id = IrConfigParameter.get_param('whatsapp_ligth.phone_number_id')
+                phone_number_id = IrConfigParameter.get_param('whatsapp_light.phone_number_id')
             
             if not phone_number_id:
                 return {

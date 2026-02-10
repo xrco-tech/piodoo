@@ -25,28 +25,28 @@ class WhatsAppAuthController(http.Controller):
         try:
             if error:
                 _logger.error(f"WhatsApp OAuth error: {error} - {error_description}")
-                return request.render('whatsapp_ligth.oauth_error', {
+                return request.render('whatsapp_light.oauth_error', {
                     'error': error,
                     'error_description': error_description
                 })
 
             if not code:
                 _logger.error("WhatsApp OAuth callback received without authorization code")
-                return request.render('whatsapp_ligth.oauth_error', {
+                return request.render('whatsapp_light.oauth_error', {
                     'error': 'missing_code',
                     'error_description': 'Authorization code not provided'
                 })
 
             # Get configuration parameters
             IrConfigParameter = request.env['ir.config_parameter'].sudo()
-            app_id = IrConfigParameter.get_param('whatsapp_ligth.app_id')
-            app_secret = IrConfigParameter.get_param('whatsapp_ligth.app_secret')
-            redirect_uri = IrConfigParameter.get_param('whatsapp_ligth.redirect_uri', 
+            app_id = IrConfigParameter.get_param('whatsapp_light.app_id')
+            app_secret = IrConfigParameter.get_param('whatsapp_light.app_secret')
+            redirect_uri = IrConfigParameter.get_param('whatsapp_light.redirect_uri', 
                                                        request.httprequest.url_root + 'whatsapp/auth/callback')
 
             if not app_id or not app_secret:
                 _logger.error("WhatsApp app credentials not configured")
-                return request.render('whatsapp_ligth.oauth_error', {
+                return request.render('whatsapp_light.oauth_error', {
                     'error': 'configuration_error',
                     'error_description': 'WhatsApp app credentials not configured'
                 })
@@ -65,7 +65,7 @@ class WhatsAppAuthController(http.Controller):
             
             if response.status_code != 200:
                 _logger.error(f"Token exchange failed: {response.status_code} - {response.text}")
-                return request.render('whatsapp_ligth.oauth_error', {
+                return request.render('whatsapp_light.oauth_error', {
                     'error': 'token_exchange_failed',
                     'error_description': response.text
                 })
@@ -75,28 +75,28 @@ class WhatsAppAuthController(http.Controller):
             
             if not access_token:
                 _logger.error(f"No access token in response: {token_data}")
-                return request.render('whatsapp_ligth.oauth_error', {
+                return request.render('whatsapp_light.oauth_error', {
                     'error': 'no_access_token',
                     'error_description': 'Access token not received from Meta'
                 })
 
             # Store access token securely
-            IrConfigParameter.set_param('whatsapp_ligth.access_token', access_token)
+            IrConfigParameter.set_param('whatsapp_light.access_token', access_token)
             
             # Optionally get long-lived token
             long_lived_token = self._get_long_lived_token(access_token, app_id, app_secret)
             if long_lived_token:
-                IrConfigParameter.set_param('whatsapp_ligth.long_lived_token', long_lived_token)
-                IrConfigParameter.set_param('whatsapp_ligth.access_token', long_lived_token)
+                IrConfigParameter.set_param('whatsapp_light.long_lived_token', long_lived_token)
+                IrConfigParameter.set_param('whatsapp_light.access_token', long_lived_token)
 
             _logger.info("WhatsApp authentication successful")
-            return request.render('whatsapp_ligth.oauth_success', {
+            return request.render('whatsapp_light.oauth_success', {
                 'message': 'WhatsApp authentication successful!'
             })
 
         except Exception as e:
             _logger.error(f"Error in WhatsApp OAuth callback: {e}", exc_info=True)
-            return request.render('whatsapp_ligth.oauth_error', {
+            return request.render('whatsapp_light.oauth_error', {
                 'error': 'exception',
                 'error_description': str(e)
             })
@@ -158,7 +158,7 @@ class WhatsAppAuthController(http.Controller):
 
             # Get configured verify token
             IrConfigParameter = request.env['ir.config_parameter'].sudo()
-            verify_token = IrConfigParameter.get_param('whatsapp_ligth.webhook_verify_token')
+            verify_token = IrConfigParameter.get_param('whatsapp_light.webhook_verify_token')
 
             if hub_mode == 'subscribe' and hub_verify_token == verify_token:
                 _logger.info("Webhook verification successful")
@@ -207,9 +207,9 @@ class WhatsAppAuthController(http.Controller):
                     business_account_id = entry.get('id')
                     if business_account_id:
                         IrConfigParameter = request.env['ir.config_parameter'].sudo()
-                        existing_ba_id = IrConfigParameter.get_param('whatsapp_ligth.business_account_id')
+                        existing_ba_id = IrConfigParameter.get_param('whatsapp_light.business_account_id')
                         if not existing_ba_id:
-                            IrConfigParameter.set_param('whatsapp_ligth.business_account_id', business_account_id)
+                            IrConfigParameter.set_param('whatsapp_light.business_account_id', business_account_id)
                             _logger.info(f"Stored business account ID: {business_account_id}")
                     
                     for change in entry.get('changes', []):
@@ -220,9 +220,9 @@ class WhatsAppAuthController(http.Controller):
                         phone_number_id = metadata.get('phone_number_id')
                         if phone_number_id:
                             IrConfigParameter = request.env['ir.config_parameter'].sudo()
-                            existing_pn_id = IrConfigParameter.get_param('whatsapp_ligth.phone_number_id')
+                            existing_pn_id = IrConfigParameter.get_param('whatsapp_light.phone_number_id')
                             if not existing_pn_id:
-                                IrConfigParameter.set_param('whatsapp_ligth.phone_number_id', phone_number_id)
+                                IrConfigParameter.set_param('whatsapp_light.phone_number_id', phone_number_id)
                                 _logger.info(f"Stored phone number ID: {phone_number_id}")
                         
                         if 'messages' in value:
@@ -366,18 +366,18 @@ class WhatsAppAuthController(http.Controller):
         """
         try:
             IrConfigParameter = request.env['ir.config_parameter'].sudo()
-            app_id = IrConfigParameter.get_param('whatsapp_ligth.app_id')
-            redirect_uri = IrConfigParameter.get_param('whatsapp_ligth.redirect_uri')
+            app_id = IrConfigParameter.get_param('whatsapp_light.app_id')
+            redirect_uri = IrConfigParameter.get_param('whatsapp_light.redirect_uri')
             if not redirect_uri:
                 redirect_uri = request.httprequest.url_root + 'whatsapp/auth/callback'
-                IrConfigParameter.set_param('whatsapp_ligth.redirect_uri', redirect_uri)
-            scope = IrConfigParameter.get_param('whatsapp_ligth.scope')
+                IrConfigParameter.set_param('whatsapp_light.redirect_uri', redirect_uri)
+            scope = IrConfigParameter.get_param('whatsapp_light.scope')
             if not scope:
                 scope = 'whatsapp_business_management,whatsapp_business_messaging'
-                IrConfigParameter.set_param('whatsapp_ligth.scope', scope)
+                IrConfigParameter.set_param('whatsapp_light.scope', scope)
 
             if not app_id:
-                return request.render('whatsapp_ligth.config_error', {
+                return request.render('whatsapp_light.config_error', {
                     'message': 'WhatsApp App ID not configured. Please configure it in Settings.'
                 })
 
@@ -404,7 +404,7 @@ class WhatsAppAuthController(http.Controller):
 
         except Exception as e:
             _logger.error(f"Error initiating WhatsApp auth: {e}", exc_info=True)
-            return request.render('whatsapp_ligth.config_error', {
+            return request.render('whatsapp_light.config_error', {
                 'message': f'Error initiating authentication: {str(e)}'
             })
 

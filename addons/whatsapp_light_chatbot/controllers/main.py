@@ -246,7 +246,7 @@ class WhatsAppChatbotController(http.Controller):
                 return nodes
 
             tree = build(0)
-            return request.render('whatsapp_ligth_chatbot.chatbot_steps_tree_page', {
+            return request.render('whatsapp_light_chatbot.chatbot_steps_tree_page', {
                 "chatbot": chatbot,
                 "chatbot_id": chatbot.id,
                 "tree_json": Markup(json.dumps(tree, ensure_ascii=False)),

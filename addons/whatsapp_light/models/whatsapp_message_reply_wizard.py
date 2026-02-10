@@ -29,7 +29,7 @@ class WhatsAppMessageReplyWizard(models.TransientModel):
             phone_number_id = message.phone_number_id
             if not phone_number_id:
                 IrConfigParameter = self.env['ir.config_parameter'].sudo()
-                phone_number_id = IrConfigParameter.get_param('whatsapp_ligth.phone_number_id')
+                phone_number_id = IrConfigParameter.get_param('whatsapp_light.phone_number_id')
             res['phone_number_id'] = phone_number_id
         return res
 

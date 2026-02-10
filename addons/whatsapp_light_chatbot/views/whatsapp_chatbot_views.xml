@@ -131,7 +131,7 @@
         <!-- Menu Items -->
         <menuitem id="menu_whatsapp_chatbots"
                   name="Chatbots"
-                  parent="whatsapp_ligth.menu_whatsapp_root"
+                  parent="whatsapp_light.menu_whatsapp_root"
                   action="action_whatsapp_chatbot"
                   sequence="40"/>
     </data>

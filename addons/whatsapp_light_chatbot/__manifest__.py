@@ -14,7 +14,7 @@ and automate WhatsApp messaging.
     """,
     'author': 'XR Co.',
     'license': 'LGPL-3',
-    'depends': ['base', 'web', 'whatsapp_ligth', 'mail'],
+    'depends': ['base', 'web', 'whatsapp_light', 'mail'],
     'data': [
         'security/ir.model.access.csv',
         'views/whatsapp_chatbot_views.xml',
