@@ -278,24 +278,35 @@ class WhatsAppChatbotController(http.Controller):
             'default_parent_id': parent_id,
         })
         _logger.info(f"Redirecting to form with params: {params}")
-        # Use JavaScript redirect to preserve hash fragment
-        redirect_url = f'/web?{params}#model=whatsapp.chatbot.step&view_type=form'
-        # Escape the URL for safe embedding in JavaScript
-        _logger.info(f"Redirecting to form with URL: {redirect_url}")
-        redirect_url_js = json.dumps(redirect_url)
-        _logger.info(f"Redirecting to form with URL JS: {redirect_url_js}")
+        # Build full URL with both query params and hash in one string
+        full_url = f'/web?{params}#model=whatsapp.chatbot.step&view_type=form'
+        _logger.info(f"Redirecting to form with full URL: {full_url}")
         html = f'''<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <title>Redirecting...</title>
+    <script type="text/javascript">
+        // Navigate to full URL with both query params and hash in one operation
+        var fullUrl = {json.dumps(full_url)};
+        console.log('[chatbot_step_new] Redirecting to:', fullUrl);
+        // Use setTimeout(0) to ensure this executes after current script context
+        setTimeout(function() {{
+            window.location.href = fullUrl;
+        }}, 0);
+    </script>
 </head>
 <body>
-    <script type="text/javascript">
-        // Redirect immediately, preserving both query params and hash
-        window.location.href = {redirect_url_js};
-    </script>
     <p>Redirecting to form...</p>
+    <script type="text/javascript">
+        // Fallback: if still on this page after 100ms, force navigation
+        setTimeout(function() {{
+            if (window.location.pathname === '/chatbot/step/new') {{
+                console.warn('[chatbot_step_new] Fallback navigation triggered');
+                window.location.href = {json.dumps(full_url)};
+            }}
+        }}, 100);
+    </script>
 </body>
 </html>'''
         return request.make_response(html, headers=[('Content-Type', 'text/html; charset=utf-8')])
