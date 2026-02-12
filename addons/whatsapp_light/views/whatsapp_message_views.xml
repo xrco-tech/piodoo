@@ -269,12 +269,10 @@
                             <group>
                                 <field name="contact_name"/>
                                 <field name="phone_number"/>
-                                <field name="wa_id"/>
                                 <field name="message_type"/>
                             </group>
                             <group>
                                 <field name="message_timestamp"/>
-                                <field name="status"/>
                                 <field name="is_incoming"/>
                             </group>
                         </group>
@@ -288,9 +286,6 @@
                             <page string="Message Content" name="content">
                                 <group>
                                     <field name="message_body" widget="text" nolabel="1" placeholder="Message content will appear here..."/>
-                                </group>
-                                <group invisible="message_type != 'text'">
-                                    <field name="text_preview_url" invisible="message_type != 'text'"/>
                                 </group>
                             </page>
                             
