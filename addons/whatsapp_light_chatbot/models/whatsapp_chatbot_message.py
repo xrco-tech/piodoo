@@ -237,10 +237,81 @@ class WhatsAppChatbotMessage(models.Model):
         # Process any follow-up steps if needed
         return message
 
+    def _evaluate_answer_condition(self, answer_record, user_answer):
+        """
+        Evaluate if a user's answer matches an answer condition.
+        Returns True if the condition matches, False otherwise.
+        """
+        if not answer_record or not user_answer:
+            return False
+        
+        operator = answer_record.operator
+        expected_value = answer_record.value or ''
+        user_value = str(user_answer).strip()
+        
+        # Normalize for comparison (case-insensitive for text)
+        if answer_record.answer_data_type == 'text':
+            expected_value = expected_value.upper().strip()
+            user_value = user_value.upper().strip()
+        
+        if operator == 'is_equal_to':
+            return user_value == expected_value
+        elif operator == 'is_not_equal_to':
+            return user_value != expected_value
+        elif operator == 'contains':
+            # Check if user's answer contains the expected value
+            return expected_value in user_value
+        elif operator == 'does_not_contain':
+            # Check if user's answer does NOT contain the expected value
+            return expected_value not in user_value
+        elif operator == 'less_than':
+            try:
+                return float(user_value) < float(expected_value)
+            except (ValueError, TypeError):
+                return False
+        elif operator == 'greater_than':
+            try:
+                return float(user_value) > float(expected_value)
+            except (ValueError, TypeError):
+                return False
+        return False
+    
+    def _find_matching_child_step(self, current_step, user_answer, message=None):
+        """
+        Find the child step that matches the user's answer based on trigger_answer_ids.
+        Returns tuple (matching_step, matched_answer_record) or (None, None) if no match found.
+        """
+        if not current_step or not user_answer:
+            return None, None
+        
+        children = current_step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+        
+        # First, try to find a step with matching trigger_answer_ids
+        # Check steps in sequence order to ensure consistent matching
+        for child_step in children:
+            if child_step.trigger_answer_ids:
+                _logger.debug(f"Checking step '{child_step.name}' (ID: {child_step.id}) with {len(child_step.trigger_answer_ids)} trigger answers")
+                # Check if any trigger answer matches the user's answer
+                # Sort answers by sequence to check in order
+                sorted_answers = child_step.trigger_answer_ids.sorted(key=lambda a: (a.sequence, a.id))
+                for answer_record in sorted_answers:
+                    matches = self._evaluate_answer_condition(answer_record, user_answer)
+                    _logger.debug(f"  Checking answer '{answer_record.value}' (operator: {answer_record.operator}): {matches}")
+                    if matches:
+                        _logger.info(f"Answer '{user_answer}' matched condition '{answer_record.display_name}' for step '{child_step.name}' (ID: {child_step.id})")
+                        # Store the matched answer in the message if provided
+                        if message:
+                            message.user_chatbot_answer_id = answer_record.id
+                        return child_step, answer_record
+        
+        # If no step has trigger_answer_ids or no match found, return None
+        # (caller will fall back to first child)
+        return None, None
+    
     def _process_chatbot_flow(self, message, depth=0, visited_steps=None):
         """
-        Process user reply: advance to next step (first child by sequence) and send it.
-        For question_text / message steps, any reply goes to the first child step.
+        Process user reply: match user's answer to child steps based on trigger_answer_ids,
+        or fall back to first child by sequence if no match.
         """
         if depth > MAX_RECURSION_DEPTH:
             _logger.warning("Max recursion depth reached in _process_chatbot_flow")
@@ -254,12 +325,32 @@ class WhatsAppChatbotMessage(models.Model):
             _logger.warning(f"Already visited step {current_step.id}, stopping")
             return message
         visited_steps.add(current_step.id)
-        # Next step = first child by sequence (for question_text / message, any reply goes to next)
+        
+        # Get user's answer from the incoming message
+        user_answer = message.message_plain or ''
+        if not user_answer and message.message_html:
+            from markupsafe import Markup
+            user_answer = Markup(message.message_html).striptags()
+        user_answer = user_answer.strip() if user_answer else ''
+        
+        _logger.info(f"Processing reply to step '{current_step.name}': user answered '{user_answer}'")
+        
+        # Get all child steps sorted by sequence
         children = current_step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
         if not children:
             self._update_contact_last_interaction(message)
             return message
-        next_step = children[0]
+        
+        # Try to find a matching child step based on trigger_answer_ids
+        next_step, matched_answer = self._find_matching_child_step(current_step, user_answer, message)
+        
+        # If no match found, fall back to first child (backward compatibility)
+        if not next_step:
+            next_step = children[0]
+            _logger.info(f"No matching answer condition found for '{user_answer}', using first child step: {next_step.name}")
+        else:
+            _logger.info(f"Matched answer '{user_answer}' to step '{next_step.name}' via condition '{matched_answer.display_name if matched_answer else 'N/A'}'")
+        
         if next_step.step_type == 'end_flow':
             message.contact_id.write({
                 'last_chatbot_id': message.chatbot_id.id,
@@ -269,7 +360,7 @@ class WhatsAppChatbotMessage(models.Model):
             return message
         if next_step.step_type in ['set_variable', 'execute_code']:
             return self._process_variable_or_code_step(message, next_step, depth=depth + 1, visited_steps=visited_steps)
-        _logger.info(f"Advancing from step {current_step.name} to {next_step.name} (ID: {next_step.id})")
+        _logger.info(f"Advancing from step '{current_step.name}' to '{next_step.name}' (ID: {next_step.id})")
         return self._send_step_message(message, next_step)
 
     def _process_variable_or_code_step(self, message, step, depth=0, visited_steps=None):
