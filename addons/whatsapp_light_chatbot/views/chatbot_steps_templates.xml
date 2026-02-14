@@ -265,7 +265,10 @@
                           svg.setAttribute('height', h);
                           svg.style.width  = w + 'px';
                           svg.style.height = h + 'px';
+                          svg.style.display = 'block'; // Ensure SVG is visible
                           svg.innerHTML = '';
+                          
+                          console.log('[chatbot_steps] Drawing lines, SVG size:', w, 'x', h);
                       
                           // Create marker definitions for arrow (dot replaced by "+" button on card)
                           const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -289,36 +292,55 @@
                           
                           svg.appendChild(defs);
                       
-                          const gr = grid.getBoundingClientRect();
-                      
                           const byId = {};
                           grid.querySelectorAll('.bb-card').forEach(c => byId[c.dataset.id] = c);
+                          
+                          let connectorCount = 0;
                       
                           grid.querySelectorAll('.bb-card').forEach(child => {
                             const pid = child.dataset.parent; if (!pid) return;
-                            const parent = byId[pid]; if (!parent) return;
+                            const parent = byId[pid]; if (!parent) {
+                              console.warn('[chatbot_steps] Parent not found for child:', child.dataset.id, 'parent id:', pid);
+                              return;
+                            }
                       
+                            // Use getBoundingClientRect but calculate relative to grid's bounding rect
+                            const gridRect = grid.getBoundingClientRect();
                             const pr = parent.getBoundingClientRect();
                             const cr = child.getBoundingClientRect();
+                            
                             // +14px so line starts at right edge of .bb-add-step (right: -14px places circle 14px past card)
                             const addBtnOffset = 14;
-                            // Coordinates relative to grid's top-left
-                            const x1 = pr.right - gr.left + addBtnOffset;
-                            const y1 = pr.top + pr.height / 2 - gr.top;
-                            const x2 = cr.left - gr.left;  // Arrow will touch the left edge
-                            const y2 = cr.top + cr.height / 2 - gr.top;
+                            // Coordinates relative to grid's top-left (accounting for scroll)
+                            const x1 = pr.right - gridRect.left + addBtnOffset;
+                            const y1 = pr.top + pr.height / 2 - gridRect.top;
+                            const x2 = cr.left - gridRect.left;  // Arrow will touch the left edge
+                            const y2 = cr.top + cr.height / 2 - gridRect.top;
                             const mx = (x1 + x2) / 2;
+                      
+                            // Only draw if coordinates are valid
+                            if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) {
+                              console.warn('[chatbot_steps] Invalid coordinates for connector:', { parent: pid, child: child.dataset.id, x1, y1, x2, y2, gridRect, pr, cr });
+                              return;
+                            }
                       
                             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                             path.setAttribute('d', `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`);
                             path.setAttribute('class', 'bb-connector');
                             path.setAttribute('marker-end', 'url(#arrow-marker)');
                             svg.appendChild(path);
+                            connectorCount++;
                           });
+                          
+                          console.log('[chatbot_steps] Drew', connectorCount, 'connector lines');
                         }
                       
-                        drawLines();
-                        setTimeout(drawLines, 50);
+                        // Draw lines after a short delay to ensure layout is complete
+                        setTimeout(function() {
+                          drawLines();
+                          // Draw again after a longer delay to catch any late layout changes
+                          setTimeout(drawLines, 100);
+                        }, 100);
                         window.addEventListener('resize', drawLines, { passive: true });
 
                         // Enable click-and-drag panning on the scrollable wrapper
@@ -409,7 +431,7 @@
                 .bb-delete:hover{text-decoration:underline;color:#bb2d3b}
                 .badge-secondary{background:#e9ecef}.badge-info{background:#cff4fc}.badge-warning{background:#fff3cd}.badge-dark{background:#ced4da}.badge-success{background:#d1e7dd}.badge-light{background:#f8f9fa}
                 .bb-lines{position:absolute;left:0;top:0;pointer-events:none;width:100%;height:100%;z-index:10}
-                .bb-connector{fill:none;stroke:#c0c4cc;stroke-width:2}
+                .bb-connector{fill:none;stroke:#6b7280;stroke-width:2}
                 .bb-preview {
                 margin-top:6px; font-size:12px; line-height:1.35;
                 color:#374151;  border:1px solid #e5e7eb;
