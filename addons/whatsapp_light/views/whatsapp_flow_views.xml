@@ -78,10 +78,6 @@
                         <field name="status" widget="statusbar" statusbar_visible="DRAFT,PUBLISHED,DEPRECATED"/>
                     </header>
                     <sheet>
-                        <div class="oe_button_box" name="button_box">
-                            <button name="%(action_whatsapp_flow)d" type="action"
-                                    class="oe_stat_button" icon="fa-arrow-left" string="Back to Flows"/>
-                        </div>
                         <group>
                             <group>
                                 <field name="name" placeholder="flow_name_lowercase"/>
