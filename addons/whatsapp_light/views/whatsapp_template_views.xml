@@ -195,13 +195,6 @@
                         <field name="status" widget="statusbar" statusbar_visible="PENDING,APPROVED,REJECTED"/>
                     </header>
                     <sheet>
-                        <div class="oe_button_box" name="button_box">
-                            <button name="%(action_whatsapp_template)d" type="action"
-                                    class="oe_stat_button" icon="fa-arrow-left" string="Back to Templates"/>
-                            <button name="action_send_template" type="object"
-                                    class="oe_stat_button" icon="fa-paper-plane" string="Send"
-                                    invisible="status != 'APPROVED'"/>
-                        </div>
                         <group>
                             <group>
                                 <field name="name" placeholder="template_name_lowercase"/>
