@@ -1,0 +1,11 @@
+<odoo>
+    <data noupdate="1">
+        <!-- <record id="category_lead_generation" model="whatsapp.flow.category">
+            <field name="name">Lead Generation</field>
+        </record>
+        <record id="health_status_error" model="whatsapp.flow.health.error">
+            <field name="name">Policy Holder</field>
+            <field name="sequence">6</field>
+        </record>  -->
+    </data>
+</odoo>

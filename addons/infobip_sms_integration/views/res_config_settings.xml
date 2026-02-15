@@ -1,0 +1,31 @@
+<odoo>
+    <record id="sms_settings_view" model="ir.ui.view">
+        <field name="name">sms.settings.view</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="40"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="InfoBip" string="InfoBip" name="infobip">
+                    <block title="InfoBip">
+                        <setting title="Use InfoBip API">
+                            <field name="sms_use_infobip_api"/>
+                        </setting>
+                        <setting title="Base URL">
+                            <field name="infobip_base_url"/>
+                        </setting>
+                        <setting title="API Key">
+                            <field name="infobip_api_key" password="True"/>
+                        </setting>
+                        <setting title="Default From Number">
+                            <field name="infobip_default_from_number"/>
+                        </setting>
+                        <setting title="Retention Period (Days)">
+                            <field name="infobip_retention_period"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>
