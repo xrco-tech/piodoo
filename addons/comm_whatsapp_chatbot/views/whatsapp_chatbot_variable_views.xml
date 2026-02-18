@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WhatsApp Chatbot Variable List View -->
+        <record id="view_whatsapp_chatbot_variable_tree" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.variable.tree</field>
+            <field name="model">whatsapp.chatbot.variable</field>
+            <field name="arch" type="xml">
+                <list string="Chatbot Variables">
+                    <field name="name"/>
+                    <field name="chatbot_id"/>
+                    <field name="data_type"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Variable Form View -->
+        <record id="view_whatsapp_chatbot_variable_form" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.variable.form</field>
+            <field name="model">whatsapp.chatbot.variable</field>
+            <field name="arch" type="xml">
+                <form string="Chatbot Variable">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="chatbot_id"/>
+                            <field name="data_type"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

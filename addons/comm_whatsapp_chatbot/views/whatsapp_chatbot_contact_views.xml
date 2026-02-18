@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WhatsApp Chatbot Contact Search View -->
+        <record id="view_whatsapp_chatbot_contact_search" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.contact.search</field>
+            <field name="model">whatsapp.chatbot.contact</field>
+            <field name="arch" type="xml">
+                <search string="Search Contacts">
+                    <field name="name"/>
+                    <field name="mobile_number"/>
+                    <field name="last_chatbot_id"/>
+                </search>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Contact List View -->
+        <record id="view_whatsapp_chatbot_contact_tree" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.contact.tree</field>
+            <field name="model">whatsapp.chatbot.contact</field>
+            <field name="arch" type="xml">
+                <list string="Chatbot Contacts">
+                    <field name="name"/>
+                    <field name="mobile_number"/>
+                    <field name="last_chatbot_id"/>
+                    <field name="last_step_id"/>
+                    <field name="last_seen_date" widget="datetime"/>
+                    <field name="active_agent"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Contact Form View -->
+        <record id="view_whatsapp_chatbot_contact_form" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.contact.form</field>
+            <field name="model">whatsapp.chatbot.contact</field>
+            <field name="arch" type="xml">
+                <form string="Chatbot Contact">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="partner_id"/>
+                                <field name="name" readonly="1"/>
+                                <field name="mobile_number" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="last_chatbot_id"/>
+                                <field name="last_step_id"/>
+                                <field name="last_seen_date"/>
+                                <field name="active_agent"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Messages" name="messages">
+                                <div class="alert alert-info" role="alert">
+                                    <p>Messages can be viewed in the Chatbot Messages menu.</p>
+                                </div>
+                                <field name="message_ids" nolabel="1" readonly="1" column_invisible="1"/>
+                            </page>
+                            
+                            <page string="Variables" name="variables">
+                                <div class="alert alert-info" role="alert">
+                                    <p>Variable values are stored per contact and can be managed through the chatbot flow.</p>
+                                </div>
+                                <field name="variable_value_ids" nolabel="1" readonly="1" column_invisible="1"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Contact Action -->
+        <record id="action_whatsapp_chatbot_contact" model="ir.actions.act_window">
+            <field name="name">Chatbot Contacts</field>
+            <field name="res_model">whatsapp.chatbot.contact</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_whatsapp_chatbot_contact_search"/>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WhatsApp Chatbot Step Search View -->
+        <record id="view_whatsapp_chatbot_step_search" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.step.search</field>
+            <field name="model">whatsapp.chatbot.step</field>
+            <field name="arch" type="xml">
+                <search string="Search Steps">
+                    <field name="name"/>
+                    <field name="chatbot_id"/>
+                    <field name="step_type"/>
+                    <separator/>
+                    <filter string="Root Steps" name="root_steps" domain="[('parent_id', '=', False)]"/>
+                    <filter string="Messages" name="messages" domain="[('step_type', '=', 'message')]"/>
+                    <filter string="Questions" name="questions" domain="[('step_type', 'like', 'question%')]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Chatbot" name="group_chatbot" context="{'group_by': 'chatbot_id'}"/>
+                        <filter string="Step Type" name="group_step_type" context="{'group_by': 'step_type'}"/>
+                        <filter string="Parent" name="group_parent" context="{'group_by': 'parent_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Step List View -->
+        <record id="view_whatsapp_chatbot_step_tree" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.step.tree</field>
+            <field name="model">whatsapp.chatbot.step</field>
+            <field name="arch" type="xml">
+                <list string="Chatbot Steps" default_order="sequence asc">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="chatbot_id"/>
+                    <field name="step_type"/>
+                    <field name="parent_id" string="Parent Step"/>
+                    <field name="body_plain" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Step Form View -->
+        <record id="view_whatsapp_chatbot_step_form" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.step.form</field>
+            <field name="model">whatsapp.chatbot.step</field>
+            <field name="arch" type="xml">
+                <form string="Chatbot Step">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="chatbot_id"/>
+                                <field name="sequence"/>
+                                <field name="step_type"/>
+                                <field name="parent_id" string="Parent Step"/>
+                            </group>
+                            <group>
+                                <field name="wa_message_type" invisible="step_type in ['set_variable', 'execute_code', 'end_flow']"/>
+                                <field name="answer_data_type" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date']"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Message Content" name="content" invisible="step_type in ['set_variable', 'execute_code', 'end_flow']">
+                                <group>
+                                    <group string="Body">
+                                        <field name="body_plain" widget="text" nolabel="1" placeholder="Enter message body..."/>
+                                        <div class="alert alert-info" role="alert" invisible="not body_plain">
+                                            <p><strong>Preview:</strong> Markdown formatting (*bold*, _italic_, ~strikethrough~, ```code```) will be applied in the message.</p>
+                                        </div>
+                                        <field name="body_html" widget="html" nolabel="1" readonly="1" invisible="not body_plain" string="Formatted Preview"/>
+                                    </group>
+                                </group>
+                                
+                                <group string="Header &amp; Footer">
+                                    <group>
+                                        <field name="header_type"/>
+                                        <field name="header_text" invisible="header_type != 'text'"/>
+                                        <field name="attachment_id" invisible="header_type not in ['document', 'image', 'video']"/>
+                                    </group>
+                                    <group>
+                                        <field name="footer"/>
+                                    </group>
+                                </group>
+                                
+                                <group string="Interactive Elements" invisible="wa_message_type == 'non_interactive'">
+                                    <div class="alert alert-info" role="alert" invisible="wa_message_type not in ['interactive_button', 'interactive_list']">
+                                        <p>Buttons can be managed in the step form view. Use the "Child Steps" tab to configure button actions.</p>
+                                    </div>
+                                    <field name="list_button_text" invisible="wa_message_type != 'interactive_list'"/>
+                                </group>
+                                
+                                <group string="Flow Integration" invisible="wa_message_type != 'interactive_flow'">
+                                    <field name="flow_id" domain="[('status', '=', 'PUBLISHED')]"/>
+                                    <field name="flow_uid" readonly="1"/>
+                                    <field name="flow_action"/>
+                                    <field name="screen_id" string="Entry Screen ID"/>
+                                    <field name="flow_cta" string="CTA Text"/>
+                                    <field name="screen_payload_data" widget="json"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Variable Settings" name="variable" invisible="step_type != 'set_variable'">
+                                <group>
+                                    <field name="variable_id"/>
+                                    <field name="variable_data_source"/>
+                                    <field name="source_step_id" invisible="variable_data_source != 'answer'"/>
+                                    <field name="source_variable_id" invisible="variable_data_source != 'variable'"/>
+                                    <field name="variable_value" invisible="variable_data_source != 'static'"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Code Execution" name="code" invisible="step_type != 'execute_code'">
+                                <group>
+                                    <field name="code" widget="text" nolabel="1" placeholder="Write Python code here..."/>
+                                </group>
+                            </page>
+                            
+                            <page string="Child Steps" name="children">
+                                <field name="child_ids" nolabel="1">
+                                    <list create="1" delete="1" edit="1" editable="bottom" default_order="sequence asc">
+                                        <field name="id" column_invisible="1"/>
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="name"/>
+                                        <field name="step_type"/>
+                                        <field name="trigger_answer_ids" widget="many2many_tags" optional="hide" options="{'no_create': False}" context="{'default_step_id': id}"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Step Action -->
+        <record id="action_whatsapp_chatbot_step" model="ir.actions.act_window">
+            <field name="name">Chatbot Steps</field>
+            <field name="res_model">whatsapp.chatbot.step</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_whatsapp_chatbot_step_search"/>
+        </record>
+    </data>
+</odoo>

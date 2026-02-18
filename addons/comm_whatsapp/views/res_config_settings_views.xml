@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="res_config_settings_view_form_inherit_comm_whatsapp" model="ir.ui.view">
+            <field name="name">res.config.settings.view.form.inherit.whatsapp.ligth</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//form" position="inside">
+                    <app data-string="WhatsApp Light" string="WhatsApp Light" name="comm_whatsapp" logo="/comm_whatsapp/static/description/icon.svg">
+                        <block title="Meta App (OAuth)">
+                            <setting title="Meta App ID" help="From Meta for Developers">
+                                <field name="comm_whatsapp_app_id"/>
+                            </setting>
+                            <setting title="Meta App Secret">
+                                <field name="comm_whatsapp_app_secret" password="True"/>
+                            </setting>
+                            <setting title="OAuth Redirect URI" help="Must match the URI in your Meta App (e.g. https://yourdomain.com/whatsapp/auth/callback)">
+                                <field name="comm_whatsapp_redirect_uri"/>
+                            </setting>
+                            <setting title="OAuth Scope">
+                                <field name="comm_whatsapp_scope"/>
+                            </setting>
+                        </block>
+                        <block title="Webhook">
+                            <setting title="Webhook Verify Token" help="Token for webhook URL verification (GET). Set the same in your Meta App.">
+                                <field name="comm_whatsapp_webhook_verify_token"/>
+                            </setting>
+                        </block>
+                        <block title="Tokens and IDs">
+                            <setting title="Access Token" help="Usually set automatically after OAuth. Edit only if needed.">
+                                <field name="comm_whatsapp_access_token" password="True"/>
+                            </setting>
+                            <setting title="Long-Lived Token">
+                                <field name="comm_whatsapp_long_lived_token" password="True"/>
+                            </setting>
+                            <setting title="Business Account ID" help="Can be set automatically from the first webhook.">
+                                <field name="comm_whatsapp_business_account_id"/>
+                            </setting>
+                            <setting title="Phone Number ID" help="Used to send/receive. Can be set from the first webhook.">
+                                <field name="comm_whatsapp_phone_number_id"/>
+                            </setting>
+                        </block>
+                    </app>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

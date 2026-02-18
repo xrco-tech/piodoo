@@ -18,9 +18,9 @@ _logger = logging.getLogger(__name__)
 class SmsSms(models.Model):
     _inherit = 'sms.sms'
 
-    # infobip_status_group = fields.Char("InfoBip Status Group")
-    # infobip_status_name = fields.Char("InfoBip Status Name")
-    # infobip_status_description = fields.Char("InfoBip Status Description")
+    sms_count = fields.Integer("SMS Count")
+    price_per_message = fields.Float("Price Per Message")
+    currency = fields.Char("Currency")
 
     @staticmethod
     def get_mapped_infobip_state(status):

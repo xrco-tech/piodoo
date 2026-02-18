@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WhatsApp Chatbot Message Preview Template (Outgoing/Sent) -->
+        <template id="chatbot_message_preview" t-name="Chatbot Message Preview">
+            <div class="o_whatsapp_preview" style="max-width: 100%; overflow: hidden; padding-left: 12px; padding-right: 20px;">
+                <div class="o_whatsapp_message" style="margin-top: 8px; margin-bottom: 4px; font-size: 14px; line-height: 1.2; float: left; word-break: break-word; color: #000; position: relative; background-color: #ffffff; border-radius: 7.5px; padding: 8px; max-width: 85%; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);">
+                    <div class="o_whatsapp_message_core" style="position: relative;">
+                        <!-- Message Body -->
+                        <div class="o_whatsapp_message_body" 
+                             style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #111827; font-size: 14px; line-height: 1.35;">
+                            <t t-if="message_body">
+                                <t t-raw="message_body"/>
+                            </t>
+                            <t t-else="">
+                                <t t-out="message_plain or 'No message content'"/>
+                            </t>
+                        </div>
+                        
+                        <!-- Timestamp -->
+                        <span style="position: absolute; bottom: 4px; right: 4px; font-size: 11px; padding: 2px 4px; color: rgba(0,0,0,0.5); pointer-events: none;" area-hidden="true">
+                            <t t-out="timestamp or ''"/>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- WhatsApp Chatbot Message Preview Template (Received/Incoming) -->
+        <template id="chatbot_message_preview_received" t-name="Chatbot Message Preview Received">
+            <div class="o_whatsapp_preview" style="max-width: 100%; overflow: hidden; padding-left: 20px; padding-right: 12px;">
+                <div class="o_whatsapp_message sent" style="margin-top: 8px; margin-bottom: 4px; font-size: 14px; line-height: 1.2; float: right; word-break: break-word; color: #fff; position: relative; background-color: #075E54; min-width: 100px; border-radius: 7.5px; padding: 8px; max-width: 85%; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);">
+                    <div class="o_whatsapp_message_core" style="position: relative;">
+                        <!-- Message Body -->
+                        <div class="o_whatsapp_message_body" 
+                             style="padding-left: 4px; padding-right: 4px; padding-bottom: 20px; margin-top: 8px; white-space: normal; word-wrap: break-word; max-width: 100%; color: #fff; font-size: 14px; line-height: 1.35;">
+                            <t t-if="message_body">
+                                <t t-raw="message_body"/>
+                            </t>
+                            <t t-else="">
+                                <t t-out="message_plain or 'No message content'"/>
+                            </t>
+                        </div>
+                        
+                        <!-- Timestamp -->
+                        <span style="position: absolute; bottom: 4px; right: 4px; font-size: 11px; padding: 2px 4px; color: rgba(255,255,255,0.7); pointer-events: none;" area-hidden="true">
+                            <t t-out="timestamp or ''"/>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- WhatsApp Chatbot Message Search View -->
+        <record id="view_whatsapp_chatbot_message_search" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.message.search</field>
+            <field name="model">whatsapp.chatbot.message</field>
+            <field name="arch" type="xml">
+                <search string="Search Messages">
+                    <field name="contact_id"/>
+                    <field name="chatbot_id"/>
+                    <field name="step_id"/>
+                    <separator/>
+                    <filter string="Incoming" name="incoming" domain="[('type', '=', 'incoming')]"/>
+                    <filter string="Outgoing" name="outgoing" domain="[('type', '=', 'outgoing')]"/>
+                </search>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Message List View -->
+        <record id="view_whatsapp_chatbot_message_tree" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.message.tree</field>
+            <field name="model">whatsapp.chatbot.message</field>
+            <field name="arch" type="xml">
+                <list string="Chatbot Messages" default_order="create_date desc">
+                    <field name="type" widget="badge" decoration-info="type == 'incoming'" decoration-success="type == 'outgoing'"/>
+                    <field name="contact_id"/>
+                    <field name="chatbot_id"/>
+                    <field name="step_id"/>
+                    <field name="message_preview_html" widget="html" optional="show" string="Preview"/>
+                    <field name="message_plain" widget="text" optional="hide"/>
+                    <field name="create_date" widget="datetime"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Message Form View -->
+        <record id="view_whatsapp_chatbot_message_form" model="ir.ui.view">
+            <field name="name">whatsapp.chatbot.message.form</field>
+            <field name="model">whatsapp.chatbot.message</field>
+            <field name="arch" type="xml">
+                <form string="Chatbot Message">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="contact_id"/>
+                                <field name="chatbot_id"/>
+                                <field name="step_id"/>
+                                <field name="type"/>
+                            </group>
+                            <group>
+                                <field name="wa_message_id"/>
+                                <field name="user_chatbot_answer_id"/>
+                                <field name="create_date" widget="datetime"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Message Preview" name="preview">
+                                <group>
+                                    <field name="message_preview_html" widget="html" nolabel="1"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Message Content" name="content">
+                                <group>
+                                    <group string="Formatted Message">
+                                        <div class="alert alert-info" role="alert" invisible="not message_plain and not message_html">
+                                            <p><strong>Preview:</strong> Markdown formatting (*bold*, _italic_, ~strikethrough~, ```code```) is applied below.</p>
+                                        </div>
+                                        <field name="message_formatted_html" widget="html" nolabel="1" readonly="1" invisible="not message_plain and not message_html" string="Formatted Preview"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <group string="Raw Content">
+                                        <field name="message_html" widget="html" nolabel="1" placeholder="Message content will appear here..." readonly="1"/>
+                                    </group>
+                                    <group>
+                                        <field name="message_plain" widget="text" nolabel="1" placeholder="Plain text message..." readonly="1"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                        
+                        <group string="Attachment" invisible="not attachment_id">
+                            <field name="attachment_id"/>
+                            <field name="attachment_type"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Chatbot Message Action -->
+        <record id="action_whatsapp_chatbot_message" model="ir.actions.act_window">
+            <field name="name">Chatbot Messages</field>
+            <field name="res_model">whatsapp.chatbot.message</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_whatsapp_chatbot_message_search"/>
+        </record>
+    </data>
+</odoo>
