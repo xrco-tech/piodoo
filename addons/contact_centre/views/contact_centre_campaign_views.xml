@@ -25,6 +25,12 @@
             <field name="view_mode">list,form</field>
             <field name="domain">[('campaign_type', '=', 'inbound'), ('channel', 'in', ['sms', 'both'])]</field>
         </record>
+        <record id="action_contact_centre_campaign_inbound_email" model="ir.actions.act_window">
+            <field name="name">Inbound Email Campaigns</field>
+            <field name="res_model">contact.centre.campaign</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('campaign_type', '=', 'inbound'), ('channel', '=', 'email')]</field>
+        </record>
         <record id="action_contact_centre_campaign_outbound" model="ir.actions.act_window">
             <field name="name">Outbound Campaigns</field>
             <field name="res_model">contact.centre.campaign</field>
@@ -42,6 +48,12 @@
             <field name="res_model">contact.centre.campaign</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('campaign_type', '=', 'outbound'), ('channel', 'in', ['sms', 'both'])]</field>
+        </record>
+        <record id="action_contact_centre_campaign_outbound_email" model="ir.actions.act_window">
+            <field name="name">Outbound Email Campaigns</field>
+            <field name="res_model">contact.centre.campaign</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('campaign_type', '=', 'outbound'), ('channel', '=', 'email')]</field>
         </record>
     </data>
 </odoo>

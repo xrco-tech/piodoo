@@ -13,6 +13,7 @@
                                 <field name="partner_id"/>
                                 <field name="name"/>
                                 <field name="phone_number"/>
+                                <field name="email"/>
                                 <field name="last_contact_date"/>
                             </group>
                         </group>
@@ -30,6 +31,7 @@
                     <field name="partner_id"/>
                     <field name="name"/>
                     <field name="phone_number"/>
+                    <field name="email"/>
                     <field name="last_contact_date"/>
                 </list>
             </field>

@@ -20,6 +20,7 @@ class ContactCentreMessage(models.Model):
     channel = fields.Selection([
         ('whatsapp', 'WhatsApp'),
         ('sms', 'SMS'),
+        ('email', 'Email'),
     ], 'Channel', required=True, index=True)
     direction = fields.Selection([
         ('inbound', 'Inbound'),

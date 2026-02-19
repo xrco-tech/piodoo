@@ -23,6 +23,13 @@
             <field name="domain">[('direction', '=', 'inbound'), ('channel', '=', 'sms')]</field>
         </record>
 
+        <record id="action_contact_centre_message_inbound_email" model="ir.actions.act_window">
+            <field name="name">Inbound Email</field>
+            <field name="res_model">contact.centre.message</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('direction', '=', 'inbound'), ('channel', '=', 'email')]</field>
+        </record>
+
         <record id="action_contact_centre_message_outbound" model="ir.actions.act_window">
             <field name="name">Outbound Messages</field>
             <field name="res_model">contact.centre.message</field>
@@ -42,6 +49,13 @@
             <field name="res_model">contact.centre.message</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('direction', '=', 'outbound'), ('channel', '=', 'sms')]</field>
+        </record>
+
+        <record id="action_contact_centre_message_outbound_email" model="ir.actions.act_window">
+            <field name="name">Outbound Email</field>
+            <field name="res_model">contact.centre.message</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('direction', '=', 'outbound'), ('channel', '=', 'email')]</field>
         </record>
     </data>
 </odoo>

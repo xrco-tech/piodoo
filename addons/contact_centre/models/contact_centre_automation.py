@@ -12,5 +12,6 @@ class ContactCentreAutomation(models.Model):
     channel = fields.Selection([
         ('whatsapp', 'WhatsApp'),
         ('sms', 'SMS'),
-        ('both', 'Both'),
+        ('email', 'Email'),
+        ('both', 'WhatsApp & SMS'),
     ], 'Channel', required=True)

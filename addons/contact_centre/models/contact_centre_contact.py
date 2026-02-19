@@ -30,6 +30,12 @@ class ContactCentreContact(models.Model):
         store=True,
         readonly=False,
     )
+    email = fields.Char(
+        'Email',
+        related='partner_id.email',
+        store=True,
+        readonly=False,
+    )
     last_contact_date = fields.Datetime('Last Contact Date')
     message_ids = fields.One2many(
         'contact.centre.message',

@@ -8,3 +8,4 @@ from . import contact_centre_automation
 from . import contact_centre_template
 from . import whatsapp_config
 from . import sms_config
+from . import email_config

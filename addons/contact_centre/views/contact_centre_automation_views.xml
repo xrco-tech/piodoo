@@ -18,5 +18,11 @@
             <field name="view_mode">list,form</field>
             <field name="domain">[('channel', 'in', ['sms', 'both'])]</field>
         </record>
+        <record id="action_contact_centre_automation_email" model="ir.actions.act_window">
+            <field name="name">Email Automated Replies</field>
+            <field name="res_model">contact.centre.automation</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('channel', '=', 'email')]</field>
+        </record>
     </data>
 </odoo>

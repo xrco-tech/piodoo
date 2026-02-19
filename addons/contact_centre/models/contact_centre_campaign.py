@@ -16,7 +16,8 @@ class ContactCentreCampaign(models.Model):
     channel = fields.Selection([
         ('whatsapp', 'WhatsApp'),
         ('sms', 'SMS'),
-        ('both', 'Both'),
+        ('email', 'Email'),
+        ('both', 'WhatsApp & SMS'),
     ], 'Channel', required=True)
     contact_ids = fields.Many2many(
         'contact.centre.contact',

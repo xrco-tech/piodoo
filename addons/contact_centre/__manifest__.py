@@ -39,6 +39,7 @@ Features:
         'views/contact_centre_automation_views.xml',
         'views/whatsapp_config_views.xml',
         'views/sms_config_views.xml',
+        'views/email_config_views.xml',
         'views/contact_centre_menus.xml',
     ],
     'installable': True,

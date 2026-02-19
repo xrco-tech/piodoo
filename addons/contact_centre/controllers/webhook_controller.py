@@ -9,7 +9,7 @@ _logger = logging.getLogger(__name__)
 
 
 class ContactCentreWebhookController(http.Controller):
-    """Unified webhook controller for WhatsApp and SMS"""
+    """Unified webhook controller for WhatsApp, SMS and Email"""
 
     @http.route('/contact_centre/webhook/whatsapp', type='json', auth='public', methods=['POST'], csrf=False)
     def whatsapp_webhook(self):
@@ -26,6 +26,16 @@ class ContactCentreWebhookController(http.Controller):
         # - Create contact.centre.message record
         # - Trigger automation if applicable
         
+        return {'status': 'ok'}
+
+    @http.route('/contact_centre/webhook/email', type='json', auth='public', methods=['POST'], csrf=False)
+    def email_webhook(self):
+        """
+        Handle incoming email webhooks (e.g. from mail gateway)
+        TODO: Implement email processing
+        """
+        data = request.jsonrequest
+        _logger.info(f"Email webhook received: {json.dumps(data, indent=2)}")
         return {'status': 'ok'}
 
     @http.route('/contact_centre/webhook/sms', type='json', auth='public', methods=['POST'], csrf=False)

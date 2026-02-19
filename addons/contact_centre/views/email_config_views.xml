@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="action_email_config" model="ir.actions.act_window">
+            <field name="name">Email Settings</field>
+            <field name="res_model">contact.centre.email.config</field>
+            <field name="view_mode">list,form</field>
+        </record>
+        <record id="action_email_template" model="ir.actions.act_window">
+            <field name="name">Email Templates</field>
+            <field name="res_model">contact.centre.template</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('channel', '=', 'email')]</field>
+        </record>
+    </data>
+</odoo>

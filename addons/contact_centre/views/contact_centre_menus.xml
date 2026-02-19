@@ -51,6 +51,12 @@
                   action="action_contact_centre_message_inbound_sms"
                   sequence="30"/>
 
+        <menuitem id="menu_contact_centre_messages_inbound_email"
+                  name="Email"
+                  parent="menu_contact_centre_messages_inbound"
+                  action="action_contact_centre_message_inbound_email"
+                  sequence="40"/>
+
         <!-- Messages > Outbound -->
         <menuitem id="menu_contact_centre_messages_outbound"
                   name="Outbound"
@@ -74,6 +80,12 @@
                   parent="menu_contact_centre_messages_outbound"
                   action="action_contact_centre_message_outbound_sms"
                   sequence="30"/>
+
+        <menuitem id="menu_contact_centre_messages_outbound_email"
+                  name="Email"
+                  parent="menu_contact_centre_messages_outbound"
+                  action="action_contact_centre_message_outbound_email"
+                  sequence="40"/>
 
         <!-- Campaigns -->
         <menuitem id="menu_contact_centre_campaigns"
@@ -111,6 +123,12 @@
                   action="action_contact_centre_campaign_inbound_sms"
                   sequence="30"/>
 
+        <menuitem id="menu_contact_centre_campaigns_inbound_email"
+                  name="Email"
+                  parent="menu_contact_centre_campaigns_inbound"
+                  action="action_contact_centre_campaign_inbound_email"
+                  sequence="40"/>
+
         <!-- Campaigns > Outbound -->
         <menuitem id="menu_contact_centre_campaigns_outbound"
                   name="Outbound"
@@ -134,6 +152,12 @@
                   parent="menu_contact_centre_campaigns_outbound"
                   action="action_contact_centre_campaign_outbound_sms"
                   sequence="30"/>
+
+        <menuitem id="menu_contact_centre_campaigns_outbound_email"
+                  name="Email"
+                  parent="menu_contact_centre_campaigns_outbound"
+                  action="action_contact_centre_campaign_outbound_email"
+                  sequence="40"/>
 
         <!-- Configuration -->
         <menuitem id="menu_contact_centre_config"
@@ -170,6 +194,12 @@
                   action="action_contact_centre_automation_sms"
                   sequence="30"/>
 
+        <menuitem id="menu_contact_centre_config_automation_email"
+                  name="Email"
+                  parent="menu_contact_centre_config_automation"
+                  action="action_contact_centre_automation_email"
+                  sequence="40"/>
+
         <!-- Configuration > WhatsApp -->
         <menuitem id="menu_contact_centre_config_whatsapp"
                   name="WhatsApp"
@@ -204,6 +234,24 @@
                   name="Templates"
                   parent="menu_contact_centre_config_sms"
                   action="action_sms_template"
+                  sequence="20"/>
+
+        <!-- Configuration > Email -->
+        <menuitem id="menu_contact_centre_config_email"
+                  name="Email"
+                  parent="menu_contact_centre_config"
+                  sequence="45"/>
+
+        <menuitem id="menu_contact_centre_config_email_settings"
+                  name="Settings"
+                  parent="menu_contact_centre_config_email"
+                  action="action_email_config"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_config_email_templates"
+                  name="Templates"
+                  parent="menu_contact_centre_config_email"
+                  action="action_email_template"
                   sequence="20"/>
 
     </data>

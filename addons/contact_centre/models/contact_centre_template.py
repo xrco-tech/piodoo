@@ -12,5 +12,6 @@ class ContactCentreTemplate(models.Model):
     channel = fields.Selection([
         ('whatsapp', 'WhatsApp'),
         ('sms', 'SMS'),
+        ('email', 'Email'),
     ], 'Channel', required=True)
     body_text = fields.Text('Template Body', required=True)
