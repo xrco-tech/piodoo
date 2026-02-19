@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="action_contact_centre_script" model="ir.actions.act_window">
+            <field name="name">Dynamic Scripts</field>
+            <field name="res_model">contact.centre.script</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+    </data>
+</odoo>

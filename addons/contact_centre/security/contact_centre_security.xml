@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Security Groups -->
+        <record id="group_contact_centre_user" model="res.groups">
+            <field name="name">Contact Centre User</field>
+            <field name="category_id" ref="base.module_category_customer_relationship_management"/>
+            <field name="comment">Can view and send messages, use scripts</field>
+        </record>
+
+        <record id="group_contact_centre_agent" model="res.groups">
+            <field name="name">Contact Centre Agent</field>
+            <field name="category_id" ref="base.module_category_customer_relationship_management"/>
+            <field name="comment">Can assign messages, use scripts, manage conversations</field>
+        </record>
+
+        <record id="group_contact_centre_manager" model="res.groups">
+            <field name="name">Contact Centre Manager</field>
+            <field name="category_id" ref="base.module_category_customer_relationship_management"/>
+            <field name="comment">Can manage campaigns, scripts, and configurations</field>
+        </record>
+
+        <record id="group_contact_centre_admin" model="res.groups">
+            <field name="name">Contact Centre Administrator</field>
+            <field name="category_id" ref="base.module_category_customer_relationship_management"/>
+            <field name="comment">Full access including API configuration</field>
+        </record>
+    </data>
+</odoo>

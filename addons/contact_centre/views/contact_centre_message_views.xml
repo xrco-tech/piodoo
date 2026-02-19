@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Placeholder views - TODO: Implement full message views -->
+        <record id="action_contact_centre_message_inbound" model="ir.actions.act_window">
+            <field name="name">Inbound Messages</field>
+            <field name="res_model">contact.centre.message</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('direction', '=', 'inbound')]</field>
+        </record>
+
+        <record id="action_contact_centre_message_inbound_whatsapp" model="ir.actions.act_window">
+            <field name="name">Inbound WhatsApp</field>
+            <field name="res_model">contact.centre.message</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('direction', '=', 'inbound'), ('channel', '=', 'whatsapp')]</field>
+        </record>
+
+        <record id="action_contact_centre_message_inbound_sms" model="ir.actions.act_window">
+            <field name="name">Inbound SMS</field>
+            <field name="res_model">contact.centre.message</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('direction', '=', 'inbound'), ('channel', '=', 'sms')]</field>
+        </record>
+
+        <record id="action_contact_centre_message_outbound" model="ir.actions.act_window">
+            <field name="name">Outbound Messages</field>
+            <field name="res_model">contact.centre.message</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('direction', '=', 'outbound')]</field>
+        </record>
+
+        <record id="action_contact_centre_message_outbound_whatsapp" model="ir.actions.act_window">
+            <field name="name">Outbound WhatsApp</field>
+            <field name="res_model">contact.centre.message</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('direction', '=', 'outbound'), ('channel', '=', 'whatsapp')]</field>
+        </record>
+
+        <record id="action_contact_centre_message_outbound_sms" model="ir.actions.act_window">
+            <field name="name">Outbound SMS</field>
+            <field name="res_model">contact.centre.message</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('direction', '=', 'outbound'), ('channel', '=', 'sms')]</field>
+        </record>
+    </data>
+</odoo>

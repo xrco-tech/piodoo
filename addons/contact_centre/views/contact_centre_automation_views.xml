@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="action_contact_centre_automation" model="ir.actions.act_window">
+            <field name="name">Automated Replies</field>
+            <field name="res_model">contact.centre.automation</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+        <record id="action_contact_centre_automation_whatsapp" model="ir.actions.act_window">
+            <field name="name">WhatsApp Automated Replies</field>
+            <field name="res_model">contact.centre.automation</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('channel', 'in', ['whatsapp', 'both'])]</field>
+        </record>
+        <record id="action_contact_centre_automation_sms" model="ir.actions.act_window">
+            <field name="name">SMS Automated Replies</field>
+            <field name="res_model">contact.centre.automation</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('channel', 'in', ['sms', 'both'])]</field>
+        </record>
+    </data>
+</odoo>

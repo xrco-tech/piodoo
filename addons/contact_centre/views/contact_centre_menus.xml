@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Main Menu -->
+        <menuitem id="menu_contact_centre_main"
+                  name="Contact Centre"
+                  sequence="10"
+                  web_icon="contact_centre,static/description/icon.png"/>
+
+        <!-- Overview -->
+        <menuitem id="menu_contact_centre_overview"
+                  name="Overview"
+                  parent="menu_contact_centre_main"
+                  action="action_contact_centre_overview"
+                  sequence="10"/>
+
+        <!-- Contacts -->
+        <menuitem id="menu_contact_centre_contacts"
+                  name="Contacts"
+                  parent="menu_contact_centre_main"
+                  action="action_contact_centre_contact"
+                  sequence="20"/>
+
+        <!-- Messages -->
+        <menuitem id="menu_contact_centre_messages"
+                  name="Messages"
+                  parent="menu_contact_centre_main"
+                  sequence="30"/>
+
+        <!-- Messages > Inbound -->
+        <menuitem id="menu_contact_centre_messages_inbound"
+                  name="Inbound"
+                  parent="menu_contact_centre_messages"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_messages_inbound_all"
+                  name="All"
+                  parent="menu_contact_centre_messages_inbound"
+                  action="action_contact_centre_message_inbound"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_messages_inbound_whatsapp"
+                  name="WhatsApp"
+                  parent="menu_contact_centre_messages_inbound"
+                  action="action_contact_centre_message_inbound_whatsapp"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_messages_inbound_sms"
+                  name="SMS"
+                  parent="menu_contact_centre_messages_inbound"
+                  action="action_contact_centre_message_inbound_sms"
+                  sequence="30"/>
+
+        <!-- Messages > Outbound -->
+        <menuitem id="menu_contact_centre_messages_outbound"
+                  name="Outbound"
+                  parent="menu_contact_centre_messages"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_messages_outbound_all"
+                  name="All"
+                  parent="menu_contact_centre_messages_outbound"
+                  action="action_contact_centre_message_outbound"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_messages_outbound_whatsapp"
+                  name="WhatsApp"
+                  parent="menu_contact_centre_messages_outbound"
+                  action="action_contact_centre_message_outbound_whatsapp"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_messages_outbound_sms"
+                  name="SMS"
+                  parent="menu_contact_centre_messages_outbound"
+                  action="action_contact_centre_message_outbound_sms"
+                  sequence="30"/>
+
+        <!-- Campaigns -->
+        <menuitem id="menu_contact_centre_campaigns"
+                  name="Campaigns"
+                  parent="menu_contact_centre_main"
+                  sequence="40"/>
+
+        <menuitem id="menu_contact_centre_campaigns_overview"
+                  name="Overview"
+                  parent="menu_contact_centre_campaigns"
+                  action="action_contact_centre_campaign_overview"
+                  sequence="10"/>
+
+        <!-- Campaigns > Inbound -->
+        <menuitem id="menu_contact_centre_campaigns_inbound"
+                  name="Inbound"
+                  parent="menu_contact_centre_campaigns"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_campaigns_inbound_all"
+                  name="All"
+                  parent="menu_contact_centre_campaigns_inbound"
+                  action="action_contact_centre_campaign_inbound"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_campaigns_inbound_whatsapp"
+                  name="WhatsApp"
+                  parent="menu_contact_centre_campaigns_inbound"
+                  action="action_contact_centre_campaign_inbound_whatsapp"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_campaigns_inbound_sms"
+                  name="SMS"
+                  parent="menu_contact_centre_campaigns_inbound"
+                  action="action_contact_centre_campaign_inbound_sms"
+                  sequence="30"/>
+
+        <!-- Campaigns > Outbound -->
+        <menuitem id="menu_contact_centre_campaigns_outbound"
+                  name="Outbound"
+                  parent="menu_contact_centre_campaigns"
+                  sequence="30"/>
+
+        <menuitem id="menu_contact_centre_campaigns_outbound_all"
+                  name="All"
+                  parent="menu_contact_centre_campaigns_outbound"
+                  action="action_contact_centre_campaign_outbound"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_campaigns_outbound_whatsapp"
+                  name="WhatsApp"
+                  parent="menu_contact_centre_campaigns_outbound"
+                  action="action_contact_centre_campaign_outbound_whatsapp"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_campaigns_outbound_sms"
+                  name="SMS"
+                  parent="menu_contact_centre_campaigns_outbound"
+                  action="action_contact_centre_campaign_outbound_sms"
+                  sequence="30"/>
+
+        <!-- Configuration -->
+        <menuitem id="menu_contact_centre_config"
+                  name="Configuration"
+                  parent="menu_contact_centre_main"
+                  sequence="50"/>
+
+        <menuitem id="menu_contact_centre_config_scripts"
+                  name="Dynamic Scripts"
+                  parent="menu_contact_centre_config"
+                  action="action_contact_centre_script"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_config_automation"
+                  name="Automated Replies"
+                  parent="menu_contact_centre_config"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_config_automation_all"
+                  name="All"
+                  parent="menu_contact_centre_config_automation"
+                  action="action_contact_centre_automation"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_config_automation_whatsapp"
+                  name="WhatsApp"
+                  parent="menu_contact_centre_config_automation"
+                  action="action_contact_centre_automation_whatsapp"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_config_automation_sms"
+                  name="SMS"
+                  parent="menu_contact_centre_config_automation"
+                  action="action_contact_centre_automation_sms"
+                  sequence="30"/>
+
+        <!-- Configuration > WhatsApp -->
+        <menuitem id="menu_contact_centre_config_whatsapp"
+                  name="WhatsApp"
+                  parent="menu_contact_centre_config"
+                  sequence="30"/>
+
+        <menuitem id="menu_contact_centre_config_whatsapp_settings"
+                  name="Settings"
+                  parent="menu_contact_centre_config_whatsapp"
+                  action="action_whatsapp_config"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_config_whatsapp_templates"
+                  name="Templates"
+                  parent="menu_contact_centre_config_whatsapp"
+                  action="action_whatsapp_template"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_config_whatsapp_flows"
+                  name="On-Device Flows"
+                  parent="menu_contact_centre_config_whatsapp"
+                  action="action_whatsapp_flow"
+                  sequence="30"/>
+
+        <!-- Configuration > SMS -->
+        <menuitem id="menu_contact_centre_config_sms"
+                  name="SMS"
+                  parent="menu_contact_centre_config"
+                  sequence="40"/>
+
+        <menuitem id="menu_contact_centre_config_sms_settings"
+                  name="Settings"
+                  parent="menu_contact_centre_config_sms"
+                  action="action_sms_config"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_config_sms_templates"
+                  name="Templates"
+                  parent="menu_contact_centre_config_sms"
+                  action="action_sms_template"
+                  sequence="20"/>
+
+    </data>
+</odoo>
