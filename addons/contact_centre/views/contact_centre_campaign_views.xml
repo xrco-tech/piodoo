@@ -5,42 +5,42 @@
         <record id="action_contact_centre_campaign_overview" model="ir.actions.act_window">
             <field name="name">Campaign Overview</field>
             <field name="res_model">contact.centre.campaign</field>
-            <field name="view_mode">kanban,tree,form</field>
+            <field name="view_mode">kanban,list,form</field>
         </record>
         <record id="action_contact_centre_campaign_inbound" model="ir.actions.act_window">
             <field name="name">Inbound Campaigns</field>
             <field name="res_model">contact.centre.campaign</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('campaign_type', '=', 'inbound')]</field>
         </record>
         <record id="action_contact_centre_campaign_inbound_whatsapp" model="ir.actions.act_window">
             <field name="name">Inbound WhatsApp Campaigns</field>
             <field name="res_model">contact.centre.campaign</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('campaign_type', '=', 'inbound'), ('channel', 'in', ['whatsapp', 'both'])]</field>
         </record>
         <record id="action_contact_centre_campaign_inbound_sms" model="ir.actions.act_window">
             <field name="name">Inbound SMS Campaigns</field>
             <field name="res_model">contact.centre.campaign</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('campaign_type', '=', 'inbound'), ('channel', 'in', ['sms', 'both'])]</field>
         </record>
         <record id="action_contact_centre_campaign_outbound" model="ir.actions.act_window">
             <field name="name">Outbound Campaigns</field>
             <field name="res_model">contact.centre.campaign</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('campaign_type', '=', 'outbound')]</field>
         </record>
         <record id="action_contact_centre_campaign_outbound_whatsapp" model="ir.actions.act_window">
             <field name="name">Outbound WhatsApp Campaigns</field>
             <field name="res_model">contact.centre.campaign</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('campaign_type', '=', 'outbound'), ('channel', 'in', ['whatsapp', 'both'])]</field>
         </record>
         <record id="action_contact_centre_campaign_outbound_sms" model="ir.actions.act_window">
             <field name="name">Outbound SMS Campaigns</field>
             <field name="res_model">contact.centre.campaign</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('campaign_type', '=', 'outbound'), ('channel', 'in', ['sms', 'both'])]</field>
         </record>
     </data>

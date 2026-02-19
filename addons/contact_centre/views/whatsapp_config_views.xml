@@ -4,12 +4,12 @@
         <record id="action_whatsapp_config" model="ir.actions.act_window">
             <field name="name">WhatsApp Settings</field>
             <field name="res_model">contact.centre.whatsapp.config</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
         </record>
         <record id="action_whatsapp_template" model="ir.actions.act_window">
             <field name="name">WhatsApp Templates</field>
             <field name="res_model">contact.centre.template</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('channel', '=', 'whatsapp')]</field>
         </record>
     </data>

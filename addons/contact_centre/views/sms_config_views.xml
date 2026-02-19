@@ -4,12 +4,12 @@
         <record id="action_sms_config" model="ir.actions.act_window">
             <field name="name">SMS Settings</field>
             <field name="res_model">contact.centre.sms.config</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
         </record>
         <record id="action_sms_template" model="ir.actions.act_window">
             <field name="name">SMS Templates</field>
             <field name="res_model">contact.centre.template</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('channel', '=', 'sms')]</field>
         </record>
     </data>
