@@ -4,49 +4,33 @@
         <!-- Contact Form View -->
         <record id="view_contact_centre_contact_form" model="ir.ui.view">
             <field name="name">contact.centre.contact.form</field>
-            <field name="model">res.partner</field>
-            <field name="inherit_id" ref="contacts.view_partner_form"/>
+            <field name="model">contact.centre.contact</field>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='category_id']" position="after">
-                    <group string="Contact Centre">
+                <form string="Contact Centre Contact">
+                    <sheet>
                         <group>
-                            <field name="whatsapp_number"/>
-                            <field name="sms_number"/>
-                            <field name="preferred_channel"/>
+                            <group>
+                                <field name="partner_id"/>
+                                <field name="name"/>
+                                <field name="phone_number"/>
+                                <field name="last_contact_date"/>
+                            </group>
                         </group>
-                        <group>
-                            <field name="assigned_agent_id"/>
-                            <field name="contact_score"/>
-                            <field name="opt_in_whatsapp"/>
-                            <field name="opt_in_sms"/>
-                        </group>
-                    </group>
-                    <group string="Communication History">
-                        <group>
-                            <field name="whatsapp_message_count" readonly="1"/>
-                            <field name="last_whatsapp_message" readonly="1"/>
-                        </group>
-                        <group>
-                            <field name="sms_message_count" readonly="1"/>
-                            <field name="last_sms_message" readonly="1"/>
-                        </group>
-                    </group>
-                </xpath>
+                    </sheet>
+                </form>
             </field>
         </record>
 
         <!-- Contact List View -->
         <record id="view_contact_centre_contact_tree" model="ir.ui.view">
             <field name="name">contact.centre.contact.tree</field>
-            <field name="model">res.partner</field>
+            <field name="model">contact.centre.contact</field>
             <field name="arch" type="xml">
                 <tree string="Contacts">
+                    <field name="partner_id"/>
                     <field name="name"/>
-                    <field name="whatsapp_number"/>
-                    <field name="sms_number"/>
-                    <field name="assigned_agent_id"/>
-                    <field name="whatsapp_message_count"/>
-                    <field name="sms_message_count"/>
+                    <field name="phone_number"/>
+                    <field name="last_contact_date"/>
                 </tree>
             </field>
         </record>
@@ -54,18 +38,15 @@
         <!-- Action -->
         <record id="action_contact_centre_contact" model="ir.actions.act_window">
             <field name="name">Contacts</field>
-            <field name="res_model">res.partner</field>
+            <field name="res_model">contact.centre.contact</field>
             <field name="view_mode">tree,form</field>
-            <field name="domain">[('is_company', '=', False)]</field>
-            <field name="context">{'default_is_company': False}</field>
         </record>
 
-        <!-- Overview Action (Placeholder) -->
+        <!-- Overview Action -->
         <record id="action_contact_centre_overview" model="ir.actions.act_window">
             <field name="name">Contact Centre Overview</field>
-            <field name="res_model">res.partner</field>
+            <field name="res_model">contact.centre.contact</field>
             <field name="view_mode">kanban,tree,form</field>
-            <field name="domain">[]</field>
         </record>
     </data>
 </odoo>

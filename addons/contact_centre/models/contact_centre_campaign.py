@@ -18,3 +18,10 @@ class ContactCentreCampaign(models.Model):
         ('sms', 'SMS'),
         ('both', 'Both'),
     ], 'Channel', required=True)
+    contact_ids = fields.Many2many(
+        'contact.centre.contact',
+        'contact_centre_campaign_contact_rel',
+        'campaign_id',
+        'contact_id',
+        string='Contacts',
+    )

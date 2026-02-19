@@ -16,7 +16,7 @@ class ContactCentreMessage(models.Model):
     _order = 'message_timestamp desc, id desc'
 
     name = fields.Char('Message ID', required=True, index=True)
-    contact_id = fields.Many2one('res.partner', 'Contact', required=True, index=True)
+    contact_id = fields.Many2one('contact.centre.contact', 'Contact', required=True, index=True)
     channel = fields.Selection([
         ('whatsapp', 'WhatsApp'),
         ('sms', 'SMS'),
