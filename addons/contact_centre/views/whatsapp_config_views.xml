@@ -12,10 +12,5 @@
             <field name="view_mode">tree,form</field>
             <field name="domain">[('channel', '=', 'whatsapp')]</field>
         </record>
-        <record id="action_whatsapp_flow" model="ir.actions.act_window">
-            <field name="name">WhatsApp Flows</field>
-            <field name="res_model">whatsapp.flow</field>
-            <field name="view_mode">tree,form</field>
-        </record>
     </data>
 </odoo>

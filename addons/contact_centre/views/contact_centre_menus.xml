@@ -188,12 +188,6 @@
                   action="action_whatsapp_template"
                   sequence="20"/>
 
-        <menuitem id="menu_contact_centre_config_whatsapp_flows"
-                  name="On-Device Flows"
-                  parent="menu_contact_centre_config_whatsapp"
-                  action="action_whatsapp_flow"
-                  sequence="30"/>
-
         <!-- Configuration > SMS -->
         <menuitem id="menu_contact_centre_config_sms"
                   name="SMS"
