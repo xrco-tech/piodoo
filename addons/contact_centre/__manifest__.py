@@ -29,8 +29,8 @@ Features:
         'web',
     ],
     'data': [
-        'security/ir.model.access.csv',
         'security/contact_centre_security.xml',
+        'security/ir.model.access.csv',
         'data/contact_centre_data.xml',
         'views/contact_centre_menus.xml',
         'views/contact_centre_contact_views.xml',
