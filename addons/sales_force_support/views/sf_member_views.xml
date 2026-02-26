@@ -1265,7 +1265,7 @@
         <menuitem id="recruitment_menuitem"
                   name="Recruit"
                   parent="sales_force_support.sales_force_menuitem"
-                  action="action_hr_job_inherit_applicant2"
+                  action="action_sf_recruits"
                   sequence="3"/>
 
         <!-- Configurations sub-menus -->
