@@ -1,6 +1,6 @@
 {
     "name": "Sales Force Support",
-    "version": "17.0.1.0.0",
+    "version": "18.0.1.0.0",
     "summary": "Consolidated Sales Force management module",
     "description": """
         Consolidated module combining all Sales Force functionality:
