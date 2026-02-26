@@ -300,7 +300,7 @@ class ConsultantCreateWizard(models.TransientModel):
 
         if self.mobile_full_display and self.mobile_full_display != "":
             # Check for duplicates
-            check_mobile_count = self.env['res.partner'].search_count([('mobile', '=', self.mobile_full_display), ('is_customer', '!=', True)])
+            check_mobile_count = self.env['res.partner'].search_count([('mobile', '=', self.mobile_full_display), ('customer', '!=', True)])
             if check_mobile_count > 0:
                 raise UserError(_(f"Duplicate Mobile Number not permitted. Mobile {self.mobile_full_display} already exists"))
 

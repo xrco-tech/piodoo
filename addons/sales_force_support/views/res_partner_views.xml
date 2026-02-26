@@ -243,8 +243,8 @@
             <field name="arch" type="xml">
                 <!-- Add extra tabs after Sales &amp; Purchases tab -->
                 <page name="sales_purchases" position="after">
-                    <field name="is_customer" invisible="1"/>
-                    <page name="unverified" string="Unverified Info" invisible="is_customer == False">
+                    <field name="customer" invisible="1"/>
+                    <page name="unverified" string="Unverified Info" invisible="customer == False">
                         <group>
                             <field name="address_verified" invisible="1"/>
                             <field name="unverified_first_name" readonly="address_verified == True"/>
@@ -266,7 +266,7 @@
                         </group>
                     </page>
                     <!-- Compuscan Credit tab (source: partner_compuscan) -->
-                    <page name="compuscan" string="Compuscan Credit" invisible="is_customer == False">
+                    <page name="compuscan" string="Compuscan Credit" invisible="customer == False">
                         <group>
                             <group>
                                 <field name="compuscan_checkscore_cpa" readonly="1" string="CPA Score"/>
@@ -286,7 +286,7 @@
 
                 <!-- Add SFM fields before the address block (source: botle_buhle_custom) -->
                 <span name="address_name" position="before">
-                    <field name="is_customer" invisible="1"/>
+                    <field name="customer" invisible="1"/>
                     <field name="related_sfm_id"
                            domain="[('sales_force_code', '!=', False)]"
                            options="{'no_create': True, 'no_open': True}"

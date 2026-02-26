@@ -524,7 +524,7 @@ class ResPartner(models.Model):
                                 ("mobile", "=", formatted),
                                 ("mobile_2", "=", formatted),
                                 ("phone", "=", formatted),
-                                ("is_customer", "!=", True),
+                                ("customer", "!=", True),
                             ]
                         )
                         if dup > 0:
@@ -599,7 +599,7 @@ class ResPartner(models.Model):
                                 ("mobile", "=", formatted),
                                 ("mobile_2", "=", formatted),
                                 ("phone", "=", formatted),
-                                ("is_customer", "!=", True),
+                                ("customer", "!=", True),
                                 ("id", "!=", self.id),
                             ]
                         )
