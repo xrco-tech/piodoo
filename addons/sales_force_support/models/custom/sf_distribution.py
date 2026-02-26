@@ -15,6 +15,16 @@ import string
 _logger = logging.getLogger(__name__)
 
 
+class SfDistribution(models.Model):
+    _name = "sf.distribution"
+    _description = "Sales Force Distribution"
+    _rec_name = "name"
+
+    name = fields.Char("Distribution Name", required=True)
+    sales_force_member_id = fields.Many2one("sf.member", string="Sales Force Member")
+    active = fields.Boolean("Active", default=True)
+
+
 class SFMappingField(models.Model):
     _name = "sf.mapping.field"
     _description = "Sales Force Field Mapping"
