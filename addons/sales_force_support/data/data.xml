@@ -158,7 +158,7 @@ if len(recs_to_sync) > 0:
 ]]>
         </field>
         <field name="interval_number">1</field>
-        <field name="interval_type">minute</field>
+        <field name="interval_type">minutes</field>
         <field name="active" eval="True"/>
     </record>
 
