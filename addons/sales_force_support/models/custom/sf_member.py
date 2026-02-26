@@ -1452,7 +1452,7 @@ class SfMember(models.Model):
     # ─────────────────────────────────────────────────────────────────────────
 
     status_trail_ids = fields.One2many(
-        "bb.payin.history", "member_id", string="Active Status History"
+        "bb.payin.history", "employee_id", string="Active Status History"
     )
     payin_count = fields.Integer(
         string="Pay-In Sheets Count", compute="_compute_payin_count"
