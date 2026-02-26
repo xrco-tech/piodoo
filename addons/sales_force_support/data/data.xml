@@ -159,7 +159,7 @@ if len(recs_to_sync) > 0:
         </field>
         <field name="interval_number">1</field>
         <field name="interval_type">minutes</field>
-        <field name="active" eval="True"/>
+        <field name="active" eval="False"/>
     </record>
 
     <!-- Update Sales Force Active Status (from bb_payin)
