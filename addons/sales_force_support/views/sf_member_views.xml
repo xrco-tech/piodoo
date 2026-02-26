@@ -1267,7 +1267,7 @@
                   parent="sales_force_support.configurations_menuitem"
                   sequence="3"
                   action="action_field_required"
-                  groups="sales_force_support.group_sales_force_user,sales_force_support.group_sales_force_manager"/>
+                  groups="sales_force_support.group_sales_force_user"/>
 
         <!-- settings_menuitem (hr_recruitment.action_hr_recruitment_configuration) removed:
              hr_recruitment is not a dependency of this module. -->

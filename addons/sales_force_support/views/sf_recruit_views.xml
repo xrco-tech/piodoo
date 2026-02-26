@@ -848,7 +848,7 @@
                   action="action_sf_recruit_stage"
                   parent="sales_force_support.recruitment_config_menuitem"
                   sequence="1"
-                  groups="sales_force_support.group_sales_force_manager"/>
+                  groups="sales_force_support.group_sales_force_user"/>
 
         <!-- Recruit top-level menu (action defined above in this file) -->
         <menuitem id="recruitment_menuitem"

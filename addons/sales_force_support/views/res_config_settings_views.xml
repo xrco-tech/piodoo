@@ -15,7 +15,7 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <form position="inside">
-                <app string="Sales Force" name="sales_force_support" groups="sales_force_support.group_sales_force_manager">
+                <app string="Sales Force" name="sales_force_support" groups="sales_force_support.group_sales_force_user">
 
                     <!-- ── WhatsApp BBBot (source: botle_buhle_custom) ────────────── -->
                     <block title="WhatsApp BBB Bot" id="whatsapp_bbbot_block">
