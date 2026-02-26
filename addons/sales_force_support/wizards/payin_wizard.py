@@ -274,7 +274,7 @@ class BbPayinSheetWizard(models.TransientModel):
 
         action = {
             "type": "ir.actions.act_window",
-            "views": [(tree_view_id, "tree"), (form_view_id, "form")],
+            "views": [(tree_view_id, "list"), (form_view_id, "form")],
             "view_mode": "tree,form",
             "name": _("Created Pay-In Sheets"),
             "res_model": "bb.payin.sheet",
@@ -377,7 +377,7 @@ class BbPayinDistributorWizard(models.TransientModel):
 
         action = {
             "type": "ir.actions.act_window",
-            "views": [(tree_view_id, "tree"), (form_view_id, "form")],
+            "views": [(tree_view_id, "list"), (form_view_id, "form")],
             "view_mode": "tree,form",
             "name": _("Pay-In Sheet Distributor Summary"),
             "res_model": "payin.distributor",

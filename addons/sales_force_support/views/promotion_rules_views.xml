@@ -9,10 +9,10 @@
             <field name="name">promotion.rules.tree</field>
             <field name="model">promotion.rules</field>
             <field name="arch" type="xml">
-                <tree string="Promotion Rules">
+                <list string="Promotion Rules">
                     <field name="current_genealogy_level"/>
                     <field name="next_genealogy_level"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -62,7 +62,7 @@
             <field name="name">Promotion Rules</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">promotion.rules</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="promotion_tree_view"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">

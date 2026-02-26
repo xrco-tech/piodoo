@@ -15,9 +15,9 @@
                             Ok button will register the pay-in sheets. If you want to fix the received date and number of pages, press Cancel button.
                         </div>
                     </div>
-                    <tree create="0" default_order="date desc" delete="0" edit="false" mode="tree" string="List of Managers">
+                    <list create="0" default_order="date desc" delete="0" edit="false" mode="list" string="List of Managers">
                         <field name="payin_ids" readonly="1"/>
-                    </tree>
+                    </list>
                     <footer>
                         <button class="oe_highlight" name="change_state" string="OK" type="object"/>
                         or

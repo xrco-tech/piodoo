@@ -69,21 +69,21 @@
             <field name="name">sf.recruit.stage.tree</field>
             <field name="model">sf.recruit.stage</field>
             <field name="arch" type="xml">
-                <tree string="Recruit Stages" editable="top">
+                <list string="Recruit Stages" editable="top">
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
                     <field name="joined_stage"/>
                     <field name="create_member"/>
                     <field name="fold"/>
                     <field name="active"/>
-                </tree>
+                </list>
             </field>
         </record>
 
         <record id="action_sf_recruit_stage" model="ir.actions.act_window">
             <field name="name">Recruit Stages</field>
             <field name="res_model">sf.recruit.stage</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="sf_recruit_stage_view_tree"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
@@ -399,7 +399,7 @@
 
                             <page name="communication" string="Communication">
                                 <field name="communications_ids">
-                                    <tree editable="bottom">
+                                    <list editable="bottom">
                                         <field name="stage_id" readonly="1" force_save="1"/>
                                         <field name="date"/>
                                         <field name="campaign"/>
@@ -408,13 +408,13 @@
                                         <field name="message"/>
                                         <field name="email_mobile"/>
                                         <field name="delivery_status"/>
-                                    </tree>
+                                    </list>
                                 </field>
                             </page>
 
                             <page name="vetting" string="Vetting">
                                 <field name="vetting_ids">
-                                    <tree editable="bottom">
+                                    <list editable="bottom">
                                         <field name="stage_id"          readonly="1" force_save="1"/>
                                         <field name="date"/>
                                         <field name="credit_rating"/>
@@ -429,7 +429,7 @@
                                         <field name="director_indicated"/>
                                         <field name="ethnicity"/>
                                         <field name="property_value"/>
-                                    </tree>
+                                    </list>
                                 </field>
                                 <group invisible="sa_id == False">
                                     <group invisible="compuscan_checkscore_date != False">
@@ -478,7 +478,7 @@
             <field name="name">sf.recruit.tree</field>
             <field name="model">sf.recruit</field>
             <field name="arch" type="xml">
-                <tree string="Recruits">
+                <list string="Recruits">
                     <!-- 'name' column labelled Known Name to match original intent -->
                     <field name="name"        string="Known Name"/>
                     <field name="stage_id"    string="Genealogy Status"/>
@@ -487,7 +487,7 @@
                     <field name="mobile"/>
                     <field name="mobile_2"/>
                     <field name="emp_company" string="Distributor Company Name" optional="hide"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -616,7 +616,7 @@
         <record id="action_sf_recruits" model="ir.actions.act_window">
             <field name="name">Recruits</field>
             <field name="res_model">sf.recruit</field>
-            <field name="view_mode">kanban,tree,form</field>
+            <field name="view_mode">kanban,list,form</field>
             <field name="view_id" ref="sf_recruit_view_kanban"/>
             <field name="search_view_id" ref="sf_recruit_view_search"/>
             <field name="context">{'default_sales_force': 1}</field>
@@ -636,7 +636,7 @@
         <record id="action_sf_recruits_all" model="ir.actions.act_window">
             <field name="name">All Recruits</field>
             <field name="res_model">sf.recruit</field>
-            <field name="view_mode">kanban,tree,form,pivot,graph,calendar,activity</field>
+            <field name="view_mode">kanban,list,form,pivot,graph,calendar,activity</field>
             <field name="view_id" ref="sf_recruit_view_kanban"/>
             <field name="search_view_id" ref="sf_recruit_view_search"/>
             <field name="context">{}</field>

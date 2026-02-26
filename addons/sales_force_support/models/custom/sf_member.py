@@ -834,7 +834,7 @@ class SfMember(models.Model):
 
         return {
             "type": "ir.actions.act_window",
-            "views": [(tree_view_id, "tree"), (form_view_id, "form")],
+            "views": [(tree_view_id, "list"), (form_view_id, "form")],
             "view_mode": "tree,form",
             "view_id": tree_view_id,
             "name": _("Recruits Count"),

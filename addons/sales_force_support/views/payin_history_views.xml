@@ -14,7 +14,7 @@
             <field name="name">payin.history.tree.consultant</field>
             <field name="model">bb.payin.history</field>
             <field name="arch" type="xml">
-                <tree string="Consultant Promotions">
+                <list string="Consultant Promotions">
                     <field name="payin_date"/>
                     <field name="sales_force_code" string="SFM Code"/>
                     <field name="member_id" string="SFM Name"/>
@@ -31,7 +31,7 @@
                     <field name="changed"/>
                     <!-- <field name="retained_recruits"/>
                     <field name="retained_recruits_promotion"/> -->
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -39,7 +39,7 @@
             <field name="name">payin.history.tree.manager</field>
             <field name="model">bb.payin.history</field>
             <field name="arch" type="xml">
-                <tree string="Manager Promotions">
+                <list string="Manager Promotions">
                     <field name="payin_date"/>
                     <field name="sales_force_code" string="SFM Code"/>
                     <field name="member_id" string="SFM Name"/>
@@ -51,7 +51,7 @@
                     <field name="pbm_promoted_managers_team_sales_above"/>
                     <field name="pbm_team_sales_above"/>
                     <field name="changed"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -118,7 +118,7 @@
             <field name="name">Manager Promotions</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">bb.payin.history</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="payin_history_tree_view_manager"/>
             <field name="domain">[('current_genealogy', 'in', ['Manager'])]</field>
             <field name="help" type="html">
@@ -131,7 +131,7 @@
             <field name="name">Prospective Distributor Promotions</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">bb.payin.history</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="payin_history_tree_view_manager"/>
             <field name="domain">[('current_genealogy', 'in', ['Prospective Distributor'])]</field>
             <field name="help" type="html">
@@ -144,7 +144,7 @@
             <field name="name">Consultants Promotions</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">bb.payin.history</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="payin_history_tree_view_consultant"/>
             <field name="domain">[('current_genealogy', 'in', ['Consultant', 'Potential Consultant'])]</field>
             <field name="help" type="html">
@@ -157,7 +157,7 @@
             <field name="name">Prospective Manager Promotions</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">bb.payin.history</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="payin_history_tree_view_consultant"/>
             <field name="domain">[('current_genealogy', 'in', ['Prospective Manager'])]</field>
             <field name="help" type="html">

@@ -126,7 +126,7 @@
                             <page name="linked_contacts" string="Linked Contacts"/>
                             <page name="vetting" string="Vetting">
                                 <field name="vetting_ids">
-                                    <tree editable="bottom">
+                                    <list editable="bottom">
                                         <field name="stage_id" readonly="1" force_save="1"/>
                                         <field name="date"/>
                                         <field name="credit_rating"/>
@@ -141,7 +141,7 @@
                                         <field name="director_indicated"/>
                                         <field name="ethnicity"/>
                                         <field name="property_value"/>
-                                    </tree>
+                                    </list>
                                 </field>
                             </page>
                             <page name="comments" string="Internal Notes">
@@ -183,7 +183,7 @@
             <field name="name">res.partner.customer.tree</field>
             <field name="model">res.partner</field>
             <field name="arch" type="xml">
-                <tree string="Customer">
+                <list string="Customer">
                     <field name="id" string="System ID"/>
                     <field name="name"/>
                     <field name="mobile" widget="phone" options="{'enable_sms': false}"/>
@@ -193,7 +193,7 @@
                     <field name="distribution_id"/>
                     <field name="active"/>
                     <field name="bad_debts"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -201,7 +201,7 @@
             <field name="name">res.partner.customer.tree.check</field>
             <field name="model">res.partner</field>
             <field name="arch" type="xml">
-                <tree string="Sales Force">
+                <list string="Sales Force">
                     <field name="name"/>
                     <field name="category_title"/>
                     <field name="sales_force_code"/>
@@ -212,18 +212,18 @@
                     <field name="manager_mobile" widget="phone" options="{'enable_sms': false}"/>
                     <field name="view_model" invisible="1"/>
                     <field name="view_res_id" invisible="1"/>
-                </tree>
+                </list>
             </field>
         </record>
 
         <record model="ir.actions.act_window" id="action_res_partner">
             <field name="name">Customer</field>
             <field name="res_model">res.partner</field>
-            <field name="view_mode">tree,kanban,form</field>
+            <field name="view_mode">list,kanban,form</field>
             <field name="domain">[('customer', '=', True)]</field>
             <field name="context">{'default_customer': 1}</field>
             <field name="view_ids" eval="[(5, 0, 0),
-                (0, 0, {'view_mode': 'tree', 'view_id': ref('res_partner_customer_tree')}),
+                (0, 0, {'view_mode': 'list', 'view_id': ref('res_partner_customer_tree')}),
                 (0, 0, {'view_mode': 'form', 'view_id': ref('res_partner_customer_view')}),
                 (0, 0, {'view_mode': 'kanban', 'view_id': ref('base.res_partner_kanban_view')})]"/>
             <field name="help" type="html">

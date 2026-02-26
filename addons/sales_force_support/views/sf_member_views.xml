@@ -153,7 +153,7 @@
             <field name="name">sf.mapping.field.tree</field>
             <field name="model">sf.mapping.field</field>
             <field name="arch" type="xml">
-                <tree string="Synchronisation Field Mapping" editable="top">
+                <list string="Synchronisation Field Mapping" editable="top">
                     <field name="local_model_id"/>
                     <field name="local_model_name"/>
                     <field name="local_field_id" domain="[('model_id', '=', local_model_id)]"/>
@@ -168,14 +168,14 @@
                     <field name="required_on_update"/>
                     <field name="edit_after_create"/>
                     <field name="allow_duplicates"/>
-                </tree>
+                </list>
             </field>
         </record>
 
         <record id="sales_force_action_field_mapping" model="ir.actions.act_window">
             <field name="name">Synchronisation Field Mapping</field>
             <field name="res_model">sf.mapping.field</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="sf_field_mapping_view"/>
         </record>
 
@@ -602,7 +602,7 @@
             <field name="name">sf.member.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree string="Sales Force Members" create="0">
+                <list string="Sales Force Members" create="0">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="active_status"/>
@@ -610,7 +610,7 @@
                     <field name="genealogy" string="Genealogy"/>
                     <field name="manager_id"/>
                     <field name="related_distributor_id" string="Distributor"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -619,13 +619,13 @@
             <field name="name">sf.member.active.distributors.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Distributors (Active)">
+                <list create="0" string="Sales Force - Distributors (Active)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -634,7 +634,7 @@
             <field name="name">sf.member.active.prospective.distributors.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Prospective Distributors (Active)">
+                <list create="0" string="Sales Force - Prospective Distributors (Active)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code" string="SFM Code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -644,7 +644,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -653,7 +653,7 @@
             <field name="name">sf.member.active.managers.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Managers (Active)">
+                <list create="0" string="Sales Force - Managers (Active)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -661,7 +661,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -670,7 +670,7 @@
             <field name="name">sf.member.active.prospective.managers.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Prospective Managers (Active)">
+                <list create="0" string="Sales Force - Prospective Managers (Active)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -682,7 +682,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id" invisible="1"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -691,7 +691,7 @@
             <field name="name">sf.member.active.consultants.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Consultants (Active)">
+                <list create="0" string="Sales Force - Consultants (Active)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -703,7 +703,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -712,7 +712,7 @@
             <field name="name">sf.member.active.all.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - All (Active)">
+                <list create="0" string="Sales Force - All (Active)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -723,7 +723,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -732,13 +732,13 @@
             <field name="name">sf.member.inactive.distributors.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Distributors (Inactive)">
+                <list create="0" string="Sales Force - Distributors (Inactive)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -747,7 +747,7 @@
             <field name="name">sf.member.inactive.prospective.distributors.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Prospective Distributors (Inactive)">
+                <list create="0" string="Sales Force - Prospective Distributors (Inactive)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code" string="SFM Code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -757,7 +757,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -766,7 +766,7 @@
             <field name="name">sf.member.inactive.managers.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Managers (Inactive)">
+                <list create="0" string="Sales Force - Managers (Inactive)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -774,7 +774,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -783,7 +783,7 @@
             <field name="name">sf.member.inactive.prospective.managers.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Prospective Managers (Inactive)">
+                <list create="0" string="Sales Force - Prospective Managers (Inactive)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -795,7 +795,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -804,7 +804,7 @@
             <field name="name">sf.member.inactive.consultants.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Consultants (Inactive)">
+                <list create="0" string="Sales Force - Consultants (Inactive)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -816,7 +816,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -825,7 +825,7 @@
             <field name="name">sf.member.inactive.all.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - All (Inactive)">
+                <list create="0" string="Sales Force - All (Inactive)">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -836,7 +836,7 @@
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
                     <field name="active_status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -845,7 +845,7 @@
             <field name="name">sf.member.potential.consultants.tree</field>
             <field name="model">sf.member</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Sales Force - Potential Consultants">
+                <list create="0" string="Sales Force - Potential Consultants">
                     <field name="name" string="Sales Force Member"/>
                     <field name="sales_force_code"/>
                     <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
@@ -856,7 +856,7 @@
                     <field name="related_distributor_id" string="Distributor"/>
                     <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
                     <field name="distribution_id"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -922,11 +922,11 @@
             <field name="name">Sales Force</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,kanban,form,activity</field>
+            <field name="view_mode">list,kanban,form,activity</field>
             <field name="domain">[('employee_type', '=', 'sales_force')]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
             <field name="view_ids" eval="[(5, 0, 0),
-                (0, 0, {'view_mode': 'tree', 'view_id': ref('view_sf_member_tree')}),
+                (0, 0, {'view_mode': 'list', 'view_id': ref('view_sf_member_tree')}),
                 (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_sf_member_kanban')}),
                 (0, 0, {'view_mode': 'form', 'view_id': ref('view_sf_member_form')})]"/>
             <field name="search_view_id" ref="view_sf_member_filter"/>
@@ -946,7 +946,7 @@
         <record id="action_sf_member_active_distributors" model="ir.actions.act_window">
             <field name="name">Sales Force - Distributors (Active)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Distributor'),
                 ('active_status', 'in', ('active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -958,13 +958,13 @@
         <record id="action_sf_member_active_prospective_distributors" model="ir.actions.act_window">
             <field name="name">Sales Force - Prospective Distributors (Active)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Prospective Distributor'),
                 ('active_status', 'in', ('active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
             <field eval="False" name="view_id"/>
             <field name="view_ids" eval="[(5, 0, 0),
-                (0, 0, {'view_mode': 'tree', 'view_id': ref('view_sf_member_active_prospective_distributors_tree')}),
+                (0, 0, {'view_mode': 'list', 'view_id': ref('view_sf_member_active_prospective_distributors_tree')}),
                 (0, 0, {'view_mode': 'form', 'view_id': ref('view_sf_member_form')})]"/>
             <field name="search_view_id" ref="view_sf_member_active_filter"/>
         </record>
@@ -973,7 +973,7 @@
         <record id="action_sf_member_active_managers" model="ir.actions.act_window">
             <field name="name">Sales Force - Managers (Active)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Manager'),
                 ('active_status', 'in', ('active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -985,7 +985,7 @@
         <record id="action_sf_member_active_prospective_managers" model="ir.actions.act_window">
             <field name="name">Sales Force - Prospective Managers (Active)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Prospective Manager'),
                 ('active_status', 'in', ('active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -997,7 +997,7 @@
         <record id="action_sf_member_active_consultants" model="ir.actions.act_window">
             <field name="name">Sales Force - Consultants (Active)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Consultant'),
                 ('active_status', 'in', ('pay_in_sheet_pending', 'active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -1009,7 +1009,7 @@
         <record id="action_sf_member_active_all" model="ir.actions.act_window">
             <field name="name">Sales Force - All (Active)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'),
                 ('active_status', 'in', ('pay_in_sheet_pending', 'active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -1021,7 +1021,7 @@
         <record id="action_sf_member_inactive_distributors" model="ir.actions.act_window">
             <field name="name">Sales Force - Distributors (Inactive)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Distributor'),
                 ('active_status', 'in', ('inactive12', 'inactive18', 'suspended', 'blacklisted'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -1033,7 +1033,7 @@
         <record id="action_sf_member_inactive_prospective_distributors" model="ir.actions.act_window">
             <field name="name">Sales Force - Prospective Distributors (Inactive)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Prospective Distributor'),
                 ('active_status', 'in', ('inactive12', 'inactive18', 'suspended', 'blacklisted'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -1045,7 +1045,7 @@
         <record id="action_sf_member_inactive_managers" model="ir.actions.act_window">
             <field name="name">Sales Force - Managers (Inactive)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Manager'),
                 ('active_status', 'in', ('inactive12', 'inactive18', 'suspended', 'blacklisted'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -1057,7 +1057,7 @@
         <record id="action_sf_member_inactive_prospective_managers" model="ir.actions.act_window">
             <field name="name">Sales Force - Prospective Managers (Inactive)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Prospective Manager'),
                 ('active_status', 'in', ('inactive12', 'inactive18', 'inactive', 'suspended', 'blacklisted'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -1069,7 +1069,7 @@
         <record id="action_sf_member_inactive_consultants" model="ir.actions.act_window">
             <field name="name">Sales Force - Consultants (Inactive)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Consultant'),
                 ('active_status', 'in', ('inactive12', 'inactive18', 'inactive', 'suspended', 'blacklisted'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -1081,7 +1081,7 @@
         <record id="action_sf_member_inactive_all" model="ir.actions.act_window">
             <field name="name">Sales Force - All (Inactive)</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'),
                 ('active_status', 'in', ('inactive12', 'inactive18', 'inactive', 'suspended', 'blacklisted'))]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
@@ -1093,7 +1093,7 @@
         <record id="action_sf_member_potential_consultants" model="ir.actions.act_window">
             <field name="name">Sales Force - Potential Consultants</field>
             <field name="res_model">sf.member</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Potential Consultant')]</field>
             <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
             <field name="view_id" ref="view_sf_member_potential_consultants_tree"/>
@@ -1114,14 +1114,14 @@
             <field name="name">required.field.state.list</field>
             <field name="model">required.field.state</field>
             <field name="arch" type="xml">
-                <tree editable="bottom">
+                <list editable="bottom">
                     <field name="field_id" required="1"
                            domain="[('model_id.name', '=', 'Applicant')]"
                            options="{'no_create': True}"/>
                     <field name="state" required="1"
                            options="{'no_create': True}"
                            domain="[('sales_force', '=', True)]"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -1129,7 +1129,7 @@
             <field name="name">Stage Required Fields</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">required.field.state</field>
-            <field name="view_mode">tree</field>
+            <field name="view_mode">list</field>
             <field name="view_id" ref="view_fields_state_tree"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">Stage Required Fields</p>

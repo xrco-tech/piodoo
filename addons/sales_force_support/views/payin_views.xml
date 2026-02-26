@@ -16,7 +16,7 @@
             <field name="name">bb.payin.sheet.tree</field>
             <field name="model">bb.payin.sheet</field>
             <field name="arch" type="xml">
-                <tree class="o_list_view_freeze" create="0" default_order="date desc, manager_known_name asc" delete="0" string="Pay-In Sheets">
+                <list class="o_list_view_freeze" create="0" default_order="date desc, manager_known_name asc" delete="0" string="Pay-In Sheets">
                     <field invisible="1" name="name"/>
                     <field name="manager_known_name"/>
                     <field name="distributor_id"/>
@@ -27,7 +27,7 @@
                     <field name="received_date"/>
                     <field name="no_of_pages" string="No. of Pages Received"/>
                     <field name="state"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -35,7 +35,7 @@
             <field name="name">bb.payin.sheet.tree</field>
             <field name="model">bb.payin.sheet</field>
             <field name="arch" type="xml">
-                <tree class="o_list_view_freeze" create="0" default_order="date desc, manager_known_name asc" delete="0" string="Pay-In Sheets">
+                <list class="o_list_view_freeze" create="0" default_order="date desc, manager_known_name asc" delete="0" string="Pay-In Sheets">
                     <field invisible="1" name="name"/>
                     <field name="manager_known_name"/>
                     <field name="distributor_id"/>
@@ -49,7 +49,7 @@
                     <field name="capture_start_date"/>
                     <field name="no_of_pages" string="No. of Pages Received"/>
                     <field name="state"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -57,7 +57,7 @@
             <field name="name">bb.payin.sheet.tree.new</field>
             <field name="model">bb.payin.sheet</field>
             <field name="arch" type="xml">
-                <tree class="o_list_view_freeze" create="0" default_order="date desc, manager_known_name asc" delete="0" editable="top" string="Pay-In Sheets">
+                <list class="o_list_view_freeze" create="0" default_order="date desc, manager_known_name asc" delete="0" editable="top" string="Pay-In Sheets">
                     <field invisible="1" name="name"/>
                     <field name="manager_known_name"/>
                     <field context="{'order_display': 'known_name desc' }" name="distributor_id" options="{'no_open': True}" readonly="1"/>
@@ -72,7 +72,7 @@
                     <field invisible="1" name="changed"/>
                     <field context="{'order': 'desc'}" invisible="1" name="date"/>
                     <field invisible="1" name="capture_start_date"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -138,7 +138,7 @@
                         <notebook>
                             <page string="Lines" name="payin_line_ids_page">
                                 <field name="payin_line_ids" nolabel="1" readonly="allow_edit == False or is_no_sales == True">
-                                    <tree class="scrollable-tree o_list_view o_list_view_freeze_form" delete="1" editable="bottom" limit="2000" string="Lines">
+                                    <list class="scrollable-tree o_list_view o_list_view_freeze_form" delete="1" editable="bottom" limit="2000" string="Lines">
                                         <field domain="[('genealogy', 'in', ['Consultant', 'Prospective Consultant', 'Potential Consultant', 'Prospective Manager', 'Manager', 'Prospective Distributor', 'Distributor']), ('manager_id', '=', parent.manager_id), ('id', 'not in', parent.payin_line_existing_consultant_ids)]" force_save="1" name="consultant_id" options="{'no_create': True, 'no_open': True}" readonly="id != False" required="1"/>
                                         <field name="sales_force_code"/>
                                         <field class="payin_line_editable" decoration-danger="bb_sales &lt; 0" name="bb_sales"/>
@@ -149,7 +149,7 @@
                                         <field name="puer_brand_total"/>
                                         <field class="payin_line_editable" name="comment"/>
                                         <field name="sub_total"/>
-                                    </tree>
+                                    </list>
                                     <form string="Lines">
                                         <group>
                                             <field name="consultant_id" options="{'no_create': True}" required="1"/>
@@ -239,7 +239,7 @@
             <field name="name">Pay-In Sheets History</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">bb.payin.sheet</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="action_payin_filters"/>
             <field name="context">{'group_by': ['date', 'distributor_known_name']}</field>
             <field name="view_id" ref="payin_tree_view_capture"/>
@@ -253,7 +253,7 @@
             <field name="name">Pay-In Sheets Register</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">bb.payin.sheet</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="context">{'group_by': ['date', 'distributor_known_name']}</field>
             <field name="view_id" ref="payin_tree_view_new"/>
             <field name="domain">[('state', 'in', (False, 'new'))]</field>
@@ -267,7 +267,7 @@
             <field name="name">Pay-In Sheets Capture</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">bb.payin.sheet</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="action_payin_filters"/>
             <field name="view_id" ref="payin_tree_view_capture"/>
             <field name="domain">[('state', '=', 'registered')]</field>
@@ -294,7 +294,7 @@
             <field name="name">payin.distributor.tree</field>
             <field name="model">payin.distributor</field>
             <field name="arch" type="xml">
-                <tree class="o_list_view_freeze" create="0" default_order="date desc, distributor_known_name asc" delete="0" string="Pay-In Sheet Distributor Summaries">
+                <list class="o_list_view_freeze" create="0" default_order="date desc, distributor_known_name asc" delete="0" string="Pay-In Sheet Distributor Summaries">
                     <field name="distributor_known_name"/>
                     <field name="distributor_id"/>
                     <field name="distributor_sales_force_code"/>
@@ -304,7 +304,7 @@
                     <!--field name="date" context="{'order': 'desc'}"/-->
                     <field name="no_of_pages" string="No. of Pages Received"/>
                     <field name="state"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -312,7 +312,7 @@
             <field name="name">payin.distributor.tree.new</field>
             <field name="model">payin.distributor</field>
             <field name="arch" type="xml">
-                <tree class="o_list_view_freeze" create="0" default_order="date desc, distributor_known_name asc" delete="0" editable="top" string="Pay-In Sheet Distributor Summaries">
+                <list class="o_list_view_freeze" create="0" default_order="date desc, distributor_known_name asc" delete="0" editable="top" string="Pay-In Sheet Distributor Summaries">
                     <field invisible="1" name="name"/>
                     <field name="distributor_known_name"/>
                     <field name="distributor_id" options="{'no_open': True}" readonly="1"/>
@@ -322,7 +322,7 @@
                     <field context="{'order': 'desc'}" force_save="1" name="payin_date" readonly="1"/>
                     <!--field name="date" context="{'order': 'desc'}"/-->
                     <field name="state" readonly="1"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -372,14 +372,14 @@
                         <notebook>
                             <page string="Lines">
                                 <field name="payin_line_ids" nolabel="1" readonly="allow_edit == False">
-                                    <tree class="scrollable-tree o_list_view o_list_view_freeze_form" editable="bottom" limit="2000" string="Lines">
+                                    <list class="scrollable-tree o_list_view o_list_view_freeze_form" editable="bottom" limit="2000" string="Lines">
                                         <field domain="[('related_distributor_id', '=', parent.distributor_id), ('genealogy', 'in', ['Manager', 'Prospective Manager', 'Prospective Distributor', 'Distributor'])]" force_save="1" name="manager_id" options="{'no_create': True, 'no_open': True}" readonly="id != False" required="1"/>
                                         <field name="sales_force_code"/>
                                         <field decoration-danger="actual_sales &lt; 0" name="actual_sales"/>
                                         <field name="total_captured"/>
                                         <field decoration-danger="sales_difference &lt; 0" name="sales_difference"/>
                                         <field name="comment"/>
-                                    </tree>
+                                    </list>
                                     <form string="Lines">
                                         <group>
                                             <field domain="[('related_distributor_id', '=', parent.distributor_id), ('genealogy', '=', 'Manager')]" name="manager_id" options="{'no_create': True}" required="1"/>
@@ -450,7 +450,7 @@
             <field name="name">Pay-In Sheets Distributor Summaries Register</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">payin.distributor</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="action_payin_distributor_filters"/>
             <field name="domain">[('state', '=', 'new')]</field>
             <field name="context">{'group_by': ['date']}</field>
@@ -465,7 +465,7 @@
             <field name="name">Pay-In Sheets Distributor Summary Capture</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">payin.distributor</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="action_payin_distributor_filters"/>
             <field name="domain">[('state', '=', 'registered')]</field>
             <field name="context">{'group_by': ['date']}</field>
@@ -480,7 +480,7 @@
             <field name="name">Pay-In Sheets Distributor Summary History</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">payin.distributor</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="action_payin_distributor_filters"/>
             <field name="context">{'group_by': ['date']}</field>
             <field name="view_id" ref="payin_distributor_tree_view"/>
@@ -518,13 +518,13 @@
             <field name="name">payin.capture.time.tree</field>
             <field name="model">payin.capture.time</field>
             <field name="arch" type="xml">
-                <tree create="0" delete="0" edit="0" string="Pay-In Sheets Capture Time">
+                <list create="0" delete="0" edit="0" string="Pay-In Sheets Capture Time">
                     <field name="payin_sheet_id"/>
                     <field name="user_id"/>
                     <field name="consultants_captured"/>
                     <field name="capture_start_date"/>
                     <field name="capture_time" readonly="1" widget="float_time"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -558,7 +558,7 @@
             <field name="name">Pay-In Sheets Capture Time</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">payin.capture.time</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="payin_capture_time_tree_view"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
@@ -604,7 +604,7 @@
             <field name="name">bbb.pay.sheet.line.export.tree</field>
             <field name="model">bb.payin.sheet.line</field>
             <field name="arch" type="xml">
-                <tree create="0" string="Pay-In Sheet Lines Export">
+                <list create="0" string="Pay-In Sheet Lines Export">
                     <field domain="[('genealogy', 'in', ['Consultant', 'Prospective Consultant', 'Potential Consultant']), ('manager_id', '=', parent.manager_id)]" force_save="1" name="consultant_id" options="{'no_create': True}" readonly="id != False" required="1"/>
                     <field name="sales_force_code"/>
                     <field name="bb_sales"/>
@@ -615,7 +615,7 @@
                     <field name="puer_brand_total"/>
                     <field name="comment"/>
                     <field name="sub_total"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -623,7 +623,7 @@
             <field name="name">Pay-In Sheet Lines Export</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">bb.payin.sheet.line</field>
-            <field name="view_mode">tree</field>
+            <field name="view_mode">list</field>
             <field name="help" type="html">
                 <p class="oe_view_nocontent_create">
                     There are no pay-in sheet lines to export.
