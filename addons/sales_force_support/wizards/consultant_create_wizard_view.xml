@@ -62,4 +62,14 @@
         <field name="view_id" ref="consultant_create_wizard_view"/>
         <field name="target">new</field>
     </record>
+
+    <!-- Menuitem defined here (not in sf_recruit_views.xml) because this file
+         is loaded after sf_recruit_views.xml in the manifest, so the action
+         above must already exist before the menuitem references it. -->
+    <menuitem id="recruiting_menuitem_create_consultant"
+              name="Create Consultant"
+              action="action_consultant_create_wizard"
+              parent="sales_force_support.recruitment_menuitem"
+              sequence="3"
+              groups="sales_force_support.group_sales_force_user"/>
 </odoo>
