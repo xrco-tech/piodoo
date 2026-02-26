@@ -64,9 +64,3 @@ access_captured_summary_report_track,captured.summary.report.track,model_capture
 ## Other models
 access_interview_decline_reasons_user,interview.decline.reasons,model_interview_decline_reasons,sales_force_support.group_sales_force_user,1,1,1,1
 access_user_otp_user,user.otp,model_user_otp,base.group_user,1,1,1,1
-
-## ============================================================
-## partner_consumerview models
-## ============================================================
-access_partner_consumerview_resolve,partner.consumerview.resolve,model_partner_consumerview_resolve,base.group_user,1,1,1,1
-access_partner_consumerview_resolve_line,partner.consumerview.resolve.line,model_partner_consumerview_resolve_line,base.group_user,1,1,1,1

@@ -37,18 +37,3 @@ class ResUsers(models.Model):
             % token.decode("utf-8")
         )
 
-    # ── VoIP SIP ignore-incoming toggle ──────────────────────────────────────
-    @api.model
-    def update_sip_ignore_incoming(self, uid, voip_perm):
-        """
-        Update should_auto_reject_incoming_calls based on VoIP access rights.
-        If the user is given access to VoIP: should_auto_reject_incoming_calls = False
-        If the user is restricted to VoIP: should_auto_reject_incoming_calls = True
-        :param uid: user id
-        :param voip_perm: boolean True or False
-        :return: True
-        """
-        user = self.browse(uid)
-        if user:
-            user.write({"should_auto_reject_incoming_calls": not voip_perm})
-        return True

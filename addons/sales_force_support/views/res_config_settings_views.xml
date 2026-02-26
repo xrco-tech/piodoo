@@ -113,22 +113,6 @@
                         </setting>
                     </block>
 
-                    <!-- ── VoIP Access Rights (source: bb_payin) ─────────────────── -->
-                    <block title="VoIP Access Rights" id="voip_access_block">
-                        <setting id="voip_access_group_ids" title="Set VoIP access rights">
-                            <div class="o_setting_right_pane">
-                                <label for="voip_access_group_ids" string="VoIP Permissions"/>
-                                <div class="text-muted">
-                                    Assign roles that need access to VoIP.
-                                </div>
-                                <div class="mt-2 row">
-                                    <label for="voip_access_group_ids" string="Roles" class="o_light_label col-5"/>
-                                    <field name="voip_access_group_ids" class="col-6"/>
-                                </div>
-                            </div>
-                        </setting>
-                    </block>
-
                     <!-- ── Telviva Information (source: bb_payin) ────────────────── -->
                     <block title="Telviva Information" id="telviva_block">
                         <setting id="telviva_information">

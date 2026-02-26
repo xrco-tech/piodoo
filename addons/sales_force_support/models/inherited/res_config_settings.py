@@ -62,11 +62,6 @@ class ResConfigSettings(models.TransientModel):
         default=1,
         config_parameter="sales_force_support.report_print_count",
     )
-    voip_access_group_ids = fields.Many2one(
-        comodel_name="res.groups",
-        string="VoIP Access Roles",
-        config_parameter="sales_force_support.voip_access_group_ids",
-    )
     payin_active_status_reference_date = fields.Char(
         string="Active Status Reference Date",
         config_parameter="sales_force_support.payin_active_status_reference_date",

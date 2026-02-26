@@ -663,7 +663,7 @@
             <field name="name">sf.recruit.onboard.form</field>
             <field name="model">sf.recruit</field>
             <field name="arch" type="xml">
-                <form js_class="voip_recruit_popup">
+                <form>
                     <sheet>
                         <group>
                             <field name="first_name"/>

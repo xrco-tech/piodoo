@@ -22,7 +22,6 @@
         "purchase",
         "sale",
         "web",
-        "voip",
         "base_geolocalize",
     ],
     "data": [
@@ -55,7 +54,6 @@
         "wizards/consultant_create_wizard_view.xml",
         "wizards/display_created_consultant.xml",
         "wizards/consultant_search_view.xml",
-        "wizards/partner_consumerview_resolve_views.xml",
         # ── Pay-In views ───────────────────────────────────────────────────────
         "views/payin_history_views.xml",
         "views/payin_views.xml",
@@ -74,9 +72,8 @@
             "sales_force_support/static/src/css/kanban_ribbon.css",
             "sales_force_support/static/src/css/payin.css",
             "sales_force_support/static/src/css/tree_header.css",
-            # JS — partner & VOIP (from botle_buhle_custom)
+            # JS — partner controller (from botle_buhle_custom)
             "sales_force_support/static/src/js/partner_controller.js",
-            "sales_force_support/static/src/js/voip_recruit_popup.js",
             # JS — pay-in sheets (from bb_payin)
             "sales_force_support/static/src/js/timer.js",
             "sales_force_support/static/src/js/timesheet_uom.js",
@@ -91,13 +88,10 @@
             "sales_force_support/static/src/js/datepicker.js",
             "sales_force_support/static/src/js/group_expand.js",
             "sales_force_support/static/src/js/promotions_controller.js",
-            "sales_force_support/static/src/js/systray_voip_access.js",
             # OWL/QWeb templates
             "sales_force_support/static/src/xml/timer.xml",
-            "sales_force_support/static/src/xml/dialing_panel.xml",
             "sales_force_support/static/src/xml/expand_buttons.xml",
             "sales_force_support/static/src/xml/payin_sheet_enquiry_report.xml",
-            "sales_force_support/static/src/xml/voip_phonecall_details.xml",
         ],
     },
     "installable": True,
