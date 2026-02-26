@@ -10,7 +10,6 @@
         <record id="module_category_sales_force" model="ir.module.category">
             <field name="name">Sales Force</field>
             <field name="sequence">100</field>
-            <field name="exclusive_rule" eval="True"/>
         </record>
 
         <!-- ============================================================
