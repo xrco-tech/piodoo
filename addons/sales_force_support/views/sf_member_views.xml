@@ -1261,13 +1261,6 @@
                   parent="sales_force_support.sales_force_sub_menuitem"
                   sequence="3"/>
 
-        <!-- Recruit menu -->
-        <menuitem id="recruitment_menuitem"
-                  name="Recruit"
-                  parent="sales_force_support.sales_force_menuitem"
-                  action="action_sf_recruits"
-                  sequence="3"/>
-
         <!-- Configurations sub-menus -->
         <menuitem id="field_required_menuitem"
                   name="Stage Required Fields"
@@ -1275,14 +1268,6 @@
                   sequence="3"
                   action="action_field_required"
                   groups="sales_force_support.group_sales_force_user,sales_force_support.group_sales_force_manager"/>
-
-        <!-- Stages → points to sf.recruit.stage action (defined in sf_recruit_views.xml) -->
-        <menuitem id="stages_menuitem"
-                  name="Stages"
-                  parent="sales_force_support.configurations_menuitem"
-                  sequence="1"
-                  action="sales_force_support.action_sf_recruit_stage"
-                  groups="base.group_user"/>
 
         <!-- settings_menuitem (hr_recruitment.action_hr_recruitment_configuration) removed:
              hr_recruitment is not a dependency of this module. -->

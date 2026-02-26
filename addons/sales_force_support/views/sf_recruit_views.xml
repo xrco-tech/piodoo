@@ -865,5 +865,20 @@
                   sequence="1"
                   groups="sales_force_support.group_sales_force_manager"/>
 
+        <!-- Recruit top-level menu (action defined above in this file) -->
+        <menuitem id="recruitment_menuitem"
+                  name="Recruit"
+                  parent="sales_force_support.sales_force_menuitem"
+                  action="action_sf_recruits"
+                  sequence="3"/>
+
+        <!-- Stages under Configurations (action defined above in this file) -->
+        <menuitem id="stages_menuitem"
+                  name="Stages"
+                  parent="sales_force_support.configurations_menuitem"
+                  sequence="1"
+                  action="action_sf_recruit_stage"
+                  groups="base.group_user"/>
+
     </data>
 </odoo>
