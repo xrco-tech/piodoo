@@ -383,9 +383,9 @@ class SfRecruit(models.Model):
     # ─────────────────────────────────────────────────────────────────────────
 
     @api.model
-    def _read_group_stage_ids(self, stages, domain, order):
+    def _read_group_stage_ids(self, stages, domain):
         """Always show all active stages in Kanban view."""
-        return stages.search([("active", "=", True)], order=order)
+        return stages.search([("active", "=", True)], order="sequence asc")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Default helpers
