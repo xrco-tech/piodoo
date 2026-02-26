@@ -115,14 +115,14 @@
                                 class="oe_highlight"
                                 invisible="member_id != False or active == False"
                                 confirm="Are you sure you want to create a Sales Force Member from this recruit?"/>
-                        <button name="archive_applicant"
+                        <button name="action_archive"
                                 string="Refuse"
                                 type="object"
-                                invisible="active in (False, True)"/>
-                        <button name="reset_applicant"
+                                invisible="not active"/>
+                        <button name="action_unarchive"
                                 string="Restore"
                                 type="object"
-                                invisible="active == True"/>
+                                invisible="active"/>
                         <button name="generate_sales_force_code_for_applicant"
                                 type="object"
                                 invisible="sales_force_code != False and related_stage_id != False"
