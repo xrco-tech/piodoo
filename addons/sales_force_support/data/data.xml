@@ -130,7 +130,7 @@
 
     <!-- Sync Remote SF Members (from bbb_sales_force_genealogy)
          model_id updated: hr.model_hr_employee -> model_sf_member -->
-    <record id="ir_cron_sync_remote_employees" model="ir.cron">
+    <record id="ir_cron_sync_remote_employees" forcecreate="True" model="ir.cron">
         <field name="name">Sync Remote SF Members</field>
         <field name="model_id" ref="model_sf_member"/>
         <field name="state">code</field>
