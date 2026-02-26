@@ -164,11 +164,6 @@
                                 bg_color="bg-danger"
                                 invisible="active == True or member_id != False or call_disposition == 'not_interested'"/>
 
-                        <field name="kanban_state"/>
-                        <field name="legend_normal" invisible="1"/>
-                        <field name="legend_blocked" invisible="1"/>
-                        <field name="legend_done" invisible="1"/>
-
                         <!-- ── Identity header block ────────────────────────── -->
                         <group col="4">
                             <group style="width: 23%; display: flex; align-items: center; justify-content: center;">
