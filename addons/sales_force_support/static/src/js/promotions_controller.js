@@ -18,7 +18,7 @@ patch(FormController.prototype, {
         if (this.model.config.resModel === "bb.payin.history") {
             console.log("FormController: bb.payin.history condition met");
 
-            const employeeId = record.data.employee_id?.[0];
+            const employeeId = record.data.member_id?.[0];
             if (!employeeId) {
                 return super.openRecord(record);
             }
@@ -46,7 +46,7 @@ patch(ListController.prototype, {
         if (this.model.config.resModel === "bb.payin.history") {
             console.log("ListController: bb.payin.history condition met");
 
-            const employeeId = record.data.employee_id?.[0];
+            const employeeId = record.data.member_id?.[0];
             if (!employeeId) {
                 return super.openRecord(record);
             }

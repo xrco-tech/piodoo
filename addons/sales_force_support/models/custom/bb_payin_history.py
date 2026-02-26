@@ -17,8 +17,8 @@ class BbPayinHistory(models.Model):
     _description = "Pay-In History"
 
     payin_date = fields.Date("Month/Year")
-    employee_id = fields.Many2one("sf.member", string="SFM Name")
-    sales_force_code = fields.Char("SFM Code", related="employee_id.sales_force_code")
+    member_id = fields.Many2one("sf.member", string="SFM Name")
+    sales_force_code = fields.Char("SFM Code", related="member_id.sales_force_code")
     current_genealogy = fields.Selection(
         [
             ("Distributor", "Distributor"),
@@ -62,7 +62,7 @@ class BbPayinHistory(models.Model):
     active_sfm_promotion = fields.Boolean("# Active SFM Promotion Flag")
     team_sales_promotion = fields.Boolean("Team Sales Promotion Flag")
     manager_id = fields.Many2one("sf.member", string="Manager Name")
-    name = fields.Char("Name", related="employee_id.name")
+    name = fields.Char("Name", related="member_id.name")
     team_bbb_sales = fields.Float("Team Sales (BBB)")
     team_puer_sales = fields.Float("Team Sales (Puer)")
     team_promoted = fields.Integer("# Team Promoted")

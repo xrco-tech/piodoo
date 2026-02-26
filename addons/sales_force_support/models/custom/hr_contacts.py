@@ -10,7 +10,7 @@ class HrContacts(models.Model):
     _name = "hr.contacts"
     _description = "SF Member Contacts"
 
-    employee_id = fields.Many2one("sf.member", "SF Member")
+    member_id = fields.Many2one("sf.member", "SF Member")
     mobile = fields.Char("Mobile")
     email = fields.Char("Email")
     street = fields.Char("Street")

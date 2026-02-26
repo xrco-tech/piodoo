@@ -42,7 +42,7 @@ class CaptureWizard(models.TransientModel):
             for line in sold_payin_lines:
                 _logger.info("line: %s", line)
                 _logger.info("consultant_id: %s", line.consultant_id)
-                employee_id = line.consultant_id.id
+                member_id = line.consultant_id.id
                 current_job_id = line.consultant_id.genealogy
                 manager_id = line.consultant_id.manager_id.id
                 manager_code = line.consultant_id.manager_id.sales_force_code
@@ -57,7 +57,7 @@ class CaptureWizard(models.TransientModel):
 
                 create_history_vals = {
                     "payin_date": payin_date,
-                    "employee_id": employee_id,
+                    "member_id": member_id,
                     "current_job_id": current_job_id,
                     "manager_id": manager_id,
                     "manager_code": manager_code,
@@ -82,7 +82,7 @@ class CaptureWizard(models.TransientModel):
             history_id = self.env["bb.payin.history"].search(
                 [
                     ("payin_date", "=", line.payin_sheet_id.payin_date),
-                    ("employee_id", "=", line.consultant_id.id),
+                    ("member_id", "=", line.consultant_id.id),
                 ]
             )
             if not history_id:
@@ -94,7 +94,7 @@ class CaptureWizard(models.TransientModel):
                     previous_history_id = self.env["bb.payin.history"].search(
                         [
                             ("payin_date", "<", line.payin_sheet_id.payin_date),
-                            ("employee_id", "=", line.consultant_id.id),
+                            ("member_id", "=", line.consultant_id.id),
                         ],
                         order="payin_date desc",
                         limit=1,
@@ -105,7 +105,7 @@ class CaptureWizard(models.TransientModel):
                 history_id = self.env["bb.payin.history"].create(
                     {
                         "payin_date": line.payin_sheet_id.payin_date,
-                        "employee_id": line.consultant_id.id,
+                        "member_id": line.consultant_id.id,
                         "team_promoted": team_promoted,
                         "active_status": line.consultant_id.active_status,
                         "current_job_id": line.consultant_id.genealogy,
@@ -122,7 +122,7 @@ class CaptureWizard(models.TransientModel):
             previous_history_id = self.env["bb.payin.history"].search(
                 [
                     ("payin_date", "<", line.payin_sheet_id.payin_date),
-                    ("employee_id", "=", line.consultant_id.id),
+                    ("member_id", "=", line.consultant_id.id),
                 ],
                 order="payin_date desc",
                 limit=1,
@@ -135,7 +135,7 @@ class CaptureWizard(models.TransientModel):
                 history_id = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "=", line.payin_sheet_id.payin_date),
-                        ("employee_id", "=", line.consultant_id.manager_id.id),
+                        ("member_id", "=", line.consultant_id.manager_id.id),
                     ]
                 )
                 if not history_id:
@@ -147,7 +147,7 @@ class CaptureWizard(models.TransientModel):
                         previous_history_id = self.env["bb.payin.history"].search(
                             [
                                 ("payin_date", "<", line.payin_sheet_id.payin_date),
-                                ("employee_id", "=", line.consultant_id.manager_id.id),
+                                ("member_id", "=", line.consultant_id.manager_id.id),
                             ],
                             order="payin_date desc",
                             limit=1,
@@ -157,7 +157,7 @@ class CaptureWizard(models.TransientModel):
                     history_id = self.env["bb.payin.history"].create(
                         {
                             "payin_date": line.payin_sheet_id.payin_date,
-                            "employee_id": line.consultant_id.manager_id.id,
+                            "member_id": line.consultant_id.manager_id.id,
                             "active_status": line.consultant_id.manager_id.active_status,
                             "team_promoted": team_promoted,
                             "current_job_id": line.consultant_id.manager_id.genealogy,
@@ -176,7 +176,7 @@ class CaptureWizard(models.TransientModel):
                     previous_history_id = self.env["bb.payin.history"].search(
                         [
                             ("payin_date", "<", line.payin_sheet_id.payin_date),
-                            ("employee_id", "=", line.consultant_id.manager_id.id),
+                            ("member_id", "=", line.consultant_id.manager_id.id),
                         ],
                         order="payin_date desc",
                         limit=1,
@@ -193,7 +193,7 @@ class CaptureWizard(models.TransientModel):
                 history_id = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "=", line.payin_sheet_id.payin_date),
-                        ("employee_id", "=", line.consultant_id.recruiter_id.id),
+                        ("member_id", "=", line.consultant_id.recruiter_id.id),
                     ]
                 )
                 if not history_id:
@@ -206,7 +206,7 @@ class CaptureWizard(models.TransientModel):
                             [
                                 ("payin_date", "<", line.payin_sheet_id.payin_date),
                                 (
-                                    "employee_id",
+                                    "member_id",
                                     "=",
                                     line.consultant_id.recruiter_id.id,
                                 ),
@@ -219,7 +219,7 @@ class CaptureWizard(models.TransientModel):
                     history_id = self.env["bb.payin.history"].create(
                         {
                             "payin_date": line.payin_sheet_id.payin_date,
-                            "employee_id": line.consultant_id.recruiter_id.id,
+                            "member_id": line.consultant_id.recruiter_id.id,
                             "active_status": line.consultant_id.recruiter_id.active_status,
                             "current_job_id": line.consultant_id.recruiter_id.genealogy,
                             "team_promoted": team_promoted,
@@ -238,7 +238,7 @@ class CaptureWizard(models.TransientModel):
                     previous_history_id = self.env["bb.payin.history"].search(
                         [
                             ("payin_date", "<", line.payin_sheet_id.payin_date),
-                            ("employee_id", "=", line.consultant_id.recruiter_id.id),
+                            ("member_id", "=", line.consultant_id.recruiter_id.id),
                         ],
                         order="payin_date desc",
                         limit=1,
@@ -254,7 +254,7 @@ class CaptureWizard(models.TransientModel):
                 history_id = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "=", line.payin_sheet_id.payin_date),
-                        ("employee_id", "=", line.consultant_id.manager_id.id),
+                        ("member_id", "=", line.consultant_id.manager_id.id),
                     ]
                 )
                 if not history_id:
@@ -266,7 +266,7 @@ class CaptureWizard(models.TransientModel):
                         previous_history_id = self.env["bb.payin.history"].search(
                             [
                                 ("payin_date", "<", line.payin_sheet_id.payin_date),
-                                ("employee_id", "=", line.consultant_id.manager_id.id),
+                                ("member_id", "=", line.consultant_id.manager_id.id),
                             ],
                             order="payin_date desc",
                             limit=1,
@@ -276,7 +276,7 @@ class CaptureWizard(models.TransientModel):
                     history_id = self.env["bb.payin.history"].create(
                         {
                             "payin_date": line.payin_sheet_id.payin_date,
-                            "employee_id": line.consultant_id.manager_id.id,
+                            "member_id": line.consultant_id.manager_id.id,
                             "active_status": line.consultant_id.manager_id.active_status,
                             "current_job_id": line.consultant_id.manager_id.genealogy,
                             "team_promoted": team_promoted,
@@ -295,7 +295,7 @@ class CaptureWizard(models.TransientModel):
                     previous_history_id = self.env["bb.payin.history"].search(
                         [
                             ("payin_date", "<", line.payin_sheet_id.payin_date),
-                            ("employee_id", "=", line.consultant_id.manager_id.id),
+                            ("member_id", "=", line.consultant_id.manager_id.id),
                         ],
                         order="payin_date desc",
                         limit=1,
@@ -309,7 +309,7 @@ class CaptureWizard(models.TransientModel):
         manager_history_id = self.env["bb.payin.history"].search(
             [
                 ("payin_date", "=", self.sheet_id.payin_date),
-                ("employee_id", "=", self.sheet_id.manager_id.id),
+                ("member_id", "=", self.sheet_id.manager_id.id),
             ]
         )
         if self.sheet_id.manager_id.promoter_id:
@@ -334,7 +334,7 @@ class CaptureWizard(models.TransientModel):
                 history_ids = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "<=", self.sheet_id.payin_date),
-                        ("employee_id", "=", self.sheet_id.manager_id.id),
+                        ("member_id", "=", self.sheet_id.manager_id.id),
                         ("payin_date", "not in", dates_to_exclude),
                     ],
                     limit=promotion_rule_id.manager_sales_month,
@@ -358,7 +358,7 @@ class CaptureWizard(models.TransientModel):
         if promoded_by_id:
             promoted_by_history_id = self.env["bb.payin.history"].search(
                 [
-                    ("employee_id", "=", promoded_by_id.id),
+                    ("member_id", "=", promoded_by_id.id),
                     ("payin_date", "=", self.sheet_id.payin_date),
                 ],
                 limit=1,
@@ -368,7 +368,7 @@ class CaptureWizard(models.TransientModel):
                 previous_history_id = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "<", self.sheet_id.payin_date),
-                        ("employee_id", "=", promoded_by_id.id),
+                        ("member_id", "=", promoded_by_id.id),
                     ],
                     order="payin_date desc",
                     limit=1,
@@ -378,7 +378,7 @@ class CaptureWizard(models.TransientModel):
                 promoted_by_history_id = self.env["bb.payin.history"].create(
                     {
                         "payin_date": self.sheet_id.payin_date,
-                        "employee_id": promoded_by_id.id,
+                        "member_id": promoded_by_id.id,
                         "team_promoted": team_promoted,
                         "active_status": promoded_by_id.active_status,
                         "current_job_id": promoded_by_id.genealogy,
@@ -390,7 +390,7 @@ class CaptureWizard(models.TransientModel):
             previous_history_id = self.env["bb.payin.history"].search(
                 [
                     ("payin_date", "<", self.sheet_id.payin_date),
-                    ("employee_id", "=", promoded_by_id.id),
+                    ("member_id", "=", promoded_by_id.id),
                 ],
                 order="payin_date desc",
                 limit=1,
@@ -416,7 +416,7 @@ class CaptureWizard(models.TransientModel):
                 history_ids = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "<=", self.sheet_id.payin_date),
-                        ("employee_id", "=", self.sheet_id.manager_id.id),
+                        ("member_id", "=", self.sheet_id.manager_id.id),
                         ("payin_date", "not in", dates_to_exclude),
                     ],
                     limit=promoded_by_promotion_rule_id.promoted_managers_moths,
@@ -461,7 +461,7 @@ class CaptureWizard(models.TransientModel):
                 history_ids = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "<=", self.sheet_id.payin_date),
-                        ("employee_id", "=", self.sheet_id.manager_id.id),
+                        ("member_id", "=", self.sheet_id.manager_id.id),
                         ("payin_date", "not in", dates_to_exclude),
                     ],
                     limit=promoded_by_promotion_rule_id.promoted_team_sales_month,
@@ -498,7 +498,7 @@ class CaptureWizard(models.TransientModel):
         history_id = self.env["bb.payin.history"].search(
             [
                 ("payin_date", "=", self.sheet_id.payin_date),
-                ("employee_id", "=", self.sheet_id.distributor_id.id),
+                ("member_id", "=", self.sheet_id.distributor_id.id),
             ],
             limit=1,
         )
@@ -506,7 +506,7 @@ class CaptureWizard(models.TransientModel):
             history_id = self.env["bb.payin.history"].create(
                 {
                     "payin_date": self.sheet_id.payin_date,
-                    "employee_id": self.sheet_id.distributor_id.id,
+                    "member_id": self.sheet_id.distributor_id.id,
                     "active_status": self.sheet_id.distributor_id.active_status,
                     "current_job_id": self.sheet_id.distributor_id.genealogy,
                     "manager_code": self.sheet_id.distributor_id.manager_id.sales_force_code,
@@ -517,7 +517,7 @@ class CaptureWizard(models.TransientModel):
         manager_history_id = self.env["bb.payin.history"].search(
             [
                 ("payin_date", "=", self.sheet_id.payin_date),
-                ("employee_id", "=", self.sheet_id.manager_id.id),
+                ("member_id", "=", self.sheet_id.manager_id.id),
             ],
             limit=1,
         )
@@ -552,14 +552,14 @@ class CaptureWizard(models.TransientModel):
             history_id = self.env["bb.payin.history"].search(
                 [
                     ("payin_date", "=", line.payin_sheet_id.payin_date),
-                    ("employee_id", "=", line.consultant_id.recruiter_id.id),
+                    ("member_id", "=", line.consultant_id.recruiter_id.id),
                 ]
             )
             if not history_id:
                 history_id = self.env["bb.payin.history"].create(
                     {
                         "payin_date": line.payin_sheet_id.payin_date,
-                        "employee_id": line.consultant_id.recruiter_id.id,
+                        "member_id": line.consultant_id.recruiter_id.id,
                         "active_status": line.consultant_id.recruiter_id.active_status,
                         "current_job_id": line.consultant_id.recruiter_id.genealogy,
                         "manager_code": line.consultant_id.recruiter_id.manager_id.sales_force_code,
@@ -588,7 +588,7 @@ class CaptureWizard(models.TransientModel):
                 history_ids = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "<=", line.payin_sheet_id.payin_date),
-                        ("employee_id", "=", line.consultant_id.recruiter_id.id),
+                        ("member_id", "=", line.consultant_id.recruiter_id.id),
                         ("payin_date", "not in", dates_to_exclude),
                     ],
                     limit=promotion_rule_id.sales_month,
@@ -643,7 +643,7 @@ class CaptureWizard(models.TransientModel):
                     history_ids = self.env["bb.payin.history"].search(
                         [
                             ("payin_date", "<=", line.payin_sheet_id.payin_date),
-                            ("employee_id", "=", line.consultant_id.recruiter_id.id),
+                            ("member_id", "=", line.consultant_id.recruiter_id.id),
                             ("payin_date", "not in", dates_to_exclude),
                         ],
                         limit=promotion_rule_id.sales_month,
@@ -684,7 +684,7 @@ class CaptureWizard(models.TransientModel):
                     history_ids = self.env["bb.payin.history"].search(
                         [
                             ("payin_date", "<=", line.payin_sheet_id.payin_date),
-                            ("employee_id", "=", line.consultant_id.recruiter_id.id),
+                            ("member_id", "=", line.consultant_id.recruiter_id.id),
                             ("payin_date", "not in", dates_to_exclude),
                         ],
                         limit=promotion_rule_id.months_retained_consultants,
@@ -709,14 +709,14 @@ class CaptureWizard(models.TransientModel):
             history_id = self.env["bb.payin.history"].search(
                 [
                     ("payin_date", "=", line.payin_sheet_id.payin_date),
-                    ("employee_id", "=", line.consultant_id.manager_id.id),
+                    ("member_id", "=", line.consultant_id.manager_id.id),
                 ]
             )
             if not history_id:
                 history_id = self.env["bb.payin.history"].create(
                     {
                         "payin_date": line.payin_sheet_id.payin_date,
-                        "employee_id": line.consultant_id.manager_id.id,
+                        "member_id": line.consultant_id.manager_id.id,
                         "active_status": line.consultant_id.manager_id.active_status,
                         "current_job_id": line.consultant_id.manager_id.genealogy,
                         "manager_code": line.consultant_id.manager_id.sales_force_code,
@@ -734,7 +734,7 @@ class CaptureWizard(models.TransientModel):
                 previous_history_id = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "<", line.payin_sheet_id.payin_date),
-                        ("employee_id", "=", line.consultant_id.manager_id.id),
+                        ("member_id", "=", line.consultant_id.manager_id.id),
                     ],
                     order="payin_date desc",
                     limit=1,
@@ -749,7 +749,7 @@ class CaptureWizard(models.TransientModel):
         history_ids = self.env["bb.payin.history"].search(
             [
                 ("payin_date", "<=", line.payin_sheet_id.payin_date),
-                ("employee_id", "=", line.consultant_id.id),
+                ("member_id", "=", line.consultant_id.id),
                 ("payin_date", "not in", dates_to_exclude),
             ],
             limit=promotion_rule_id.sales_month,
@@ -791,7 +791,7 @@ class CaptureWizard(models.TransientModel):
             previous_history_id = self.env["bb.payin.history"].search(
                 [
                     ("payin_date", "<", line.payin_sheet_id.payin_date),
-                    ("employee_id", "=", line.consultant_id.id),
+                    ("member_id", "=", line.consultant_id.id),
                 ],
                 order="payin_date desc",
                 limit=1,
@@ -815,7 +815,7 @@ class CaptureWizard(models.TransientModel):
         history_id = self.env["bb.payin.history"].search(
             [
                 ("payin_date", "=", line.payin_sheet_id.payin_date),
-                ("employee_id", "=", line.consultant_id.id),
+                ("member_id", "=", line.consultant_id.id),
             ]
         )
         if not history_id:
@@ -824,7 +824,7 @@ class CaptureWizard(models.TransientModel):
                 previous_history_id = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "<", line.payin_sheet_id.payin_date),
-                        ("employee_id", "=", line.consultant_id.id),
+                        ("member_id", "=", line.consultant_id.id),
                     ],
                     order="payin_date desc",
                     limit=1,
@@ -834,7 +834,7 @@ class CaptureWizard(models.TransientModel):
             history_id = self.env["bb.payin.history"].create(
                 {
                     "payin_date": line.payin_sheet_id.payin_date,
-                    "employee_id": line.consultant_id.id,
+                    "member_id": line.consultant_id.id,
                     "team_promoted": team_promoted,
                     "active_status": line.consultant_id.active_status,
                     "current_job_id": line.consultant_id.genealogy,

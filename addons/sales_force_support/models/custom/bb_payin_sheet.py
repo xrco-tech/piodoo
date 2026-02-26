@@ -771,7 +771,7 @@ class BbPayinSheetLine(models.Model):
                 personal_history_id = self.env["bb.payin.history"].search(
                     [
                         ("payin_date", "=", record.payin_sheet_id.payin_date),
-                        ("employee_id", "=", record.consultant_id[0].id),
+                        ("member_id", "=", record.consultant_id[0].id),
                     ],
                     limit=1,
                 )
@@ -779,7 +779,7 @@ class BbPayinSheetLine(models.Model):
                     personal_history_id = self.env["bb.payin.history"].create(
                         {
                             "payin_date": record.payin_sheet_id.payin_date,
-                            "employee_id": record.consultant_id.id,
+                            "member_id": record.consultant_id.id,
                             "active_status": record.consultant_id.active_status,
                             "current_job_id": record.consultant_id.job_id.id,
                             "manager_code": record.consultant_id.manager_id.sales_force_code,
@@ -912,7 +912,7 @@ class BbPayinSheetLine(models.Model):
             personal_history_id = self.env["bb.payin.history"].search(
                 [
                     ("payin_date", "=", res.payin_sheet_id.payin_date),
-                    ("employee_id", "=", res.consultant_id[0].id),
+                    ("member_id", "=", res.consultant_id[0].id),
                 ],
                 limit=1,
             )
@@ -920,7 +920,7 @@ class BbPayinSheetLine(models.Model):
                 personal_history_id = self.env["bb.payin.history"].create(
                     {
                         "payin_date": res.payin_sheet_id.payin_date,
-                        "employee_id": res.consultant_id.id,
+                        "member_id": res.consultant_id.id,
                         "active_status": res.consultant_id.active_status,
                         "current_job_id": res.consultant_id.job_id.id,
                         "manager_code": res.consultant_id.manager_id.sales_force_code,
@@ -957,7 +957,7 @@ class BbPayinSheetLine(models.Model):
         for consultant_history in self.env["bb.payin.history"].search(
             [
                 ("payin_date", "=", self.payin_sheet_id.payin_date),
-                ("employee_id", "=", self.consultant_id.id),
+                ("member_id", "=", self.consultant_id.id),
             ],
             limit=1,
         ):

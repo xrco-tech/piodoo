@@ -284,7 +284,7 @@ class SfMember(models.Model):
 
     # ── Contact info ──────────────────────────────────────────────────────────
     contact_info_ids = fields.One2many(
-        "hr.contacts", "employee_id", string="Contact Info", tracking=True
+        "hr.contacts", "member_id", string="Contact Info", tracking=True
     )
     last_contact_date = fields.Date("Last Contact Date", tracking=True)
 
@@ -1452,7 +1452,7 @@ class SfMember(models.Model):
     # ─────────────────────────────────────────────────────────────────────────
 
     status_trail_ids = fields.One2many(
-        "bb.payin.history", "employee_id", string="Active Status History"
+        "bb.payin.history", "member_id", string="Active Status History"
     )
     payin_count = fields.Integer(
         string="Pay-In Sheets Count", compute="_compute_payin_count"
