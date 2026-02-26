@@ -24,7 +24,6 @@
         "web",
         "voip",
         "base_geolocalize",
-        "bb_purchase",
     ],
     "data": [
         # Security — always first
