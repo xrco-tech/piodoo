@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bbb_sales_force_genealogy/wizards/consultant_blacklist_wizard_view.xml -->
+<odoo>
+    <record id="consultant_suspend_view" model="ir.ui.view">
+        <field name="name">consultant.suspend.wizard.form</field>
+        <field name="model">consultant.suspend.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="suspend_reason" required="True" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="suspend_consultant"  string="Suspend" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="manager_suspend_view" model="ir.ui.view">
+        <field name="name">manager.suspend.wizard.form</field>
+        <field name="model">manager.suspend.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="suspend_reason" required="True" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="suspend_manager"  string="Suspend" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="distributor_suspend_view" model="ir.ui.view">
+        <field name="name">distributor.suspend.wizard.form</field>
+        <field name="model">distributor.suspend.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="suspend_reason" required="True" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="suspend_distributor"  string="Suspend" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="consultant_blacklist_view" model="ir.ui.view">
+        <field name="name">consultant.blacklist.wizard.form</field>
+        <field name="model">consultant.blacklist.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="blacklist_reason" required="True" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="blacklist_consultant"  string="Blacklist" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="manager_blacklist_view" model="ir.ui.view">
+        <field name="name">manager.blacklist.wizard.form</field>
+        <field name="model">manager.blacklist.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="blacklist_reason" required="True" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="blacklist_manager"  string="Blacklist" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="distributor_blacklist_view" model="ir.ui.view">
+        <field name="name">distributor.blacklist.wizard.form</field>
+        <field name="model">distributor.blacklist.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="blacklist_reason" required="True" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="blacklist_distributor"  string="Blacklist" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

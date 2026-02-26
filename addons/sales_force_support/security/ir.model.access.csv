@@ -1,0 +1,72 @@
+id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
+
+## ============================================================
+## sf.member / sf.recruit / sf.recruit.stage
+## New models — replaces hr.employee and hr.applicant rows
+## ============================================================
+access_sf_member_user,sf.member.user,model_sf_member,sales_force_support.group_sales_force_user,1,1,1,0
+access_sf_member_manager,sf.member.manager,model_sf_member,sales_force_support.group_sales_force_manager,1,1,1,1
+access_sf_recruit_user,sf.recruit.user,model_sf_recruit,sales_force_support.group_sales_force_user,1,1,1,0
+access_sf_recruit_manager,sf.recruit.manager,model_sf_recruit,sales_force_support.group_sales_force_manager,1,1,1,1
+access_sf_recruit_stage_user,sf.recruit.stage.user,model_sf_recruit_stage,sales_force_support.group_sales_force_user,1,0,0,0
+access_sf_recruit_stage_manager,sf.recruit.stage.manager,model_sf_recruit_stage,sales_force_support.group_sales_force_manager,1,1,1,1
+
+## ============================================================
+## botle_buhle_custom models
+## Group refs updated: hr_recruitment.group_hr_recruitment_* ->
+##   sales_force_support.group_sales_force_*
+## model_hr_applicant row removed — replaced by sf.recruit above
+## ============================================================
+access_field_required_state_user,field.required.state,model_required_field_state,sales_force_support.group_sales_force_user,1,1,1,1
+access_field_required_state_manager,field.required.state,model_required_field_state,sales_force_support.group_sales_force_manager,1,1,1,1
+access_res_vetting_user,res.vetting,model_res_vetting,sales_force_support.group_sales_force_user,1,1,1,1
+access_res_vetting_manager,res.vetting,model_res_vetting,sales_force_support.group_sales_force_manager,1,1,1,1
+access_res_communication_user,res.communication,model_res_communication,sales_force_support.group_sales_force_user,1,1,1,1
+access_res_communication_manager,res.communication,model_res_communication,sales_force_support.group_sales_force_manager,1,1,1,1
+access_hr_contacts_user,hr.contacts,model_hr_contacts,sales_force_support.group_sales_force_user,1,1,1,1
+access_hr_contacts_manager,hr.contacts,model_hr_contacts,sales_force_support.group_sales_force_manager,1,1,1,1
+access_status_audit_trail_user,status.audit.trail,model_status_audit_trail,sales_force_support.group_sales_force_user,1,1,1,1
+access_status_audit_trail_manager,status.audit.trail,model_status_audit_trail,sales_force_support.group_sales_force_manager,1,1,1,1
+access_promotion_rules_user,promotion.rules,model_promotion_rules,sales_force_support.group_sales_force_user,1,1,1,1
+access_promotion_rules_manager,promotion.rules,model_promotion_rules,sales_force_support.group_sales_force_manager,1,1,1,1
+access_promotion_rules_months_user,promotion.rules.months,model_promotion_rules_months,sales_force_support.group_sales_force_user,1,1,1,1
+access_promotion_rules_months_manager,promotion.rules.months,model_promotion_rules_months,sales_force_support.group_sales_force_manager,1,1,1,1
+access_consultant_search_wizard_user,consultant.search.wizard,model_consultant_search_wizard,sales_force_support.group_sales_force_user,1,1,1,1
+
+## ============================================================
+## bbb_sales_force_genealogy models
+## ============================================================
+access_sf_distribution,sf.distribution,model_sf_distribution,base.group_user,1,1,1,1
+access_sf_mapping_field,sf.mapping.field,model_sf_mapping_field,base.group_user,1,1,1,1
+
+## ============================================================
+## bb_payin models
+## Note: bb_payin/security/ir.model.access.csv only had the report
+## tracker rows. The payin sheet/history/distributor models had no
+## explicit rules (missing from source). Added below to allow
+## group_payin users to access them via the UI.
+## ============================================================
+## Pay-In Sheet models
+access_bb_payin_sheet_user,bb.payin.sheet,model_bb_payin_sheet,sales_force_support.group_payin,1,1,1,0
+access_bb_payin_sheet_admin,bb.payin.sheet,model_bb_payin_sheet,sales_force_support.group_payin_admin,1,1,1,1
+access_bb_payin_sheet_line_user,bb.payin.sheet.line,model_bb_payin_sheet_line,sales_force_support.group_payin,1,1,1,1
+access_bb_payin_history_user,bb.payin.history,model_bb_payin_history,sales_force_support.group_payin,1,1,1,0
+access_bb_payin_history_admin,bb.payin.history,model_bb_payin_history,sales_force_support.group_payin_admin,1,1,1,1
+access_payin_distributor_user,payin.distributor,model_payin_distributor,sales_force_support.group_payin,1,1,1,0
+access_payin_distributor_admin,payin.distributor,model_payin_distributor,sales_force_support.group_payin_admin,1,1,1,1
+access_payin_distributor_line_user,payin.distributor.line,model_payin_distributor_line,sales_force_support.group_payin,1,1,1,1
+access_payin_capture_time_user,payin.capture.time,model_payin_capture_time,sales_force_support.group_payin,1,1,1,1
+access_payin_distributor_capture_time_user,payin.distributor.capture.time,model_payin_distributor_capture_time,sales_force_support.group_payin,1,1,1,1
+access_bb_payin_sheets_enquiry_report_user,bb.payin.sheets.enquiry.report,model_bb_payin_sheets_enquiry_report,sales_force_support.group_payin,1,0,0,0
+## Report print trackers
+access_captured_payinsheet_report_track,captured.payinsheet.report.track,model_captured_payinsheet_report_track,base.group_user,1,1,1,0
+access_captured_summary_report_track,captured.summary.report.track,model_captured_summary_report_track,base.group_user,1,1,1,0
+## Other models
+access_interview_decline_reasons_user,interview.decline.reasons,model_interview_decline_reasons,sales_force_support.group_sales_force_user,1,1,1,1
+access_user_otp_user,user.otp,model_user_otp,base.group_user,1,1,1,1
+
+## ============================================================
+## partner_consumerview models
+## ============================================================
+access_partner_consumerview_resolve,partner.consumerview.resolve,model_partner_consumerview_resolve,base.group_user,1,1,1,1
+access_partner_consumerview_resolve_line,partner.consumerview.resolve.line,model_partner_consumerview_resolve_line,base.group_user,1,1,1,1

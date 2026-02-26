@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sources merged:
+     - botle_buhle_custom/views/res_config_settings_view.xml      (WhatsApp BBBot)
+     - bbb_sales_force_genealogy/views/res_config_settings_view.xml (Sales Force sync)
+     - bb_payin/views/res_config_settings_views.xml               (Pay-In / VoIP / Telviva)
+     NOTE: inherit_id changed from hr_recruitment.res_config_settings_view_form
+           to base.res_config_settings_view_form (hr_recruitment removed from deps).
+           All config_parameter keys already use sales_force_support.* (Phase 6).
+-->
+<odoo>
+    <record id="sales_force_support_res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">sales.force.support.res.config.settings.view.form</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="40"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <form position="inside">
+                <app string="Sales Force" name="sales_force_support" groups="sales_force_support.group_sales_force_manager">
+
+                    <!-- ── WhatsApp BBBot (source: botle_buhle_custom) ────────────── -->
+                    <block title="WhatsApp BBB Bot" id="whatsapp_bbbot_block">
+                        <setting string="Sender Token" id="whatsapp_bbbot_sender_token">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_bbbot_sender_token" string="Whatsapp BBBot Sender Token"/>
+                                <field name="whatsapp_bbbot_sender_token" class="col-lg-6"/>
+                            </div>
+                        </setting>
+                        <setting string="Sender Namespace" id="whatsapp_bbbot_sender_namespace">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_bbbot_sender_namespace" string="Sender Namespace"/>
+                                <field name="whatsapp_bbbot_sender_namespace" class="col-lg-6"/>
+                            </div>
+                        </setting>
+                        <setting string="Phone Number ID" id="whatsapp_bbbot_sender_phone_number_id">
+                            <div class="o_setting_right_pane">
+                                <label for="whatsapp_bbbot_sender_phone_number_id" string="Sender Phone Number ID"/>
+                                <field name="whatsapp_bbbot_sender_phone_number_id" class="col-lg-6"/>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <!-- ── Outbound / Inbound Sync (source: bbb_sales_force_genealogy) ─ -->
+                    <block title="Sales Force Synchronisation" id="sales_force_sync_block">
+                        <setting id="enable_outbound_synchronisation"
+                                 title="Enable Outbound Synchronisation"
+                                 documentation="/odoo/settings">
+                            <field name="enable_outbound_synchronisation"/>
+                            <div class="o_setting_right_pane">
+                                <label for="enable_outbound_synchronisation"/>
+                                <div class="text-muted">
+                                    Enables the outbound synchronisation of Sales Force data with a remote instance.
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="outbound_url" string="Outbound URL" class="o_light_label col-5"/>
+                                    <field name="outbound_url" class="col-6"/>
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="outbound_database" string="Outbound Database Name" class="o_light_label col-5"/>
+                                    <field name="outbound_database" class="col-6"/>
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="outbound_login" string="Outbound Login Email" class="o_light_label col-5"/>
+                                    <field name="outbound_login" class="col-6"/>
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="outbound_password" string="Outbound Login Password" class="o_light_label col-5"/>
+                                    <field name="outbound_password" class="col-6"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="enable_inbound_synchronisation"
+                                 title="Enable Inbound Synchronisation">
+                            <field name="enable_inbound_synchronisation"/>
+                            <div class="o_setting_right_pane">
+                                <label for="enable_inbound_synchronisation"/>
+                                <div class="text-muted">
+                                    Enables the inbound synchronisation of Sales Force data with a remote instance.
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <!-- ── Pay-In Sheet Reports (source: bb_payin) ───────────────── -->
+                    <block title="Pay-In Sheet Reports" id="payin_reports_block">
+                        <setting id="report_print_count"
+                                 title="Set an integer to limit the printing of reports">
+                            <field name="report_print_count"/>
+                            <div class="o_setting_right_pane">
+                                <label for="report_print_count"/>
+                                <div class="text-muted">
+                                    Increase or decrease the number of report printouts.
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <!-- ── Active Status Reference Date (source: bb_payin) ────────── -->
+                    <block title="Pay-In Sheets Active Status" id="payin_active_status_block">
+                        <setting id="payin_active_status_reference_date">
+                            <div class="o_setting_right_pane">
+                                <label for="payin_active_status_reference_date"
+                                       string="Pay-In Sheets Active Status Reference Date"/>
+                                <div class="text-muted">
+                                    Set a reference pay-in sheets date for active status calculations.
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="payin_active_status_reference_date"
+                                           string="Reference Pay-In Sheets Date"
+                                           class="o_light_label col-5"/>
+                                    <field name="payin_active_status_reference_date" class="col-6"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <!-- ── VoIP Access Rights (source: bb_payin) ─────────────────── -->
+                    <block title="VoIP Access Rights" id="voip_access_block">
+                        <setting id="voip_access_group_ids" title="Set VoIP access rights">
+                            <div class="o_setting_right_pane">
+                                <label for="voip_access_group_ids" string="VoIP Permissions"/>
+                                <div class="text-muted">
+                                    Assign roles that need access to VoIP.
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="voip_access_group_ids" string="Roles" class="o_light_label col-5"/>
+                                    <field name="voip_access_group_ids" class="col-6"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <!-- ── Telviva Information (source: bb_payin) ────────────────── -->
+                    <block title="Telviva Information" id="telviva_block">
+                        <setting id="telviva_information">
+                            <div class="o_setting_right_pane">
+                                <div class="mt-2 row">
+                                    <label for="telviva_username" class="o_light_label col-5"/>
+                                    <field name="telviva_username" class="col-6"/>
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="telviva_password" class="o_light_label col-5"/>
+                                    <field name="telviva_password" class="col-6"/>
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="telviva_start_time" class="o_light_label col-5"/>
+                                    <field name="telviva_start_time" class="col-6"/>
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="telviva_end_time" class="o_light_label col-5"/>
+                                    <field name="telviva_end_time" class="col-6"/>
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="telviva_duration_min" class="o_light_label col-5"/>
+                                    <field name="telviva_duration_min" class="col-6"/>
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="telviva_duration_max" class="o_light_label col-5"/>
+                                    <field name="telviva_duration_max" class="col-6"/>
+                                </div>
+                                <div class="mt-2 row">
+                                    <label for="telviva_recordgroup" class="o_light_label col-5"/>
+                                    <field name="telviva_recordgroup" class="col-6"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                </app>
+            </form>
+        </field>
+    </record>
+</odoo>

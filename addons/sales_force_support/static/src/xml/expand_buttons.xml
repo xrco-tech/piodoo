@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="web.ListView" t-inherit-mode="extension">
+        <xpath expr="//Layout/t[@t-set-slot='control-panel-additional-actions']" position="inside">
+            <t t-if="props.resModel == 'bb.payin.sheet' and model.root.groupBy.length > 0">
+                
+                <button type="button" class="btn btn-primary" t-on-click="() => this.expandList()"
+                style="font-family:'Roboto', 'Odoo Unicode Support Noto', sans-serif">Expand</button>
+                
+                <button type="button" class="btn btn-secondary" t-on-click="() => this.collapseList()"
+                style="margin-left: 5px;font-family:'Roboto', 'Odoo Unicode Support Noto', sans-serif">Collapse</button>
+            </t>
+        </xpath>
+    </t>
+</templates>

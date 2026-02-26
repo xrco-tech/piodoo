@@ -1,0 +1,869 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Merged sf.recruit views for the sales_force_support module.
+
+    Sources merged:
+      - botle_buhle_custom/views/hr_applicant_view.xml        (669 lines)
+      - bbb_sales_force_genealogy/views/hr_applicant_view.xml (59  lines)
+      - bb_allocate/views/hr_applicant_views.xml              (34  lines)
+
+    Key transformations applied:
+      - model="hr.applicant"            → model="sf.recruit"
+      - res_model="hr.applicant"        → res_model="sf.recruit"
+      - inherit_id (hr_recruitment.*)   → removed (standalone views)
+      - job_id                          → genealogy  (Selection field)
+      - stage_id domain job_ids filter  → no domain (sf.recruit.stage applies to all)
+      - hired_stage                     → joined_stage
+      - create_employee                 → create_member
+      - emp_id                          → member_id
+      - [('job_id.name', '=', 'X')]     → [('genealogy', '=', 'X')]
+      - botle_buhle_custom.group_*      → sales_force_support.group_*
+      - botle_buhle_custom.sales_force_menuitem
+                                        → sales_force_support.sales_force_menuitem
+      - hr.recruitment.stage refs       → sf.recruit.stage
+      - bb_allocate manager button      → merged into main form view
+
+    Also adds standalone sf.recruit.stage form, list, and action.
+-->
+<odoo>
+    <data>
+
+        <!-- ================================================================
+             sf.recruit.stage VIEWS
+        ================================================================ -->
+
+        <record id="sf_recruit_stage_view_form" model="ir.ui.view">
+            <field name="name">sf.recruit.stage.form</field>
+            <field name="model">sf.recruit.stage</field>
+            <field name="arch" type="xml">
+                <form string="Recruit Stage">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="sequence"/>
+                                <field name="fold"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="joined_stage"/>
+                                <field name="create_member"/>
+                            </group>
+                        </group>
+                        <separator string="Requirements"/>
+                        <field name="legend_normal"
+                               string="Kanban State Label (In Progress)"
+                               placeholder="In Progress"/>
+                        <field name="legend_blocked"
+                               string="Kanban State Label (Blocked)"
+                               placeholder="Blocked"/>
+                        <field name="legend_done"
+                               string="Kanban State Label (Ready)"
+                               placeholder="Ready for Next Stage"/>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="sf_recruit_stage_view_tree" model="ir.ui.view">
+            <field name="name">sf.recruit.stage.tree</field>
+            <field name="model">sf.recruit.stage</field>
+            <field name="arch" type="xml">
+                <tree string="Recruit Stages" editable="top">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="joined_stage"/>
+                    <field name="create_member"/>
+                    <field name="fold"/>
+                    <field name="active"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="action_sf_recruit_stage" model="ir.actions.act_window">
+            <field name="name">Recruit Stages</field>
+            <field name="res_model">sf.recruit.stage</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="sf_recruit_stage_view_tree"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No recruit stages defined yet.
+                </p>
+                <p>
+                    Create stages to track your recruit pipeline.
+                </p>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             sf.recruit FORM VIEW
+             (primary standalone form — replaces hr_applicant_view_form_inherit
+              from botle_buhle_custom, with the bb_allocate manager button merged in)
+        ================================================================ -->
+
+        <record id="sf_recruit_view_form" model="ir.ui.view">
+            <field name="name">sf.recruit.form</field>
+            <field name="model">sf.recruit</field>
+            <field name="arch" type="xml">
+                <form string="Sales Force Recruit">
+                    <header>
+                        <!-- Create Member button — shown when stage has create_member = True
+                             and no member has been linked yet. -->
+                        <button name="create_member_from_recruit_button"
+                                string="Create Member"
+                                type="object"
+                                class="oe_highlight"
+                                invisible="member_id != False or active == False"
+                                confirm="Are you sure you want to create a Sales Force Member from this recruit?"/>
+                        <button name="archive_applicant"
+                                string="Refuse"
+                                type="object"
+                                invisible="active in (False, True)"/>
+                        <button name="reset_applicant"
+                                string="Restore"
+                                type="object"
+                                invisible="active == True"/>
+                        <button name="generate_sales_force_code_for_applicant"
+                                type="object"
+                                invisible="sales_force_code != False and related_stage_id != False"
+                                string="Generate Code"
+                                class="oe_highlight"/>
+                        <button name="recruit_form_popup"
+                                type="object"
+                                class="o_dial_number oe_highlight"
+                                invisible="call_disposition == 'not_interested'"
+                                string="Onboard"/>
+                        <!-- stage_id statusbar — not clickable; pointer-events disabled via style -->
+                        <field name="stage_id"
+                               widget="statusbar"
+                               options="{'clickable': '0', 'fold_field': 'fold'}"
+                               style="pointer-events:none;"
+                               invisible="active == False and member_id == False"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box"/>
+
+                        <!-- Hidden control fields -->
+                        <field name="active" invisible="1"/>
+                        <field name="stage_id" invisible="1"/>
+                        <field name="call_disposition" invisible="1"/>
+                        <field name="is_customer" invisible="1"/>
+                        <field name="is_potential_flag" invisible="1"/>
+
+                        <!-- Ribbons -->
+                        <widget name="web_ribbon"
+                                title="Onboarded"
+                                bg_color="bg-success"
+                                invisible="active == True or member_id == False"/>
+                        <widget name="web_ribbon"
+                                title="Not Interested"
+                                bg_color="bg-danger"
+                                invisible="call_disposition != 'not_interested'"/>
+                        <widget name="web_ribbon"
+                                title="Archived"
+                                bg_color="bg-danger"
+                                invisible="active == True or member_id != False or call_disposition == 'not_interested'"/>
+
+                        <field name="kanban_state"/>
+                        <field name="legend_normal" invisible="1"/>
+                        <field name="legend_blocked" invisible="1"/>
+                        <field name="legend_done" invisible="1"/>
+
+                        <!-- ── Identity header block ────────────────────────── -->
+                        <group col="4">
+                            <group style="width: 23%; display: flex; align-items: center; justify-content: center;">
+                                <field name="image"
+                                       widget="image"
+                                       class="oe_avatar"
+                                       nolabel="1"
+                                       force_save="1"
+                                       options="{'size': [90, 90]}"/>
+                            </group>
+                            <group style="padding-left: 10px; width: 70%;">
+                                <field name="first_name" default_focus="1" force_save="1"/>
+                                <field name="last_name" force_save="1"/>
+                                <field name="name" force_save="1" required="0"/>
+                                <field name="known_name" force_save="1"/>
+                                <field name="related_stage_id" readonly="1" force_save="1"/>
+                                <field name="sales_force_code" readonly="1" force_save="1"/>
+                            </group>
+                        </group>
+
+                        <hr/>
+
+                        <style>
+                            .button_gray:hover {background-color: #e7e7e7;}
+                        </style>
+
+                        <div style="display: flex; width: 100%; gap: 5px;">
+                            <div class="button_gray"
+                                 style="float: left; width: 40%; border: 1px solid #008CBA; padding: 7px 15px; height: 50px; margin-left: 2px;">
+                                <table>
+                                    <tr><td><b>Recruitment Stage</b></td></tr>
+                                    <tr><td><field name="related_stage_id" readonly="1" force_save="1"/></td></tr>
+                                </table>
+                            </div>
+                            <div class="button_gray"
+                                 style="float: left; width: 40%; border: 1px solid #008CBA; padding: 7px 15px; height: 50px; margin-left: 2px;">
+                                <table>
+                                    <tr><td><b>Sales Force Code</b></td></tr>
+                                    <tr><td><field name="sales_force_code" readonly="1" force_save="1"/></td></tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- ── Main field groups ─────────────────────────────── -->
+                        <div style="margin-top: 20px;">
+                            <group>
+                                <group>
+                                    <field name="emp_company" string="Distributor Company Name"/>
+                                    <field name="reg_no"/>
+                                    <field name="vat"/>
+                                    <field name="paye"/>
+                                    <field name="consumerview_ref" invisible="1"/>
+                                    <label for="sa_id"
+                                           invisible="consumerview_ref != False or sa_id == False or address_verified == True"
+                                           string="ID Number"/>
+                                    <div invisible="consumerview_ref != False or sa_id == False or address_verified == True">
+                                        <field name="sa_id" class="oe_inline" nolabel="1"/>
+                                        <button name="button_consumerview_populate"
+                                                type="object"
+                                                class="oe_link oe_inline"
+                                                icon="fa-search"
+                                                string="Populate"/>
+                                    </div>
+                                    <field name="sa_id"
+                                           invisible="sa_id != False and address_verified == False and consumerview_ref == False"
+                                           readonly="consumerview_ref != False or address_verified == True"/>
+                                    <field name="passport"/>
+                                    <field name="nationality" invisible="passport == False"/>
+                                    <field name="birth_date"/>
+                                    <field name="age"/>
+                                    <field name="gender"/>
+                                    <label for="mobile"/>
+                                    <div class="o_row">
+                                        <field name="mobile"
+                                               widget="phone"
+                                               options="{'enable_sms': false}"/>
+                                    </div>
+                                    <label for="mobile_2"/>
+                                    <div class="o_row">
+                                        <field name="mobile_2"
+                                               widget="phone"
+                                               options="{'enable_sms': false}"/>
+                                    </div>
+                                    <field name="mobile_opt_out"/>
+                                    <field name="mobile_is_invalid"/>
+                                    <label for="email" string="Email"/>
+                                    <div class="o_row">
+                                        <field name="email"/>
+                                    </div>
+                                    <field name="street"  placeholder="Street"  class="o_address_city"/>
+                                    <field name="suburb"  placeholder="Suburb"  class="o_address_city"/>
+                                    <field name="city"    placeholder="City"    class="o_address_city"/>
+                                    <field name="state_id"
+                                           class="o_address_state"
+                                           options="{&quot;no_open&quot;: True}"
+                                           context="{'country_id': country_id, 'zip': zip}"/>
+                                    <field name="zip"        placeholder="ZIP"     class="o_address_zip"/>
+                                    <field name="country_id" placeholder="Country" class="o_address_country"
+                                           options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}"/>
+                                </group>
+                                <group>
+                                    <field name="job_name"    invisible="1"/>
+                                    <field name="sales_force" invisible="1"/>
+                                    <!-- stage_id: readonly, no domain needed (sf.recruit.stage applies to all) -->
+                                    <field name="stage_id"
+                                           readonly="1"
+                                           string="Recruitment Stage"/>
+                                    <!-- genealogy replaces job_id -->
+                                    <field name="genealogy"
+                                           options="{'no_create': True, 'no_create_edit': True}"
+                                           required="1"
+                                           string="Genealogy"
+                                           invisible="stage_id != False and related_stage_id != False"
+                                           force_save="1"/>
+                                    <!-- manager_id: merged bb_allocate Allocate button inline -->
+                                    <label for="manager_id" string="Manager"/>
+                                    <div class="o_row">
+                                        <field name="manager_id"
+                                               options="{'no_create': True, 'no_create_edit': True}"
+                                               domain="['|', ('is_manager', '=', True), ('genealogy', 'in', ['Manager', 'Prospective Distributor', 'Distributor'])]"
+                                               force_save="1"
+                                               readonly="1"/>
+                                        <button class="oe_inline oe_link"
+                                                icon="fa-crosshairs"
+                                                invisible="genealogy in ('Manager', 'Distributor') or manager_id != False"
+                                                name="button_allocate_manager"
+                                                string="Allocate"
+                                                type="object"/>
+                                        <button class="oe_inline oe_link"
+                                                icon="fa-crosshairs"
+                                                invisible="genealogy in ('Manager', 'Distributor') or manager_id == False"
+                                                name="button_allocate_manager"
+                                                string="Re-Allocate"
+                                                type="object"/>
+                                    </div>
+                                    <field name="related_distributor_id"
+                                           options="{'no_create': True, 'no_create_edit': True}"
+                                           domain="[('genealogy', 'in', ['Prospective Distributor', 'Distributor'])]"
+                                           string="Distributor"
+                                           readonly="1"/>
+                                    <field name="related_prospective_manager_id"     readonly="1"/>
+                                    <field name="related_prospective_distributor_id" readonly="1"/>
+                                    <field name="recruiter_source" string="Recruiter Source"/>
+                                    <field name="recruitment_method" string="Recruitment Method"/>
+                                    <field name="registration_channel"/>
+                                    <field name="recruiter_id"
+                                           options="{'no_create': True, 'no_create_edit': True}"
+                                           domain="['|', ('id', '=', manager_id), ('manager_id', '=', manager_id)]"/>
+                                    <field name="employee_type" force_save="1"/>
+                                    <field name="first_sale_date"/>
+                                    <field name="is_credit_check"/>
+                                    <label for="credit_score"
+                                           invisible="compuscan_checkscore_date != False or sa_id == False"/>
+                                    <div invisible="compuscan_checkscore_date != False or sa_id == False">
+                                        <field name="credit_score"
+                                               class="oe_inline"
+                                               readonly="1"
+                                               nolabel="1"/>
+                                        <button name="button_compuscan_checkscore"
+                                                type="object"
+                                                class="oe_link oe_inline"
+                                                invisible="is_credit_check == False or sa_id == False"
+                                                icon="fa-search"
+                                                string="Check"/>
+                                        <button name="button_credit_score_skip"
+                                                type="object"
+                                                class="oe_link oe_inline"
+                                                icon="fa-cross"
+                                                confirm="Are you sure you want to skip credit vetting?"
+                                                string="Skip"/>
+                                    </div>
+                                    <field name="bad_debts"/>
+                                    <field name="last_contact_date"   readonly="1"/>
+                                    <field name="last_contact_type"   readonly="1"/>
+                                    <field name="language"/>
+                                    <field name="state_change_date"   readonly="1"/>
+                                    <field name="last_call_date"      readonly="1"/>
+                                    <field name="call_agent"          readonly="1"/>
+                                    <field name="call_disposition"    readonly="1"/>
+                                    <field name="call_count"          readonly="1"/>
+                                    <field name="days_in_current_recruiting_stage" readonly="1"/>
+                                    <field name="days_in_recruiting_process"       readonly="1"/>
+                                    <field name="create_date_bb"      readonly="1" force_save="1"/>
+                                </group>
+                            </group>
+                        </div>
+
+                        <!-- ── Notebook ──────────────────────────────────────── -->
+                        <notebook>
+                            <page name="unverified" string="Unverified Info">
+                                <group>
+                                    <field name="address_verified" invisible="1"/>
+                                    <field name="unverified_first_name" readonly="address_verified == True"/>
+                                    <field name="unverified_last_name"  readonly="address_verified == True"/>
+                                    <field name="unverified_street"
+                                           readonly="address_verified == True"
+                                           placeholder="Unverified Street"
+                                           class="o_address_city"/>
+                                    <field name="unverified_suburb"
+                                           readonly="address_verified == True"
+                                           placeholder="Unverified Suburb"
+                                           class="o_address_city"/>
+                                    <field name="unverified_city"
+                                           readonly="address_verified == True"
+                                           placeholder="Unverified City"
+                                           class="o_address_city"/>
+                                    <field name="unverified_state_id"
+                                           readonly="address_verified == True"
+                                           class="o_address_state"
+                                           options="{&quot;no_open&quot;: True}"
+                                           context="{'country_id': country_id, 'zip': zip}"/>
+                                    <field name="unverified_zip"
+                                           readonly="address_verified == True"
+                                           placeholder="Unverified ZIP"
+                                           class="o_address_zip"/>
+                                    <field name="unverified_country_id"
+                                           readonly="address_verified == True"
+                                           placeholder="Unverified Country"
+                                           class="o_address_country"
+                                           options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}"/>
+                                    <button name="button_verify_address"
+                                            type="object"
+                                            icon="fa-check"
+                                            invisible="address_verified == True"
+                                            string="Verify"/>
+                                </group>
+                            </page>
+
+                            <page name="communication" string="Communication">
+                                <field name="communications_ids">
+                                    <tree editable="bottom">
+                                        <field name="stage_id" readonly="1" force_save="1"/>
+                                        <field name="date"/>
+                                        <field name="campaign"/>
+                                        <field name="type"/>
+                                        <field name="bound"/>
+                                        <field name="message"/>
+                                        <field name="email_mobile"/>
+                                        <field name="delivery_status"/>
+                                    </tree>
+                                </field>
+                            </page>
+
+                            <page name="vetting" string="Vetting">
+                                <field name="vetting_ids">
+                                    <tree editable="bottom">
+                                        <field name="stage_id"          readonly="1" force_save="1"/>
+                                        <field name="date"/>
+                                        <field name="credit_rating"/>
+                                        <field name="colour"/>
+                                        <field name="income_range"/>
+                                        <field name="affluence_segment"/>
+                                        <field name="fin_sophistication"/>
+                                        <field name="lsm"/>
+                                        <field name="credit_active"/>
+                                        <field name="maritial_staus"/>
+                                        <field name="home_owner"/>
+                                        <field name="director_indicated"/>
+                                        <field name="ethnicity"/>
+                                        <field name="property_value"/>
+                                    </tree>
+                                </field>
+                                <group invisible="sa_id == False">
+                                    <group invisible="compuscan_checkscore_date != False">
+                                        <button name="button_compuscan_checkscore"
+                                                type="object"
+                                                class="oe_link"
+                                                icon="fa-search"
+                                                string="Check"/>
+                                    </group>
+                                    <group invisible="compuscan_checkscore_date == False">
+                                        <field name="compuscan_checkscore_cpa"  readonly="1" string="CPA Score"/>
+                                        <field name="compuscan_checkscore_nlr"  readonly="1" string="NLR Score"/>
+                                        <field name="compuscan_checkscore_risk" readonly="1" string="Risk"/>
+                                        <field name="compuscan_checkscore_date" readonly="1" string="Last Checked"/>
+                                        <button name="button_compuscan_checkscore"
+                                                type="object"
+                                                class="oe_link"
+                                                icon="fa-refresh"
+                                                confirm="Running a credit check too many times may affect the person's credit score. Are you sure you want to run the check again?"
+                                                string="Update"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <page name="internal_notes" string="Internal Notes">
+                                <field name="description"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids"         widget="mail_activity"/>
+                        <field name="message_ids"          widget="mail_thread"
+                               options="{'post_refresh': 'recipients', 'open_attachments': True}"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             sf.recruit LIST (TREE) VIEW
+             (replaces crm_case_tree_view_job inherit from botle_buhle_custom)
+        ================================================================ -->
+
+        <record id="sf_recruit_view_tree" model="ir.ui.view">
+            <field name="name">sf.recruit.tree</field>
+            <field name="model">sf.recruit</field>
+            <field name="arch" type="xml">
+                <tree string="Recruits">
+                    <!-- 'name' column labelled Known Name to match original intent -->
+                    <field name="name"        string="Known Name"/>
+                    <field name="stage_id"    string="Genealogy Status"/>
+                    <field name="genealogy"   string="Genealogy"/>
+                    <field name="recruiter_id"/>
+                    <field name="mobile"/>
+                    <field name="mobile_2"/>
+                    <field name="emp_company" string="Distributor Company Name" optional="hide"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             sf.recruit KANBAN VIEW
+             (replaces hr_kanban_view_applicant inherit from botle_buhle_custom)
+        ================================================================ -->
+
+        <record id="sf_recruit_view_kanban" model="ir.ui.view">
+            <field name="name">sf.recruit.kanban</field>
+            <field name="model">sf.recruit</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="stage_id"
+                        class="o_hr_applicant_kanban"
+                        group_create="false">
+                    <field name="name"/>
+                    <field name="stage_id"/>
+                    <field name="recruiter_source"/>
+                    <field name="days_in_recruiting_process"/>
+                    <field name="days_in_current_recruiting_stage"/>
+                    <field name="call_agent"/>
+                    <field name="related_stage_id"/>
+                    <field name="call_disposition"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div class="oe_kanban_global_click o_applicant_kanban_card">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <i class="o_kanban_record_title">
+                                            <field name="name"/>
+                                        </i>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_bottom mt4">
+                                    <div class="o_kanban_record_headings">
+                                        <div class="o_kanban_record_title"
+                                             t-if="!context.get('search_default_genealogy', false)">
+                                            <field name="recruiter_source"/>
+                                        </div>
+                                        <div class="o_kanban_record_subtitle"
+                                             t-if="!context.get('search_default_genealogy', false)">
+                                            <span>Days in Process: </span>
+                                            <field name="days_in_recruiting_process"/>
+                                        </div>
+                                        <div class="o_kanban_record_subtitle"
+                                             t-if="!context.get('search_default_genealogy', false)">
+                                            <span>Days in Current Stage: </span>
+                                            <field name="days_in_current_recruiting_stage"/>
+                                        </div>
+                                        <div class="o_kanban_record_subtitle">
+                                            <span>Call Agent: </span>
+                                            <field name="call_agent"/>
+                                        </div>
+                                        <div class="kanban-ribbon"
+                                             t-if="!record.call_disposition.raw_value || !['not_interested','already_joined','do_not_call','incorrect_number','no_passport','no_credit_check_consent','number_not_found','not_found_in_database'].includes(record.call_disposition.raw_value)">
+                                            <span>Call</span>
+                                        </div>
+                                        <div class="kanban-ribbon-red"
+                                             t-if="record.call_disposition.raw_value &amp;&amp; ['not_interested','already_joined','do_not_call','incorrect_number','no_passport','no_credit_check_consent','number_not_found','not_found_in_database'].includes(record.call_disposition.raw_value)">
+                                            <span>Do Not Call</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             sf.recruit SEARCH VIEW
+        ================================================================ -->
+
+        <record id="sf_recruit_view_search" model="ir.ui.view">
+            <field name="name">sf.recruit.search</field>
+            <field name="model">sf.recruit</field>
+            <field name="arch" type="xml">
+                <search string="Recruits">
+                    <field name="name"        string="Name"/>
+                    <field name="mobile"      string="Mobile"/>
+                    <field name="mobile_2"    string="Mobile 2"/>
+                    <field name="genealogy"   string="Genealogy"/>
+                    <field name="stage_id"    string="Stage"/>
+                    <field name="manager_id"  string="Manager"/>
+                    <field name="recruiter_id" string="Recruiter"/>
+                    <separator/>
+                    <!-- Domain filters -->
+                    <filter name="active"   string="Active"   domain="[('active', '=', True)]"/>
+                    <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                    <separator/>
+                    <filter name="not_interested"
+                            string="Not Interested"
+                            domain="[('call_disposition', '=', 'not_interested')]"/>
+                    <separator/>
+                    <!-- Genealogy shortcuts matching original [('job_id.name', '=', 'X')] domains
+                         → transformed to [('genealogy', '=', 'X')] per rule #10 -->
+                    <filter name="genealogy_distributor"
+                            string="Distributor"
+                            domain="[('genealogy', '=', 'Distributor')]"/>
+                    <filter name="genealogy_prospective_distributor"
+                            string="Prospective Distributor"
+                            domain="[('genealogy', '=', 'Prospective Distributor')]"/>
+                    <filter name="genealogy_manager"
+                            string="Manager"
+                            domain="[('genealogy', '=', 'Manager')]"/>
+                    <filter name="genealogy_consultant"
+                            string="Consultant"
+                            domain="[('genealogy', '=', 'Consultant')]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_stage"      string="Stage"      context="{'group_by': 'stage_id'}"/>
+                        <filter name="group_genealogy"  string="Genealogy"  context="{'group_by': 'genealogy'}"/>
+                        <filter name="group_manager"    string="Manager"    context="{'group_by': 'manager_id'}"/>
+                        <filter name="group_recruiter"  string="Recruiter"  context="{'group_by': 'recruiter_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             sf.recruit ACTIONS
+        ================================================================ -->
+
+        <!-- Main Recruits action (replaces bbb_sales_force_genealogy_recruits) -->
+        <record id="action_sf_recruits" model="ir.actions.act_window">
+            <field name="name">Recruits</field>
+            <field name="res_model">sf.recruit</field>
+            <field name="view_mode">kanban,tree,form</field>
+            <field name="view_id" ref="sf_recruit_view_kanban"/>
+            <field name="search_view_id" ref="sf_recruit_view_search"/>
+            <field name="context">{'default_sales_force': 1}</field>
+            <field name="domain">[]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Ready to recruit more efficiently?
+                </p>
+                <p>
+                    Let's create a recruit.
+                </p>
+            </field>
+        </record>
+
+        <!-- All Recruits action with all view modes
+             (replaces hr_recruitment.crm_case_categ0_act_job override) -->
+        <record id="action_sf_recruits_all" model="ir.actions.act_window">
+            <field name="name">All Recruits</field>
+            <field name="res_model">sf.recruit</field>
+            <field name="view_mode">kanban,tree,form,pivot,graph,calendar,activity</field>
+            <field name="view_id" ref="sf_recruit_view_kanban"/>
+            <field name="search_view_id" ref="sf_recruit_view_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No recruits yet.
+                </p>
+                <p>
+                    Start building your sales force pipeline.
+                </p>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             VOIP / ONBOARDING POPUP VIEWS
+             (replaces view_recruit_form, view_recruit_verification,
+              view_recruit_onboard_form from botle_buhle_custom;
+              bb_allocate recruiter_source Allocate button merged into
+              view_recruit_onboard_form)
+        ================================================================ -->
+
+        <!-- Step 1: Recruit popup (credit vetting / call disposition) -->
+        <record id="view_recruit_form" model="ir.ui.view">
+            <field name="name">sf.recruit.onboard.form</field>
+            <field name="model">sf.recruit</field>
+            <field name="arch" type="xml">
+                <form js_class="voip_recruit_popup">
+                    <sheet>
+                        <group>
+                            <field name="first_name"/>
+                            <field name="last_name"/>
+                            <field name="mobile"
+                                   readonly="1"
+                                   widget="phone"
+                                   options="{'enable_sms': false}"/>
+                            <field name="sa_id"
+                                   string="ID number"
+                                   decoration-danger="is_rsa_id_valid == False"/>
+                            <field name="passport" string="Passport"/>
+                            <field name="populate_hide_button"    invisible="1"/>
+                            <field name="credit_score_hide_button" invisible="1"/>
+                            <field name="verify_hide_button"      invisible="1"/>
+                            <label for="is_credit_check"/>
+                            <div class="o_row">
+                                <field name="is_credit_check" string="Credit Check Consent"/>
+                                <button name="button_compuscan_checkscore"
+                                        type="object"
+                                        class="oe_link o_credit_vetting"
+                                        icon="fa-search"
+                                        string="Credit Vetting"
+                                        invisible="credit_score_hide_button != False or is_rsa_id_valid != True and (passport == False and credit_score_hide_button != False)"/>
+                            </div>
+                            <field name="recruiter_source"  invisible="1" readonly="1"/>
+                            <field name="recruiter_id"
+                                   options="{'no_quick_create': True, 'no_create_edit': True, 'no_open': True}"
+                                   invisible="recruiter_source == 'external'"
+                                   readonly="1"/>
+                            <field name="recruit_date"           readonly="1"/>
+                            <field name="call_disposition"       force_save="1"/>
+                            <field name="credit_score_hide_button"/>
+                            <field name="is_rsa_id_valid" invisible="1"/>
+                        </group>
+                        <footer>
+                            <button type="object"
+                                    name="save_view_recruit_form"
+                                    string="Next Step"
+                                    class="oe_highlight o_save_form"
+                                    invisible="call_disposition != False and credit_score_hide_button != False and call_disposition != False"/>
+                            <button type="object"
+                                    name="close_form"
+                                    string="SAVE"
+                                    class="oe_highlight"
+                                    invisible="call_disposition == False"/>
+                            <span>OR</span>
+                            <button name="hangup_button"
+                                    type="object"
+                                    class="oe_hang_up oe_highlight">HANGUP</button>
+                        </footer>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Step 2: Address verification popup -->
+        <record id="view_recruit_verification" model="ir.ui.view">
+            <field name="name">sf.recruit.verification.form</field>
+            <field name="model">sf.recruit</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="unverified_first_name"/>
+                                <field name="unverified_last_name"/>
+                                <field name="unverified_street"/>
+                                <field name="unverified_suburb"/>
+                                <field name="unverified_city"/>
+                                <field name="unverified_state_id"/>
+                                <field name="unverified_zip"/>
+                                <field name="unverified_country_id"/>
+                                <field name="verify_hide_button" invisible="1"/>
+                                <div>
+                                    <button name="button_verify_address"
+                                            type="object"
+                                            icon="fa-check"
+                                            class="oe_link o_verify"
+                                            string="Verify"
+                                            invisible="verify_hide_button == True"/>
+                                </div>
+                            </group>
+                        </group>
+                        <footer>
+                            <button type="object"
+                                    name="save_view_recruit_verification"
+                                    string="Next Step"
+                                    class="oe_highlight o_next_step"/>
+                            <span>OR</span>
+                            <button name="hangup_button"
+                                    type="object"
+                                    class="oe_hang_up oe_highlight">HANGUP</button>
+                        </footer>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Step 3: Onboard form popup
+             (bb_allocate recruiter_source Allocate Manager button merged in) -->
+        <record id="view_recruit_onboard_form" model="ir.ui.view">
+            <field name="name">sf.recruit.onboard.final.form</field>
+            <field name="model">sf.recruit</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="first_name"  readonly="address_verified == True"/>
+                                <field name="last_name"   readonly="address_verified == True"/>
+                                <field name="mobile"
+                                       readonly="1"
+                                       widget="phone"
+                                       options="{'enable_sms': false}"/>
+                                <field name="sa_id"     string="ID number" readonly="1"/>
+                                <field name="passport"  string="Passport"  readonly="1"/>
+                                <field name="populate_hide_button"    invisible="1"/>
+                                <field name="credit_score_hide_button" invisible="1"/>
+                                <field name="verify_hide_button"      invisible="1"/>
+                                <field name="address_verified"        invisible="1"/>
+                                <field name="street"     readonly="address_verified == True"/>
+                                <field name="suburb"     readonly="address_verified == True"/>
+                                <field name="city"       readonly="address_verified == True"/>
+                                <field name="state_id"   readonly="address_verified == True"/>
+                                <field name="zip"        readonly="address_verified == True"/>
+                                <field name="country_id" readonly="address_verified == True"/>
+                                <field name="recruiter_id"
+                                       options="{'no_quick_create': True, 'no_create_edit': True, 'no_open': True}"
+                                       invisible="recruiter_source == 'external'"
+                                       readonly="1"/>
+                                <!-- Merged from bb_allocate: Allocate Manager button on recruiter_source -->
+                                <label for="recruiter_source" string="Recruiter Source"/>
+                                <div class="o_row">
+                                    <field name="recruiter_source" readonly="1"/>
+                                    <button class="oe_inline oe_link"
+                                            icon="fa-crosshairs"
+                                            invisible="recruiter_source == 'internal'"
+                                            name="button_allocate_manager"
+                                            string="Allocate Manager"
+                                            type="object"/>
+                                </div>
+                                <field name="call_disposition"/>
+                            </group>
+                        </group>
+                        <footer>
+                            <button type="object"
+                                    name="save_view_recruit_onboard_form"
+                                    string="Onboard"
+                                    class="oe_highlight"/>
+                            <span>OR</span>
+                            <button name="hangup_button"
+                                    type="object"
+                                    class="oe_hang_up oe_highlight">HANGUP</button>
+                        </footer>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             MENU ITEMS
+             Parent: sales_force_support.sales_force_menuitem
+             (replaces botle_buhle_custom.recruitment_menuitem /
+              botle_buhle_custom.sales_force_menuitem)
+        ================================================================ -->
+
+        <!-- Recruitment sub-menu grouping -->
+        <menuitem id="recruitment_menuitem"
+                  name="Recruitment"
+                  parent="sales_force_support.sales_force_menuitem"
+                  sequence="10"/>
+
+        <!-- Recruits list/kanban -->
+        <menuitem id="recruiting_menuitem_recruits"
+                  name="Recruits"
+                  action="action_sf_recruits"
+                  parent="sales_force_support.recruitment_menuitem"
+                  sequence="1"/>
+
+        <!-- All Recruits (full pivot/graph/calendar) -->
+        <menuitem id="recruiting_menuitem_recruits_all"
+                  name="All Recruits"
+                  action="action_sf_recruits_all"
+                  parent="sales_force_support.recruitment_menuitem"
+                  sequence="2"/>
+
+        <!-- Configuration sub-menu -->
+        <menuitem id="recruitment_config_menuitem"
+                  name="Recruitment Configuration"
+                  parent="sales_force_support.sales_force_menuitem"
+                  sequence="90"/>
+
+        <!-- Recruit Stages -->
+        <menuitem id="recruitment_stages_menuitem"
+                  name="Recruit Stages"
+                  action="action_sf_recruit_stage"
+                  parent="sales_force_support.recruitment_config_menuitem"
+                  sequence="1"
+                  groups="sales_force_support.group_sales_force_manager"/>
+
+    </data>
+</odoo>

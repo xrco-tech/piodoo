@@ -1,0 +1,109 @@
+.o_list_view.o_list_view_freeze {
+  position: relative;
+  overflow: auto;
+}
+
+.o_list_view.o_list_view_freeze thead {
+  position: sticky;
+  top: 0;
+  /*background-color: #875A7B;*/
+  z-index: 1;
+  /*color: white;*/
+}
+
+.o_list_view.o_list_view_freeze thead th {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* Form header tree freeze */
+.scrollable-tree {
+    max-height: 600px; /* Set the desired maximum height */
+    overflow: auto;
+}
+
+/*.o_form_view .o_form_sheet_bg {
+    border-top: 1px solid #ddd;
+    margin-top: -1px;
+    z-index: 11;
+}
+
+.o_form_sheet_bg .o_form_statusbar {
+    position: fixed !important;
+    width: 100%;
+    z-index: 11;
+}
+
+.o_form_view .o_form_sheet_bg > .o_form_sheet {
+    margin-top: 50px;
+}*/
+
+.o_list_view.o_list_view_freeze_form {
+  position: relative;
+  overflow: auto;
+}
+
+.o_list_view.o_list_view_freeze_form thead {
+  position: sticky !important;
+  top: -5px;
+  /*background-color: #875A7B;*/
+  z-index: 1;
+  /*color: white;*/
+}
+
+.o_list_view.o_list_view_freeze_form thead th {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: visible;
+    -webkit-overflow-scrolling: touch;
+}
+
+.payin_sheeet_enquiry_title {
+    display: inline-block;
+    /*max-width: 100%;*/
+    white-space-collapse: collapse;
+    /*text-wrap: nowrap;*/
+    text-overflow: ellipsis;
+    vertical-align: top;
+    overflow: hidden;
+}
+
+.table-container.o_report_view_freeze {
+  position: relative;
+  overflow: auto;
+    overflow-x: inherit;
+  height: 500px; /* Set a fixed height to limit the table height */
+}
+
+/* Freeze the header */
+.o_report_view_freeze thead {
+  position: sticky;
+  top: -2px;
+  background-color: #f8f9fa;
+  z-index: 1;
+  border: 1px solid black;
+  /*color: white;*/
+}
+
+.o_report_view_freeze thead th {
+  font-weight: bold;
+  white-space: nowrap;
+    /*background-color: red;*/
+  border: 1px solid black;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.outer_table_container {
+    width: 100%;
+    overflow-x: scroll;
+}
+
+/*.o_report_view_freeze tbody {*/
+/*  margin-top: -2px; */
+/*}*/

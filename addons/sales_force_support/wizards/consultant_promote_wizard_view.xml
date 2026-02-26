@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bbb_sales_force_genealogy/wizards/consultant_promote_wizard_view.xml -->
+<odoo>
+
+    <record id="potential_consultants_promote_view" model="ir.ui.view">
+        <field name="name">Activate Potential Consultants</field>
+        <field name="model">potential_consultant.promotion.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="activation_reason" string="Activation Reason" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="promote_potential_consultant"  string="Activate" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="consultants_promote_view" model="ir.ui.view">
+        <field name="name">Promote Consultants</field>
+        <field name="model">consultant.promotion.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="promoter_id" required="True" options="{'no_create': True}" domain="[('genealogy', 'in', ['manager', 'distributor']), ('sales_force', '=', True)]"/>
+                      <field name="promotion_date" required="True" options="{'no_create': False}"/>
+                      <field name="promotion_effective_date" required="True" options="{'no_create': False}"/>
+                      <field name="promotion_reason" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="promote_consultant"  string="Promote" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="prospective_manager_promote_view" model="ir.ui.view">
+        <field name="name">Promote Prospective Managers</field>
+        <field name="model">prospective_manager.promotion.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="promoter_id" required="True"  options="{'no_create': True}" domain="[('genealogy', 'in', ['manager', 'distributor']), ('sales_force', '=', True)]"/>
+                      <field name="promotion_date" required="True" options="{'no_create': False}"/>
+                      <field name="promotion_effective_date" required="True" options="{'no_create': False}"/>
+                      <field name="promotion_reason" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="promote_prospective_manager"  string="Promote" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="manager_promote_view" model="ir.ui.view">
+        <field name="name">Promote Managers</field>
+        <field name="model">manager.promotion.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="promoter_id" required="True"  options="{'no_create': True}" domain="[('genealogy', 'in', ['manager', 'distributor']), ('sales_force', '=', True)]"/>
+                      <field name="promotion_date" required="True" options="{'no_create': False}"/>
+                      <field name="promotion_effective_date" required="True" options="{'no_create': False}"/>
+                      <field name="promotion_reason" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="promote_manager"  string="Promote" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="prospective_distributor_promote_view" model="ir.ui.view">
+        <field name="name">Promote Prospective Distributors</field>
+        <field name="model">prospective_distributor.promotion.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                        <field name="distribution_id"/>
+                      <field name="promoter_id" required="True"  options="{'no_create': True}" domain="[('genealogy', 'in', ['manager', 'distributor']), ('sales_force', '=', True)]"/>
+                      <field name="promotion_date" required="True" options="{'no_create': False}"/>
+                      <field name="promotion_effective_date" required="True" options="{'no_create': False}"/>
+                      <field name="promotion_reason" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="promote_prospective_distributor"  string="Promote" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+     <record id="distributor_demote_view" model="ir.ui.view">
+        <field name="name">Demote Distributors</field>
+        <field name="model">distributor.demotion.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="default_move_distributor_id" required="True"  options="{'no_create': True}" domain="[('genealogy', '=', 'distributor'), ('sales_force', '=', True)]"/>
+                      <field name="demotion_date" required="True" options="{'no_create': False}"/>
+                      <field name="demotion_effective_date" required="True" options="{'no_create': False}"/>
+                      <field name="demotion_reason" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="demote_distributor"  string="Demote" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+     <record id="manager_demote_view" model="ir.ui.view">
+        <field name="name">Demote Managers</field>
+        <field name="model">manager.demotion.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <group>
+                      <field name="default_move_manager_id" required="True"  options="{'no_create': True}" domain="[('genealogy', 'in', ['manager', 'distributor']), ('sales_force', '=', True)]"/>
+                      <field name="demotion_date" required="True" options="{'no_create': False}"/>
+                      <field name="demotion_effective_date" required="True" options="{'no_create': False}"/>
+                      <field name="demotion_reason" options="{'no_create': False}"/>
+                  </group>
+                    <footer>
+                        <button type="object" name="demote_manager"  string="Demote" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

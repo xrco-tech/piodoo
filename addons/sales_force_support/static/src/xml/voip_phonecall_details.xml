@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<template xml:space="preserve">
+    <t t-inherit="voip.PhoneCallDetails" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[3]//div[1][@class='o_voip_row_header']" position="replace"/>
+    </t>
+
+    <t t-inherit="voip.PhoneCallDetails" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[3]//div[1][@class='o_row']" position="replace"/>
+    </t>
+</template>

@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sources merged:
+     - botle_buhle_custom/views/res_partner_view.xml
+     - bb_allocate/views/res_partner_views.xml          (allocate consultant button)
+     - partner_compuscan/views/res_partner_views.xml    (Compuscan credit tab)
+     - partner_consumerview/views/res_partner_views.xml (ConsumerView button)
+     Key changes:
+     - job_id.name domains → genealogy
+     - menuitem parents: botle_buhle_custom.* → sales_force_support.*
+     - consultant/manager/distributor Many2one comodels already sf.member (Phase 6)
+-->
+<odoo>
+    <data>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             STANDALONE CUSTOMER VIEWS (for res.partner with customer=True)
+             Source: botle_buhle_custom
+        ════════════════════════════════════════════════════════════════════ -->
+
+        <record id="res_partner_customer_view" model="ir.ui.view">
+            <field name="name">res.partner.customer.form</field>
+            <field name="model">res.partner</field>
+            <field name="arch" type="xml">
+                <form string="Customer">
+                    <sheet>
+                        <group col="4">
+                            <group style="width: 23%; display: flex; align-items: center; justify-content: center;">
+                                <field name="image" widget="image" class="oe_avatar" nolabel="1" force_save="1"
+                                       options="{'size': [90, 90]}"/>
+                            </group>
+                            <group style="padding-left: 10px; width: 70%;">
+                                <field name="first_name" default_focus="1" required="1" force_save="1"/>
+                                <field name="last_name" required="1" force_save="1"/>
+                                <field name="known_name" force_save="1"/>
+                            </group>
+                        </group>
+                        <hr/>
+
+                        <style>.button_gray:hover {background-color: #e7e7e7;}</style>
+
+                        <div>
+                            <div class="button_gray" style="flex: 1; width: 40%; border: 1px solid #008CBA; padding: 8px 32px; height: auto; background-color: lawngreen;">
+                                <table>
+                                    <tr><td><b>Customer</b></td></tr>
+                                    <tr><td/></tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 10px;">
+                            <group>
+                                <group>
+                                    <label for="sa_id" invisible="not sa_id" string="ID Number"/>
+                                    <div invisible="not sa_id">
+                                        <field name="sa_id" class="oe_inline" nolabel="1"/>
+                                        <button name="button_consumerview_populate" type="object"
+                                                class="oe_link oe_inline" icon="fa-search"
+                                                string="Populate with Consumerview"/>
+                                    </div>
+                                    <field name="sa_id" invisible="sa_id != False"/>
+                                    <field name="passport"/>
+                                    <field name="nationality" required="passport != False" invisible="not passport"/>
+                                    <field name="birth_date"/>
+                                    <field name="age"/>
+                                    <field name="gender"/>
+                                    <label for="mobile"/>
+                                    <div class="o_row">
+                                        <field name="mobile" widget="phone" options="{'enable_sms': false}"/>
+                                        <label for="mobile_opt_out"/>
+                                        <field name="mobile_opt_out"/>
+                                        <field name="mobile_opt_out_date"/>
+                                    </div>
+                                    <label for="mobile_2"/>
+                                    <div class="o_row">
+                                        <field name="mobile_2" widget="phone" options="{'enable_sms': false}"/>
+                                        <label for="mobile_2_opt_out"/>
+                                        <field name="mobile_2_opt_out"/>
+                                        <field name="mobile_2_opt_out_date"/>
+                                    </div>
+                                    <field name="mobile_is_invalid"/>
+                                    <label for="email" string="Email"/>
+                                    <div class="o_row">
+                                        <field name="email"/>
+                                    </div>
+                                    <field name="street" placeholder="Street" class="o_address_city"/>
+                                    <field name="suburb" placeholder="Suburb" class="o_address_city"/>
+                                    <field name="city" placeholder="City" class="o_address_city"/>
+                                    <field name="state_id" class="o_address_state"
+                                           options="{&quot;no_open&quot;: True}"
+                                           context="{'country_id': country_id, 'zip': zip}"
+                                           string="Province"/>
+                                    <field name="zip" placeholder="ZIP" class="o_address_zip"/>
+                                    <field name="country_id" placeholder="Country" class="o_address_country"
+                                           options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}"/>
+                                </group>
+                                <group>
+                                    <!-- Merged from bb_allocate: allocate/re-allocate button alongside consultant_id -->
+                                    <label for="consultant_id" string="Consultant"/>
+                                    <div class="o_row">
+                                        <field name="consultant_id"
+                                               options="{'no_create': True, 'no_create_edit': True}"
+                                               domain="[('genealogy', 'in', ['Consultant', 'Manager'])]"/>
+                                        <button class="oe_inline oe_link" icon="fa-crosshairs"
+                                                invisible="manager_id != False"
+                                                name="button_allocate_consultant" string="Allocate" type="object"/>
+                                        <button class="oe_inline oe_link" icon="fa-crosshairs"
+                                                invisible="manager_id == False"
+                                                name="button_allocate_consultant" string="Re-Allocate" type="object"/>
+                                    </div>
+                                    <field name="related_distributor_id"
+                                           options="{'no_create': True, 'no_create_edit': True}"
+                                           domain="[('genealogy', '=', 'Distributor')]"/>
+                                    <field name="manager_id"
+                                           options="{'no_create': True, 'no_create_edit': True}"
+                                           domain="[('genealogy', '=', 'Manager')]"/>
+                                    <field name="credit_score"/>
+                                    <field name="bad_debts"/>
+                                    <field name="potential_lead_date"/>
+                                    <field name="last_contact_date"/>
+                                </group>
+                            </group>
+                        </div>
+
+                        <notebook>
+                            <page name="info_contact" string="Contact Info"/>
+                            <page name="linked_contacts" string="Linked Contacts"/>
+                            <page name="vetting" string="Vetting">
+                                <field name="vetting_ids">
+                                    <tree editable="bottom">
+                                        <field name="stage_id" readonly="1" force_save="1"/>
+                                        <field name="date"/>
+                                        <field name="credit_rating"/>
+                                        <field name="colour"/>
+                                        <field name="income_range"/>
+                                        <field name="affluence_segment"/>
+                                        <field name="fin_sophistication"/>
+                                        <field name="lsm"/>
+                                        <field name="credit_active"/>
+                                        <field name="maritial_staus"/>
+                                        <field name="home_owner"/>
+                                        <field name="director_indicated"/>
+                                        <field name="ethnicity"/>
+                                        <field name="property_value"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page name="comments" string="Internal Notes">
+                                <field name="comment"/>
+                            </page>
+                            <page name="unverified" string="Unverified Info">
+                                <group>
+                                    <field name="address_verified" invisible="1"/>
+                                    <field name="unverified_first_name" readonly="address_verified == True"/>
+                                    <field name="unverified_last_name" readonly="address_verified == True"/>
+                                    <field name="unverified_street" readonly="address_verified == True"
+                                           placeholder="Unverified Street" class="o_address_city"/>
+                                    <field name="unverified_suburb" readonly="address_verified == True"
+                                           placeholder="Unverified Suburb" class="o_address_city"/>
+                                    <field name="unverified_city" readonly="address_verified == True"
+                                           placeholder="Unverified City" class="o_address_city"/>
+                                    <field name="unverified_state_id" readonly="address_verified == True"
+                                           class="o_address_state" options="{&quot;no_open&quot;: True}"
+                                           context="{'country_id': country_id, 'zip': zip}"/>
+                                    <field name="unverified_zip" readonly="address_verified == True"
+                                           placeholder="Unverified ZIP" class="o_address_zip"/>
+                                    <field name="unverified_country_id" readonly="address_verified == True"
+                                           placeholder="Unverified Country" class="o_address_country"
+                                           options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers" groups="base.group_user"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="res_partner_customer_tree" model="ir.ui.view">
+            <field name="name">res.partner.customer.tree</field>
+            <field name="model">res.partner</field>
+            <field name="arch" type="xml">
+                <tree string="Customer">
+                    <field name="id" string="System ID"/>
+                    <field name="name"/>
+                    <field name="mobile" widget="phone" options="{'enable_sms': false}"/>
+                    <field name="consultant_id"/>
+                    <field name="manager_id"/>
+                    <field name="related_distributor_id"/>
+                    <field name="distribution_id"/>
+                    <field name="active"/>
+                    <field name="bad_debts"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="res_partner_customer_tree_check" model="ir.ui.view">
+            <field name="name">res.partner.customer.tree.check</field>
+            <field name="model">res.partner</field>
+            <field name="arch" type="xml">
+                <tree string="Sales Force">
+                    <field name="name"/>
+                    <field name="category_title"/>
+                    <field name="sales_force_code"/>
+                    <field name="sa_id"/>
+                    <field name="mobile" widget="phone" options="{'enable_sms': false}"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sfm_code"/>
+                    <field name="manager_mobile" widget="phone" options="{'enable_sms': false}"/>
+                    <field name="view_model" invisible="1"/>
+                    <field name="view_res_id" invisible="1"/>
+                </tree>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="action_res_partner">
+            <field name="name">Customer</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">tree,kanban,form</field>
+            <field name="domain">[('customer', '=', True)]</field>
+            <field name="context">{'default_customer': 1}</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                (0, 0, {'view_mode': 'tree', 'view_id': ref('res_partner_customer_tree')}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('res_partner_customer_view')}),
+                (0, 0, {'view_mode': 'kanban', 'view_id': ref('base.res_partner_kanban_view')})]"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_empty_folder">No customers yet</p>
+            </field>
+        </record>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             INHERITED EXTENSIONS OF base.view_partner_form
+             Merged: botle_buhle_custom + partner_compuscan + partner_consumerview
+        ════════════════════════════════════════════════════════════════════ -->
+
+        <record id="view_partner_form_sales_force_support" model="ir.ui.view">
+            <field name="name">res.partner.form.inherit.sales_force_support</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <!-- Add extra tabs after Sales &amp; Purchases tab -->
+                <page name="sales_purchases" position="after">
+                    <field name="is_customer" invisible="1"/>
+                    <page name="unverified" string="Unverified Info" invisible="is_customer == False">
+                        <group>
+                            <field name="address_verified" invisible="1"/>
+                            <field name="unverified_first_name" readonly="address_verified == True"/>
+                            <field name="unverified_last_name" readonly="address_verified == True"/>
+                            <field name="unverified_street" readonly="address_verified == True"
+                                   placeholder="Unverified Street" class="o_address_city"/>
+                            <field name="unverified_suburb" readonly="address_verified == True"
+                                   placeholder="Unverified Suburb" class="o_address_city"/>
+                            <field name="unverified_city" readonly="address_verified == True"
+                                   placeholder="Unverified City" class="o_address_city"/>
+                            <field name="unverified_state_id" readonly="address_verified == True"
+                                   class="o_address_state" options="{&quot;no_open&quot;: True}"
+                                   context="{'country_id': country_id, 'zip': zip}"/>
+                            <field name="unverified_zip" readonly="address_verified == True"
+                                   placeholder="Unverified ZIP" class="o_address_zip"/>
+                            <field name="unverified_country_id" readonly="address_verified == True"
+                                   placeholder="Unverified Country" class="o_address_country"
+                                   options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}"/>
+                        </group>
+                    </page>
+                    <!-- Compuscan Credit tab (source: partner_compuscan) -->
+                    <page name="compuscan" string="Compuscan Credit" invisible="is_customer == False">
+                        <group>
+                            <group>
+                                <field name="compuscan_checkscore_cpa" readonly="1" string="CPA Score"/>
+                                <field name="compuscan_checkscore_nlr" readonly="1" string="NLR Score"/>
+                                <field name="compuscan_checkscore_risk" readonly="1" string="Risk"/>
+                                <field name="compuscan_checkscore_date" readonly="1" string="Last Checked"/>
+                                <button name="button_compuscan_checkscore" type="object"
+                                        class="oe_link" icon="fa-refresh" string="Update"/>
+                            </group>
+                        </group>
+                    </page>
+                </page>
+
+                <!-- Remove standard category_id and vat fields (replaced below) -->
+                <field name="category_id" position="replace"/>
+                <field name="vat" position="replace"/>
+
+                <!-- Add SFM fields before the address block (source: botle_buhle_custom) -->
+                <span name="address_name" position="before">
+                    <field name="is_customer" invisible="1"/>
+                    <field name="related_sfm_id"
+                           domain="[('sales_force_code', '!=', False)]"
+                           options="{'no_create': True, 'no_open': True}"
+                           context="{'code_only': True}"
+                           string="Related SFM Code"/>
+                    <field name="category_id" widget="many2many_tags"
+                           options="{'color_field': 'color', 'no_create_edit': True}"
+                           required="1" placeholder="Tags..."/>
+                    <field name="sales_force_code" readonly="1" force_save="1"/>
+                    <field name="distribution_id"/>
+                    <field name="ref" string="Account No"/>
+                    <field name="parent_id" string="Company"/>
+                </span>
+
+                <!-- Add extra fields after the address block -->
+                <xpath expr="//div[contains(@class, 'o_address_format')]" position="after">
+                    <field name="vat" string="VAT" placeholder="e.g. BE0477472701" readonly="parent_id"/>
+                    <field name="create_date_bb" readonly="1" force_save="1"/>
+                </xpath>
+
+                <!-- ConsumerView populate button on country_id (source: partner_consumerview) -->
+                <field name="country_id" position="replace">
+                    <div class="oe_row">
+                        <field name="country_id" placeholder="Country"
+                               options='{"no_open": True, "no_create": True}'
+                               readonly="type == 'contact' and parent_id != False"/>
+                        <button name="button_consumerview_populate" type="object"
+                                class="oe_link" icon="fa-arrow-right"
+                                string="Populate with Consumerview"/>
+                    </div>
+                </field>
+            </field>
+        </record>
+
+        <!-- ── Search filter extension ─────────────────────────────────── -->
+        <record id="view_res_partner_search" model="ir.ui.view">
+            <field name="name">res.partner.search.view.sales_force_support</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_res_partner_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='name']" position="after">
+                    <filter string="Opted Out" name="opted_out"
+                            domain="['|', ('mobile_opt_out', '=', True), ('mobile_2_opt_out', '=', True)]"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             MENU ITEMS
+        ════════════════════════════════════════════════════════════════════ -->
+
+        <menuitem id="customers_menuitem"
+                  name="Customers"
+                  action="action_res_partner"
+                  parent="sales_force_support.sales_force_menuitem"
+                  sequence="2"/>
+
+    </data>
+</odoo>

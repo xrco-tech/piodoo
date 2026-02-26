@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: botle_buhle_custom/views/promotions_view.xml
+     Adapted: current_genealogy_level / next_genealogy_level are now Selection fields
+     Menuitem parent updated: botle_buhle_custom.* → sales_force_support.*
+-->
+<odoo>
+    <data>
+        <record id="promotion_tree_view" model="ir.ui.view">
+            <field name="name">promotion.rules.tree</field>
+            <field name="model">promotion.rules</field>
+            <field name="arch" type="xml">
+                <tree string="Promotion Rules">
+                    <field name="current_genealogy_level"/>
+                    <field name="next_genealogy_level"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="promotions_form_view" model="ir.ui.view">
+            <field name="name">promotion.rules.form</field>
+            <field name="model">promotion.rules</field>
+            <field name="arch" type="xml">
+                <form string="Promotion Rules">
+                    <header/>
+                    <sheet>
+                        <group col="4">
+                            <field name="current_genealogy_level" required="1"/>
+                            <field name="next_genealogy_level" required="1"/>
+                            <field name="name" invisible="1"/>
+                        </group>
+                        <group col="4">
+                            <field name="sales_month"
+                                   readonly="current_genealogy_level in ('Manager', 'Prospective Distributor')"/>
+                            <field name="manager_sales_month"
+                                   readonly="current_genealogy_level in ('Consultant', 'Prospective Manager')"/>
+                            <field name="own_sales_value"/>
+                            <field name="team_sales_value"/>
+                        </group>
+                        <group col="4">
+                            <field name="team_sales_value_per_promoted_manager"/>
+                            <field name="retained_consultants"/>
+                            <field name="months_retained_consultants"/>
+                        </group>
+                        <group col="4">
+                            <field name="months_to_exclude_ids" options="{'no_create': '1'}"/>
+                            <field name="promoted_managers"/>
+                            <field name="promoted_managers_moths"/>
+                            <field name="promoted_manager_active_consultants"/>
+                            <field name="promoted_team_sales_month"/>
+                        </group>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_promotion_rules" model="ir.actions.act_window">
+            <field name="name">Promotion Rules</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">promotion.rules</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="promotion_tree_view"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No promotion rules defined yet.
+                </p>
+            </field>
+        </record>
+
+        <menuitem id="promotion_menuitem_promotions"
+                  name="Promotions"
+                  parent="sales_force_support.sales_force_menuitem"/>
+
+        <menuitem id="promotion_menuitem"
+                  name="Promotion Rules"
+                  action="action_promotion_rules"
+                  parent="sales_force_support.promotion_menuitem_promotions"/>
+    </data>
+</odoo>

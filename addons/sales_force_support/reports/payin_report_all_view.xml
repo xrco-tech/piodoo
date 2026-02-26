@@ -1,0 +1,732 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+      <template id="bbb_wiz_layout">
+      <div t-attf-class="header o_company_#{company.id}_layout">
+        <div class="row" style="height:10px;"/>
+        <div class="row">
+          <div class="col-5">
+            <table style="text-align: left; width: 100%;padding: 0px;" border="0" cellpadding="0" cellspacing="0" padding="0" margin="0">
+              <tbody>
+                <tr>
+                  <td style="vertical-align: top; width: 50%;"><strong><span t-esc="o.date.strftime('%B %Y')" style="font-size: 32px;"/><span style="font-size:32px"> - Pay In Sheet</span></strong></td>
+                </tr>
+                <tr>
+                  <td style="vertical-align: top; width: 50%;"><strong>Fax: </strong><span>086 551 4108</span></td>
+                </tr>
+                <tr>
+                  <td style="vertical-align: top; width: 30%;"><strong>Email: </strong><span>payins@bbb.co.za</span></td>
+                </tr>
+                <tr>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="col-4">
+            <table class="table-bordered" style="text-align: left; width: 100%; border: 1x solid black;padding: 1px;" spacing="0" padding="0" margin="0">
+              <tbody>
+                <tr style="border: 1x solid black;height: 35px;">
+                  <td style="vertical-align: middle; width: 10%;border: 1px solid black;" align="center"><strong>D</strong></td>
+                  <td style="vertical-align: middle; width: 70%;border: 1px solid black; padding-left: 5px;" align="left"><strong><span t-field="doc.distribution_company_id.name"/></strong></td>
+                  <td style="vertical-align: middle; width: 20%;border: 1px solid black; padding-left: 5px;" align="left"><strong><span t-esc="doc.distributor_id.sales_force_code"/></strong></td>
+                </tr>
+                <tr style="border: 1px solid black;height: 35px;">
+                  <td style="vertical-align: middle; width: 10%;border: 1px solid black;" align="center"><strong>M</strong></td>
+                  <td style="vertical-align: middle; width: 70%;border: 1px solid black;padding-left: 5px;" align="left"><strong><span t-field="doc.manager_id.name"/></strong></td>
+                  <td style="vertical-align: middle; width: 20%;border: 1px solid black;padding-left: 5px;" align="left"><strong><span t-field="doc.manager_id.sales_force_code"/></strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+        <div style="position: absolute;right: 0;top: 0px;background-color: white; width: 25%;">
+          <img style="display: block;margin-left: auto; margin-right: auto; width: 100%;position: absolute;right:0;top:0;" t-if="company.logo" t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+        </div>
+
+        <div class="row" style="margin: 0px; padding: 0px;">
+          <div class="col-9" style="margin: 0px; padding: 0px;">
+            <table style="text-align: left; width: 100%;margin:0px; padding:0px;">
+              <tbody>
+                <tr>
+                  <td style="vertical-align: bottom; width: 57%;font-family:Helvetica,Verdana,Arial,sans,Lucida Grande,Calibri;font-size:15px;"><strong><em>* PLEASE CHECK &amp; UPDATE CONSULTANT INFORMATION *</em></strong></td>
+                  <td style="vertical-align: bottom; width: 15%;text-align:right;"><span>Captured By</span></td>
+                  <td style="vertical-align: bottom; width: 27%;border-bottom: 1px solid black;"><span></span></td>
+                  <td style="width:1%"><span></span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="row" style="height:2px;"/>
+      </div>
+
+      <div t-attf-class="article o_report_layout_standard o_company_#{company.id}_layout"  t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id" t-att-data-oe-lang="o and o.env.context.get('lang')">
+        <t t-call="web.address_layout"/>
+        <t t-raw="0"/>
+      </div>
+
+      <div t-attf-class="footer o_standard_footer o_company_#{company.id}_layout">
+        <div class="row" style="height:15px;"/>
+        <div class="row">
+          <div style="width:504px;padding-left:15px;padding-right:0px;">
+            <table style="text-align: left; width: 100%;table-layout:fixed;height: 50%;" cellpadding="0" cellspacing="0" padding="0" margin="0">
+              <tbody>
+                <tr style="height:35px">
+                  <td  style="width: 85px;vertical-align: bottom;padding-right: 5px;" class="text-right">
+                    <strong><span>Date</span></strong>
+                  </td>
+                  <td  style="width: 245px;border-bottom: 1px solid black;" class="text-left">
+                    <span></span>
+                  </td>
+                  <td  style="width: 134px;vertical-align: bottom;" class="text-center">
+                    <strong><span>Page Total</span></strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+          </div>
+          <div style="width:718px;padding-left:0px;padding-right:15px;">
+            <table style="table-layout:fixed; text-align: left; width: 100%; height: 50%;" cellpadding="0" cellspacing="0" padding="0" margin="0">
+              <tbody>
+                <tr style="height:5px;border-top:2px; border-left:0px; border-right: 0px;">
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td  style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                   <td style="width: 95px; border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 110px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                </tr>
+                <tr style="height:30px;">
+                  <td  style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td  style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-bottom:1px solid black;border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                    <span> </span>
+                  </td>
+
+                  <td style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border: 1px solid black; border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-bottom:1px solid black;border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                    <span> </span>
+                  </td>
+                  <!-- <td style="width: 95px;border-top: 2px solid black;border: 1px solid black;border-right: 1px solid black;" class="text-right"> -->
+                  <!--   <span> </span> -->
+                  <!-- </td> -->
+                  <td style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-bottom:1px solid black: 0px; border-left: 2px solid black;border-right: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+
+                  <td style="width: 110px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+        <div style="height:15px;"/>
+        <div class="row">
+          <div style="width:504px;padding-left:15px;padding-right:0px;">
+            <table style="table-layout:fixed; text-align: left; width: 100%;" cellpadding="0" cellspacing="0" padding="0" margin="0">
+              <tbody>
+                <tr style="height:35px;">
+                  <td  style="width: 85px;vertical-align: top;padding-right:5px;padding-left:0px; line-height:14px;" class="text-right">
+                    <strong><span>Distributor<br/>Signature</span></strong>
+                  </td>
+                  <td  style="vertical-align: middle;width: 245px;border-bottom: 1px solid black;" class="text-left">
+                    <span></span>
+                  </td>
+                  <td  style="vertical-align: middle;width: 134px;padding-bottom: 5px;" class="text-center">
+                    <strong><span>Difference </span></strong>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+
+          </div>
+          <div style="width:718px;padding-left:0px;padding-right:15px;">
+            <table style="table-layout:fixed; text-align: left; width: 100%; height: 50%;" cellpadding="0" cellspacing="0" padding="0" margin="0">
+              <tbody>
+                <tr style="height:5px;border-top: 2px solid black;border-left:0px; border-right: 0px;">
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td  style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+
+                  <td style="width: 3px;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border-top: 1px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 110px;border-top: 2px solid black;border-bottom: 1px solid black;border-left: 0px;border-right:0px;" class="text-right">
+                    <span> </span>
+                  </td>
+                </tr>
+                <tr style="height:30px;">
+                  <td  style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td  style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-bottom:1px solid black;border-left: 2px solid black;border-right: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+
+                  <td style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border: 1px solid black;border-top: 2px solid black" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 95px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-bottom:1px solid black; border-left: 2px solid black; border-right: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+
+                  <td style="width: 95px;border: 1px solid black;border-right: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                  <td style="width: 3px;border-bottom:1px solid black; border-left: 2px solid black; border-right: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+
+                  <td style="width: 110px;border: 1px solid black;border-top: 2px solid black;" class="text-right">
+                    <span> </span>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="row mt8">
+          <div class="col-12">
+            <ul t-if="report_type == 'pdf'" class="list-inline pagenumber float-center text-center">
+              <li class="list-inline-item"><strong><span class="page"/><span>/</span><span class="topage"/></strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template id="report_payin_document_all2">
+      <t t-if="not o" t-set="o" t-value="doc"/>
+
+      <t t-if="not company">
+        <!-- Multicompany -->
+        <t t-if="company_id">
+          <t t-set="company" t-value="company_id"/>
+        </t>
+        <t t-elif="o and 'company_id' in o">
+          <t t-set="company" t-value="o.company_id.sudo()"/>
+        </t>
+        <t t-else="else">
+          <t t-set="company" t-value="res_company"/>
+        </t>
+      </t>
+      <t t-call="sales_force_support.bbb_wiz_layout">
+        <div class="page" style="font-size: 10pt;font-family:Helvetica,Verdana,Arial,sans,Lucida Grande,Calibri;">
+          <div class="row">
+            <div style="padding-left:15px;">
+              <table style="width:100%; margin: 0px;">
+                <thead>
+                  <tr style="height:45px;">
+                    <th style="text-align: center; width:189px; vertical-align: middle;border: 1px solid black;">Consultant</th>
+                    <th style="text-align: center; width:189px; vertical-align: middle;border: 1px solid black;padding-left:5px;line-height:14px;">Cellnumber<br/>-----------------------------<br/>ID Number</th>
+                    <th style="text-align: center; width:59px; vertical-align: middle;border: 1px solid black;">Cons<br/>Code</th>
+                    <th style="text-align: center;width:95px;vertical-align: middle;border: 1px solid black;width: ">BB<br/>Sales</th>
+                    <th style="text-align: center;width:95px;vertical-align: middle;border: 1px solid black;">BB<br/>Returns</th>
+                    <th style="text-align: center;width:95px;vertical-align: middle;border: 1px solid black;">BB<br/>Total</th>
+                    <td style="width: 3px;border-top: 1px solid black;border-left: 2px solid black;border-right: 2px solid black;" class="text-right">
+                      <span> </span>
+                    </td>
+                  <th style="text-align: center;width:95px;vertical-align: middle;border: 1px solid black;">Puer<br/>Sales</th>
+                    <th style="text-align: center;width:95px;vertical-align: middle;border: 1px solid black;">Puer<br/>Returns</th>
+                    <th style="text-align: center;width:95px;vertical-align: middle;border: 1px solid black;">Puer<br/>Total</th>
+                    <td style="width: 3px;border-top: 1px solid black;border-left: 2px solid black;border-right: 2px solid black;" class="text-right">
+                      <span> </span>
+                  </td>
+                  <th style="text-align: center;width:120px;vertical-align: middle;border: 1px solid black;">Grand<br/>Total</th>
+                  <td style="width: 3px;border-top: 1px solid black; border-left: 2px solid black;border-right: 2px solid black;" class="text-right"><span> </span>
+                  </td>
+                    <th style="text-align: center;width:110px;vertical-align: middle;border: 1px solid black;">Owing/<br/>Recruiter BBB Code</th>
+                  </tr>
+                </thead>
+                <tbody class="sheet_tbody">
+                  <t t-if="doc.state == 'new'">
+                    <t t-foreach="doc.payin_line_ids" t-as="line">
+                      <tr style="height:45px; 1px solid black;">
+                        <td class="text-left" style="vertical-align: middle;border: 1px solid black;padding-left: 5px;">
+                          <span t-field="line.consultant_id.name"/>
+                        </td>
+                        <td class="text-left" style="vertical-align: middle;border: 1px solid black;padding-top: 2px; padding-bottom: 2px;padding-left: 5px;line-height:14px;">
+                          <span t-field="line.consultant_id.mobile"/><![CDATA[&nbsp;]]><br/>
+                          <span>------------------------------------</span><br/>
+                          <span t-field="line.consultant_id.sa_id"/><![CDATA[&nbsp;]]>
+                        </td>
+                        <td class="text-center" style="vertical-align: middle;border: 1px solid black;padding-left: 5px;">
+                          <span t-field="line.consultant_id.sales_force_code"/>
+                        </td>
+                         <td class="text-right" style="border: 1px solid black;">
+                          <span/>
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span />
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span />
+                        </td>
+                        <td style="width: 3px;border-top: 1px; border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                          <span> </span>
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span />
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span />
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span/>
+                        </td>
+
+                        <td style="width: 3px;border-top: 1px; border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                          <span> </span>
+                        </td>
+
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span />
+                        </td>
+                        <td style="width: 3px;border-top: 1px; border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+
+                          <span> </span>
+                        </td>
+                        <td class="text-left" style="border: 1px solid black;">
+                          <span t-field="line.comment"/>
+                        </td>
+                      </tr>
+                    </t>
+                    <t t-foreach="o.empty_rows()" t-as="line">
+                      <tr style="height:45px;">
+                        <td style="border: 1px solid black;" class="text-left">
+                          <span> </span>
+                        </td>
+                        <td style="border: 1px solid black;" class="text-left">
+                          <span> </span>
+                        </td>
+                        <td style="border: 1px solid black;" class="text-center">
+                          <span> </span>
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span/>
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span> </span>
+                        </td>
+                        <td class="text-right" style="border: 1px solid black">
+                          <span> </span>
+                        </td>
+                         <td style="width: 3px;border-top: 1px; border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                          <span> </span>
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span> </span>
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span> </span>
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span> </span>
+                        </td>
+                         <td style="width: 3px;border-top: 1px; border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                          <span> </span>
+                        </td>
+
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span> </span>
+                        </td>
+                         <td style="width: 3px;border-top: 1px; border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                          <span> </span>
+                        </td>
+                        <td class="text-right" style="border: 1px solid black;">
+                          <span> </span>
+                        </td>
+
+                      </tr>
+                    </t>
+                    <t t-if="doc.state != 'new'">
+                      <t t-foreach="doc.payin_line_ids" t-as="line">
+                        <tr style="height:45px;border: 1px solid black;">
+                          <td class="text-center" style="vertical-align: center;border: 1px solid black;">
+                            <span t-field="line.consultant_id.name"/>
+                          </td>
+                           <td class="text-center" style="vertical-align: center;border: 1px solid black;">
+                          <span t-field="line.consultant_id.mobile"/>
+                          <span>-------------------------</span>
+                          <span t-field="line.consultant_id.sa_id"/>
+                           </td>
+                           <td class="text-right" style="border: 1px solid black;">
+                            <span t-field="line.bb_sales"/>
+                          </td>
+                          <td class="text-right" style="border: 1px solid black;">
+                            <span t-field="line.bb_returns"/>
+                          </td>
+                          <td class="text-right" style="border: 1px solid black;">
+                            <span t-esc="line.bb_brand_total"/>
+                          </td>
+                          <td style="width: 3px;border-top: 1px; border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                          <span> </span>
+                          </td>
+
+                          <td class="text-right" style="border: 1px solid black;">
+                            <span t-field="line.puer_sales"/>
+                          </td>
+                          <td class="text-right" style="border: 1px solid black;">
+                            <span t-field="line.puer_returns"/>
+                          </td>
+                          <td class="text-right" style="border: 1px solid black;">
+                            <span t-esc="line.puer_brand_total"/>
+                          </td>
+                          <td style="width: 3px;border-top: 1px; border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                            <span> </span>
+                          </td>
+
+                          <td class="text-right" style="border: 1px solid black;">
+                            <span t-esc="line.sub_total"/>
+                          </td>
+                          <td style="width: 3px;border-top: 1px; border-left: 2px solid black;border-right: 2px solid black" class="text-right">
+                            <span> </span>
+                          </td>
+
+                          <td class="text-left" style="border: 1px solid black;">
+                            <span t-field="line.comment"/>
+                          </td>
+
+                        </tr>
+                      </t>
+                    </t>
+                  </t>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p style="page-break-after:always;"/>
+          <p/>
+          <div></div>
+        </div>
+      </t>
+    </template>
+
+    <template id="report_payin_all">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+
+                <t t-set="lang" t-value="doc.company_id.partner_id.lang"/>
+                <t t-call="sales_force_support.report_payin_document_all2" t-lang="lang"/>
+
+            </t>
+        </t>
+    </template>
+
+      <template id="bbb_distributor_wiz_layout">
+      <div t-attf-class="header o_company_#{company.id}_layout">
+        <div class="row" style="height:2px;"/>
+        <div class="row">
+          <div class="col-9" style="width: 1055px; padding-left:10px;">
+            <table style="text-align: left; width: 100%;" border="0" cellpadding="0" cellspacing="0" padding="0" margin="0">
+              <tbody>
+                  <tr height="5px;">
+                    <td><![CDATA[&nbsp;]]></td>
+                  </tr>
+                  <tr>
+                    <td style="vertical-align: top; width: 50%;padding-left:3px;"><strong><span t-esc="o.date.strftime('%B %Y')" style="font-size: 28px;"/><span style="font-size:28px"> - Summary Pay In Sheet</span></strong></td>
+                  </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+        <div style="position: absolute;right: 10px;top: 0px;background-color: white; width: 25%;">
+          <img style="display: block;margin-left: auto; margin-right: auto; width: 100%;position: absolute;right:0;top:0;padding-right:5px;" t-if="company.logo" t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+        </div>
+        <div style="height:20px;"/>
+        <div class="row">
+          <div class="col-5">
+            <table class="table-bordered" style="text-align: left; width: 100%; border: 1px solid black;" cellpadding="2" cellspacing="0" padding="0" margin="0">
+              <tbody>
+                <tr style="height: 40px;">
+                  <td style="vertical-align: middle; width: 7%;border: 1px solid black;" align="center"><strong>D</strong></td>
+                  <td style="vertical-align: middle; width: 70%;border: 1px solid black;padding:5px;" align="left"><strong><span t-field="o.distributor_sumarry_id.distribution_company_id.name"/></strong></td>
+                  <td style="vertical-align: middle; width: 17%;border: 1px solid black;padding:5px;" align="left"><strong><span t-esc="o.distributor_sumarry_id.distributor_id.sales_force_code"/></strong></td>
+
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="col-4">
+              <table style="text-align: left; width:100%;" cellpadding="2" cellspacing="0" padding="0" margin="0">
+                <tbody>
+                  <tr>
+
+                    <td style="text-align: center; vertical-align: middle;"><strong><span style="font-size: 32px;">Distributors</span></strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+        </div>
+      </div>
+
+
+      <div t-attf-class="article o_report_layout_standard o_company_#{company.id}_layout"  t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id" t-att-data-oe-lang="o and o.env.context.get('lang')">
+        <t t-call="web.address_layout"/>
+        <t t-raw="0"/>
+      </div>
+
+      <div  t-attf-class="footer o_standard_footer o_company_#{company.id}_layout" style="font-size: 10pt;font-family:Helvetica,Verdana,Arial,sans,Lucida Grande,Calibri;">
+        <div style="height:50px"/>
+        <div class="row">
+          <div class="col-3"/>
+          <div class="col-6">
+            <table style="text-align: left; width: 100%;" cellpadding="0" cellspacing="0" padding="0" margin="0">
+              <tbody>
+                <tr style="height:30px;">
+                  <td  style="vertical-align:middle;width: 40%;" class="text-right">
+                    <strong><span>Grand Total</span></strong>
+                  </td>
+                  <td  style="width: 5%;" class="text-right">
+
+                  </td>
+                  <td style="width: 70%;  border: 1px solid black;
+                             border-collapse: collapse;" class="text-right">
+
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="col-3"/>
+        </div>
+
+        <div style="height:15px;"/>
+        <div class="row mt8">
+
+          <div class="col-12">
+            <ul t-if="report_type == 'pdf'" class="list-inline pagenumber float-center text-center">
+              <li class="list-inline-item"><strong><span class="page"/><span>/</span><span class="topage"/></strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </template>
+
+    <template id="report_payin_distributor_document_all">
+        <t t-if="not o" t-set="o" t-value="doc"/>
+
+      <t t-if="not company">
+        <!-- Multicompany -->
+        <t t-if="company_id">
+          <t t-set="company" t-value="company_id"/>
+        </t>
+        <t t-elif="o and 'company_id' in o">
+          <t t-set="company" t-value="o.company_id.sudo()"/>
+        </t>
+        <t t-else="else">
+          <t t-set="company" t-value="res_company"/>
+        </t>
+      </t>
+
+
+      <t t-call="sales_force_support.bbb_distributor_wiz_layout">
+            <div class="page" style="font-size: 10pt;font-family:Helvetica,Verdana,Arial,sans,Lucida Grande,Calibri;">
+          <div class="row" style="height:20px;"/>
+
+          <table class="table table-bordered" border="1" style="width:100%; border-collapse: collapse;" cellpadding="0" cellspacing="0" padding="0" margin="0">
+            <thead>
+              <tr>
+                <th class="text-center" style="width: 25%;border: 1px solid black;">Manager</th>
+                <th class="text-center" style="width: 7%;border: 1px solid black;">Code</th>
+                <th class="text-center" style="width: 26%;border: 1px solid black;" border="1" cellpadding="0" cellspacing="0" padding="0" margin="0">Actual Sales</th>
+                <th class="text-center" style="width: 16%;border: 1px solid black;">Difference</th>
+                <th class="text-center" style="width: 26%;border: 1px solid black;" border="1" cellpadding="0" cellspacing="0" padding="0" margin="0">Comment</th>
+              </tr>
+            </thead>
+            <tbody class="sheet_tbody">
+              <t t-if="o.distributor_sumarry_id.state == 'new'">
+                <t t-foreach="o.distributor_sumarry_id.payin_line_ids" t-as="line">
+                  <tr style="height: 35px;">
+                    <td class="text-left" style="border: 1px solid black;padding-left:5px;">
+                      <span t-field="line.manager_id.name"/>
+                    </td>
+                    <td class="text-left" style="border: 1px solid black;padding-left:5px">
+                      <span t-field="line.manager_id.sales_force_code"/>
+                    </td>
+                    <td class="text-right" style="border: 1px solid black;">
+                      <span/>
+                    </td>
+                    <td class="text-right" style="border: 1px solid black;">
+                      <span/>
+                    </td>
+                    <td class="text-left" style="border: 1px solid black;">
+                      <span t-field="line.comment"/>
+                    </td>
+                  </tr>
+                </t>
+              </t>
+              <t t-if="o.distributor_sumarry_id.state != 'new'">
+                <t t-foreach="o.distributor_sumarry_id.payin_line_ids" t-as="line">
+                  <tr style="height: 35px;">
+                    <td class="text-left" style="border: 1px solid black;">
+                      <span t-field="line.manager_id.name"/>
+                    </td>
+                    <td class="text-right" style="border: 1px solid black;">
+                      <span t-field="line.manager_id.sales_force_code"/>
+                    </td>
+                    <td class="text-right" style="border: 1px solid black;">
+                      <span/>
+                    </td>
+                    <td class="text-right" style="border: 1px solid black;">
+                    </td>
+                    <td class="text-left" style="border: 1px solid black;">
+                      <span t-field="line.comment"/>
+                    </td>
+                  </tr>
+                </t>
+              </t>
+            </tbody>
+          </table>
+          <p style="page-break-after:always;"/>
+        </div>
+      </t>
+      <t t-foreach="o.sheets" t-as="doc">
+        <t t-if="doc.distributor == 0">
+          <t t-call="sales_force_support.report_payin_all">
+           <t t-set="doc" t-value="doc"/>
+         </t>
+        </t>
+      </t>
+
+    </template>
+
+
+
+    <template id="report_payin_distributor_all">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="lang" t-value="o.company_id.partner_id.lang"/>
+                <t t-call="sales_force_support.report_payin_distributor_document_all" t-lang="lang"/>
+                <t t-set="doc" t-value="o"/>
+                <!-- <t t-call="sales_force_support.report_payin_all">
+                    <t t-set="o" t-value="o"/>
+                  </t>-->
+                </t>
+        </t>
+    </template>
+
+    <template id="report_payin_document_all">
+        <t t-call="sales_force_support.report_payin_distributor_all">
+              <t t-set="o" t-value="o.distributor_sumarry_id"/>
+        </t>
+
+    </template>
+
+    <template id="report_payin_all_sum">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="lang" t-value="o.company_id.partner_id.lang"/>
+                <t t-call="sales_force_support.report_payin_distributor_document_all" t-lang="lang"/>
+            </t>
+        </t>
+    </template>
+
+    <report
+        id="action_report_payin_all"
+        model="bb.payin.print"
+        report_type="qweb-pdf"
+        string="Pay-In Sheets Report"
+        name="sales_force_support.report_payin_all_sum"
+        file="sales_force_support.report_payin_all_sum"
+        print_report_name="'Pay-In Sheets Report'"
+        paperformat="sales_force_support.paperformat_landscape_custom"
+    />
+
+
+  </data>
+</odoo>

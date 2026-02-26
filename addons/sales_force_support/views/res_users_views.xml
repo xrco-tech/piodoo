@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bb_chatbot/views/res_users_views.xml -->
+<odoo>
+    <record id="view_users_form" model="ir.ui.view">
+        <field name="name">res.users.form.inherit.sales_force_support</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <notebook colspan="4" position="inside">
+                <page name="chatbot_config" string="Chatbot Configuration">
+                    <group>
+                        <button name="generate_chatbot_access_token" type="object"
+                                icon="fa-refresh" class="oe_link"
+                                string="Regenerate Access Token"
+                                groups="base.group_system"/>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+</odoo>

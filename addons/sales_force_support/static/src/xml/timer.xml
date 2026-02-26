@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="sales_force_support.TimerWidget">
+        <span t-esc="durationFormatted"/>
+    </t>
+
+    <t t-name="sales_force_support.TimerWidgetField">
+    <TimerWidget value="duration" ongoing="ongoing"/>
+</t>
+</templates>

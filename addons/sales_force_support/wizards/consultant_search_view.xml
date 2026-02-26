@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: botle_buhle_custom/wizards/consultant_search_view.xml -->
+<odoo>
+    <record id="consultant_search_view" model="ir.ui.view">
+        <field name="name">Consultant Search</field>
+        <field name="model">consultant.search.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="search_by" required="1" widget="radio"/>
+                        <field invisible="search_by != 'sa_id'" name="sa_id" required="search_by == 'sa_id'"/>
+                        <field invisible="search_by != 'mobile'" name="mobile" required="search_by == 'mobile'"/>
+                        <field invisible="search_by != 'name'" name="name" required="search_by == 'name'"/>
+                        <field invisible="search_by != 'passport'" name="passport" required="search_by == 'passport'"/>
+                        <field invisible="search_by != 'sales_force_code'" name="sales_force_code" required="search_by == 'sales_force_code'"/>
+                    </group>
+                    <footer>
+                        <button class="oe_highlight" name="consultant_search" string="Search" type="object"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form></field>
+    </record>
+    <record id="action_consultant_search_view" model="ir.actions.act_window">
+        <field name="name">Consultant Search</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">consultant.search.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="consultant_search_view"/>
+        <field name="target">new</field>
+    </record>
+    <menuitem action="action_consultant_search_view" id="search_consultants_menuitem" name="Search for Consultant" parent="sales_force_support.sales_force_menuitem" sequence="2"/>
+</odoo>

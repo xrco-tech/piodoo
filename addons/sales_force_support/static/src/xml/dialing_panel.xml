@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<template xml:space="preserve">
+    <t t-inherit="voip.switch_panel_top_button" t-inherit-mode="extension" owl="1">
+        <xpath expr="//a" position="replace">
+            <a
+                id="oe_voip_access"
+                href="#"
+                title="Display Dialing Panel">
+                <i
+                    aria-label="Display Dialing Panel"
+                    class="
+                        fa
+                        fa-fw
+                        fa-phone"
+                    role="img"/>
+            </a>
+        </xpath>
+    </t>
+</template>

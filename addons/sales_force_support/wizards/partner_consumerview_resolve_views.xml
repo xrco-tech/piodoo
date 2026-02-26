@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: partner_consumerview/wizards/partner_consumerview_resolve_views.xml -->
+<odoo>
+
+    <record id="view_partner_consumerview_resolve_form" model="ir.ui.view">
+        <field name="name">partner.consumerview.resolve.form</field>
+        <field name="model">partner.consumerview.resolve</field>
+        <field name="arch" type="xml">
+            <form string="Consumerview Data">
+                <p>Mutliple matches were found, please select one:</p>
+                <group>
+                    <field name="chosen_line_id" widget="radio" required="1" domain="[('resolve_id', '=', id)]" nolabel="1" string="Details"/>
+                </group>
+                <footer>
+                    <button name="action_choose" type="object" class="oe_highlight" string="Choose"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bbb_sales_force_genealogy/wizards/display_created_consultant.xml -->
+<odoo>
+    <data>
+        <record id="display_create_consultant_wizard_view" model="ir.ui.view">
+          <field name="name">display.create.consultant.form</field>
+          <field name="model">sf.member</field>
+          <field name="arch" type="xml">
+              <form string="Confirm">
+                  <!-- Applified Developer : Comment Start, For old code => Issue #Universal -->
+                  <!-- <group> -->
+                  <!-- Applified Developer : Comment End, For old code => Issue #Universal -->
+                      <h4 style="font-weight:normal;color:#666666;">Consultant <span style="font-weight:bold;color:black;"><field name="name" readonly="1"/></span> is successfully created with BB Code <span style="font-weight:bold;color:black;"><field name="sales_force_code" readonly="1"/></span></h4>
+                  <!-- Applified Developer : Comment Start, For old code => Issue #Universal -->
+                  <!-- </group> -->
+                  <!-- Applified Developer : Comment End, For old code => Issue #Universal -->
+                  <footer>
+                    <button string="OK" type="object" special="cancel" class="oe_highlight"/>
+                  </footer>
+              </form>
+          </field>
+        </record>
+    </data>
+</odoo>

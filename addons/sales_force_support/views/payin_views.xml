@@ -1,0 +1,635 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sources merged:
+     - bb_payin/views/payin_views.xml
+     - bb_payin/views/delete_payin_lines.xml  (merged into payin_form_view inheritance)
+     - bb_payin/views/pay_sheet_export_view.xml  (domain fix: job_id.name → genealogy)
+     Key changes:
+       • domain [('job_id.name', '=', 'X'), ('employee_type', '=', 'sales_force')] → [('genealogy', '=', 'X')]
+       • domain ('sales_force', '=', True) filter dropped (all sf.member records ARE sales force)
+       • menuitem parent botle_buhle_custom.sales_force_menuitem → sales_force_support.sales_force_menuitem
+       • mail.template model_id ref bb_payin.model_bb_payin_print → sales_force_support.model_bb_payin_print
+       • delete_payin_lines inherit_id bb_payin.payin_form_view → sales_force_support.payin_form_view
+-->
+<odoo>
+    <data>
+        <record id="payin_tree_view" model="ir.ui.view">
+            <field name="name">bb.payin.sheet.tree</field>
+            <field name="model">bb.payin.sheet</field>
+            <field name="arch" type="xml">
+                <tree class="o_list_view_freeze" create="0" default_order="date desc, manager_known_name asc" delete="0" string="Pay-In Sheets">
+                    <field invisible="1" name="name"/>
+                    <field name="manager_known_name"/>
+                    <field name="distributor_id"/>
+                    <field name="distributor_sales_force_code"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sales_force_code"/>
+                    <field name="period"/>
+                    <field name="received_date"/>
+                    <field name="no_of_pages" string="No. of Pages Received"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="payin_tree_view_capture" model="ir.ui.view">
+            <field name="name">bb.payin.sheet.tree</field>
+            <field name="model">bb.payin.sheet</field>
+            <field name="arch" type="xml">
+                <tree class="o_list_view_freeze" create="0" default_order="date desc, manager_known_name asc" delete="0" string="Pay-In Sheets">
+                    <field invisible="1" name="name"/>
+                    <field name="manager_known_name"/>
+                    <field name="distributor_id"/>
+                    <field name="distributor_sales_force_code"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sales_force_code"/>
+                    <field name="grouped_total_captured" string="Total Captured"/>
+                    <field name="registered_date"/>
+                    <field name="changed"/>
+                    <field context="{'order': 'desc'}" invisible="1" name="date"/>
+                    <field name="capture_start_date"/>
+                    <field name="no_of_pages" string="No. of Pages Received"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="payin_tree_view_new" model="ir.ui.view">
+            <field name="name">bb.payin.sheet.tree.new</field>
+            <field name="model">bb.payin.sheet</field>
+            <field name="arch" type="xml">
+                <tree class="o_list_view_freeze" create="0" default_order="date desc, manager_known_name asc" delete="0" editable="top" string="Pay-In Sheets">
+                    <field invisible="1" name="name"/>
+                    <field name="manager_known_name"/>
+                    <field context="{'order_display': 'known_name desc' }" name="distributor_id" options="{'no_open': True}" readonly="1"/>
+                    <field name="distributor_sales_force_code" readonly="1"/>
+                    <field name="manager_id" options="{'no_open': True}" readonly="1"/>
+                    <field decoration-warning="received_date>'2000-01-01' and no_of_pages==0" name="manager_sales_force_code" readonly="1"/>
+                    <field name="period" readonly="1"/>
+                    <field name="received_date" required="1"/>
+                    <field context="{'set_editable': True}" name="no_of_pages" string="No. of Pages Received"/>
+                    <field name="state" readonly="1"/>
+                    <field invisible="1" name="sub_total" string="Total Captured"/>
+                    <field invisible="1" name="changed"/>
+                    <field context="{'order': 'desc'}" invisible="1" name="date"/>
+                    <field invisible="1" name="capture_start_date"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="payin_form_view" model="ir.ui.view">
+            <field name="name">bb.payin.sheet.form</field>
+            <field name="model">bb.payin.sheet</field>
+            <field name="arch" type="xml">
+                <form create="0" js_class="payin_sheet_line_ids_delete_access" string="Pay-In Sheets">
+                    <!-- js_class merged from delete_payin_lines.xml (was a separate inherit) -->
+                    <header>
+                        <field invisible="1" name="timesheet_timer_pause"/>
+                        <field invisible="1" name="started"/>
+                        <field invisible="1" name="allow_edit"/>
+                        <field invisible="1" name="is_locked"/>
+                        <button class="btn-primary" invisible="started == False" name="action_timer_pause" string="Pause" type="object"/>
+                        <button class="oe_highlight" invisible="state != 'captured'" name="verify" string="Verify" type="object"/>
+                        <button class="oe_highlight" invisible="state != 'registered'" name="capture" string="Capture Complete" type="object"/>
+                        <button class="oe_highlight" name="pay_in_sheet_lines" string="Pay In Sheet Lines" type="object"/>
+                        <field name="state" options="{'fold_field': 'fold'}" widget="statusbar"/>
+                        <field class="text-danger ml-auto h2 ml-4 font-weight-bold" name="timesheet_timer_start" widget="timesheet_timer"/>
+                        <button invisible="state != 'verified' or is_locked == True" name="action_lock" string="Lock" type="object"/>
+                        <button invisible="state != 'verified' or is_locked == False" name="action_unlock" string="Unlock" type="object"/>
+                    </header>
+                    <sheet>
+                        <group col="2">
+                            <group>
+                                <field domain="[('genealogy', '=', 'Distributor')]" force_save="1" name="distributor_id" options="{'no_create': True, 'no_open': True}" readonly="allow_edit == False" required="1"/>
+                                <field domain="[('related_distributor_id', '=', distributor_id), ('genealogy', '=', 'Manager')]" force_save="1" name="manager_id" options="{'no_create': True, 'no_open': True}" readonly="allow_edit == False" required="1"/>
+                                <field name="payin_line_existing_consultant_ids" widget="many2many_tags" invisible="1"/>
+                                <field name="manager_mobile" options="{'enable_sms':false}" widget="phone"/>
+                                <field name="distributor_mobile" options="{'enable_sms':false}" widget="phone"/>
+                                <field name="period"/>
+                                <!-- <div style="height:20px"/> -->
+                                <field name="no_of_pages" readonly="state == 'verified' and allow_edit == False"/>
+                                <field name="is_no_sales" readonly="state == 'verified' and allow_edit == False"/>
+                            </group>
+                            <group>
+                                <field name="distributor_sales_force_code"/>
+                                <field name="manager_sales_force_code"/>
+                                <field force_save="1" name="registered_date" readonly="allow_edit == False or edit_registered_date != True"/>
+                                <field force_save="1" name="received_date" readonly="allow_edit == False"/>
+                                <field force_save="1" name="capture_start_date" readonly="1"/>
+                                <field force_save="1" name="changed" readonly="1"/>
+                            </group>
+                        </group>
+                        <separator/>
+                        <group>
+                            <group>
+                                <field name="bb_sales"/>
+                                <field name="bb_returns"/>
+                                <field name="bb_brand_total"/>
+                                <field invisible="1" name="edit_registered_date"/>
+                                <field decoration-bf="1" name="sub_total"/>
+                            </group>
+                            <group>
+                                <field name="puer_sales"/>
+                                <field name="puer_returns"/>
+                                <field name="puer_brand_total"/>
+                                <field decoration-bf="1" name="total_captured"/>
+                                <field invisible="1" name="edit_registered_date"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Lines" name="payin_line_ids_page">
+                                <field name="payin_line_ids" nolabel="1" readonly="allow_edit == False or is_no_sales == True">
+                                    <tree class="scrollable-tree o_list_view o_list_view_freeze_form" delete="1" editable="bottom" limit="2000" string="Lines">
+                                        <field domain="[('genealogy', 'in', ['Consultant', 'Prospective Consultant', 'Potential Consultant', 'Prospective Manager', 'Manager', 'Prospective Distributor', 'Distributor']), ('manager_id', '=', parent.manager_id), ('id', 'not in', parent.payin_line_existing_consultant_ids)]" force_save="1" name="consultant_id" options="{'no_create': True, 'no_open': True}" readonly="id != False" required="1"/>
+                                        <field name="sales_force_code"/>
+                                        <field class="payin_line_editable" decoration-danger="bb_sales &lt; 0" name="bb_sales"/>
+                                        <field class="payin_line_editable" decoration-danger="bb_returns &lt; 0" name="bb_returns"/>
+                                        <field name="bb_brand_total"/>
+                                        <field class="payin_line_editable" decoration-danger="puer_sales &lt; 0" name="puer_sales"/>
+                                        <field class="payin_line_editable" decoration-danger="puer_returns &lt; 0" name="puer_returns"/>
+                                        <field name="puer_brand_total"/>
+                                        <field class="payin_line_editable" name="comment"/>
+                                        <field name="sub_total"/>
+                                    </tree>
+                                    <form string="Lines">
+                                        <group>
+                                            <field name="consultant_id" options="{'no_create': True}" required="1"/>
+                                            <field name="sales_force_code"/>
+                                            <field name="bb_sales"/>
+                                            <field name="bb_returns"/>
+                                            <field name="puer_sales"/>
+                                            <field name="puer_returns"/>
+                                            <field name="comment"/>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Other Information">
+                                <group col="2" colspan="2">
+                                    <!-- <div class="oe_title">
+                                        <h3> -->
+                                            <field invisible="1" name="name"/>
+                                        <!-- </h3>
+                                    </div> -->
+                                    <field name="consultants_captured" string="No. of Consultants Captured"/>
+                                    <field name="consultants_sales" readonly="1" string="No. of Consultants with Sales"/>
+                                    <field name="new_consultants_count" readonly="1" string="New Consultants Captured"/>
+                                    <field name="number_of_consultants_with_returns" readonly="1" string="No. of Consultants with Returns"/>
+                                    <field name="consultants_no_sales" readonly="1" string="No. of Consultants with No Sales"/>
+                                    <field name="number_of_owing_consultants" readonly="1" string="No. of Consultants with Owing/Comments"/>
+                                    <field name="capture_time" readonly="1" string="Time To Capture" widget="float_time"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_payin_search" model="ir.ui.view">
+            <field name="name">bb.payin.sheet.search</field>
+            <field name="model">bb.payin.sheet</field>
+            <field name="arch" type="xml">
+                <search string="Search Pay-In Sheets">
+                    <field name="name" string="Pay-In Sheets"/>
+                    <field name="distributor_id" string="Distributor"/>
+                    <field name="manager_id" string="Manager"/>
+                    <field name="distributor_id" string="Distribution"/>
+                    <field name="manager_sales_force_code"/>
+                    <separator/>
+                    <filter context="{'group_by':'date'}" name="payin_date"/>
+                    <separator/>
+                    <group string="Group By">
+                        <filter context="{'group_by': 'manager_id'}" domain="[]" name="group_manager" string="Manager"/>
+                        <filter context="{'group_by': 'distributor_id'}" domain="[]" name="group_distribution" string="Distribution"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_payin_filters" model="ir.ui.view">
+            <field name="name">bb.payin.sheet.filters</field>
+            <field name="model">bb.payin.sheet</field>
+            <field name="arch" type="xml">
+                <search string="Search Pay-In Sheets">
+                    <field name="name" string="Pay-In Sheets"/>
+                    <field name="distributor_id" string="Distributor"/>
+                    <field name="manager_id" string="Manager"/>
+                    <field name="distributor_id" string="Distribution"/>
+                    <field name="manager_sales_force_code"/>
+                    <separator/>
+                    <filter domain="[('state','=','captured')]" name="captured" string="Captured"/>
+                    <filter domain="[('state','=','verified')]" name="verified" string="Verified"/>
+                    <filter domain="[('state','=','registered')]" name="registered" string="Registered"/>
+                    <group expand="0" string="Group By">
+                        <separator/>
+                        <filter context="{'group_by': 'manager_id'}" domain="[]" name="group_manager" string="Manager"/>
+                        <!-- <filter name="group_distrubutor" string="Distributor" domain="[]" context="{'group_by': 'distributor_id'}"/> -->
+                        <filter context="{'group_by': 'distributor_id'}" domain="[]" name="group_distribution" string="Distribution"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_payin_history" model="ir.actions.act_window">
+            <field name="name">Pay-In Sheets History</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.sheet</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="action_payin_filters"/>
+            <field name="context">{'group_by': ['date', 'distributor_known_name']}</field>
+            <field name="view_id" ref="payin_tree_view_capture"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <record id="action_payin_new" model="ir.actions.act_window">
+            <field name="name">Pay-In Sheets Register</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.sheet</field>
+            <field name="view_mode">tree,form</field>
+            <field name="context">{'group_by': ['date', 'distributor_known_name']}</field>
+            <field name="view_id" ref="payin_tree_view_new"/>
+            <field name="domain">[('state', 'in', (False, 'new'))]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <record id="action_payin_capture" model="ir.actions.act_window">
+            <field name="name">Pay-In Sheets Capture</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.sheet</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="action_payin_filters"/>
+            <field name="view_id" ref="payin_tree_view_capture"/>
+            <field name="domain">[('state', '=', 'registered')]</field>
+            <field name="context">{'group_by': ['date', 'distributor_known_name']}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <menuitem id="payin_menu" name="Pay-In Sheets" parent="sales_force_support.sales_force_menuitem"/>
+        <menuitem id="payin_menu_managers" name="Manager Pay-In Sheets" parent="payin_menu" sequence="1"/>
+        <menuitem id="payin_menu_distributors" name="Distributor Summaries" parent="payin_menu" sequence="2"/>
+        <menuitem action="action_payin_sheet_wizard" id="payin_menuitem_crate" name="Create Pay-In Sheets Pack" parent="payin_menu" sequence="0"/>
+        <menuitem action="action_payin_new" id="payin_menuitem_new" name="Register" parent="payin_menu_managers" sequence="1"/>
+        <menuitem action="action_payin_capture" id="capture_payin_menuitem" name="Capture" parent="payin_menu_managers" sequence="2"/>
+        <menuitem action="action_payin_history" id="payin_menuitem" name="History" parent="payin_menu_managers" sequence="3"/>
+
+        <!-- =============================== -->
+        <!-- payin.distributor views         -->
+        <!-- =============================== -->
+
+        <record id="payin_distributor_tree_view" model="ir.ui.view">
+            <field name="name">payin.distributor.tree</field>
+            <field name="model">payin.distributor</field>
+            <field name="arch" type="xml">
+                <tree class="o_list_view_freeze" create="0" default_order="date desc, distributor_known_name asc" delete="0" string="Pay-In Sheet Distributor Summaries">
+                    <field name="distributor_known_name"/>
+                    <field name="distributor_id"/>
+                    <field name="distributor_sales_force_code"/>
+                    <field name="grouped_total_captured"/>
+                    <field context="{'order': 'desc'}" name="registered_date"/>
+                    <field force_save="1" name="capture_start_date"/>
+                    <!--field name="date" context="{'order': 'desc'}"/-->
+                    <field name="no_of_pages" string="No. of Pages Received"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="payin_distributor_tree_view_new" model="ir.ui.view">
+            <field name="name">payin.distributor.tree.new</field>
+            <field name="model">payin.distributor</field>
+            <field name="arch" type="xml">
+                <tree class="o_list_view_freeze" create="0" default_order="date desc, distributor_known_name asc" delete="0" editable="top" string="Pay-In Sheet Distributor Summaries">
+                    <field invisible="1" name="name"/>
+                    <field name="distributor_known_name"/>
+                    <field name="distributor_id" options="{'no_open': True}" readonly="1"/>
+                    <field decoration-warning="received_date>'2000-01-01' and no_of_pages==0" name="distributor_sales_force_code" readonly="1"/>
+                    <field name="received_date" required="1"/>
+                    <field context="{'set_editable': True}" name="no_of_pages" string="No. of Pages Received"/>
+                    <field context="{'order': 'desc'}" force_save="1" name="payin_date" readonly="1"/>
+                    <!--field name="date" context="{'order': 'desc'}"/-->
+                    <field name="state" readonly="1"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="payin_distributor_form_view" model="ir.ui.view">
+            <field name="name">payin.distributor.form</field>
+            <field name="model">payin.distributor</field>
+            <field name="arch" type="xml">
+                <form create="0" string="Pay-In Sheet Distributor Summaries">
+                    <header>
+                        <field invisible="1" name="allow_edit"/>
+                        <field invisible="1" name="is_locked"/>
+                        <field invisible="1" name="timesheet_timer_pause"/>
+                        <field invisible="1" name="started"/>
+                        <button class="btn-primary" invisible="started == False" name="action_timer_pause" string="Pause" type="object"/>
+                        <button class="oe_highlight" invisible="state != 'captured'" name="verify" string="Verify" type="object"/>
+                        <button class="oe_highlight" invisible="state != 'registered'" name="capture" string="Capture Complete" type="object"/>
+                        <field name="state" options="{'fold_field': 'fold'}" widget="statusbar"/>
+                        <field class="text-danger ml-auto h2 ml-4 font-weight-bold" name="timesheet_timer_start" widget="timesheet_timer"/>
+                        <button invisible="state != 'verified' or is_locked == True" name="action_lock" string="Lock" type="object"/>
+                        <button invisible="state != 'verified' or is_locked == False" name="action_unlock" string="Unlock" type="object"/>
+                    </header>
+                    <sheet>
+                        <group col="2">
+                            <group>
+                                <field force_save="1" name="distributor_id" readonly="1"/>
+                                <field domain="[('genealogy', '=', 'Distributor')]" invisible="1" name="distributor_id" options="{'no_create': True, 'no_open': True}" required="1"/>
+                                <field name="distributor_sales_force_code"/>
+                                <field name="distributor_mobile" options="{'enable_sms':false}" widget="phone"/>
+                            </group>
+                            <group>
+                                <field name="no_of_pages" readonly="state == 'verified' and allow_edit == False"/>
+                                <field name="changed" readonly="1"/>
+                                <div style="height:20px"/>
+                            </group>
+                        </group>
+                        <group col="2">
+                            <group>
+                                <field name="period"/>
+                                <field name="received_date" readonly="allow_edit == False"/>
+                                <field force_save="1" name="capture_start_date" readonly="1"/>
+                            </group>
+                        </group>
+                        <group col="2">
+                            <field decoration-bf="1" force_save="1" name="total_actual_sales"/>
+                            <field decoration-bf="1" name="total_captured"/>
+                        </group>
+                        <notebook>
+                            <page string="Lines">
+                                <field name="payin_line_ids" nolabel="1" readonly="allow_edit == False">
+                                    <tree class="scrollable-tree o_list_view o_list_view_freeze_form" editable="bottom" limit="2000" string="Lines">
+                                        <field domain="[('related_distributor_id', '=', parent.distributor_id), ('genealogy', 'in', ['Manager', 'Prospective Manager', 'Prospective Distributor', 'Distributor'])]" force_save="1" name="manager_id" options="{'no_create': True, 'no_open': True}" readonly="id != False" required="1"/>
+                                        <field name="sales_force_code"/>
+                                        <field decoration-danger="actual_sales &lt; 0" name="actual_sales"/>
+                                        <field name="total_captured"/>
+                                        <field decoration-danger="sales_difference &lt; 0" name="sales_difference"/>
+                                        <field name="comment"/>
+                                    </tree>
+                                    <form string="Lines">
+                                        <group>
+                                            <field domain="[('related_distributor_id', '=', parent.distributor_id), ('genealogy', '=', 'Manager')]" name="manager_id" options="{'no_create': True}" required="1"/>
+                                            <field name="sales_force_code"/>
+                                            <field name="actual_sales"/>
+                                            <field name="total_captured"/>
+                                            <field name="sales_difference"/>
+                                            <field name="comment"/>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Other Information">
+                                <group>
+                                    <div style="height:20px"/>
+                                    <field name="consultants_captured"/>
+                                    <field name="consultants_sales" readonly="1"/>
+                                    <field name="consultants_no_sales" readonly="1"/>
+                                    <field force_save="1" name="capture_time" readonly="1" widget="float_time"/>
+                                    <field name="comments" readonly="state != 'registered'"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_payin_distributor_search" model="ir.ui.view">
+            <field name="model">payin.distributor</field>
+            <field name="name">bb.payin.sheet.search</field>
+            <field name="arch" type="xml">
+                <search string="Search Pay-In Sheet Distributor Summaries">
+                    <field name="name" string="Pay-In Sheets"/>
+                    <group expand="0" string="Group By">
+                        <filter context="{'group_by': 'distributor_id'}" domain="[]" name="group_distrubutor" string="Distributor"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_payin_distributor_filters" model="ir.ui.view">
+            <field name="model">payin.distributor</field>
+            <field name="name">bb.payin.sheet.filters</field>
+            <field name="arch" type="xml">
+                <search string="Search Pay-In Sheet Distributor Summaries">
+                    <field name="name" string="Pay-In Sheet Distributor Summary"/>
+                    <field name="distributor_id" string="Distributor"/>
+                    <field name="distributor_id" string="Distribution"/>
+                    <field name="distributor_sales_force_code"/>
+                    <separator/>
+                    <filter domain="[('state','=','captured')]" name="captured" string="Captured"/>
+                    <filter domain="[('state','=','verified')]" name="verified" string="Verified"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter context="{'group_by': 'distributor_id'}" domain="[]" name="group_distributor" string="Distributor"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_payin_distributor_new" model="ir.actions.act_window">
+            <field name="name">Pay-In Sheets Distributor Summaries Register</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">payin.distributor</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="action_payin_distributor_filters"/>
+            <field name="domain">[('state', '=', 'new')]</field>
+            <field name="context">{'group_by': ['date']}</field>
+            <field name="view_id" ref="payin_distributor_tree_view_new"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <record id="action_payin_distributor_capture" model="ir.actions.act_window">
+            <field name="name">Pay-In Sheets Distributor Summary Capture</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">payin.distributor</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="action_payin_distributor_filters"/>
+            <field name="domain">[('state', '=', 'registered')]</field>
+            <field name="context">{'group_by': ['date']}</field>
+            <field name="view_id" ref="payin_distributor_tree_view"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <record id="action_payin_distributor_history" model="ir.actions.act_window">
+            <field name="name">Pay-In Sheets Distributor Summary History</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">payin.distributor</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="action_payin_distributor_filters"/>
+            <field name="context">{'group_by': ['date']}</field>
+            <field name="view_id" ref="payin_distributor_tree_view"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <menuitem action="action_payin_distributor_new" id="payin_distributor_new_menuitem" name="Register" parent="payin_menu_distributors" sequence="4"/>
+        <menuitem action="action_payin_distributor_capture" id="payin_distributor_capture_menuitem" name="Capture" parent="payin_menu_distributors" sequence="5"/>
+        <menuitem action="action_payin_distributor_history" id="payin_distributor_history_menuitem" name="History" parent="payin_menu_distributors" sequence="6"/>
+
+        <!-- Register Pay-In Sheets (list action binding) -->
+        <record id="action_change_state" model="ir.actions.act_window">
+            <field name="name">Register Pay-In Sheets</field>
+            <field name="res_model">bb.payin.change.state</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_bb_payin_sheet"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_change_state_distributor" model="ir.actions.act_window">
+            <field name="name">Register Pay-In Sheets Distributor Summaries</field>
+            <field name="res_model">bb.payin.distributor.change.state</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_payin_distributor"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <!-- payin.capture.time views -->
+        <record id="payin_capture_time_tree_view" model="ir.ui.view">
+            <field name="name">payin.capture.time.tree</field>
+            <field name="model">payin.capture.time</field>
+            <field name="arch" type="xml">
+                <tree create="0" delete="0" edit="0" string="Pay-In Sheets Capture Time">
+                    <field name="payin_sheet_id"/>
+                    <field name="user_id"/>
+                    <field name="consultants_captured"/>
+                    <field name="capture_start_date"/>
+                    <field name="capture_time" readonly="1" widget="float_time"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="payin_capture_time_form_view" model="ir.ui.view">
+            <field name="name">payin.capture.time.form</field>
+            <field name="model">payin.capture.time</field>
+            <field name="arch" type="xml">
+                <form create="0" delete="0" edit="0" string="Pay-In Sheets Capture Time">
+                    <header/>
+                    <sheet>
+                        <group col="4">
+                            <field name="payin_sheet_id"/>
+                            <field name="user_id"/>
+                            <field name="new_consultants_count"/>
+                            <field name="consultants_sales"/>
+                            <field name="consultants_captured"/>
+                            <field name="capture_time" readonly="1" widget="float_time"/>
+                            <field name="date"/>
+                        </group>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_payin_capture_time" model="ir.actions.act_window">
+            <field name="name">Pay-In Sheets Capture Time</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">payin.capture.time</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="payin_capture_time_tree_view"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <menuitem action="action_payin_capture_time" id="payin_capture_time_menuitem" name="Pay-In Sheets Capture Time" parent="payin_menu" sequence="3"/>
+        <menuitem action="action_payin_sheet_enquiry_report" id="payin_sheet_enquiry_report_menuitem" name="Pay-In Sheets Enquire" parent="payin_menu" sequence="4"/>
+
+        <record id="payi_attachment" model="mail.template">
+            <field name="name">Pay-In Sheets</field>
+            <field name="email_from">${object.create_uid.email}</field>
+            <field name="subject">Pay-In Sheets</field>
+            <field name="email_to">${object.create_uid.email}</field>
+            <field name="reply_to"/>
+            <field eval="False" name="auto_delete"/>
+            <field name="model_id" ref="sales_force_support.model_bb_payin_print"/>
+            <!--            <field name="report_template" ref="sales_force_support.action_report_payin_all"/>-->
+            <field name="lang"/>
+            <field name="body_html"/>
+        </record>
+
+        <!-- Export Excel Pay-In Sheets (list+form action binding) -->
+        <record id="action_export_payins_new" model="ir.actions.act_window">
+            <field name="name">Export Excel Pay-In Sheets Forms</field>
+            <field name="res_model">bb.payin.export.payins.new</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_bb_payin_sheet"/>
+            <field name="binding_view_types">list,form</field>
+        </record>
+
+        <menuitem action="action_active_status_config_wizard" id="payin_menuitem_active_status_config" name="Active Status Configuration" parent="payin_menu" sequence="6"/>
+
+        <!-- ======================================================= -->
+        <!-- bb.payin.sheet.line export view                         -->
+        <!-- Source: bb_payin/views/pay_sheet_export_view.xml        -->
+        <!-- domain job_id.name+employee_type → genealogy            -->
+        <!-- ======================================================= -->
+
+        <record id="pay_sheet_line_export_tree_view" model="ir.ui.view">
+            <field name="name">bbb.pay.sheet.line.export.tree</field>
+            <field name="model">bb.payin.sheet.line</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Pay-In Sheet Lines Export">
+                    <field domain="[('genealogy', 'in', ['Consultant', 'Prospective Consultant', 'Potential Consultant']), ('manager_id', '=', parent.manager_id)]" force_save="1" name="consultant_id" options="{'no_create': True}" readonly="id != False" required="1"/>
+                    <field name="sales_force_code"/>
+                    <field name="bb_sales"/>
+                    <field name="bb_returns"/>
+                    <field name="bb_brand_total"/>
+                    <field name="puer_sales"/>
+                    <field name="puer_returns"/>
+                    <field name="puer_brand_total"/>
+                    <field name="comment"/>
+                    <field name="sub_total"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="pay_sheet_line_export_act_window" model="ir.actions.act_window">
+            <field name="name">Pay-In Sheet Lines Export</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.sheet.line</field>
+            <field name="view_mode">tree</field>
+            <field name="help" type="html">
+                <p class="oe_view_nocontent_create">
+                    There are no pay-in sheet lines to export.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

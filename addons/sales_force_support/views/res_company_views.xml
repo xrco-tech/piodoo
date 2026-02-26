@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sources merged:
+     - partner_compuscan/views/res_company_views.xml
+     - partner_consumerview/views/res_company_views.xml
+-->
+<odoo>
+    <!-- Merged into a single inheritance of base.view_company_form -->
+    <record id="view_company_form_sales_force_support" model="ir.ui.view">
+        <field name="name">res.company.form.inherit.sales_force_support</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <notebook colspan="4" position="inside">
+                <!-- Compuscan credentials (source: partner_compuscan) -->
+                <page name="compuscan" string="Compuscan Configuration">
+                    <group>
+                        <field name="compuscan_user" string="Username"/>
+                        <field name="compuscan_pass" password="1" string="Password"/>
+                        <field name="compuscan_env" string="Environment"/>
+                    </group>
+                </page>
+                <!-- ConsumerView credentials (source: partner_consumerview) -->
+                <page name="consumerview" string="ConsumerView Configuration">
+                    <group>
+                        <field name="consumerview_user" string="Username"/>
+                        <field name="consumerview_pass" password="1" string="Password"/>
+                        <field name="consumerview_env" string="Environment"/>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+</odoo>

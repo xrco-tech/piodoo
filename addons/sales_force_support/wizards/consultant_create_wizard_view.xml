@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bbb_sales_force_genealogy/wizards/consultant_create_wizard_view.xml -->
+<odoo>
+    <record id="consultant_create_wizard_view" model="ir.ui.view">
+        <field name="name">consultant.create.wizard.form</field>
+        <field name="model">consultant.create.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group col="2">
+                        <field name="full_name" required="True"/>
+                        <field name="mobile_country_code_ids"/>
+                        <!-- <field name="mobile"/> -->
+
+                        <label for="mobile" string="Mobile"/>
+                        <div name="mobile_row" style="align-items:center;">
+                            <field name="mobile_country_code_display" nolabel="1" readonly="1"
+                                style="width:auto; min-width:45px; margin-right:4px; text-align:center; font-weight:bold;" required="True"/>
+                            <field name="mobile" nolabel="1"
+                                placeholder="Enter Mobile Number Without Country Code"
+                                style="width:300px;" required="True"/>
+                            <div name="mobile_hint"
+                                style="align-items: center; font-size:13px; color:#888; margin-left:50px; margin-top:2px;">
+                                <span>Mobile No. will be saved as </span>
+                                <field name="mobile_full_display" nolabel="1" readonly="1"
+                                    style="border:none; background:none; color:#888; font-size:13px; width:auto;"/>
+                            </div>
+                        </div>
+
+                        <field name="id_type" widget="radio"/>
+                        <field invisible="id_type != 'sa_id'" name="sa_id"/>
+                        <field invisible="id_type != 'passport'" name="passport"/>
+                        <field invisible="id_type != 'sa_id'" name="credit_check_consent" required="id_type == 'sa_id'" widget="radio"/>
+                        <field name="recruiter_source" required="True" widget="radio"/>
+                        <!-- Change From v14 after upgrade to v17 -->
+                        <field name="recruitment_method" required="True" widget="radio"/>
+                        <field name="recruiter_id"
+                        invisible="recruiter_source != 'internal'"
+                        required="recruiter_source == 'internal' and recruitment_method != 'pay_in_sheet'"
+                        options="{'no_create': True}"/>
+                        <!-- Change From v14 after upgrade to v17 -->
+                        <field domain="[('job_title', 'in', ['Manager', 'Prospective Distributor', 'Distributor'])]" invisible="recruiter_source != 'internal' or recruitment_method != 'pay_in_sheet'" name="manager_id" options="{'no_create': True}" required="recruiter_source == 'internal' and recruitment_method == 'pay_in_sheet'"/>
+                        <field invisible="recruiter_source != 'external'" name="street" required="recruiter_source == 'external'"/>
+                        <field invisible="recruiter_source != 'external'" name="suburb" required="recruiter_source == 'external'"/>
+                        <field invisible="recruiter_source != 'external'" name="city" required="recruiter_source == 'external'"/>
+                        <field invisible="recruiter_source != 'external'" name="state_id" options="{'no_create': True}"/>
+                        <field invisible="recruiter_source != 'external'" name="zip" required="recruiter_source == 'external'"/>
+                        <field name="country_id" options="{'no_create': True}" required="True"/>
+                    </group>
+                    <footer>
+                        <button class="oe_highlight" name="create_consultant" string="Create" type="object"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form></field>
+    </record>
+    <record id="action_consultant_create_wizard" model="ir.actions.act_window">
+        <field name="name">Create New Consultant</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">consultant.create.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="consultant_create_wizard_view"/>
+        <field name="target">new</field>
+    </record>
+</odoo>

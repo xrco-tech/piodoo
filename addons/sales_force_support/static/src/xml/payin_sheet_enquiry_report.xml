@@ -1,0 +1,154 @@
+<templates xml:space="preserve">
+    <t t-name="payin_sheet_report_template">
+     <style>
+            .o_input {
+                cursor: pointer;
+            }
+        </style>
+        <div class="o_cp_top_left">
+            <ol role="navigation" class="breadcrumb">
+                <li class="payin_sheeet_enquiry_title" style="max-width:100%;font-weight:600;font-size:20px;margin-left:1.2rem;margin-top:1rem;">
+                    Sales Force Member Enquire
+                </li>
+            </ol>
+        </div>
+        <div style="width: 100%; display: flex; justify-content: center; flex-direction: column; align-items: center;">
+            <div class="o_payin_sheet_report" style="width: 90%;">
+            
+            <div style="display: flex; justify-content: center; margin-bottom: 20px; margin-top:20px">
+            <div style="display: flex; justify-content: center; flex-direction: column; align-items: center">
+            <button t-on-click="toggleTable" style="margin-bottom: 20px;cursor: pointer;" type="button" class="o_dropdown_toggler_btn btn btn-secondary dropdown-toggle account_partner_filter">
+                                       <span ><i class="fa fa-id-badge"></i> Search for SF Member </span>
+                                   </button>
+                                   <div t-att-style="state.showTable ? '' : 'display: none;'">
+                                   <div style="display: flex; flex-direction: row; gap: 1rem; align-items: center;">
+                                   <label>Search for SF Member</label>
+                <div class="search_container" style="width:225px;">
+                    <Many2ManyTagsField
+                    record="state.dummyRecord"
+                    name="'employee_ids'"
+                    canCreate="false"
+                    canQuickCreate="false"
+                    placeholder="'Search for SF Member'"
+                    onUpdate.bind="onEmployeeChange"
+                    style="'width:100%;max-width:400px;'"
+                    />
+
+                </div>
+                </div>
+                </div>
+                </div>
+            </div>
+                <div class="report_table" style="width: 100%;">
+    <div class="o_account_reports_page o_account_reports_no_print">
+        <div class="table-responsive table-container">
+            <table class="o_account_reports_table table-striped table-hover o_report_view_freeze" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: #f2f2f2;">
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Period</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">BB Sales</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">BB Returns</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">BB Total</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Puer Sales</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Puer Returns</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Puer Totals</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Sales Totals</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Consultant Code</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Consultant Name</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Manager Code</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Manager Name</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Distributor Code</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Distributor Name</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Capture Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-if="state.loading">
+                        <tr>
+                            <td colspan="15" class="text-center" style="padding: 8px; border: 1px solid #ddd;">
+                                Loading data...
+                            </td>
+                        </tr>
+                    </t>
+                    <t t-elif="!state.report_data or state.report_data.length === 0">
+                        <tr>
+                            <td colspan="15" class="text-center" style="padding: 8px; border: 1px solid #ddd;">
+                                <t t-if="state.dummyRecord.data.employee_ids.currentIds.length > 0">
+                                    No records available for the selected employees
+                                </t>
+                                <t t-else="">
+                                    <!-- No data available. Please select employees to view data. -->
+                                    Please select employees to view data.
+                                </t>
+                            </td>
+                        </tr>
+                    </t>
+                    <t t-else="">
+                        <t t-foreach="state.report_data" t-as="row" t-key="row_index">
+                            <tr class="o_account_reports_default_style" style="border: 1px solid #ddd;">
+                                <td style="display:none;">
+                                    <t t-esc="row['id']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <a role="menuitem" tabindex="-1" 
+                                       t-att-data-id="row['id']"
+                                       class="dropdown-item" 
+                                       style="color: #008784; text-decoration: underline; background-color: transparent; cursor: pointer;"
+                                       t-on-click="triggerOpenPayinSheet">
+                                        <t t-esc="row['period']"/>
+                                    </a>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <t t-esc="row['bb_sales']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <t t-esc="row['bb_returns']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <t t-esc="row['bb_brand_total']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <t t-esc="row['puer_sales']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <t t-esc="row['puer_returns']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <t t-esc="row['puer_brand_total']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <t t-esc="row['totalsales']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <t t-esc="row['consultantcode']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <t t-esc="row['consultantname']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <t t-esc="row['managercode']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <t t-esc="row['managername']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <t t-esc="row['distributorcode']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <t t-esc="row['distributorname']"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">
+                                    <t t-esc="row['capturedate']"/>
+                                </td>
+                            </tr>
+                        </t>
+                    </t>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+            </div>
+        </div>
+    </t>
+</templates>

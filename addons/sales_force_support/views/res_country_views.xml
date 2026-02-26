@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sources merged:
+     - bbb_sales_force_genealogy/views/res_country_view.xml  (min_digit/max_digit fields)
+     - botle_buhle_custom/views/res_country_view.xml  (Country action + menuitem)
+-->
+<odoo>
+    <record id="view_country_tree_inherit" model="ir.ui.view">
+        <field name="name">res.country.tree.inherit.sales_force_support</field>
+        <field name="model">res.country</field>
+        <field name="inherit_id" ref="base.view_country_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='code']" position="after">
+                <field name="min_digit"/>
+                <field name="max_digit"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_country_form_inherit" model="ir.ui.view">
+        <field name="name">res.country.form.inherit.sales_force_support</field>
+        <field name="model">res.country</field>
+        <field name="inherit_id" ref="base.view_country_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='country_details']/field[@name='code']" position="after">
+                <field name="min_digit"/>
+                <field name="max_digit"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Country action + menuitem (source: botle_buhle_custom/views/res_country_view.xml)
+         parent updated: botle_buhle_custom.configurations_menuitem → sales_force_support.configurations_menuitem
+    -->
+    <record id="action_res_country" model="ir.actions.act_window">
+        <field name="name">Country</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.country</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Add a new country
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="country_menuitem"
+              name="Countries"
+              action="action_res_country"
+              parent="sales_force_support.configurations_menuitem"
+              sequence="100"/>
+
+</odoo>

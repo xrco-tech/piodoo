@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+
+    <!-- ============================================================
+         PROMOTION RULES — MONTHS
+         (from botle_buhle_custom)
+    ============================================================ -->
+    <record model="promotion.rules.months" id="month1">
+        <field name="name">January</field>
+        <field name="sequence">1</field>
+    </record>
+    <record model="promotion.rules.months" id="month2">
+        <field name="name">February</field>
+        <field name="sequence">2</field>
+    </record>
+    <record model="promotion.rules.months" id="month3">
+        <field name="name">March</field>
+        <field name="sequence">3</field>
+    </record>
+    <record model="promotion.rules.months" id="month4">
+        <field name="name">April</field>
+        <field name="sequence">4</field>
+    </record>
+    <record model="promotion.rules.months" id="month5">
+        <field name="name">May</field>
+        <field name="sequence">5</field>
+    </record>
+    <record model="promotion.rules.months" id="month6">
+        <field name="name">June</field>
+        <field name="sequence">6</field>
+    </record>
+    <record model="promotion.rules.months" id="month7">
+        <field name="name">July</field>
+        <field name="sequence">7</field>
+    </record>
+    <record model="promotion.rules.months" id="month8">
+        <field name="name">August</field>
+        <field name="sequence">8</field>
+    </record>
+    <record model="promotion.rules.months" id="month9">
+        <field name="name">September</field>
+        <field name="sequence">9</field>
+    </record>
+    <record model="promotion.rules.months" id="month10">
+        <field name="name">October</field>
+        <field name="sequence">10</field>
+    </record>
+    <record model="promotion.rules.months" id="month11">
+        <field name="name">November</field>
+        <field name="sequence">11</field>
+    </record>
+    <record model="promotion.rules.months" id="month12">
+        <field name="name">December</field>
+        <field name="sequence">12</field>
+    </record>
+
+    <!-- ============================================================
+         SEQUENCES
+         (from botle_buhle_custom + bb_payin)
+         NOTE: sequence_sales_force code updated hr.applicant -> sf.recruit
+    ============================================================ -->
+    <record id="sequence_sales_force" model="ir.sequence">
+        <field name="name">Sales Force Code</field>
+        <field name="code">sf.recruit</field>
+        <field name="prefix"></field>
+        <field name="padding">6</field>
+        <field name="number_next">1</field>
+        <field name="number_increment">1</field>
+    </record>
+
+    <record id="sequence_sales_force_code" model="ir.sequence">
+        <field name="name">Sales Force Code Generation</field>
+        <field name="code">sales.force.code.sequence</field>
+        <field name="prefix"></field>
+        <field name="padding">6</field>
+        <field name="number_next">1111111</field>
+        <field name="number_increment">1</field>
+    </record>
+
+    <record id="sequence_payin_sheet" model="ir.sequence">
+        <field name="name">Payin Sheet</field>
+        <field name="code">bb.payin.sheet</field>
+        <field name="prefix"></field>
+        <field name="padding">6</field>
+        <field name="number_next">1</field>
+        <field name="number_increment">1</field>
+    </record>
+
+    <record id="sequence_payin_distributor_sheet" model="ir.sequence">
+        <field name="name">Pay-In Sheet Distributor Summary</field>
+        <field name="code">payin.distributor</field>
+        <field name="prefix"></field>
+        <field name="padding">6</field>
+        <field name="number_next">1</field>
+        <field name="number_increment">1</field>
+    </record>
+
+    <!-- ============================================================
+         DOCUMENTS FOLDER
+         (from bb_payin)
+    ============================================================ -->
+    <record model="documents.folder" id="sales_force_folder">
+        <field name="name">Sales Force</field>
+    </record>
+
+    <!-- ============================================================
+         SCHEDULED ACTIONS (CRONS)
+         model_id refs updated:
+           hr.model_hr_employee  -> model_sf_member
+           model_hr_employee     -> model_sf_member
+           model_hr_applicant    -> model_sf_recruit
+    ============================================================ -->
+
+    <!-- Active Status History (from botle_buhle_custom) -->
+    <record forcecreate="True" id="ir_cron_active_status_trail" model="ir.cron">
+        <field name="name">Active Status History</field>
+        <field name="model_id" ref="model_status_audit_trail"/>
+        <field name="state">code</field>
+        <field name="code">model._update_status_trail()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="nextcall" eval="(datetime.now()).strftime('%Y-%m-%d 17:00:00')"/>
+        <field name="numbercall">-1</field>
+        <field eval="False" name="doall"/>
+    </record>
+
+    <!-- Stuck Recruits Detection (from botle_buhle_custom)
+         model_id updated: model_hr_applicant -> model_sf_recruit -->
+    <record forcecreate="True" id="ir_cron_stage_unchanged" model="ir.cron">
+        <field name="name">Stuck</field>
+        <field name="model_id" ref="model_sf_recruit"/>
+        <field name="state">code</field>
+        <field name="code">model.stage_unchanged()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="numbercall">-1</field>
+        <field eval="False" name="doall"/>
+    </record>
+
+    <!-- Sync Remote SF Members (from bbb_sales_force_genealogy)
+         model_id updated: hr.model_hr_employee -> model_sf_member -->
+    <record id="ir_cron_sync_remote_employees" model="ir.cron">
+        <field name="name">Sync Remote SF Members</field>
+        <field name="model_id" ref="model_sf_member"/>
+        <field name="state">code</field>
+        <field name="code">
+<![CDATA[
+# Filter records that have already been synced but failed
+sync_logs = env['ir.logging'].search([
+    ('func', '=', 'Sync Remote SF Members'),
+    ('level', '=', 'error'),
+])
+exclude_sf_codes = [sl.message for sl in sync_logs]
+recs_to_sync = model.search([
+    ('remote_id', '=', False),
+    ('sales_force_code', 'not in', exclude_sf_codes)
+], limit=5)
+
+# Sync records and log results
+if len(recs_to_sync) > 0:
+    for rec in recs_to_sync:
+        model.create_in_remote_db(rec)
+        if rec.remote_id:
+            log(str(rec.sales_force_code), level="info")
+        else:
+            log(str(rec.sales_force_code), level="error")
+]]>
+        </field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minute</field>
+        <field name="numbercall">-1</field>
+        <field name="doall" eval="False"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Update Sales Force Active Status (from bb_payin)
+         model_id updated: model_hr_employee -> model_sf_member -->
+    <record id="ir_update_sales_force_active_status_cron" forcecreate="True" model="ir.cron">
+        <field name="name">Update Sales Force Active Status</field>
+        <field name="model_id" ref="model_sf_member"/>
+        <field name="state">code</field>
+        <field name="active" eval="False"/>
+        <field name="code">
+# Update payin_date with relevant pay-in sheets capture month, i.e. pay-in capture month considered as 'active1':
+# - For example, if payin_date = '2023-02-01', the code will be as follows:
+# payin_date = '2023-02-01'
+# model.update_active_status(payin_date=payin_date)
+# - By default, if no payin_date is specified, the action will use the most recently verified payin sheet's date
+model.update_active_status()
+        </field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="nextcall" eval="(datetime.now()).strftime('%Y-%m-%d 23:00:00')"/>
+        <field name="numbercall">1</field>
+        <field name="priority">5</field>
+        <field name="doall" eval="False"/>
+    </record>
+
+    <!-- ============================================================
+         CLIENT ACTIONS
+         (from bb_payin)
+    ============================================================ -->
+    <record id="action_payin_sheet_enquiry_report" model="ir.actions.client">
+        <field name="name">Pay-In Sheets Consultant Enquiry</field>
+        <field name="tag">payin_sheet_report</field>
+        <field name="context" eval="{'model': 'bb.payin.sheets.enquiry.report'}"/>
+    </record>
+
+  </data>
+</odoo>

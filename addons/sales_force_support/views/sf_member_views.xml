@@ -1,0 +1,1312 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ================================================================
+             WIZARD / ACTION BINDINGS
+             Sources: bbb_sales_force_genealogy/views/hr_employee_view.xml
+             Transformation: binding_model_id ref="model_hr_employee"
+                             → ref="model_sf_member"
+        ================================================================ -->
+
+        <record id="action_move_consultants" model="ir.actions.act_window">
+            <field name="name">Move To Another Manager</field>
+            <field name="res_model">consultant.move.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_move_managers" model="ir.actions.act_window">
+            <field name="name">Move To Another Distributor</field>
+            <field name="res_model">manager.move.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_demote_distributors" model="ir.actions.act_window">
+            <field name="name">Demote Distributors</field>
+            <field name="res_model">distributor.demotion.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_demote_managers" model="ir.actions.act_window">
+            <field name="name">Demote Managers</field>
+            <field name="res_model">manager.demotion.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_promote_potential_consultants" model="ir.actions.act_window">
+            <field name="name">Activate Potential Consultants</field>
+            <field name="res_model">potential_consultant.promotion.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_promote_consultants" model="ir.actions.act_window">
+            <field name="name">Promote Consultants</field>
+            <field name="res_model">consultant.promotion.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_promote_prospective_managers" model="ir.actions.act_window">
+            <field name="name">Promote Prospective Managers</field>
+            <field name="res_model">prospective_manager.promotion.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_promote_managers" model="ir.actions.act_window">
+            <field name="name">Promote Managers</field>
+            <field name="res_model">manager.promotion.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_promote_prospective_distributors" model="ir.actions.act_window">
+            <field name="name">Promote Prospective Distributors</field>
+            <field name="res_model">prospective_distributor.promotion.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_suspend_consultants" model="ir.actions.act_window">
+            <field name="name">Suspend Consultants</field>
+            <field name="res_model">consultant.suspend.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_suspend_managers" model="ir.actions.act_window">
+            <field name="name">Suspend Managers</field>
+            <field name="res_model">manager.suspend.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_suspend_distributors" model="ir.actions.act_window">
+            <field name="name">Suspend Distributors</field>
+            <field name="res_model">distributor.suspend.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_blacklist_consultants" model="ir.actions.act_window">
+            <field name="name">Blacklist Consultants</field>
+            <field name="res_model">consultant.blacklist.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_blacklist_managers" model="ir.actions.act_window">
+            <field name="name">Blacklist Managers</field>
+            <field name="res_model">manager.blacklist.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <record id="action_blacklist_distributors" model="ir.actions.act_window">
+            <field name="name">Blacklist Distributors</field>
+            <field name="res_model">distributor.blacklist.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="model_sf_member"/>
+            <field name="binding_view_types">list</field>
+        </record>
+
+        <!-- ================================================================
+             SYNCHRONISATION FIELD MAPPING VIEW
+             Source: bbb_sales_force_genealogy/views/hr_employee_view.xml
+        ================================================================ -->
+
+        <record id="sf_field_mapping_view" model="ir.ui.view">
+            <field name="name">sf.mapping.field.tree</field>
+            <field name="model">sf.mapping.field</field>
+            <field name="arch" type="xml">
+                <tree string="Synchronisation Field Mapping" editable="top">
+                    <field name="local_model_id"/>
+                    <field name="local_model_name"/>
+                    <field name="local_field_id" domain="[('model_id', '=', local_model_id)]"/>
+                    <field name="local_field_name"/>
+                    <field name="remote_model_name"/>
+                    <field name="remote_model_description"/>
+                    <field name="remote_field_name"/>
+                    <field name="remote_field_description"/>
+                    <field name="inbound"/>
+                    <field name="outbound"/>
+                    <field name="required_on_create"/>
+                    <field name="required_on_update"/>
+                    <field name="edit_after_create"/>
+                    <field name="allow_duplicates"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="sales_force_action_field_mapping" model="ir.actions.act_window">
+            <field name="name">Synchronisation Field Mapping</field>
+            <field name="res_model">sf.mapping.field</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="sf_field_mapping_view"/>
+        </record>
+
+        <!-- ================================================================
+             SEARCH VIEW — sf.member
+             Sources: botle_buhle_custom view_employee_filter_inherit
+                      bbb_sales_force_genealogy active/inactive/potential filters
+                      bb_payin hr_employee_views.xml (search fields merged in)
+             Transformation: model → sf.member, job_id → genealogy
+        ================================================================ -->
+
+        <record id="view_sf_member_filter" model="ir.ui.view">
+            <field name="name">sf.member.search</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <search string="Sales Force Members">
+                    <field name="name" string="SFM"
+                           filter_domain="['|', ('name', 'ilike', self), ('sales_force_code', 'ilike', self)]"/>
+                    <field name="sales_force_code" string="Sales Force Code"
+                           filter_domain="[('sales_force_code', 'ilike', self)]"/>
+                    <field name="mobile" string="Mobile"
+                           filter_domain="['|', ('mobile', 'ilike', self), ('mobile_2', 'ilike', self)]"/>
+                    <field name="sa_id" string="ID Number/Passport"
+                           filter_domain="['|', ('sa_id', 'ilike', self), ('passport', 'ilike', self)]"/>
+                    <field name="genealogy"/>
+                    <separator/>
+                    <filter string="Unread Messages" name="message_needaction"
+                            domain="[('message_needaction', '=', True)]"/>
+                    <separator/>
+                    <filter invisible="1" string="Late Activities" name="activities_overdue"
+                            domain="[('activity_ids.date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                    <filter invisible="1" string="Today Activities" name="activities_today"
+                            domain="[('activity_ids.date_deadline', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                    <filter invisible="1" string="Future Activities" name="activities_upcoming_all"
+                            domain="[('activity_ids.date_deadline', '&gt;', context_today().strftime('%Y-%m-%d'))]"/>
+                    <separator/>
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_manager" string="Manager" domain="[]" context="{'group_by': 'manager_id'}"/>
+                        <filter name="group_genealogy" string="Genealogy" domain="[]" context="{'group_by': 'genealogy'}"/>
+                        <filter name="group_distributor" string="Distributor" domain="[]"
+                                context="{'group_by': 'related_distributor_id'}"/>
+                        <filter name="group_distribution" string="Distribution" domain="[]"
+                                context="{'group_by': 'distribution_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Active-member search view (with active-status filters) -->
+        <record id="view_sf_member_active_filter" model="ir.ui.view">
+            <field name="name">sf.member.active.search</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <search string="Sales Force Members">
+                    <field name="name" string="Consultant Name"
+                           filter_domain="['|', ('name', 'ilike', self), ('sales_force_code', 'ilike', self)]"/>
+                    <field name="sales_force_code" string="Sales Force Code"/>
+                    <field name="mobile" string="Mobile"
+                           filter_domain="['|', ('mobile', 'ilike', self), ('mobile_2', 'ilike', self)]"/>
+                    <field name="sa_id" string="ID Number/Passport"
+                           filter_domain="['|', ('sa_id', 'ilike', self), ('passport', 'ilike', self)]"/>
+                    <field name="genealogy"/>
+                    <separator/>
+                    <filter domain="[('active_status','=','pay_in_sheet_pending')]" name="pay_in_sheet_pending" string="Pay-In Sheet Pending"/>
+                    <filter domain="[('active_status','=','active1')]" name="active1" string="Active 1"/>
+                    <filter domain="[('active_status','in',['active1', 'active2', 'active3'])]" name="active3" string="Active 3"/>
+                    <filter domain="[('active_status','in',['active1', 'active2', 'active3', 'active4', 'active5', 'active6'])]" name="active6" string="Active 6"/>
+                    <group expand="0" string="Group By">
+                        <filter context="{'group_by': 'manager_id'}" domain="[]" name="group_manager" string="Manager"/>
+                        <filter context="{'group_by': 'genealogy'}" domain="[]" name="group_genealogy" string="Genealogy"/>
+                        <filter context="{'group_by': 'distribution_id'}" domain="[]" name="group_distribution" string="Distribution"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Inactive-member search view -->
+        <record id="view_sf_member_inactive_filter" model="ir.ui.view">
+            <field name="name">sf.member.inactive.search</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <search string="Sales Force Members">
+                    <field name="name" string="Consultant Name"
+                           filter_domain="['|', ('name', 'ilike', self), ('sales_force_code', 'ilike', self)]"/>
+                    <field name="sales_force_code" string="Sales Force Code"/>
+                    <field name="mobile" string="Mobile"
+                           filter_domain="['|', ('mobile', 'ilike', self), ('mobile_2', 'ilike', self)]"/>
+                    <field name="sa_id" string="ID Number/Passport"
+                           filter_domain="['|', ('sa_id', 'ilike', self), ('passport', 'ilike', self)]"/>
+                    <field name="genealogy"/>
+                    <separator/>
+                    <filter domain="[('active_status','in', ['inactive12', 'inactive18'])]" name="inactive" string="Inactive"/>
+                    <filter domain="[('active_status','=','suspended')]" name="suspended" string="Suspended"/>
+                    <filter domain="[('active_status','=','blacklisted')]" name="blacklisted" string="Blacklisted"/>
+                    <separator/>
+                    <filter domain="[('active', '=', False)]" name="archived" string="Archived"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter context="{'group_by': 'manager_id'}" domain="[]" name="group_manager" string="Manager"/>
+                        <filter context="{'group_by': 'genealogy'}" domain="[]" name="group_genealogy" string="Genealogy"/>
+                        <filter context="{'group_by': 'distribution_id'}" domain="[]" name="group_distribution" string="Distribution"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Potential-consultant search view -->
+        <record id="view_sf_member_potential_consultants_filter" model="ir.ui.view">
+            <field name="name">sf.member.potential.search</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <search string="Sales Force Members">
+                    <field name="name" string="Consultant Name"
+                           filter_domain="['|', ('name', 'ilike', self), ('sales_force_code', 'ilike', self)]"/>
+                    <field name="sales_force_code" string="Sales Force Code"/>
+                    <field name="mobile" string="Mobile"
+                           filter_domain="['|', ('mobile', 'ilike', self), ('mobile_2', 'ilike', self)]"/>
+                    <field name="sa_id" string="ID Number/Passport"
+                           filter_domain="['|', ('sa_id', 'ilike', self), ('passport', 'ilike', self)]"/>
+                    <field name="genealogy"/>
+                    <separator/>
+                    <filter domain="[('active', '=', False)]" name="inactive" string="Archived"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter context="{'group_by': 'manager_id'}" domain="[]" name="group_manager" string="Manager"/>
+                        <filter context="{'group_by': 'distribution_id'}" domain="[]" name="group_distribution" string="Distribution"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             MAIN STANDALONE FORM VIEW — sf.member
+             Sources: botle_buhle_custom view_employee_form_inherit (primary)
+                      + bbb_sales_force_genealogy consultants_view_form (merged)
+                      + bb_payin payin_count stat button (merged)
+                      + bb_allocate allocate manager button (merged)
+             Transformation:
+               - Removed inherit_id (standalone)
+               - job_id readonly display → genealogy (Selection)
+               - job_id editable → genealogy
+               - job_name → genealogy
+               - domain [('job_id.name', ...)] → [('genealogy', ...)]
+               - [('job_id.name', 'in', ['Manager'])] → [('genealogy', 'in', ['Manager'])]
+               - manager_id domain updated
+               - allocate/re-allocate buttons from bb_allocate merged in
+               - payin_count stat button from bbb_sales_force_genealogy merged in
+               - recruit_count stat button from bbb_sales_force_genealogy merged in
+               - notebook pages from bbb_sales_force_genealogy merged in
+        ================================================================ -->
+
+        <record id="view_sf_member_form" model="ir.ui.view">
+            <field name="name">sf.member.form</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <form string="Sales Force Member" create="false">
+                    <sheet>
+                        <div name="button_box" class="oe_button_box">
+                            <button class="oe_stat_button" icon="fa-address-book"
+                                    name="action_view_recruits" type="object">
+                                <field name="recruit_count" string="Recruit Count" widget="statinfo"/>
+                            </button>
+                            <button class="oe_stat_button" icon="fa-pencil-square-o"
+                                    invisible="payin_count == 0"
+                                    name="get_payin_sheets" type="object">
+                                <field name="payin_count" string="Pay-In Sheets" widget="statinfo"/>
+                            </button>
+                        </div>
+
+                        <widget name="web_ribbon" text="Archived" bg_color="bg-danger"
+                                invisible="active == True"/>
+
+                        <field name="is_customer" invisible="1"/>
+                        <field name="is_potential_flag" invisible="1"/>
+                        <field name="job_name" invisible="1"/>
+                        <field name="sales_force" invisible="1"/>
+                        <field name="employee_type" invisible="1"/>
+
+                        <!-- Header identity block -->
+                        <group col="4" style="width: 80%;">
+                            <group style="width: 50%; display: flex; align-items: center; justify-content: center; padding-top: 5px;">
+                                <field name="image_1920" widget="image" class="oe_avatar text-center"
+                                       nolabel="1" force_save="1" options="{'size': [90, 90]}"/>
+                            </group>
+                            <group style="width: 50%;">
+                                <field name="first_name" default_focus="1" required="1" force_save="1"/>
+                                <field name="last_name" required="1" force_save="1"/>
+                                <field name="name" force_save="1" invisible="1"/>
+                                <field name="known_name" force_save="1"
+                                       invisible="genealogy == 'Distributor'" string="Known Name"/>
+                                <field name="known_name" force_save="1"
+                                       invisible="genealogy != 'Distributor'" string="Distribution"/>
+                            </group>
+                        </group>
+
+                        <hr/>
+
+                        <!-- Status summary bar -->
+                        <style>
+                            .button_gray:hover {background-color: #e7e7e7;}
+                        </style>
+                        <div style="display: flex; width: 70%; gap: 5px;">
+                            <div class="button_gray" style="flex: 1; border: 1px solid #008CBA; padding: 7px 15px; height: 52px;">
+                                <table>
+                                    <tr><td><b>Genealogy Status</b></td></tr>
+                                    <tr>
+                                        <td>
+                                            <field name="genealogy" readonly="1" force_save="1"/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="button_gray" style="flex: 1; border: 1px solid #008CBA; padding: 7px 15px; height: 52px;">
+                                <table>
+                                    <tr><td><b>Sales Force Code</b></td></tr>
+                                    <tr>
+                                        <td>
+                                            <field name="sales_force_code" readonly="1" force_save="1"/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="button_gray" style="flex: 1; border: 1px solid #008CBA; padding: 7px 15px; height: 52px;">
+                            <table>
+                                <tr><td><b>Active Status</b></td></tr>
+                                <tr>
+                                    <td>
+                                        <field name="active_status" force_save="1"/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Main detail groups -->
+                        <div style="margin-top: 20px;">
+                            <group>
+                                <group>
+                                    <field name="reg_no" invisible="1"/>
+                                    <field name="vat" invisible="1"/>
+                                    <field name="paye" invisible="1"/>
+                                    <field name="sa_id"/>
+                                    <field name="passport"/>
+                                    <field name="nationality"
+                                           required="passport != False"
+                                           invisible="passport == False"/>
+                                    <field name="birth_date"/>
+                                    <field name="age"/>
+                                    <field name="gender"/>
+                                    <label for="mobile"/>
+                                    <div class="o_row">
+                                        <field name="mobile" widget="phone" options="{'enable_sms':false}"/>
+                                        <label for="mobile_opt_out"/>
+                                        <field name="mobile_opt_out"/>
+                                        <field name="mobile_opt_out_date"/>
+                                    </div>
+                                    <label for="mobile_2"/>
+                                    <div class="o_row">
+                                        <field name="mobile_2" widget="phone" options="{'enable_sms':false}"/>
+                                        <label for="mobile_2_opt_out"/>
+                                        <field name="mobile_2_opt_out"/>
+                                        <field name="mobile_2_opt_out_date"/>
+                                    </div>
+                                    <field name="mobile_is_invalid"/>
+                                    <label for="email" string="Email"/>
+                                    <div class="o_row">
+                                        <field name="email" widget="email"/>
+                                    </div>
+                                    <field name="street" placeholder="Street" class="o_address_city"/>
+                                    <field name="suburb" placeholder="Suburb" class="o_address_city"/>
+                                    <field name="city" placeholder="City" class="o_address_city"/>
+                                    <field name="district" placeholder="District" class="o_address_city"/>
+                                    <field name="state_id" class="o_address_state"
+                                           options='{"no_open": True}'
+                                           context="{'country_id': country_id, 'zip': zip}"/>
+                                    <field name="zip" placeholder="ZIP" class="o_address_zip"/>
+                                    <field name="country_id" placeholder="Country" class="o_address_country"
+                                           options='{"no_open": True, "no_create": True}'/>
+                                    <field name="address_verified"/>
+                                </group>
+                                <group>
+                                    <field name="genealogy" required="1" string="Genealogy"
+                                           readonly="1"/>
+                                    <!-- Manager field with allocate/re-allocate buttons (from bb_allocate) -->
+                                    <label for="manager_id" string="Manager"/>
+                                    <div class="o_row">
+                                        <field name="manager_id"
+                                               domain="['|', ('is_manager', '=', True), ('genealogy', 'in', ['Manager'])]"
+                                               options="{'no_create': True, 'no_create_edit': True}"
+                                               readonly="genealogy in ('Manager', 'Distributor')"/>
+                                        <button class="oe_inline oe_link" icon="fa-crosshairs"
+                                                invisible="genealogy in ('Manager', 'Distributor') or manager_id != False"
+                                                name="button_allocate_manager" string="Allocate" type="object"/>
+                                        <button class="oe_inline oe_link" icon="fa-crosshairs"
+                                                invisible="genealogy in ('Manager', 'Distributor') or manager_id == False"
+                                                name="button_allocate_manager" string="Re-Allocate" type="object"/>
+                                    </div>
+                                    <field name="related_distributor_id"
+                                           options="{'no_create': True, 'no_create_edit': True}"
+                                           domain="[('genealogy', '=', 'Distributor')]"
+                                           string="Distributor" readonly="1"/>
+                                    <field name="distribution_id" force_save="1"
+                                           readonly="genealogy != 'Distributor'" string="Distribution"/>
+                                    <field name="recruiter_source"/>
+                                    <field name="recruitment_method"/>
+                                    <field name="recruiter_id"
+                                           domain="['|', ('id', '=', manager_id), ('manager_id', '=', manager_id)]"
+                                           options="{'no_create': True, 'no_create_edit': True}"/>
+                                    <field name="promoter_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                                    <field name="employee_type" invisible="1" string="Employee Type"/>
+                                    <field name="is_manager" invisible="genealogy != 'Distributor'"/>
+                                    <field name="first_sale_date"/>
+                                    <field name="last_sale_date2"/>
+                                    <field name="last_sale_date"/>
+                                    <field name="sale" readonly="1" force_save="1"/>
+                                    <field name="credit_limit" invisible="genealogy != 'Distributor'"/>
+                                    <field name="credit_score"
+                                           invisible="employee_type != 'sales_force'"/>
+                                    <field name="bad_debts"
+                                           invisible="employee_type != 'sales_force'"/>
+                                    <field name="is_credit_check"
+                                           invisible="employee_type != 'sales_force'"/>
+                                    <field name="last_contact_date"
+                                           invisible="employee_type != 'sales_force'" readonly="1"/>
+                                    <field name="last_contact_type"
+                                           invisible="employee_type != 'sales_force'" readonly="1"/>
+                                    <field name="language" invisible="employee_type != 'sales_force'"/>
+                                    <field name="create_date_bb" readonly="1" force_save="1"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <group>
+                                    <field name="most_recent_months_sales"/>
+                                    <field name="months_since_last_sale"/>
+                                    <field name="sold_previous_month"/>
+                                    <field name="four_months_sales"/>
+                                    <field name="months_since_start"/>
+                                </group>
+                                <group>
+                                    <field name="cumulative4"/>
+                                    <field name="cumulative5"/>
+                                    <field name="cumulative6"/>
+                                </group>
+                            </group>
+                        </div>
+
+                        <!-- Notebook pages (from bbb_sales_force_genealogy) -->
+                        <notebook>
+                            <page name="genealogy_tree" string="Genealogy Information">
+                                <div id="o_work_employee_container">
+                                    <div id="o_employee_right" style="margin-left: 10px;">
+                                        <h4 class="o_org_chart_title mb16 mt0">
+                                            Genealogy Tree
+                                        </h4>
+                                        <field id="child_ids" name="child_ids" readonly="1" widget="hr_org_chart"/>
+                                    </div>
+                                </div>
+                            </page>
+                            <page name="enquiry" string="Enquire">
+                                <field name="previous_sales_data_html"/>
+                            </page>
+                            <page name="promotion_related_fields" string="Promotion-Related Fields">
+                                <group>
+                                    <group>
+                                        <field name="sale" readonly="1" force_save="1" string="Has Sold?"/>
+                                        <field name="first_sale_date"/>
+                                        <field name="last_sale_date"/>
+                                        <field name="most_recent_months_sales"/>
+                                        <field name="months_since_last_sale"/>
+                                        <field name="sold_previous_month"/>
+                                        <field name="four_months_sales"/>
+                                        <field name="months_since_start"/>
+                                    </group>
+                                    <group>
+                                        <field name="related_prospective_manager_id"
+                                               domain="['|', ('is_manager', '=', True), ('genealogy', 'in', ['Manager'])]"
+                                               options="{'no_create': True, 'no_create_edit': True}"
+                                               readonly="genealogy == 'Manager'"/>
+                                        <field name="related_prospective_distributor_id"
+                                               domain="[('genealogy', '=', 'Distributor')]"
+                                               options="{'no_create': True, 'no_create_edit': True}"
+                                               readonly="genealogy != 'Manager'"/>
+                                        <field name="promotion_date"/>
+                                        <field name="promotion_effective_date"/>
+                                        <field name="promoter_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                                        <field name="demotion_date"/>
+                                        <field name="demotion_effective_date"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page name="vetting" string="Credit Vetting">
+                                <group>
+                                    <field name="is_credit_check"
+                                           invisible="employee_type != 'sales_force'"
+                                           string="Credit Check Consent Granted?"/>
+                                    <field name="credit_limit" invisible="genealogy != 'Distributor'"/>
+                                    <field name="credit_score" invisible="employee_type != 'sales_force'"/>
+                                    <field name="bad_debts" invisible="employee_type != 'sales_force'"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers" groups="base.group_user"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             TREE / LIST VIEWS — sf.member
+             Sources: botle_buhle_custom view_employee_tree_inherit
+                      + bbb_sales_force_genealogy genealogy-specific trees
+             Transformation: model → sf.member, job_id → genealogy,
+                             domain [('job_id.name', ...)] → [('genealogy', ...)]
+        ================================================================ -->
+
+        <!-- Default sales-force list view -->
+        <record id="view_sf_member_tree" model="ir.ui.view">
+            <field name="name">sf.member.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree string="Sales Force Members" create="0">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="active_status"/>
+                    <field name="mobile" widget="phone" options="{'enable_sms':false}"/>
+                    <field name="genealogy" string="Genealogy"/>
+                    <field name="manager_id"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Active Distributors list -->
+        <record id="view_sf_member_active_distributors_tree" model="ir.ui.view">
+            <field name="name">sf.member.active.distributors.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Distributors (Active)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Active Prospective Distributors list -->
+        <record id="view_sf_member_active_prospective_distributors_tree" model="ir.ui.view">
+            <field name="name">sf.member.active.prospective.distributors.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Prospective Distributors (Active)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code" string="SFM Code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="promoter_id" string="Promoted By"/>
+                    <field name="promoter_sales_force_code" string="Promoted By SFM Code"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Active Managers list -->
+        <record id="view_sf_member_active_managers_tree" model="ir.ui.view">
+            <field name="name">sf.member.active.managers.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Managers (Active)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Active Prospective Managers list -->
+        <record id="view_sf_member_active_prospective_managers_tree" model="ir.ui.view">
+            <field name="name">sf.member.active.prospective.managers.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Prospective Managers (Active)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="promoter_id" string="Promoted By"/>
+                    <field name="promoter_sales_force_code" string="Promoted By SFM Code"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sales_force_code" string="Manager SFM Code"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id" invisible="1"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Active Consultants list -->
+        <record id="view_sf_member_active_consultants_tree" model="ir.ui.view">
+            <field name="name">sf.member.active.consultants.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Consultants (Active)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="recruiter_id"/>
+                    <field name="recruiter_sales_force_code" string="Recruiter SFM Code"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sales_force_code" string="Manager SFM Code"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Active All list -->
+        <record id="view_sf_member_active_all_tree" model="ir.ui.view">
+            <field name="name">sf.member.active.all.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - All (Active)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="genealogy" string="Genealogy"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sales_force_code" string="Manager SFM Code"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Inactive Distributors list -->
+        <record id="view_sf_member_inactive_distributors_tree" model="ir.ui.view">
+            <field name="name">sf.member.inactive.distributors.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Distributors (Inactive)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Inactive Prospective Distributors list -->
+        <record id="view_sf_member_inactive_prospective_distributors_tree" model="ir.ui.view">
+            <field name="name">sf.member.inactive.prospective.distributors.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Prospective Distributors (Inactive)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code" string="SFM Code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="promoter_id" string="Promoted By"/>
+                    <field name="promoter_sales_force_code" string="Promoted By SFM Code"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Inactive Managers list -->
+        <record id="view_sf_member_inactive_managers_tree" model="ir.ui.view">
+            <field name="name">sf.member.inactive.managers.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Managers (Inactive)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Inactive Prospective Managers list -->
+        <record id="view_sf_member_inactive_prospective_managers_tree" model="ir.ui.view">
+            <field name="name">sf.member.inactive.prospective.managers.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Prospective Managers (Inactive)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="promoter_id" string="Promoted By"/>
+                    <field name="promoter_sales_force_code" string="Promoted By SFM Code"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sales_force_code" string="Manager SFM Code"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Inactive Consultants list -->
+        <record id="view_sf_member_inactive_consultants_tree" model="ir.ui.view">
+            <field name="name">sf.member.inactive.consultants.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Consultants (Inactive)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="recruiter_id"/>
+                    <field name="recruiter_sales_force_code" string="Recruiter SFM Code"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sales_force_code" string="Manager SFM Code"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Inactive All list -->
+        <record id="view_sf_member_inactive_all_tree" model="ir.ui.view">
+            <field name="name">sf.member.inactive.all.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - All (Inactive)">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="genealogy" string="Genealogy"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sales_force_code" string="Manager SFM Code"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                    <field name="active_status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Potential Consultants list -->
+        <record id="view_sf_member_potential_consultants_tree" model="ir.ui.view">
+            <field name="name">sf.member.potential.consultants.tree</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <tree create="0" string="Sales Force - Potential Consultants">
+                    <field name="name" string="Sales Force Member"/>
+                    <field name="sales_force_code"/>
+                    <field name="mobile" options="{'enable_sms':false}" widget="phone"/>
+                    <field name="recruiter_id"/>
+                    <field name="recruiter_sales_force_code" string="Recruiter SFM Code"/>
+                    <field name="manager_id"/>
+                    <field name="manager_sales_force_code" string="Manager SFM Code"/>
+                    <field name="related_distributor_id" string="Distributor"/>
+                    <field name="distributor_sales_force_code" string="Distributor SFM Code"/>
+                    <field name="distribution_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             KANBAN VIEW — sf.member
+             Source: botle_buhle_custom hr_kanban_view_employees_inherit
+             Transformation: model → sf.member
+        ================================================================ -->
+
+        <record id="view_sf_member_kanban" model="ir.ui.view">
+            <field name="name">sf.member.kanban</field>
+            <field name="model">sf.member</field>
+            <field name="arch" type="xml">
+                <kanban class="o_hr_employee_kanban" create="0">
+                    <field name="id"/>
+                    <progressbar field="activity_state" colors="{}"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div class="oe_kanban_global_click o_kanban_record_has_image_fill o_hr_kanban_record">
+                                <field name="image_128" widget="image"
+                                       class="o_kanban_image_fill_left o_hr_rounded_circle"
+                                       options="{'zoom': true, 'background': true, 'preventClicks': false}"/>
+                                <div class="oe_kanban_details">
+                                    <div class="o_kanban_record_top">
+                                        <div class="o_kanban_record_headings">
+                                            <strong class="o_kanban_record_title">
+                                                <field name="name" placeholder="Member's Name"/>
+                                            </strong>
+                                            <span t-if="record.genealogy.raw_value" class="o_kanban_record_subtitle">
+                                                <field name="genealogy"/>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <ul>
+                                        <li t-if="record.email.raw_value" class="o_text_overflow">
+                                            <field name="email"/>
+                                        </li>
+                                        <li t-if="record.mobile.raw_value">
+                                            <field name="mobile" widget="phone" options="{'enable_sms':false}"/>
+                                        </li>
+                                        <li t-if="record.sales_force_code.raw_value">
+                                            <field name="sales_force_code"/>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             ACTION WINDOWS — sf.member
+             Sources: botle_buhle_custom + bbb_sales_force_genealogy
+             Transformation: res_model → sf.member,
+                             domain [('job_id.name', ...)] → [('genealogy', ...)],
+                             view_id refs updated to new view XML IDs
+        ================================================================ -->
+
+        <!-- Main Sales Force action (all members, primary entry point) -->
+        <record id="open_view_sf_member_list" model="ir.actions.act_window">
+            <field name="name">Sales Force</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,kanban,form,activity</field>
+            <field name="domain">[('employee_type', '=', 'sales_force')]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                (0, 0, {'view_mode': 'tree', 'view_id': ref('view_sf_member_tree')}),
+                (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_sf_member_kanban')}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('view_sf_member_form')})]"/>
+            <field name="search_view_id" ref="view_sf_member_filter"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Add a new sales force member
+                </p>
+                <p>
+                    With just a quick glance on the Sales Force screen, you
+                    can easily find all the information you need for each person;
+                    contact data, genealogy, availability, etc.
+                </p>
+            </field>
+        </record>
+
+        <!-- Active Distributors -->
+        <record id="action_sf_member_active_distributors" model="ir.actions.act_window">
+            <field name="name">Sales Force - Distributors (Active)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Distributor'),
+                ('active_status', 'in', ('active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_active_distributors_tree"/>
+            <field name="search_view_id" ref="view_sf_member_active_filter"/>
+        </record>
+
+        <!-- Active Prospective Distributors -->
+        <record id="action_sf_member_active_prospective_distributors" model="ir.actions.act_window">
+            <field name="name">Sales Force - Prospective Distributors (Active)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Prospective Distributor'),
+                ('active_status', 'in', ('active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field eval="False" name="view_id"/>
+            <field name="view_ids" eval="[(5, 0, 0),
+                (0, 0, {'view_mode': 'tree', 'view_id': ref('view_sf_member_active_prospective_distributors_tree')}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('view_sf_member_form')})]"/>
+            <field name="search_view_id" ref="view_sf_member_active_filter"/>
+        </record>
+
+        <!-- Active Managers -->
+        <record id="action_sf_member_active_managers" model="ir.actions.act_window">
+            <field name="name">Sales Force - Managers (Active)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Manager'),
+                ('active_status', 'in', ('active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_active_managers_tree"/>
+            <field name="search_view_id" ref="view_sf_member_active_filter"/>
+        </record>
+
+        <!-- Active Prospective Managers -->
+        <record id="action_sf_member_active_prospective_managers" model="ir.actions.act_window">
+            <field name="name">Sales Force - Prospective Managers (Active)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Prospective Manager'),
+                ('active_status', 'in', ('active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_active_prospective_managers_tree"/>
+            <field name="search_view_id" ref="view_sf_member_active_filter"/>
+        </record>
+
+        <!-- Active Consultants -->
+        <record id="action_sf_member_active_consultants" model="ir.actions.act_window">
+            <field name="name">Sales Force - Consultants (Active)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Consultant'),
+                ('active_status', 'in', ('pay_in_sheet_pending', 'active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_active_consultants_tree"/>
+            <field name="search_view_id" ref="view_sf_member_active_filter"/>
+        </record>
+
+        <!-- Active All -->
+        <record id="action_sf_member_active_all" model="ir.actions.act_window">
+            <field name="name">Sales Force - All (Active)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'),
+                ('active_status', 'in', ('pay_in_sheet_pending', 'active1', 'active2', 'active3', 'active4', 'active5', 'active6'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_active_all_tree"/>
+            <field name="search_view_id" ref="view_sf_member_active_filter"/>
+        </record>
+
+        <!-- Inactive Distributors -->
+        <record id="action_sf_member_inactive_distributors" model="ir.actions.act_window">
+            <field name="name">Sales Force - Distributors (Inactive)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Distributor'),
+                ('active_status', 'in', ('inactive12', 'inactive18', 'suspended', 'blacklisted'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_inactive_distributors_tree"/>
+            <field name="search_view_id" ref="view_sf_member_inactive_filter"/>
+        </record>
+
+        <!-- Inactive Prospective Distributors -->
+        <record id="action_sf_member_inactive_prospective_distributors" model="ir.actions.act_window">
+            <field name="name">Sales Force - Prospective Distributors (Inactive)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Prospective Distributor'),
+                ('active_status', 'in', ('inactive12', 'inactive18', 'suspended', 'blacklisted'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_inactive_prospective_distributors_tree"/>
+            <field name="search_view_id" ref="view_sf_member_inactive_filter"/>
+        </record>
+
+        <!-- Inactive Managers -->
+        <record id="action_sf_member_inactive_managers" model="ir.actions.act_window">
+            <field name="name">Sales Force - Managers (Inactive)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Manager'),
+                ('active_status', 'in', ('inactive12', 'inactive18', 'suspended', 'blacklisted'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_inactive_managers_tree"/>
+            <field name="search_view_id" ref="view_sf_member_inactive_filter"/>
+        </record>
+
+        <!-- Inactive Prospective Managers -->
+        <record id="action_sf_member_inactive_prospective_managers" model="ir.actions.act_window">
+            <field name="name">Sales Force - Prospective Managers (Inactive)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Prospective Manager'),
+                ('active_status', 'in', ('inactive12', 'inactive18', 'inactive', 'suspended', 'blacklisted'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_inactive_prospective_managers_tree"/>
+            <field name="search_view_id" ref="view_sf_member_inactive_filter"/>
+        </record>
+
+        <!-- Inactive Consultants -->
+        <record id="action_sf_member_inactive_consultants" model="ir.actions.act_window">
+            <field name="name">Sales Force - Consultants (Inactive)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Consultant'),
+                ('active_status', 'in', ('inactive12', 'inactive18', 'inactive', 'suspended', 'blacklisted'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_inactive_consultants_tree"/>
+            <field name="search_view_id" ref="view_sf_member_inactive_filter"/>
+        </record>
+
+        <!-- Inactive All -->
+        <record id="action_sf_member_inactive_all" model="ir.actions.act_window">
+            <field name="name">Sales Force - All (Inactive)</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'),
+                ('active_status', 'in', ('inactive12', 'inactive18', 'inactive', 'suspended', 'blacklisted'))]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_inactive_all_tree"/>
+            <field name="search_view_id" ref="view_sf_member_inactive_filter"/>
+        </record>
+
+        <!-- Potential Consultants -->
+        <record id="action_sf_member_potential_consultants" model="ir.actions.act_window">
+            <field name="name">Sales Force - Potential Consultants</field>
+            <field name="res_model">sf.member</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('employee_type', '=', 'sales_force'), ('genealogy', '=', 'Potential Consultant')]</field>
+            <field name="context">{'default_employee_type': 'sales_force', 'default_sales_force': True}</field>
+            <field name="view_id" ref="view_sf_member_potential_consultants_tree"/>
+            <field name="search_view_id" ref="view_sf_member_potential_consultants_filter"/>
+        </record>
+
+        <!-- ================================================================
+             MISCELLANEOUS ACTIONS
+             Sources: botle_buhle_custom
+             Notes: hr.applicant actions removed — sf.recruit actions are
+                    defined in sf_recruit_views.xml.
+                    hr.recruitment.stage actions replaced by sf.recruit.stage
+                    (see sf_recruit_views.xml: action_sf_recruit_stage).
+                    hr.job actions omitted because hr.job is removed.
+        ================================================================ -->
+
+        <record id="view_fields_state_tree" model="ir.ui.view">
+            <field name="name">required.field.state.list</field>
+            <field name="model">required.field.state</field>
+            <field name="arch" type="xml">
+                <tree editable="bottom">
+                    <field name="field_id" required="1"
+                           domain="[('model_id.name', '=', 'Applicant')]"
+                           options="{'no_create': True}"/>
+                    <field name="state" required="1"
+                           options="{'no_create': True}"
+                           domain="[('sales_force', '=', True)]"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="action_field_required" model="ir.actions.act_window">
+            <field name="name">Stage Required Fields</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">required.field.state</field>
+            <field name="view_mode">tree</field>
+            <field name="view_id" ref="view_fields_state_tree"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">Stage Required Fields</p>
+            </field>
+        </record>
+
+        <!-- hr_recruitment_source_action removed: hr.recruitment.source model
+             belongs to hr_recruitment which is not a dependency. -->
+
+        <!-- ================================================================
+             MENU ITEMS
+             Sources: botle_buhle_custom + bbb_sales_force_genealogy
+             Transformation:
+               parent="botle_buhle_custom.sales_force_menuitem"
+                 → parent="sales_force_support.sales_force_menuitem"
+               parent="botle_buhle_custom.sales_force_sub_menuitem"
+                 → parent="sales_force_support.sales_force_sub_menuitem"
+               parent="botle_buhle_custom.configurations_menuitem"
+                 → parent="sales_force_support.configurations_menuitem"
+               action refs updated to new sales_force_support XML IDs
+        ================================================================ -->
+
+        <menuitem id="sales_force_menuitem"
+                  name="Sales Force"
+                  groups="base.group_user"
+                  web_icon="hr,static/description/icon.png"
+                  action="open_view_sf_member_list"
+                  sequence="3"/>
+
+        <menuitem id="configurations_menuitem"
+                  name="Configurations"
+                  parent="sales_force_support.sales_force_menuitem"
+                  sequence="100"/>
+
+        <menuitem id="sales_force_sub_menuitem"
+                  name="Sales Force"
+                  parent="sales_force_support.sales_force_menuitem"
+                  sequence="2"
+                  action="open_view_sf_member_list"/>
+
+        <!-- Active sub-menu -->
+        <menuitem id="sales_force_active_menuitem"
+                  name="Active"
+                  parent="sales_force_support.sales_force_sub_menuitem"
+                  sequence="1"/>
+
+        <menuitem action="action_sf_member_active_distributors"
+                  id="sales_force_active_distributors_sub_menuitem"
+                  name="Distributors"
+                  parent="sales_force_support.sales_force_active_menuitem"
+                  sequence="1"/>
+
+        <menuitem action="action_sf_member_active_prospective_distributors"
+                  id="sales_force_active_prospective_distributors_sub_menuitem"
+                  name="Prospective Distributors"
+                  parent="sales_force_support.sales_force_active_menuitem"
+                  sequence="2"/>
+
+        <menuitem action="action_sf_member_active_managers"
+                  id="sales_force_active_managers_sub_menuitem"
+                  name="Managers"
+                  parent="sales_force_support.sales_force_active_menuitem"
+                  sequence="3"/>
+
+        <menuitem action="action_sf_member_active_prospective_managers"
+                  id="sales_force_active_prospective_managers_sub_menuitem"
+                  name="Prospective Managers"
+                  parent="sales_force_support.sales_force_active_menuitem"
+                  sequence="4"/>
+
+        <menuitem action="action_sf_member_active_consultants"
+                  id="sales_force_active_consultants_sub_menuitem"
+                  name="Consultants"
+                  parent="sales_force_support.sales_force_active_menuitem"
+                  sequence="5"/>
+
+        <menuitem action="action_sf_member_active_all"
+                  id="sales_force_active_all_sub_menuitem"
+                  name="All"
+                  parent="sales_force_support.sales_force_active_menuitem"
+                  sequence="6"/>
+
+        <!-- Inactive sub-menu -->
+        <menuitem id="sales_force_inactive_menuitem"
+                  name="Inactive"
+                  parent="sales_force_support.sales_force_sub_menuitem"
+                  sequence="2"/>
+
+        <menuitem action="action_sf_member_inactive_distributors"
+                  id="sales_force_inactive_distributors_sub_menuitem"
+                  name="Distributors"
+                  parent="sales_force_support.sales_force_inactive_menuitem"
+                  sequence="1"/>
+
+        <menuitem action="action_sf_member_inactive_prospective_distributors"
+                  id="sales_force_inactive_prospective_distributors_sub_menuitem"
+                  name="Prospective Distributors"
+                  parent="sales_force_support.sales_force_inactive_menuitem"
+                  sequence="2"/>
+
+        <menuitem action="action_sf_member_inactive_managers"
+                  id="sales_force_inactive_managers_sub_menuitem"
+                  name="Managers"
+                  parent="sales_force_support.sales_force_inactive_menuitem"
+                  sequence="3"/>
+
+        <menuitem action="action_sf_member_inactive_prospective_managers"
+                  id="sales_force_inactive_prospective_managers_sub_menuitem"
+                  name="Prospective Managers"
+                  parent="sales_force_support.sales_force_inactive_menuitem"
+                  sequence="4"/>
+
+        <menuitem action="action_sf_member_inactive_consultants"
+                  id="sales_force_inactive_consultants_sub_menuitem"
+                  name="Consultants"
+                  parent="sales_force_support.sales_force_inactive_menuitem"
+                  sequence="5"/>
+
+        <menuitem action="action_sf_member_inactive_all"
+                  id="sales_force_inactive_all_sub_menuitem"
+                  name="All"
+                  parent="sales_force_support.sales_force_inactive_menuitem"
+                  sequence="6"/>
+
+        <!-- Potential Consultants -->
+        <menuitem action="action_sf_member_potential_consultants"
+                  id="sales_force_potential_consultants_sub_menuitem"
+                  name="Potential Consultants"
+                  parent="sales_force_support.sales_force_sub_menuitem"
+                  sequence="3"/>
+
+        <!-- Recruit menu -->
+        <menuitem id="recruitment_menuitem"
+                  name="Recruit"
+                  parent="sales_force_support.sales_force_menuitem"
+                  action="action_hr_job_inherit_applicant2"
+                  sequence="3"/>
+
+        <!-- Configurations sub-menus -->
+        <menuitem id="field_required_menuitem"
+                  name="Stage Required Fields"
+                  parent="sales_force_support.configurations_menuitem"
+                  sequence="3"
+                  action="action_field_required"
+                  groups="sales_force_support.group_sales_force_user,sales_force_support.group_sales_force_manager"/>
+
+        <!-- Stages → points to sf.recruit.stage action (defined in sf_recruit_views.xml) -->
+        <menuitem id="stages_menuitem"
+                  name="Stages"
+                  parent="sales_force_support.configurations_menuitem"
+                  sequence="1"
+                  action="sales_force_support.action_sf_recruit_stage"
+                  groups="base.group_user"/>
+
+        <!-- settings_menuitem (hr_recruitment.action_hr_recruitment_configuration) removed:
+             hr_recruitment is not a dependency of this module. -->
+
+        <!-- tags_menuitem (hr_recruitment.hr_applicant_category_action) removed:
+             hr.applicant replaced by sf.recruit; tag categories are not used. -->
+
+        <!-- sources_of_applicants_menuitem removed:
+             hr.recruitment.source replaced by sf.recruit model's own fields. -->
+
+        <!-- activity_types_menuitem (hr_recruitment.mail_activity_type_action_config_hr_applicant)
+             removed: hr.applicant no longer exists in this module. -->
+
+        <!-- Synchronisation sub-menu -->
+        <menuitem id="sales_force_menuitem_synchronisation"
+                  name="Synchronisation"
+                  parent="sales_force_support.configurations_menuitem"
+                  sequence="100"/>
+
+        <menuitem id="sales_force_menuitem_field_mapping"
+                  name="Field Mapping"
+                  action="sales_force_action_field_mapping"
+                  parent="sales_force_support.sales_force_menuitem_synchronisation"
+                  sequence="1"/>
+
+    </data>
+</odoo>

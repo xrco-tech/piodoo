@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bb_payin/wizards/payin_report_wizard.xml -->
+<odoo>
+    <data>
+        <record id="payin_sheet_report_distributor_wizard_view" model="ir.ui.view">
+            <field name="name">payin.sheet.report.distributor.wizard.form</field>
+            <field name="model">bb.payin.sheet.report.distributor.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Pay-in Sheets Report">
+                  <group>
+                      <field name="distributor_id" required='1' options="{'no_create': True}" domain="[('genealogy', '=', 'distributor')]"/>
+                  </group>
+
+                  <footer>
+                      <button string="View" type="object" name="view" class="oe_highlight"/>
+                      or
+                      <button special="cancel" string="Cancel" class="oe_highlight"/>
+                  </footer>
+                </form>
+            </field>
+        </record>
+        <record id="action_payin_sheet_distributor_wizard" model="ir.actions.act_window">
+            <field name="name">Pay-in Sheets Report</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.sheet.report.distributor.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="payin_sheet_report_distributor_wizard_view"/>
+            <field name="target">new</field>
+        </record>
+
+        <record id="payin_sheet_report_distributor_wizard_view_print" model="ir.ui.view">
+            <field name="name">payin.sheet.report.distributor.wizard.print.form</field>
+            <field name="model">bb.payin.print</field>
+            <field name="arch" type="xml">
+                <form string="Pay-in Sheets Report">
+                  <footer>
+                      <button string="Print" type="object" name="print" class="oe_highlight"/>
+                      or
+                      <button string="Add To Documents" type="object" name="print_to_documents" class="oe_highlight"/>
+                      or
+                      <button special="cancel" string="Cancel" class="oe_highlight"/>
+                  </footer>
+                </form>
+            </field>
+        </record>
+        <record id="action_payin_sheet_distributor_wizard_print" model="ir.actions.act_window">
+            <field name="name">Pay-in Sheets Report</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.print</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="payin_sheet_report_distributor_wizard_view_print"/>
+            <field name="target">new</field>
+        </record>
+
+        <!-- <menuitem id='payin_report_menuitem'
+                  name='Reports'
+                  parent="sales_force_support.sales_force_menuitem"/>
+
+        <menuitem id='payin_report_distributor_sheet_menuitem'
+                  name='Print Distributor Summary and Pay-in sheets'
+                  parent="payin_report_menuitem"
+                  action="action_payin_sheet_distributor_wizard"/> -->
+    </data>
+</odoo>

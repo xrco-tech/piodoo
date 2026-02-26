@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+            <template id="bbb_payin_sheets_layout_custom">
+            <div t-attf-class="header o_company_#{company.id}_layout">
+                <div class="row" style="height:10px;"/>
+                <div class="row" style="padding-bottom: 0px;">
+                    <div class="col-5">
+                        <div style="width: 100%; font-family: Helvetica, Verdana, Arial, sans-serif;">
+                            <div style="margin-bottom: 5px;">
+                                <strong>
+                                    <span t-esc="o.date.strftime('%B %Y')" style="font-size: 24px;" />
+                                    <span style="font-size: 24px;">-Pay In Sheet Distributor Summary</span>
+                                </strong>
+                            </div>
+                            <div style="margin-bottom: 3px;">
+                                <strong>Fax:</strong>
+                                <span>086 551 4108</span>
+                            </div>
+                            <div style="margin-bottom: 3px;">
+                                <strong>Email:</strong>
+                                <span>payins@bbb.co.za</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <table class="table-bordered"
+                               style="text-align: left; width: 100%; border: 1x solid black;padding: 1px;" spacing="0"
+                               padding="0" margin="0">
+                            <tbody>
+                                <tr style="border: 1x solid black;height: 35px;">
+                                    <td style="vertical-align: middle; width: 10%;border: 1px solid black;"
+                                        align="center">
+                                        <strong>D</strong>
+                                    </td>
+                                    <td style="vertical-align: middle; width: 70%;border: 1px solid black; padding-left: 5px;"
+                                        align="left">
+                                        <strong>
+                                            <!-- <span t-field="o.distributor_id.known_name"/> -->
+                                        </strong>
+                                    </td>
+                                    <td style="vertical-align: middle; width: 20%;border: 1px solid black; padding-left: 5px;"
+                                        align="left">
+                                        <strong>
+                                            <!-- <span t-esc="o.distributor_id.sales_force_code"/> -->
+                                        </strong>
+                                    </td>
+                                </tr>
+                                <tr style="border: 1px solid black;height: 35px;">
+                                    <td style="vertical-align: middle; width: 10%;border: 1px solid black;"
+                                        align="center">
+                                        <strong>M</strong>
+                                    </td>
+                                    <td style="vertical-align: middle; width: 70%;border: 1px solid black;padding-left: 5px;"
+                                        align="left">
+                                        <strong>
+                                            <!-- <span t-field="o.manager_id.name"/> -->
+                                        </strong>
+                                    </td>
+                                    <td style="vertical-align: middle; width: 20%;border: 1px solid black;padding-left: 5px;"
+                                        align="left">
+                                        <strong>
+                                            <!-- <span t-field="o.manager_id.sales_force_code"/> -->
+                                        </strong>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div style="position: absolute;right: 0;top: 0px;background-color: white; width: 25%;">
+                    <img style="display: block;margin-left: auto; margin-right: auto; width: 100%;position: absolute;right:0;top:0;"
+                         t-if="company.logo" t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+                </div>
+                <div class="row" style="margin: 0px; padding: 0px;">
+                    <div class="col-9" style="margin: 0px; padding: 0px;">
+                        <div class="row">
+                            <div class="col-7" style="margin: 0px; padding: 0px;">
+                                <strong>
+                                    <em>* PLEASE CHECK &amp; UPDATE CONSULTANT INFORMATION *</em>
+                                </strong>
+                            </div>
+                            <div class="col-4" >
+                                <div class="row">
+                                    <div class="col-5">Code Created By</div>
+                                    <div class="col-6" style="border-bottom: 1px solid black !important; width: 80%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div t-attf-class="article o_report_layout_standard o_company_#{company.id}_layout"
+                 t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id"
+                 t-att-data-oe-lang="o and o.env.context.get('lang')">
+                <t t-call="web.address_layout"/>
+                <t t-raw="0"/>
+            </div>
+
+            <div t-attf-class="footer o_standard_footer o_company_#{company.id}_layout">
+                <div>
+                <style>
+                        .row {
+                            display: flex;
+                            font-size: 10pt;
+                            height: 35px;
+                            width: 100%;
+                        }
+
+                        .cell {
+                            padding: 0 4px;
+                            display: flex;
+                            align-items: flex-end;
+                            justify-content: flex-start;
+                            height: 100%;
+                            box-sizing: border-box;
+                            overflow: hidden;
+                            white-space: nowrap;
+                        }
+
+                        .cell.text-right {
+                            justify-content: flex-end;
+                        }
+
+                        .cell.text-center {
+                            justify-content: center;
+                        }
+
+                        .date-label {
+                            width: 85px;
+                            padding-right: 5px;
+                            margin-top: 10px;
+                        }
+                        .dist-sig-label {
+                            width: 85px;
+                            padding-right: 5px;
+                            margin-top: 10px;
+                        }
+                        .date-line {
+                            width: 255px;
+                            border-bottom: 1px solid black;
+                        }
+
+                        .page-total {
+                            width: 140px;
+                            margin-top: 10px;
+                        }
+                        .different {
+                            width: 140px;
+                            margin-top: 10px;
+                        }
+
+                        .amount-cell {
+                            width: 95px;
+                            border: 1px solid black;
+                            border-top: 1px solid black;
+                            border-right: 0px;
+                        }
+                    </style>
+                    <div class="row" style="margin-left:15px !important;">
+                        <div class="cell text-right date-label">
+                            <strong>Date</strong>
+                        </div>
+                        <div class="cell text-left date-line">
+                            <span></span>
+                        </div>
+                        <div class="cell text-center page-total">
+                            <strong>Page Total</strong>
+                        </div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell" style="border-right: 1px solid !important"><span></span></div>
+                    </div>
+                    <br/>
+                    <div class="row" style="margin-left:15px !important;">
+                        <div class="cell text-right dist-sig-label">
+                            <strong>Distributor <br/> Signature</strong>
+                        </div>
+                        <div class="cell text-left date-line">
+                            <span></span>
+                        </div>
+                        <div class="cell text-center different">
+                            <strong>Difference</strong>
+                        </div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell"><span></span></div>
+                        <div class="cell text-right amount-cell" style="border-right: 1px solid !important"><span></span></div>
+                    </div>
+                </div>
+                <div class="row mt8">
+                    <div class="col-12">
+                        <ul t-if="report_type == 'pdf'" class="list-inline pagenumber float-center text-center">
+                            <li class="list-inline-item">
+                                <strong>
+                                    <span class="page"/>
+                                    <span>/</span>
+                                    <span class="topage"/>
+                                </strong>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </template>
+            <template id="report_new_payin_sheets_document_custom">
+            <t t-if="not o" t-set="o" t-value="doc"/>
+
+            <t t-if="not company">
+                <!-- Multicompany -->
+                <t t-if="company_id">
+                    <t t-set="company" t-value="company_id"/>
+                </t>
+                <t t-elif="o and 'company_id' in o">
+                    <t t-set="company" t-value="o.company_id.sudo()"/>
+                </t>
+                <t t-else="else">
+                    <t t-set="company" t-value="res_company"/>
+                </t>
+            </t>
+            <t t-call="sales_force_support.bbb_payin_sheets_layout_custom">
+                <t t-set="counter" t-value="0"/>
+                <div class="page"
+                    style="font-size: 10pt;font-family:Helvetica,Verdana,Arial,sans,Lucida Grande,Calibri;">
+                    <div class="row">
+                        <div style="padding-left:15px;">
+                            <table style=" margin: 0px;">
+                                <thead>
+                                    <tr style="height:60px;">
+                                        <th style="text-align: center; width:192.5px; vertical-align: middle;border: 1px solid black;">
+                                            Consultant
+                                        </th>
+                                        <th style="text-align: center; width:192.5px; vertical-align: middle;border: 1px solid black;padding-left:5px;line-height:14px;">
+                                            Cellnumber<br/>-----------------------------<br/>ID Number
+                                        </th>
+                                        <th style="text-align: center; width:95px; vertical-align: middle;border: 1px solid black;">
+                                            Cons Code<br/>------------<br/>Recruiter BBB Code
+                                        </th>
+
+                                        <th style="text-align: center; width: 95px; vertical-align: middle; border-style: solid; border-width: 3px 1px 3px 3px; border-color: black;">
+                                            BB<br/>Sales
+                                        </th>
+                                        <th style="text-align: center; width: 95px; vertical-align: middle; border-style: solid; border-width: 3px 1px 3px 1px; border-color: black;">
+                                            BB<br/>Returns
+                                        </th>
+                                        <th style="text-align: center; width: 95px; vertical-align: middle; border-style: solid; border-width: 3px 3px 3px 1px; border-color: black;">
+                                            BB<br/>Total
+                                        </th>
+
+                                        <th style="text-align: center; width: 95px; vertical-align: middle; border-style: solid; border-width: 3px 1px 3px 3px; border-color: black;">
+                                            Puer<br/>Sales
+                                        </th>
+                                        <th style="text-align: center; width: 95px; vertical-align: middle; border-style: solid; border-width: 3px 1px 3px 1px; border-color: black;">
+                                            Puer<br/>Returns
+                                        </th>
+                                        <th style="text-align: center; width: 95px; vertical-align: middle; border-style: solid; border-width: 3px 3px 3px 1px; border-color: black;">
+                                            Puer<br/>Total
+                                        </th>
+
+                                        <th style="text-align: center; width: 95px; vertical-align: middle; border-style: solid; border-width: 3px 1px 3px 3px; border-color: black;">
+                                            Grand<br/>Total
+                                        </th>
+                                        <th style="text-align: center; width: 95px; vertical-align: middle; border-style: solid; border-width: 3px 3px 3px 3px; border-color: black;">
+                                            Owing<br/>Amount
+                                        </th>
+                                    </tr>
+
+                                </thead>
+
+                            </table>
+                        </div>
+                    </div>
+                    <p style="page-break-after:always;"/>
+                    <p/>
+                </div>
+            </t>
+        </template>
+        <template id="report_new_distributor_custom" name="web_groupby_expand assets">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-set="lang" t-value="o.company_id.partner_id.lang"/>
+                    <t t-call="sales_force_support.report_new_payin_sheets_document_custom" t-lang="lang"/>
+                </t>
+            </t>
+        </template>
+        <record id="action_report_new_payin_distributor_custom" model="ir.actions.report">
+            <field name="name">Distributor Summary Form Custom</field>
+            <field name="model">payin.distributor</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">sales_force_support.report_new_distributor_custom</field>
+            <field name="report_file">sales_force_support.report_new_distributor_custom</field>
+            <field name="print_report_name">(object._get_pay_in_filename('Distributor Summary Form'))</field>
+            <field name="binding_model_id" ref="sales_force_support.model_payin_distributor"/>
+            <field name="binding_type">report</field>
+            <field name="paperformat_id" ref="sales_force_support.paperformat_landscape_custom_distributor_new"/>
+        </record>
+    </data>
+</odoo>

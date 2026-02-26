@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bb_payin/wizards/capture.xml -->
+<odoo>
+    <record id="capture_wizard_view" model="ir.ui.view">
+        <field name="name">Capture Complete</field>
+        <field name="model">capture.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <div class="row">
+                    <field name="payin_message" nolabel='1' readonly='1' force_save='1'/>
+                  </div>
+                    <footer>
+                        <button type="object" name="captured"  string="Confirm" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="capture_wizard_view_dist" model="ir.ui.view">
+        <field name="name">Capture Complete</field>
+        <field name="model">capture.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <div class="row">
+                    <field name="summary_message" nolabel='1' readonly='1' force_save='1'/>
+                  </div>
+                    <footer>
+                        <button type="object" name="captured_dist"  string="Confirm" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="not_captured_wizard_view" model="ir.ui.view">
+        <field name="name">Capture Complete</field>
+        <field name="model">not.captured.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                  <div class="row">
+                    <field name="message" nolabel='1' readonly='1' force_save='1'/>
+                  </div>
+                    <footer>
+                        <button type="object" name="captured"  string="OK" class="oe_highlight"/>
+                        <button special="cancel" string="Cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,25 @@
+.kanban-ribbon {
+    font-size: 14px;
+    font-weight: bold;
+    height: 20px;
+    width: 150px;
+    color: black !important;
+    background: #79e379;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 10px;
+    display: inline-flex;
+  }
+
+.kanban-ribbon-red {
+    font-size: 14px;
+    font-weight: bold;
+    height: 20px;
+    width: 150px;
+    color: black !important;
+    background: #cc2424;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 10px;
+    display: inline-flex;
+  }

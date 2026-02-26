@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bb_payin/views/purchase_order_view.xml
+     buyer_id comodel updated: hr.employee → sf.member (field def in inherited/purchase_order.py)
+-->
+<odoo>
+    <data>
+        <record id="purchase_order_form_inherit" model="ir.ui.view">
+            <field name="name">purchase.order.form.inherit.sales_force_support</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_ref']" position="after">
+                    <field name="buyer_id"/>
+                </xpath>
+            </field>
+        </record>
+        <record id="purchase_order_tree_inherit" model="ir.ui.view">
+            <field name="name">purchase.order.tree.inherit.sales_force_support</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="buyer_id"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

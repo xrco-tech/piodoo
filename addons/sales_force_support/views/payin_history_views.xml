@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bb_payin/views/payin_history_view.xml
+     Key changes:
+       • current_job_id (Many2one hr.job) → current_genealogy (Selection) in form view
+       • current_job_id.name in action domains → current_genealogy (Selection field)
+       • group_by current_job_id → current_genealogy in search view
+       • menuitem parent botle_buhle_custom.promtion_menuitem_promotions
+           → sales_force_support.promotion_menuitem_promotions
+         (note: source had a typo "promtion" — fixed to "promotion")
+-->
+<odoo>
+    <data>
+        <record id="payin_history_tree_view_consultant" model="ir.ui.view">
+            <field name="name">payin.history.tree.consultant</field>
+            <field name="model">bb.payin.history</field>
+            <field name="arch" type="xml">
+                <tree string="Consultant Promotions">
+                    <field name="payin_date"/>
+                    <field name="sales_force_code" string="SFM Code"/>
+                    <field name="employee_id" string="SFM Name"/>
+                    <field name="manager_code" string="Manager Code"/>
+                    <field name="total_personal_sales"/>
+                    <field name="personal_sales_promotion"/>
+                    <field name="personal_80"/>
+                    <field name="total_team_sales"/>
+                    <field name="team_sales_promotion"/>
+                    <field name="team_80"/>
+                    <field name="active_sfm_this_month"/>
+                    <field name="active_sfm_promotion"/>
+                    <field name="active_80"/>
+                    <field name="changed"/>
+                    <!-- <field name="retained_recruits"/>
+                    <field name="retained_recruits_promotion"/> -->
+                </tree>
+            </field>
+        </record>
+
+        <record id="payin_history_tree_view_manager" model="ir.ui.view">
+            <field name="name">payin.history.tree.manager</field>
+            <field name="model">bb.payin.history</field>
+            <field name="arch" type="xml">
+                <tree string="Manager Promotions">
+                    <field name="payin_date"/>
+                    <field name="sales_force_code" string="SFM Code"/>
+                    <field name="employee_id" string="SFM Name"/>
+                    <field name="team_promoted"/>
+                    <field name="total_team_sales"/>
+                    <field name="team_sales_promotion"/>
+                    <field name="pbm_promoted_avtive_consultants"/>
+                    <field name="pbm_promoted_managers_active_promotion"/>
+                    <field name="pbm_promoted_managers_team_sales_above"/>
+                    <field name="pbm_team_sales_above"/>
+                    <field name="changed"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="bb_payin_history_form_view" model="ir.ui.view">
+            <field name="name">bb.payin.history.form</field>
+            <field name="model">bb.payin.history</field>
+            <field name="arch" type="xml">
+                <form string="Pay-In History">
+                    <header/>
+                    <sheet>
+                        <group col="4">
+                            <field name="payin_date"/>
+                            <field name="employee_id"/>
+                            <field name="sales_force_code"/>
+                            <field name="current_genealogy"/>
+                            <field name="active_status"/>
+                            <field name="changed"/>
+                        </group>
+                        <group col="4">
+                            <field name="manager_code"/>
+                            <field name="distributor_code"/>
+                        </group>
+                        <group col="4">
+                            <field name="promoted_this_month"/>
+                            <field name="promoted_by"/>
+                        </group>
+                        <group col="4">
+                            <field name="personal_bbb_sale"/>
+                            <field name="personal_puer_sale"/>
+                            <field name="personal_sales_promotion"/>
+                            <field name="active_sfm_this_month"/>
+                            <field name="active_sfm_promotion"/>
+                            <field name="team_promoted"/>
+                            <!-- <field name="retained_recruits"/>
+                            <field name="retained_recruits_promotion"/> -->
+                        </group>
+                        <group col="4">
+                            <field name="active_sfm_promotion"/>
+                            <field name="team_bbb_sales"/>
+                            <field name="team_puer_sales"/>
+                            <field name="team_sales_promotion"/>
+                            <field name="team_promoted"/>
+                            <field name="team_promoted_promotion"/>
+                        </group>
+                        <group col="4">
+                            <field name="manager_promote_avtive_consultants"/>
+                            <field name="manger_promoted_sales_above"/>
+                            <field name="pbm_promoted_avtive_consultants"/>
+                            <field name="pbm_promoted_managers_active_promotion"/>
+                            <field name="pbm_promoted_managers_team_sales_above"/>
+                            <field name="pbm_team_sales_above"/>
+                        </group>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_payin_history_manager" model="ir.actions.act_window">
+            <field name="name">Manager Promotions</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.history</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="payin_history_tree_view_manager"/>
+            <field name="domain">[('current_genealogy', 'in', ['Manager'])]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <record id="action_payin_history_prospective_distributor" model="ir.actions.act_window">
+            <field name="name">Prospective Distributor Promotions</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.history</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="payin_history_tree_view_manager"/>
+            <field name="domain">[('current_genealogy', 'in', ['Prospective Distributor'])]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <record id="action_payin_history_consultant" model="ir.actions.act_window">
+            <field name="name">Consultants Promotions</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.history</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="payin_history_tree_view_consultant"/>
+            <field name="domain">[('current_genealogy', 'in', ['Consultant', 'Potential Consultant'])]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <record id="action_payin_history_prospective_manager" model="ir.actions.act_window">
+            <field name="name">Prospective Manager Promotions</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.history</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="payin_history_tree_view_consultant"/>
+            <field name="domain">[('current_genealogy', 'in', ['Prospective Manager'])]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                </p>
+            </field>
+        </record>
+
+        <record id="action_payin_history_search" model="ir.ui.view">
+            <field name="name">bb.payin.history.search</field>
+            <field name="model">bb.payin.history</field>
+            <field name="arch" type="xml">
+                <search string="Promotions">
+                    <field name="name" string="SFM Name"/>
+                    <!-- <field name="manager_id" string="Manager Name"/> -->
+                    <field name="sales_force_code" string="SFM Code"/>
+                    <separator/>
+                    <filter string="Personal Sales Promotion Flag" name="personal_sales_promotion" domain="[('personal_sales_promotion','=',True)]"/>
+                    <!-- <filter string="Retained Recruits Promotion Flag 1" name="retained_recruits_promotion" domain="[('retained_recruits_promotion','=',True)]"/> -->
+                    <filter string="Team Sales Promotion Flag" name="team_sales_promotion" domain="[('team_sales_promotion','=',True)]"/>
+                    <filter string="Pay-In Sheet Pending" name="pay_in_sheet_pending" domain="[('active_status','=','pay_in_sheet_pending')]"/>
+                    <filter string="Active 1" name="active1" domain="[('active_status','=','active1')]"/>
+                    <filter string="Active 3" name="active3" domain="[('active_status','in',['active1', 'active2', 'active3'])]"/>
+                    <filter string="Active 6" name="active6" domain="[('active_status','in',['active1', 'active2', 'active3', 'active4', 'active5', 'active6'])]"/>
+                    <filter string="Inactive" name="inactive" domain="[('active_status','in',['inactive12', 'inactive18'])]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_manager" string="Manager" domain="[]" context="{'group_by': 'manager_id'}"/>
+                        <filter name="group_current_genealogy" string="Current Genealogy" domain="[]" context="{'group_by': 'current_genealogy'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <menuitem id="payin_history_menuitem_consultant"
+                  name="Consultant Promotions"
+                  action="action_payin_history_consultant"
+                  parent="sales_force_support.promotion_menuitem_promotions"
+                  sequence="1"/>
+        <menuitem id="payin_history_menuitem_prospective_manager"
+                  name="Prospective Manager Promotions"
+                  action="action_payin_history_prospective_manager"
+                  parent="sales_force_support.promotion_menuitem_promotions"
+                  sequence="2"/>
+        <menuitem id="payin_history_menuitem_manager"
+                  name="Manager Promotions"
+                  action="action_payin_history_manager"
+                  parent="sales_force_support.promotion_menuitem_promotions"
+                  sequence="3"/>
+        <menuitem id="payin_history_menuitem_prospective_distributor"
+                  name="Prospective Distributor Promotions"
+                  action="action_payin_history_prospective_distributor"
+                  parent="sales_force_support.promotion_menuitem_promotions"
+                  sequence="4"/>
+    </data>
+</odoo>

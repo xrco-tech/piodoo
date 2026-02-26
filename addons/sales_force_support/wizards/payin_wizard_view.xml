@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: bb_payin/wizards/payin_wizard_view.xml -->
+<odoo>
+    <data>
+        <record id="payin_sheet_change_state_wizard_view" model="ir.ui.view">
+            <field name="name">bb.payin.change.state.form</field>
+            <field name="model">bb.payin.change.state</field>
+            <field name="arch" type="xml">
+                <form string="Confirm">
+                    <div class="row">
+                        <div class="col-6">
+                            Double check if the received date and number of pages are correct.
+                        </div>
+                        <div class="col-6 text-muted">
+                            Ok button will register the pay-in sheets. If you want to fix the received date and number of pages, press Cancel button.
+                        </div>
+                    </div>
+                    <tree create="0" default_order="date desc" delete="0" edit="false" mode="tree" string="List of Managers">
+                        <field name="payin_ids" readonly="1"/>
+                    </tree>
+                    <footer>
+                        <button class="oe_highlight" name="change_state" string="OK" type="object"/>
+                        or
+                        <button class="oe_highlight" special="cancel" string="Cancel"/>
+                    </footer>
+                </form></field>
+        </record>
+        <record id="payin_sheet_distributor_change_state_wizard_view" model="ir.ui.view">
+            <field name="name">Register Pay-In Sheets Distributor Summaries</field>
+            <field name="model">bb.payin.distributor.change.state</field>
+            <field name="arch" type="xml">
+                <form string="Register Pay-In Sheets Distributor Summaries">
+                    <div class="text-muted">
+                        Ok button will register the pay-in sheets distributor summary. If you want to fix the received date, press Cancel button.
+                    </div>
+                    <footer>
+                        <button class="oe_highlight" name="change_state" string="OK" type="object"/>
+                        or
+                        <button class="oe_highlight" special="cancel" string="Cancel"/>
+                    </footer>
+                </form></field>
+        </record>
+        <record id="payin_sheet_wizard_view" model="ir.ui.view">
+            <field name="name">payin.sheet.wizard.form</field>
+            <field name="model">bb.payin.sheet.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Create Pay-In Sheets Pack">
+                    <group>
+                        <field name="all"/>
+                        <field context="{'display_known_name': True}" domain="[('genealogy', '=', 'distributor')]" invisible="all == True" name="distributor_ids" options="{'no_create': True}" required="all == False" widget="many2many_tags"/>
+                    </group>
+                    <group>
+                        <field invisible="distributor_ids == []" name="per_manager"/>
+                        <field context="{'display_known_name': True}" domain="[('related_distributor_id', 'in', distributor_ids),
+                        ('genealogy', 'in', ('prospective_manager', 'manager', 'prospective_distributor', 'distributor'))]"
+                        invisible="per_manager == False" name="manager_id" options="{'no_create': True, 'no_open': True}" required="per_manager == True"/>
+                    </group>
+                    <group>
+                        <field name="payin_date" required="1"/>
+                        <field name="date_sale" required="1"/>
+                        <field name="date_new_consultant" required="1"/>
+                    </group>
+                    <footer>
+                        <button class="oe_highlight" name="create_payin" string="Create Pay-In Sheets Pack" type="object"/>
+                        or
+                        <button class="oe_highlight" special="cancel" string="Cancel"/>
+                    </footer>
+                </form></field>
+        </record>
+        <record id="action_payin_sheet_wizard" model="ir.actions.act_window">
+            <field name="name">Create Pay-In Sheets Pack</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.sheet.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="payin_sheet_wizard_view"/>
+            <field name="target">new</field>
+        </record>
+        <record id="payin_distributor_wizard_view" model="ir.ui.view">
+            <field name="name">payin.distributor.wizard.form</field>
+            <field name="model">bb.payin.distributor.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Create Pay-In Sheet Distributor Summary">
+                    <group>
+                        <field name="all"/>
+                        <field domain="[('is_customer', '=', True)]" invisible="all == True" name="distributor_ids" options="{'no_create': True}" required="all == False" widget="many2many_tags"/>
+                    </group>
+                    <group>
+                        <field name="payin_date" required="1"/>
+                        <field name="date_sale" required="1"/>
+                        <field name="date_new_consultant" required="1"/>
+                    </group>
+                    <footer>
+                        <button class="oe_highlight" name="create_payin" string="Pay-In Sheets Distributor Summary" type="object"/>
+                        or
+                        <button class="oe_highlight" special="cancel" string="Cancel"/>
+                    </footer>
+                </form></field>
+        </record>
+        <record id="action_payin_distributor_wizard" model="ir.actions.act_window">
+            <field name="name">Pay-In Sheets Distributor Summary</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.distributor.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="payin_distributor_wizard_view"/>
+            <field name="target">new</field>
+        </record>
+        <record id="payin_sheet_export_payins_new_wizard_view" model="ir.ui.view">
+            <field name="name">Download Xlsx Report</field>
+            <field name="model">bb.payin.export.payins.new</field>
+            <field name="arch" type="xml">
+                <form string="Confirm">
+                    <div class="row">
+                        <div class="col-6">
+                            Double check if the selected records are correct.
+                        </div>
+                        <div class="col-6 text-muted">
+                            Ok button will export new pay-in sheet forms to excel. If you want to select/unselect more records, press Close button.
+                        </div>
+                    </div>
+                    <footer>
+                        <button class="oe_highlight" default_focus="1" name="print_new_payins_form_xls" string="Download" type="object"/>
+                        <button special="cancel" string="Close"/>
+                    </footer>
+                </form></field>
+        </record>
+        <record id="active_status_config_wizard_view" model="ir.ui.view">
+            <field name="name">active.status.wizard.form</field>
+            <field name="model">bb.payin.active.status.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Create Pay-In Sheets Pack">
+                    <group>
+                        <field name="reference_payin_date" required="1"/>
+                        <field name="next_schedule_run_date" required="1"/>
+                    </group>
+                    <footer>
+                        <button class="oe_highlight" name="update_active_status_config" string="Update Configuration" type="object"/>
+                        or
+                        <button class="oe_highlight" special="cancel" string="Cancel"/>
+                    </footer>
+                </form></field>
+        </record>
+        <record id="action_active_status_config_wizard" model="ir.actions.act_window">
+            <field name="name">Active Status Configuration</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">bb.payin.active.status.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="active_status_config_wizard_view"/>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>
