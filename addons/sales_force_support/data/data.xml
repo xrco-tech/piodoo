@@ -114,8 +114,6 @@
         <field name="interval_number">1</field>
         <field name="interval_type">months</field>
         <field name="nextcall" eval="(datetime.now()).strftime('%Y-%m-%d 17:00:00')"/>
-        <field name="numbercall">-1</field>
-        <field eval="False" name="doall"/>
     </record>
 
     <!-- Stuck Recruits Detection (from botle_buhle_custom)
@@ -128,8 +126,6 @@
         <field name="user_id" ref="base.user_root"/>
         <field name="interval_number">1</field>
         <field name="interval_type">hours</field>
-        <field name="numbercall">-1</field>
-        <field eval="False" name="doall"/>
     </record>
 
     <!-- Sync Remote SF Members (from bbb_sales_force_genealogy)
@@ -163,8 +159,6 @@ if len(recs_to_sync) > 0:
         </field>
         <field name="interval_number">1</field>
         <field name="interval_type">minute</field>
-        <field name="numbercall">-1</field>
-        <field name="doall" eval="False"/>
         <field name="active" eval="True"/>
     </record>
 
@@ -187,9 +181,7 @@ model.update_active_status()
         <field name="interval_number">1</field>
         <field name="interval_type">months</field>
         <field name="nextcall" eval="(datetime.now()).strftime('%Y-%m-%d 23:00:00')"/>
-        <field name="numbercall">1</field>
         <field name="priority">5</field>
-        <field name="doall" eval="False"/>
     </record>
 
     <!-- ============================================================
