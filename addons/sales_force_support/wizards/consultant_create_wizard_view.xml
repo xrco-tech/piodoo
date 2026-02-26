@@ -39,7 +39,7 @@
                         required="recruiter_source == 'internal' and recruitment_method != 'pay_in_sheet'"
                         options="{'no_create': True}"/>
                         <!-- Change From v14 after upgrade to v17 -->
-                        <field domain="[('job_title', 'in', ['Manager', 'Prospective Distributor', 'Distributor'])]" invisible="recruiter_source != 'internal' or recruitment_method != 'pay_in_sheet'" name="manager_id" options="{'no_create': True}" required="recruiter_source == 'internal' and recruitment_method == 'pay_in_sheet'"/>
+                        <field domain="[('genealogy', 'in', ['Manager', 'Prospective Distributor', 'Distributor'])]" invisible="recruiter_source != 'internal' or recruitment_method != 'pay_in_sheet'" name="manager_id" options="{'no_create': True}" required="recruiter_source == 'internal' and recruitment_method == 'pay_in_sheet'"/>
                         <field invisible="recruiter_source != 'external'" name="street" required="recruiter_source == 'external'"/>
                         <field invisible="recruiter_source != 'external'" name="suburb" required="recruiter_source == 'external'"/>
                         <field invisible="recruiter_source != 'external'" name="city" required="recruiter_source == 'external'"/>
