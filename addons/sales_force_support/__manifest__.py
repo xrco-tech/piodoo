@@ -21,7 +21,6 @@
         "base",
         "purchase",
         "sale",
-        "documents",
         "web",
         "voip",
         "base_geolocalize",

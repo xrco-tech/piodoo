@@ -97,14 +97,6 @@
     </record>
 
     <!-- ============================================================
-         DOCUMENTS FOLDER
-         (from bb_payin)
-    ============================================================ -->
-    <record model="documents.folder" id="sales_force_folder">
-        <field name="name">Sales Force</field>
-    </record>
-
-    <!-- ============================================================
          SCHEDULED ACTIONS (CRONS)
          model_id refs updated:
            hr.model_hr_employee  -> model_sf_member

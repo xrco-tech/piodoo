@@ -106,9 +106,6 @@ class BbPayinSheet(models.Model):
         "res.partner", string="Distribution", store=True
     )
     no_of_pages = fields.Integer("No. of Pages Registered", tracking=True)
-    documents_count = fields.Integer(
-        "Documents Count", compute="_compute_documents_count"
-    )
     is_locked = fields.Boolean("Is locked?")
     lines_capture_start_date = fields.Datetime("Lines Timer")
     lines_capture_stop_date = fields.Datetime("Lines Stop Timer")
@@ -200,27 +197,6 @@ class BbPayinSheet(models.Model):
     def action_unlock(self):
         self.is_locked = False
         self.allow_edit = True
-
-    def _compute_documents_count(self):
-        for rec in self:
-            rec.documents_count = 0
-
-    def action_add_documents(self):
-        view_id = self.env.ref("documents.document_view_kanban").id
-        folder_id = self.env.ref("sales_force_support.sales_force_folder").id
-        return {
-            "name": _("Documents"),
-            "type": "ir.actions.act_window",
-            "res_model": "documents.document",
-            "view_mode": "kanban",
-            "view_type": "kanban",
-            "views": [(view_id, "kanban")],
-            "target": "Current",
-            "domain": [
-                ("folder_id", "=", folder_id),
-                ("partner_id", "=", self.distribution_company_id.id),
-            ],
-        }
 
     def _compute_edit_registered_date(self):
         for rec in self:
@@ -1066,9 +1042,6 @@ class PayinDistributor(models.Model):
     lines_capture_start_date = fields.Datetime("Lines Timer")
     lines_capture_stop_date = fields.Datetime("Lines Stop Timer")
     no_of_pages = fields.Integer("No. of Pages Registered", tracking=True)
-    documents_count = fields.Integer(
-        "Documents Count", compute="_compute_documents_count"
-    )
     period = fields.Char(string="Capture Period", compute="_compute_period", store=True)
     is_locked = fields.Boolean("Is locked?")
     allow_edit = fields.Boolean("Allow Edit Distributor Summary", compute="_allow_edit")
@@ -1188,10 +1161,6 @@ class PayinDistributor(models.Model):
             for line in rec.payin_line_ids:
                 total += line.sales_difference
             rec.total_difference = total
-
-    def _compute_documents_count(self):
-        for rec in self:
-            rec.documents_count = 0
 
     def distributor_summary_page_totals(self):
         distribution_sales_page_total = 0
