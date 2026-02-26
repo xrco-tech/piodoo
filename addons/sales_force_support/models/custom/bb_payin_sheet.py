@@ -200,7 +200,7 @@ class BbPayinSheet(models.Model):
 
     def _compute_edit_registered_date(self):
         for rec in self:
-            if self.env.user.has_group("sales_force_support.group_received_date_edit"):
+            if self.env.user.has_group("sales_force_support.group_sales_force_user"):
                 rec.edit_registered_date = True
             else:
                 rec.edit_registered_date = False

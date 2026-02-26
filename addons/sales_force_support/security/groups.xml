@@ -17,41 +17,8 @@
              All Sales Force users receive full access.
         ============================================================ -->
         <record id="group_sales_force_user" model="res.groups">
-            <field name="name">User</field>
+            <field name="name">Administrator</field>
             <field name="category_id" ref="module_category_sales_force"/>
-            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
-        </record>
-
-        <!-- ============================================================
-             PAY-IN SHEETS OPERATIONAL GROUPS
-             Referenced in Python has_group() checks and view attrs.
-        ============================================================ -->
-        <record id="group_payin" model="res.groups">
-            <field name="name">Pay-In Sheets</field>
-            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
-        </record>
-
-        <record id="group_payin_admin" model="res.groups">
-            <field name="name">Pay-In Sheets Admin</field>
-        </record>
-
-        <record id="group_payin_edit" model="res.groups">
-            <field name="name">Pay-In Sheets / Edit After Capture</field>
-            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
-        </record>
-
-        <record id="group_received_date_edit" model="res.groups">
-            <field name="name">Pay-In Sheets / Update Received Date</field>
-            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
-        </record>
-
-        <record id="group_verify" model="res.groups">
-            <field name="name">Pay-In Sheets / Verify Pay-In</field>
-            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
-        </record>
-
-        <record id="group_lock_unlock" model="res.groups">
-            <field name="name">Pay-In Sheets / Lock and Unlock Pay-In</field>
             <field name="users" eval="[(4, ref('base.user_admin'))]"/>
         </record>
 
