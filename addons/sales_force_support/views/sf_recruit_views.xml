@@ -621,7 +621,7 @@
         <record id="action_sf_recruits_all" model="ir.actions.act_window">
             <field name="name">All Recruits</field>
             <field name="res_model">sf.recruit</field>
-            <field name="view_mode">kanban,list,form,pivot,graph,calendar,activity</field>
+            <field name="view_mode">kanban,list,form,pivot,graph,activity</field>
             <field name="view_id" ref="sf_recruit_view_kanban"/>
             <field name="search_view_id" ref="sf_recruit_view_search"/>
             <field name="context">{}</field>
