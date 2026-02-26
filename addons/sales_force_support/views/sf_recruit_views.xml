@@ -211,10 +211,6 @@
                         <div style="margin-top: 20px;">
                             <group>
                                 <group>
-                                    <field name="emp_company" string="Distributor Company Name"/>
-                                    <field name="reg_no"/>
-                                    <field name="vat"/>
-                                    <field name="paye"/>
                                     <field name="consumerview_ref" invisible="1"/>
                                     <label for="sa_id"
                                            invisible="consumerview_ref != False or sa_id == False or address_verified == True"
@@ -335,7 +331,6 @@
                                                 confirm="Are you sure you want to skip credit vetting?"
                                                 string="Skip"/>
                                     </div>
-                                    <field name="bad_debts"/>
                                     <field name="last_contact_date"   readonly="1"/>
                                     <field name="last_contact_type"   readonly="1"/>
                                     <field name="language"/>
@@ -346,7 +341,6 @@
                                     <field name="call_count"          readonly="1"/>
                                     <field name="days_in_current_recruiting_stage" readonly="1"/>
                                     <field name="days_in_recruiting_process"       readonly="1"/>
-                                    <field name="create_date_bb"      readonly="1" force_save="1"/>
                                 </group>
                             </group>
                         </div>
@@ -449,9 +443,6 @@
                                 </group>
                             </page>
 
-                            <page name="internal_notes" string="Internal Notes">
-                                <field name="description"/>
-                            </page>
                         </notebook>
                     </sheet>
                     <div class="oe_chatter">
@@ -481,7 +472,6 @@
                     <field name="recruiter_id"/>
                     <field name="mobile"/>
                     <field name="mobile_2"/>
-                    <field name="emp_company" string="Distributor Company Name" optional="hide"/>
                 </list>
             </field>
         </record>
