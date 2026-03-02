@@ -8,6 +8,12 @@
             <field name="arch" type="xml">
                 <form string="Contact Centre Contact">
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button class="oe_stat_button" type="object"
+                                    name="action_view_messages" icon="fa-comments">
+                                <field name="message_count" widget="statinfo" string="Messages"/>
+                            </button>
+                        </div>
                         <group>
                             <group>
                                 <field name="partner_id"/>
@@ -16,7 +22,37 @@
                                 <field name="email"/>
                                 <field name="last_contact_date"/>
                             </group>
+                            <group>
+                                <field name="tag_ids" widget="many2many_tags"
+                                       options="{'color_field': 'color'}"/>
+                            </group>
                         </group>
+                        <notebook>
+                            <page string="Campaigns">
+                                <field name="campaign_ids">
+                                    <list>
+                                        <field name="name"/>
+                                        <field name="channel"/>
+                                        <field name="campaign_type"/>
+                                        <field name="state"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Message History">
+                                <field name="message_ids" readonly="1">
+                                    <list>
+                                        <field name="message_timestamp"/>
+                                        <field name="channel"/>
+                                        <field name="direction"/>
+                                        <field name="body_text"/>
+                                        <field name="status" widget="badge"
+                                               decoration-success="status in ('delivered','read')"
+                                               decoration-warning="status == 'sent'"
+                                               decoration-danger="status == 'failed'"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>
@@ -28,11 +64,13 @@
             <field name="model">contact.centre.contact</field>
             <field name="arch" type="xml">
                 <list string="Contacts">
-                    <field name="partner_id"/>
                     <field name="name"/>
                     <field name="phone_number"/>
                     <field name="email"/>
+                    <field name="tag_ids" widget="many2many_tags"
+                           options="{'color_field': 'color'}"/>
                     <field name="last_contact_date"/>
+                    <field name="message_count" string="Messages"/>
                 </list>
             </field>
         </record>

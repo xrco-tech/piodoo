@@ -1,6 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- SMS Config Form View -->
+        <record id="view_contact_centre_sms_config_form" model="ir.ui.view">
+            <field name="name">contact.centre.sms.config.form</field>
+            <field name="model">contact.centre.sms.config</field>
+            <field name="arch" type="xml">
+                <form string="SMS Settings">
+                    <sheet>
+                        <group>
+                            <group string="General">
+                                <field name="name"/>
+                                <field name="active"/>
+                                <field name="provider"/>
+                                <field name="use_infobip_api" invisible="provider != 'infobip'"/>
+                            </group>
+                            <group string="InfoBip Credentials" invisible="provider != 'infobip'">
+                                <field name="infobip_base_url"/>
+                                <field name="infobip_api_key" password="True"/>
+                                <field name="infobip_default_from_number"/>
+                                <field name="infobip_retention_period"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
         <record id="action_sms_config" model="ir.actions.act_window">
             <field name="name">SMS Settings</field>
             <field name="res_model">contact.centre.sms.config</field>

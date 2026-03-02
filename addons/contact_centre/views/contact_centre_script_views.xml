@@ -1,6 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- Script List View -->
+        <record id="view_contact_centre_script_list" model="ir.ui.view">
+            <field name="name">contact.centre.script.list</field>
+            <field name="model">contact.centre.script</field>
+            <field name="arch" type="xml">
+                <list string="Dynamic Scripts">
+                    <field name="name"/>
+                    <field name="channel"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Script Form View -->
+        <record id="view_contact_centre_script_form" model="ir.ui.view">
+            <field name="name">contact.centre.script.form</field>
+            <field name="model">contact.centre.script</field>
+            <field name="arch" type="xml">
+                <form string="Dynamic Script">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="channel"/>
+                            <field name="active"/>
+                        </group>
+                        <field name="content_html" widget="html"/>
+                        <field name="notes" placeholder="Internal notes..."/>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
         <record id="action_contact_centre_script" model="ir.actions.act_window">
             <field name="name">Dynamic Scripts</field>
             <field name="res_model">contact.centre.script</field>

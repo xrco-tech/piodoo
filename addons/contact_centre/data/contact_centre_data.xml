@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-        <!-- Placeholder for initial data -->
-        <!-- Example: Tags, Categories, etc. -->
+        <!-- Message ID sequence -->
+        <record id="seq_contact_centre_message" model="ir.sequence">
+            <field name="name">Contact Centre Message</field>
+            <field name="code">contact.centre.message</field>
+            <field name="prefix">CCM/</field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

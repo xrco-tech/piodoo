@@ -1,6 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- Email Config Form View -->
+        <record id="view_contact_centre_email_config_form" model="ir.ui.view">
+            <field name="name">contact.centre.email.config.form</field>
+            <field name="model">contact.centre.email.config</field>
+            <field name="arch" type="xml">
+                <form string="Email Settings">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="active"/>
+                            <field name="mail_server_id"/>
+                            <field name="from_email"/>
+                            <field name="from_name"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
         <record id="action_email_config" model="ir.actions.act_window">
             <field name="name">Email Settings</field>
             <field name="res_model">contact.centre.email.config</field>

@@ -19,7 +19,7 @@ Features:
 * Template management
 * Configuration for WhatsApp and SMS providers
     """,
-    'author': 'Your Company',
+    'author': 'If I Could Code (Org)',
     'license': 'LGPL-3',
     'depends': [
         'base',
@@ -27,6 +27,10 @@ Features:
         'mail',
         'utm',
         'web',
+        'sms',       # Odoo SMS framework (sms.sms model)
+        'whatsapp',  # Odoo WhatsApp framework (whatsapp.message, whatsapp.account, etc.)
+        'comm_sms',  # InfoBip SMS integration
+        'whatsapp_custom',  # AI chatbot, WebRTC calling, flow management
     ],
     'data': [
         'security/contact_centre_security.xml',
@@ -37,6 +41,7 @@ Features:
         'views/contact_centre_campaign_views.xml',
         'views/contact_centre_script_views.xml',
         'views/contact_centre_automation_views.xml',
+        'views/contact_centre_chatbot_views.xml',
         'views/whatsapp_config_views.xml',
         'views/sms_config_views.xml',
         'views/email_config_views.xml',

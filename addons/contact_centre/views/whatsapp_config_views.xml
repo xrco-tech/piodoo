@@ -1,6 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- WhatsApp Config Form View -->
+        <record id="view_contact_centre_whatsapp_config_form" model="ir.ui.view">
+            <field name="name">contact.centre.whatsapp.config.form</field>
+            <field name="model">contact.centre.whatsapp.config</field>
+            <field name="arch" type="xml">
+                <form string="WhatsApp Settings">
+                    <sheet>
+                        <group>
+                            <group string="Account">
+                                <field name="name"/>
+                                <field name="active"/>
+                                <field name="wa_account_id"/>
+                                <field name="account_id"/>
+                            </group>
+                            <group string="AI Agent (OpenAI)">
+                                <field name="open_ai_api_key" password="True"/>
+                            </group>
+                        </group>
+                        <group string="Webhook / Integration">
+                            <field name="external_trigger_api_key" password="True"/>
+                            <field name="auto_answer_whatsapp_calls"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Template Form View -->
+        <record id="view_contact_centre_template_whatsapp_form" model="ir.ui.view">
+            <field name="name">contact.centre.template.whatsapp.form</field>
+            <field name="model">contact.centre.template</field>
+            <field name="arch" type="xml">
+                <form string="WhatsApp Template">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="channel"/>
+                            <field name="wa_template_id"/>
+                            <field name="active"/>
+                        </group>
+                        <field name="body_text"/>
+                        <field name="notes"/>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- WhatsApp Template List View -->
+        <record id="view_contact_centre_template_list" model="ir.ui.view">
+            <field name="name">contact.centre.template.list</field>
+            <field name="model">contact.centre.template</field>
+            <field name="arch" type="xml">
+                <list string="Templates">
+                    <field name="name"/>
+                    <field name="channel" widget="badge"/>
+                    <field name="wa_template_id" optional="show"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
         <record id="action_whatsapp_config" model="ir.actions.act_window">
             <field name="name">WhatsApp Settings</field>
             <field name="res_model">contact.centre.whatsapp.config</field>

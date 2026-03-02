@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ================================================================
+             Chatbot – List View
+        ================================================================ -->
+        <record id="view_contact_centre_chatbot_list" model="ir.ui.view">
+            <field name="name">contact.centre.chatbot.list</field>
+            <field name="model">contact.centre.chatbot</field>
+            <field name="arch" type="xml">
+                <list string="Chatbots">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="wa_chatbot_id"/>
+                    <field name="channel_whatsapp" widget="boolean_toggle"/>
+                    <field name="channel_sms" widget="boolean_toggle"/>
+                    <field name="channel_email" widget="boolean_toggle"/>
+                    <field name="is_default" widget="boolean_toggle"/>
+                    <field name="session_count" string="Sessions"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             Chatbot – Form View
+        ================================================================ -->
+        <record id="view_contact_centre_chatbot_form" model="ir.ui.view">
+            <field name="name">contact.centre.chatbot.form</field>
+            <field name="model">contact.centre.chatbot</field>
+            <field name="arch" type="xml">
+                <form string="Omni-Channel Chatbot">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button class="oe_stat_button" type="object"
+                                    name="action_view_sessions" icon="fa-comments">
+                                <field name="session_count" widget="statinfo" string="Sessions"/>
+                            </button>
+                        </div>
+                        <group>
+                            <group string="Identity">
+                                <field name="name"/>
+                                <field name="active"/>
+                                <field name="sequence"
+                                       help="Lower value = higher priority when matching triggers"/>
+                                <field name="campaign_id"/>
+                            </group>
+                            <group string="Active Channels">
+                                <field name="channel_whatsapp"/>
+                                <field name="channel_sms"/>
+                                <field name="channel_email"/>
+                            </group>
+                        </group>
+                        <group string="Flow Engine">
+                            <field name="wa_chatbot_id"
+                                   help="The WhatsApp Chatbot flow that drives the conversation logic"/>
+                        </group>
+                        <group string="Trigger Configuration">
+                            <field name="is_default"
+                                   help="Activate when no keyword matches; only one chatbot per channel should be default"/>
+                            <field name="trigger_keywords" widget="text"
+                                   placeholder="One keyword per line, e.g.&#10;hello&#10;start&#10;hi there"/>
+                        </group>
+                        <group string="Messages">
+                            <field name="welcome_message" widget="text"
+                                   placeholder="Sent when the chatbot is first triggered…"/>
+                            <field name="end_message" widget="text"
+                                   placeholder="Sent when the flow ends…"/>
+                        </group>
+                        <field name="description" placeholder="Internal description…"/>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             Session – List View
+        ================================================================ -->
+        <record id="view_contact_centre_chatbot_session_list" model="ir.ui.view">
+            <field name="name">contact.centre.chatbot.session.list</field>
+            <field name="model">contact.centre.chatbot.session</field>
+            <field name="arch" type="xml">
+                <list string="Chatbot Sessions"
+                      decoration-success="state == 'completed'"
+                      decoration-warning="state == 'waiting_human'"
+                      decoration-danger="state == 'abandoned'"
+                      default_order="write_date desc">
+                    <field name="write_date" string="Last Activity"/>
+                    <field name="chatbot_id"/>
+                    <field name="contact_id"/>
+                    <field name="channel" widget="badge"/>
+                    <field name="state" widget="badge"
+                           decoration-info="state == 'active'"
+                           decoration-success="state == 'completed'"
+                           decoration-warning="state == 'waiting_human'"
+                           decoration-danger="state == 'abandoned'"/>
+                    <field name="current_step_id" string="Current Step"/>
+                    <field name="message_count" string="Messages"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             Session – Form View
+        ================================================================ -->
+        <record id="view_contact_centre_chatbot_session_form" model="ir.ui.view">
+            <field name="name">contact.centre.chatbot.session.form</field>
+            <field name="model">contact.centre.chatbot.session</field>
+            <field name="arch" type="xml">
+                <form string="Chatbot Session">
+                    <header>
+                        <button name="action_escalate_to_human" string="Escalate to Human Agent"
+                                type="object" class="btn-warning"
+                                invisible="state != 'active'"/>
+                        <button name="action_end_session" string="End Session"
+                                type="object"
+                                invisible="state not in ('active', 'waiting_human')"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="active,waiting_human,completed"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="chatbot_id"/>
+                                <field name="contact_id"/>
+                                <field name="channel"/>
+                            </group>
+                            <group>
+                                <field name="current_step_id"/>
+                                <field name="wa_chatbot_contact_id"/>
+                                <field name="message_count"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Transcript">
+                                <field name="message_ids" readonly="1">
+                                    <list string="Transcript">
+                                        <field name="create_date" string="Time"/>
+                                        <field name="direction" widget="badge"
+                                               decoration-info="direction == 'inbound'"
+                                               decoration-success="direction == 'outbound'"/>
+                                        <field name="body"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Collected Data">
+                                <field name="collected_data" widget="json"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             Actions
+        ================================================================ -->
+        <record id="action_contact_centre_chatbot" model="ir.actions.act_window">
+            <field name="name">Chatbots</field>
+            <field name="res_model">contact.centre.chatbot</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_contact_centre_chatbot_session" model="ir.actions.act_window">
+            <field name="name">Chatbot Sessions</field>
+            <field name="res_model">contact.centre.chatbot.session</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_contact_centre_chatbot_session_active" model="ir.actions.act_window">
+            <field name="name">Active Sessions</field>
+            <field name="res_model">contact.centre.chatbot.session</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('state', '=', 'active')]</field>
+        </record>
+
+        <record id="action_contact_centre_chatbot_session_human" model="ir.actions.act_window">
+            <field name="name">Waiting for Human Agent</field>
+            <field name="res_model">contact.centre.chatbot.session</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('state', '=', 'waiting_human')]</field>
+        </record>
+    </data>
+</odoo>

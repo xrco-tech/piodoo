@@ -159,6 +159,41 @@
                   action="action_contact_centre_campaign_outbound_email"
                   sequence="40"/>
 
+        <!-- Chatbots -->
+        <menuitem id="menu_contact_centre_chatbots"
+                  name="Chatbots"
+                  parent="menu_contact_centre_main"
+                  sequence="45"/>
+
+        <menuitem id="menu_contact_centre_chatbots_list"
+                  name="Manage Chatbots"
+                  parent="menu_contact_centre_chatbots"
+                  action="action_contact_centre_chatbot"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_chatbot_sessions"
+                  name="Sessions"
+                  parent="menu_contact_centre_chatbots"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_chatbot_sessions_all"
+                  name="All Sessions"
+                  parent="menu_contact_centre_chatbot_sessions"
+                  action="action_contact_centre_chatbot_session"
+                  sequence="10"/>
+
+        <menuitem id="menu_contact_centre_chatbot_sessions_active"
+                  name="Active"
+                  parent="menu_contact_centre_chatbot_sessions"
+                  action="action_contact_centre_chatbot_session_active"
+                  sequence="20"/>
+
+        <menuitem id="menu_contact_centre_chatbot_sessions_human"
+                  name="Waiting for Agent"
+                  parent="menu_contact_centre_chatbot_sessions"
+                  action="action_contact_centre_chatbot_session_human"
+                  sequence="30"/>
+
         <!-- Configuration -->
         <menuitem id="menu_contact_centre_config"
                   name="Configuration"

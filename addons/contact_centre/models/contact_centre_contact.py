@@ -37,6 +37,13 @@ class ContactCentreContact(models.Model):
         readonly=False,
     )
     last_contact_date = fields.Datetime('Last Contact Date')
+    tag_ids = fields.Many2many(
+        'contact.centre.tag',
+        'contact_centre_contact_tag_rel',
+        'contact_id',
+        'tag_id',
+        string='Tags',
+    )
     message_ids = fields.One2many(
         'contact.centre.message',
         'contact_id',
@@ -49,6 +56,12 @@ class ContactCentreContact(models.Model):
         'campaign_id',
         string='Campaigns',
     )
+    message_count = fields.Integer('Message Count', compute='_compute_message_count')
+
+    @api.depends('message_ids')
+    def _compute_message_count(self):
+        for contact in self:
+            contact.message_count = len(contact.message_ids)
 
 
 class ContactCentreTag(models.Model):

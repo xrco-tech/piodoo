@@ -1,7 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Placeholder campaign actions - TODO: Implement full views -->
+        <!-- Campaign List View -->
+        <record id="view_contact_centre_campaign_list" model="ir.ui.view">
+            <field name="name">contact.centre.campaign.list</field>
+            <field name="model">contact.centre.campaign</field>
+            <field name="arch" type="xml">
+                <list string="Campaigns"
+                      decoration-success="state == 'running'"
+                      decoration-muted="state in ('done', 'cancelled')">
+                    <field name="name"/>
+                    <field name="campaign_type"/>
+                    <field name="channel"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'running'"
+                           decoration-info="state == 'draft'"
+                           decoration-muted="state in ('done', 'cancelled')"/>
+                    <field name="date_start"/>
+                    <field name="date_end"/>
+                    <field name="contact_count" string="Contacts"/>
+                    <field name="message_count" string="Messages"/>
+                    <field name="delivered_count" string="Delivered"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Campaign Form View -->
+        <record id="view_contact_centre_campaign_form" model="ir.ui.view">
+            <field name="name">contact.centre.campaign.form</field>
+            <field name="model">contact.centre.campaign</field>
+            <field name="arch" type="xml">
+                <form string="Campaign">
+                    <header>
+                        <button name="action_start" string="Start" type="object"
+                                class="btn-primary" invisible="state != 'draft'"/>
+                        <button name="action_done" string="Mark Done" type="object"
+                                invisible="state != 'running'"/>
+                        <button name="action_cancel" string="Cancel" type="object"
+                                invisible="state not in ('draft', 'running')"/>
+                        <button name="action_reset_draft" string="Reset to Draft" type="object"
+                                invisible="state not in ('done', 'cancelled')"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="draft,running,done"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="campaign_type"/>
+                                <field name="channel"/>
+                                <field name="template_id"/>
+                                <field name="script_id"/>
+                            </group>
+                            <group>
+                                <field name="date_start"/>
+                                <field name="date_end"/>
+                                <field name="sent_count" string="Sent"/>
+                                <field name="delivered_count" string="Delivered"/>
+                                <field name="failed_count" string="Failed"/>
+                            </group>
+                        </group>
+                        <field name="description" placeholder="Campaign description..."/>
+                        <notebook>
+                            <page string="Contacts">
+                                <field name="contact_ids">
+                                    <list>
+                                        <field name="name"/>
+                                        <field name="phone_number"/>
+                                        <field name="email"/>
+                                        <field name="last_contact_date"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Automated Replies">
+                                <field name="automation_ids">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="name"/>
+                                        <field name="trigger_type"/>
+                                        <field name="trigger_keyword"/>
+                                        <field name="response_type"/>
+                                        <field name="active"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Message Log">
+                                <field name="message_ids" readonly="1">
+                                    <list>
+                                        <field name="message_timestamp"/>
+                                        <field name="contact_id"/>
+                                        <field name="channel"/>
+                                        <field name="direction"/>
+                                        <field name="body_text"/>
+                                        <field name="status" widget="badge"
+                                               decoration-success="status in ('delivered','read')"
+                                               decoration-warning="status == 'sent'"
+                                               decoration-danger="status == 'failed'"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- Campaign Kanban View -->
+        <record id="view_contact_centre_campaign_kanban" model="ir.ui.view">
+            <field name="name">contact.centre.campaign.kanban</field>
+            <field name="model">contact.centre.campaign</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="state">
+                    <field name="name"/>
+                    <field name="channel"/>
+                    <field name="campaign_type"/>
+                    <field name="state"/>
+                    <field name="contact_count"/>
+                    <field name="message_count"/>
+                    <templates>
+                        <t t-name="card">
+                            <div class="oe_kanban_global_click">
+                                <strong><field name="name"/></strong>
+                                <div class="text-muted">
+                                    <field name="channel"/> · <field name="campaign_type"/>
+                                </div>
+                                <div class="mt-2">
+                                    <span class="badge bg-info"><field name="contact_count"/> contacts</span>
+                                    <span class="badge bg-secondary ms-1"><field name="message_count"/> messages</span>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
         <record id="action_contact_centre_campaign_overview" model="ir.actions.act_window">
             <field name="name">Campaign Overview</field>
             <field name="res_model">contact.centre.campaign</field>
