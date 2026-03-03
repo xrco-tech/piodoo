@@ -17,9 +17,7 @@
             <field name="code">model._cron_process_campaign_sends()</field>
             <field name="interval_number">1</field>
             <field name="interval_type">minutes</field>
-            <field name="numbercall">-1</field>
             <field name="active">True</field>
-            <field name="doall">False</field>
         </record>
     </data>
 </odoo>
