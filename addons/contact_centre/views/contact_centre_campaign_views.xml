@@ -102,6 +102,23 @@
                                     </list>
                                 </field>
                             </page>
+                            <page string="Sending Rules" invisible="campaign_type != 'outbound'">
+                                <group>
+                                    <group string="Throttling">
+                                        <field name="throttle_delay"
+                                               help="Seconds to wait between each individual message send. Prevents carrier rate-limiting."/>
+                                        <field name="batch_send"/>
+                                        <field name="batch_size" invisible="not batch_send"/>
+                                        <field name="batch_delay" invisible="not batch_send"
+                                               help="Seconds the cron will wait before dispatching the next batch."/>
+                                    </group>
+                                    <group string="Progress" invisible="state == 'draft'">
+                                        <field name="send_progress" string="Contacts Sent"/>
+                                        <field name="contact_count" string="Total Contacts"/>
+                                        <field name="send_last_batch_at"/>
+                                    </group>
+                                </group>
+                            </page>
                             <page string="Message Log">
                                 <field name="message_ids" readonly="1">
                                     <list>
