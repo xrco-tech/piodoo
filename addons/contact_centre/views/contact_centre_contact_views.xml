@@ -1,7 +1,126 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Contact Form View -->
+        <!-- ================================================================
+             Search View
+        ================================================================ -->
+        <record id="view_contact_centre_contact_search" model="ir.ui.view">
+            <field name="name">contact.centre.contact.search</field>
+            <field name="model">contact.centre.contact</field>
+            <field name="arch" type="xml">
+                <search string="Search Contacts">
+                    <!-- Quick search covers name + phone in one box -->
+                    <field name="name" string="Name / Phone"
+                           filter_domain="['|', ('name', 'ilike', self), ('phone_number', 'ilike', self)]"/>
+                    <field name="email"/>
+                    <field name="tag_ids" string="Tag"/>
+                    <field name="campaign_ids" string="Campaign"/>
+                    <separator/>
+                    <filter string="Has Active Campaign" name="has_campaigns"
+                            domain="[('campaign_ids.state', '=', 'running')]"/>
+                    <filter string="Contacted in Last 30 Days" name="recent"
+                            domain="[('last_contact_date', '&gt;=', (context_today() - relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="Never Contacted" name="never_contacted"
+                            domain="[('last_contact_date', '=', False)]"/>
+                    <filter string="Has Messages" name="has_messages"
+                            domain="[('message_ids', '!=', False)]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter string="Tags" name="group_by_tags"
+                                context="{'group_by': 'tag_ids'}"/>
+                        <filter string="Last Contact (Month)" name="group_by_month"
+                                context="{'group_by': 'last_contact_date:month'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             Kanban View  (used by the Overview)
+        ================================================================ -->
+        <record id="view_contact_centre_contact_kanban" model="ir.ui.view">
+            <field name="name">contact.centre.contact.kanban</field>
+            <field name="model">contact.centre.contact</field>
+            <field name="arch" type="xml">
+                <kanban class="o_kanban_small_column">
+                    <field name="name"/>
+                    <field name="phone_number"/>
+                    <field name="email"/>
+                    <field name="tag_ids"/>
+                    <field name="last_contact_date"/>
+                    <field name="message_count"/>
+                    <field name="campaign_count"/>
+                    <field name="partner_id"/>
+                    <templates>
+                        <t t-name="card">
+                            <!-- Header row: avatar + name + message badge -->
+                            <div class="d-flex align-items-start gap-2 mb-2">
+                                <field name="partner_id" widget="many2one_avatar"
+                                       nolabel="1" readonly="1"/>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="fw-bold text-truncate fs-6">
+                                        <field name="name"/>
+                                    </div>
+                                    <div class="text-muted small text-truncate">
+                                        <i class="fa fa-phone fa-fw me-1"/>
+                                        <field name="phone_number"/>
+                                    </div>
+                                    <div class="text-muted small text-truncate">
+                                        <i class="fa fa-envelope fa-fw me-1"/>
+                                        <field name="email"/>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0">
+                                    <span class="badge rounded-pill bg-primary"
+                                          title="Messages">
+                                        <i class="fa fa-comments"/>&#160;<field name="message_count"/>
+                                    </span>
+                                    <span class="badge rounded-pill bg-info"
+                                          invisible="campaign_count == 0"
+                                          title="Campaigns">
+                                        <i class="fa fa-bullhorn"/>&#160;<field name="campaign_count"/>
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- Tags -->
+                            <field name="tag_ids" widget="many2many_tags"
+                                   options="{'color_field': 'color'}"/>
+                            <!-- Footer: last contact date -->
+                            <div class="text-muted small mt-2"
+                                 invisible="last_contact_date == False">
+                                <i class="fa fa-clock-o fa-fw me-1"/>
+                                <field name="last_contact_date" widget="date"/>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             List View
+        ================================================================ -->
+        <record id="view_contact_centre_contact_tree" model="ir.ui.view">
+            <field name="name">contact.centre.contact.list</field>
+            <field name="model">contact.centre.contact</field>
+            <field name="arch" type="xml">
+                <list string="Contacts"
+                      decoration-muted="last_contact_date == False">
+                    <field name="name"/>
+                    <field name="phone_number"/>
+                    <field name="email"/>
+                    <field name="tag_ids" widget="many2many_tags"
+                           options="{'color_field': 'color'}"/>
+                    <field name="last_contact_date" optional="show"/>
+                    <field name="message_count" string="Messages" optional="show"/>
+                    <field name="campaign_count" string="Campaigns" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ================================================================
+             Form View
+        ================================================================ -->
         <record id="view_contact_centre_contact_form" model="ir.ui.view">
             <field name="name">contact.centre.contact.form</field>
             <field name="model">contact.centre.contact</field>
@@ -14,6 +133,8 @@
                                 <field name="message_count" widget="statinfo" string="Messages"/>
                             </button>
                         </div>
+                        <field name="partner_id" widget="many2one_avatar_contact"
+                               class="oe_avatar" nolabel="1" readonly="1"/>
                         <group>
                             <group>
                                 <field name="partner_id"/>
@@ -32,9 +153,12 @@
                                 <field name="campaign_ids">
                                     <list>
                                         <field name="name"/>
-                                        <field name="channel"/>
+                                        <field name="channel" widget="badge"/>
                                         <field name="campaign_type"/>
-                                        <field name="state"/>
+                                        <field name="state" widget="badge"
+                                               decoration-success="state == 'running'"
+                                               decoration-info="state == 'draft'"
+                                               decoration-muted="state in ('done', 'cancelled')"/>
                                     </list>
                                 </field>
                             </page>
@@ -42,7 +166,7 @@
                                 <field name="message_ids" readonly="1">
                                     <list>
                                         <field name="message_timestamp"/>
-                                        <field name="channel"/>
+                                        <field name="channel" widget="badge"/>
                                         <field name="direction"/>
                                         <field name="body_text"/>
                                         <field name="status" widget="badge"
@@ -58,35 +182,21 @@
             </field>
         </record>
 
-        <!-- Contact List View -->
-        <record id="view_contact_centre_contact_tree" model="ir.ui.view">
-            <field name="name">contact.centre.contact.list</field>
-            <field name="model">contact.centre.contact</field>
-            <field name="arch" type="xml">
-                <list string="Contacts">
-                    <field name="name"/>
-                    <field name="phone_number"/>
-                    <field name="email"/>
-                    <field name="tag_ids" widget="many2many_tags"
-                           options="{'color_field': 'color'}"/>
-                    <field name="last_contact_date"/>
-                    <field name="message_count" string="Messages"/>
-                </list>
-            </field>
-        </record>
-
-        <!-- Action -->
+        <!-- ================================================================
+             Actions
+        ================================================================ -->
         <record id="action_contact_centre_contact" model="ir.actions.act_window">
             <field name="name">Contacts</field>
             <field name="res_model">contact.centre.contact</field>
             <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_contact_centre_contact_search"/>
         </record>
 
-        <!-- Overview Action -->
         <record id="action_contact_centre_overview" model="ir.actions.act_window">
             <field name="name">Contact Centre Overview</field>
             <field name="res_model">contact.centre.contact</field>
             <field name="view_mode">kanban,list,form</field>
+            <field name="search_view_id" ref="view_contact_centre_contact_search"/>
         </record>
     </data>
 </odoo>

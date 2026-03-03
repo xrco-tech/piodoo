@@ -155,6 +155,8 @@ class ContactCentreCampaign(models.Model):
     def action_reset_draft(self):
         self.write({
             'state': 'draft',
+            'date_start': False,
+            'date_end': False,
             'send_progress': 0,
             'send_last_batch_at': False,
         })

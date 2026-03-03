@@ -57,11 +57,17 @@ class ContactCentreContact(models.Model):
         string='Campaigns',
     )
     message_count = fields.Integer('Message Count', compute='_compute_message_count')
+    campaign_count = fields.Integer('Campaign Count', compute='_compute_campaign_count')
 
     @api.depends('message_ids')
     def _compute_message_count(self):
         for contact in self:
             contact.message_count = len(contact.message_ids)
+
+    @api.depends('campaign_ids')
+    def _compute_campaign_count(self):
+        for contact in self:
+            contact.campaign_count = len(contact.campaign_ids)
 
     def action_view_messages(self):
         self.ensure_one()
