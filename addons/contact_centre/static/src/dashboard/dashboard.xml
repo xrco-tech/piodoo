@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="contact_centre.Dashboard">
+        <div class="o_action o_cc_dashboard p-4">
+
+            <!-- Loading spinner -->
+            <div t-if="state.loading" class="d-flex justify-content-center align-items-center" style="min-height:300px">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading…</span>
+                </div>
+            </div>
+
+            <div t-else="">
+                <!-- Page title -->
+                <div class="mb-4">
+                    <h3 class="fw-bold mb-0">
+                        <i class="fa fa-tachometer me-2 text-muted"/>Contact Centre
+                    </h3>
+                    <p class="text-muted small mb-0">Overview — click any card to explore</p>
+                </div>
+
+                <!-- Stat cards row -->
+                <div class="row g-4">
+
+                    <!-- ── Contacts ──────────────────────────────────────── -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm o_cc_card"
+                             t-on-click="openContacts">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <p class="o_cc_label">Contacts</p>
+                                        <h2 class="o_cc_main_stat">
+                                            <t t-esc="state.contacts.total"/>
+                                        </h2>
+                                    </div>
+                                    <div class="o_cc_icon_wrap o_cc_icon_primary">
+                                        <i class="fa fa-users"/>
+                                    </div>
+                                </div>
+                                <div class="o_cc_sub">
+                                    <span class="text-success fw-semibold">
+                                        +<t t-esc="state.contacts.new_this_month"/>
+                                    </span>
+                                    <span class="text-muted ms-1">new this month</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Messages ──────────────────────────────────────── -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm o_cc_card"
+                             t-on-click="openMessages">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <p class="o_cc_label">Messages</p>
+                                        <h2 class="o_cc_main_stat">
+                                            <t t-esc="state.messages.total"/>
+                                        </h2>
+                                    </div>
+                                    <div class="o_cc_icon_wrap o_cc_icon_info">
+                                        <i class="fa fa-comments"/>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-3 o_cc_sub">
+                                    <span>
+                                        <span class="fw-semibold text-dark">
+                                            <t t-esc="state.messages.today"/>
+                                        </span>
+                                        <span class="text-muted ms-1">today</span>
+                                    </span>
+                                    <span class="o_cc_sublink"
+                                          t-att-class="{'text-danger fw-semibold': state.messages.failed > 0, 'text-muted': state.messages.failed === 0}"
+                                          t-on-click="openFailedMessages">
+                                        <t t-esc="state.messages.failed"/> failed
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Campaigns ─────────────────────────────────────── -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm o_cc_card"
+                             t-on-click="openCampaigns">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <p class="o_cc_label">Campaigns</p>
+                                        <h2 class="o_cc_main_stat">
+                                            <t t-esc="state.campaigns.total"/>
+                                        </h2>
+                                    </div>
+                                    <div class="o_cc_icon_wrap o_cc_icon_warning">
+                                        <i class="fa fa-bullhorn"/>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-3 o_cc_sub">
+                                    <span class="o_cc_sublink"
+                                          t-on-click="openRunningCampaigns">
+                                        <span class="fw-semibold"
+                                              t-att-class="{'text-success': state.campaigns.running > 0, 'text-muted': state.campaigns.running === 0}">
+                                            <t t-esc="state.campaigns.running"/>
+                                        </span>
+                                        <span class="text-muted ms-1">running</span>
+                                    </span>
+                                    <span>
+                                        <span class="fw-semibold text-dark">
+                                            <t t-esc="state.campaigns.done"/>
+                                        </span>
+                                        <span class="text-muted ms-1">done</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Chatbots ───────────────────────────────────────── -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm o_cc_card"
+                             t-on-click="openChatbots">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <p class="o_cc_label">Chatbots</p>
+                                        <h2 class="o_cc_main_stat">
+                                            <t t-esc="state.chatbots.total"/>
+                                        </h2>
+                                    </div>
+                                    <div class="o_cc_icon_wrap o_cc_icon_success">
+                                        <i class="fa fa-commenting"/>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-3 o_cc_sub">
+                                    <span>
+                                        <span class="fw-semibold text-primary">
+                                            <t t-esc="state.chatbots.active"/>
+                                        </span>
+                                        <span class="text-muted ms-1">active sessions</span>
+                                    </span>
+                                    <span class="o_cc_sublink"
+                                          t-on-click="openWaitingSessions">
+                                        <span class="fw-semibold"
+                                              t-att-class="{'text-danger': state.chatbots.waiting > 0, 'text-muted': state.chatbots.waiting === 0}">
+                                            <t t-esc="state.chatbots.waiting"/>
+                                        </span>
+                                        <span class="text-muted ms-1">waiting</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /row -->
+            </div><!-- /loaded -->
+        </div>
+    </t>
+
+</templates>

@@ -36,6 +36,7 @@ Features:
         'security/contact_centre_security.xml',
         'security/ir.model.access.csv',
         'data/contact_centre_data.xml',
+        'views/contact_centre_dashboard_views.xml',
         'views/contact_centre_contact_views.xml',
         'views/contact_centre_message_views.xml',
         'views/contact_centre_campaign_views.xml',
@@ -47,6 +48,13 @@ Features:
         'views/email_config_views.xml',
         'views/contact_centre_menus.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'contact_centre/static/src/dashboard/dashboard.js',
+            'contact_centre/static/src/dashboard/dashboard.xml',
+            'contact_centre/static/src/dashboard/dashboard.scss',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,
