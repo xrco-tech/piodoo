@@ -3,7 +3,7 @@
 Omni-channel chatbot for Contact Centre.
 
 This model acts as a thin configuration wrapper around `whatsapp.chatbot`
-(from whatsapp_custom) and extends it to support SMS and email channels.
+(from comm_whatsapp_chatbot) and extends it to support SMS and email channels.
 
 Architecture
 ------------
@@ -215,21 +215,11 @@ class ContactCentreChatbot(models.Model):
         phone = contact.phone_number
         if not phone:
             return
-        wa_account = (
-            self.wa_chatbot_id.wa_account_id
-            or self.env['whatsapp.account'].search([], limit=1)
-        )
-        if not wa_account:
-            _logger.warning("No WhatsApp account configured for chatbot reply")
-            return
         try:
-            self.env['whatsapp.message'].sudo().create({
-                'mobile_number': phone,
-                'wa_account_id': wa_account.id,
-                'message_type': 'outbound',
-                'body': text,
-                'state': 'outgoing',
-            })
+            self.env['whatsapp.message'].sudo().send_whatsapp_message(
+                recipient_phone=phone,
+                message_text=text,
+            )
         except Exception as e:
             _logger.error("Failed to send WhatsApp chatbot reply: %s", e)
 
@@ -328,9 +318,11 @@ class ContactCentreChatbotSession(models.Model):
             )
             if not wa_contact:
                 partner = self.contact_id.partner_id
+                if not partner:
+                    _logger.warning("Cannot create chatbot contact: no partner linked to CC contact %s", self.contact_id.id)
+                    return
                 wa_contact = WaChatbotContact.create({
-                    'mobile_number': phone,
-                    'partner_id': partner.id if partner else False,
+                    'partner_id': partner.id,
                     'last_chatbot_id': self.chatbot_id.wa_chatbot_id.id,
                 })
             self.wa_chatbot_contact_id = wa_contact

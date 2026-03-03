@@ -27,10 +27,10 @@ Features:
         'mail',
         'utm',
         'web',
-        'sms',       # Odoo SMS framework (sms.sms model)
-        'whatsapp',  # Odoo WhatsApp framework (whatsapp.message, whatsapp.account, etc.)
-        'comm_sms',  # InfoBip SMS integration
-        'whatsapp_custom',  # AI chatbot, WebRTC calling, flow management
+        'sms',                  # Odoo SMS framework (sms.sms model)
+        'comm_sms',             # InfoBip SMS integration
+        'comm_whatsapp',        # Community WhatsApp (whatsapp.message, whatsapp.template, etc.)
+        'comm_whatsapp_chatbot',  # Community WhatsApp chatbot (whatsapp.chatbot, etc.)
     ],
     'data': [
         'security/contact_centre_security.xml',

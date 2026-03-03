@@ -12,8 +12,6 @@
                             <group string="Account">
                                 <field name="name"/>
                                 <field name="active"/>
-                                <field name="wa_account_id"/>
-                                <field name="account_id"/>
                             </group>
                             <group string="AI Agent (OpenAI)">
                                 <field name="open_ai_api_key" password="True"/>
