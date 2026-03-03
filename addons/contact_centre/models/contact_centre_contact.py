@@ -63,6 +63,17 @@ class ContactCentreContact(models.Model):
         for contact in self:
             contact.message_count = len(contact.message_ids)
 
+    def action_view_messages(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Messages',
+            'res_model': 'contact.centre.message',
+            'view_mode': 'list,form',
+            'domain': [('contact_id', '=', self.id)],
+            'context': {'default_contact_id': self.id},
+        }
+
 
 class ContactCentreTag(models.Model):
     """Tags for organizing contacts"""
