@@ -84,3 +84,62 @@ class ContactCentreCampaign(models.Model):
 
     def action_reset_draft(self):
         self.write({'state': 'draft'})
+
+    # -------------------------------------------------------------------------
+    # Smart button actions
+    # -------------------------------------------------------------------------
+
+    def action_view_contacts(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Campaign Contacts',
+            'res_model': 'contact.centre.contact',
+            'view_mode': 'list,form',
+            'domain': [('campaign_ids', 'in', [self.id])],
+            'context': {
+                'default_campaign_ids': [(4, self.id)],
+            },
+        }
+
+    def action_view_sent(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Sent Messages',
+            'res_model': 'contact.centre.message',
+            'view_mode': 'list,form',
+            'domain': [
+                ('campaign_id', '=', self.id),
+                ('status', 'in', ('sent', 'delivered', 'read')),
+            ],
+            'context': {'default_campaign_id': self.id},
+        }
+
+    def action_view_delivered(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Delivered Messages',
+            'res_model': 'contact.centre.message',
+            'view_mode': 'list,form',
+            'domain': [
+                ('campaign_id', '=', self.id),
+                ('status', 'in', ('delivered', 'read')),
+            ],
+            'context': {'default_campaign_id': self.id},
+        }
+
+    def action_view_failed(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Failed Messages',
+            'res_model': 'contact.centre.message',
+            'view_mode': 'list,form',
+            'domain': [
+                ('campaign_id', '=', self.id),
+                ('status', '=', 'failed'),
+            ],
+            'context': {'default_campaign_id': self.id},
+        }

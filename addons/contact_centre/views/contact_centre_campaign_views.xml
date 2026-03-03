@@ -44,6 +44,27 @@
                                statusbar_visible="draft,running,done"/>
                     </header>
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button class="oe_stat_button" type="object"
+                                    name="action_view_contacts" icon="fa-users">
+                                <field name="contact_count" widget="statinfo" string="Contacts"/>
+                            </button>
+                            <button class="oe_stat_button" type="object"
+                                    name="action_view_sent" icon="fa-paper-plane"
+                                    invisible="sent_count == 0">
+                                <field name="sent_count" widget="statinfo" string="Sent"/>
+                            </button>
+                            <button class="oe_stat_button" type="object"
+                                    name="action_view_delivered" icon="fa-check-circle"
+                                    invisible="delivered_count == 0">
+                                <field name="delivered_count" widget="statinfo" string="Delivered"/>
+                            </button>
+                            <button class="oe_stat_button" type="object"
+                                    name="action_view_failed" icon="fa-exclamation-circle"
+                                    invisible="failed_count == 0">
+                                <field name="failed_count" widget="statinfo" string="Failed"/>
+                            </button>
+                        </div>
                         <group>
                             <group>
                                 <field name="name"/>
@@ -55,23 +76,10 @@
                             <group>
                                 <field name="date_start"/>
                                 <field name="date_end"/>
-                                <field name="sent_count" string="Sent"/>
-                                <field name="delivered_count" string="Delivered"/>
-                                <field name="failed_count" string="Failed"/>
                             </group>
                         </group>
                         <field name="description" placeholder="Campaign description..."/>
                         <notebook>
-                            <page string="Contacts">
-                                <field name="contact_ids">
-                                    <list>
-                                        <field name="name"/>
-                                        <field name="phone_number"/>
-                                        <field name="email"/>
-                                        <field name="last_contact_date"/>
-                                    </list>
-                                </field>
-                            </page>
                             <page string="Automated Replies">
                                 <field name="automation_ids">
                                     <list editable="bottom">
