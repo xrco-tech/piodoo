@@ -7,9 +7,9 @@
                   sequence="10"
                   web_icon="contact_centre,static/description/icon.png"/>
 
-        <!-- Overview -->
+        <!-- Dashboard -->
         <menuitem id="menu_contact_centre_overview"
-                  name="Overview"
+                  name="Dashboard"
                   parent="menu_contact_centre_main"
                   action="action_contact_centre_dashboard"
                   sequence="10"/>
@@ -94,7 +94,7 @@
                   sequence="40"/>
 
         <menuitem id="menu_contact_centre_campaigns_overview"
-                  name="Overview"
+                  name="Dashboard"
                   parent="menu_contact_centre_campaigns"
                   action="action_contact_centre_campaign_overview"
                   sequence="10"/>
