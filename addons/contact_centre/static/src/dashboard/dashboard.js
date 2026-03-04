@@ -3,15 +3,13 @@
 import { Component, useState, onWillStart } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
-
-// [CC-DASH] Module loaded — imports resolved OK
-console.log("[CC-DASH] module loaded");
+import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 export class ContactCentreDashboard extends Component {
     static template = "contact_centre.Dashboard";
+    static props = { ...standardActionServiceProps };
 
     setup() {
-        console.log("[CC-DASH] setup() called");
         this.orm = useService("orm");
         this.action = useService("action");
 
@@ -23,21 +21,16 @@ export class ContactCentreDashboard extends Component {
             chatbots: { total: 0, active: 0, waiting: 0 },
         });
 
-        console.log("[CC-DASH] state initialised, registering onWillStart");
         onWillStart(() => this._loadData());
     }
 
     async _loadData() {
-        console.log("[CC-DASH] _loadData() start");
         try {
             const now = new Date();
             const todayStr = now.toISOString().split("T")[0] + " 00:00:00";
             const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
                 .toISOString()
                 .split("T")[0] + " 00:00:00";
-
-            console.log("[CC-DASH] date strings:", todayStr, firstOfMonth);
-            console.log("[CC-DASH] firing Promise.all ORM calls…");
 
             const [
                 totalContacts,
@@ -48,9 +41,6 @@ export class ContactCentreDashboard extends Component {
                 totalCampaigns,
                 runningCampaigns,
                 doneCampaigns,
-                totalChatbots,
-                activeSessions,
-                waitingSessions,
             ] = await Promise.all([
                 this.orm.searchCount("contact.centre.contact", []),
                 this.orm.searchCount("contact.centre.contact", [
@@ -70,21 +60,24 @@ export class ContactCentreDashboard extends Component {
                 this.orm.searchCount("contact.centre.campaign", [
                     ["state", "=", "done"],
                 ]),
-                this.orm.searchCount("contact.centre.chatbot", []),
-                this.orm.searchCount("contact.centre.chatbot.session", [
-                    ["state", "=", "active"],
-                ]),
-                this.orm.searchCount("contact.centre.chatbot.session", [
-                    ["state", "=", "waiting_human"],
-                ]),
             ]);
 
-            console.log("[CC-DASH] ORM results:", {
-                totalContacts, newContacts,
-                totalMessages, todayMessages, failedMessages,
-                totalCampaigns, runningCampaigns, doneCampaigns,
-                totalChatbots, activeSessions, waitingSessions,
-            });
+            let totalChatbots = 0;
+            let activeSessions = 0;
+            let waitingSessions = 0;
+            try {
+                [totalChatbots, activeSessions, waitingSessions] = await Promise.all([
+                    this.orm.searchCount("contact.centre.chatbot", []),
+                    this.orm.searchCount("contact.centre.chatbot.session", [
+                        ["state", "=", "active"],
+                    ]),
+                    this.orm.searchCount("contact.centre.chatbot.session", [
+                        ["state", "=", "waiting_human"],
+                    ]),
+                ]);
+            } catch (_e) {
+                // Chatbot models may not exist or may not be installed
+            }
 
             Object.assign(this.state, {
                 loading: false,
@@ -93,11 +86,8 @@ export class ContactCentreDashboard extends Component {
                 campaigns: { total: totalCampaigns, running: runningCampaigns, done: doneCampaigns },
                 chatbots: { total: totalChatbots, active: activeSessions, waiting: waitingSessions },
             });
-
-            console.log("[CC-DASH] state updated, loading=false — render should fire");
         } catch (err) {
-            console.error("[CC-DASH] _loadData() ERROR:", err);
-            // Still turn off spinner so the user sees something
+            console.error("[Contact Centre] Dashboard load error:", err);
             this.state.loading = false;
         }
     }
@@ -115,7 +105,7 @@ export class ContactCentreDashboard extends Component {
             type: "ir.actions.act_window",
             name,
             res_model: model,
-            view_mode: "list,form",
+            views: [[false, "list"], [false, "form"]],
             domain,
         });
     }

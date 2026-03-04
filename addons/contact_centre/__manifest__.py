@@ -50,9 +50,8 @@ Features:
     ],
     'assets': {
         'web.assets_backend': [
-            'contact_centre/static/src/dashboard/dashboard.js',
             'contact_centre/static/src/dashboard/dashboard.xml',
-            # 'contact_centre/static/src/dashboard/dashboard.scss',
+            'contact_centre/static/src/dashboard/dashboard.js',
         ],
     },
     'installable': True,
