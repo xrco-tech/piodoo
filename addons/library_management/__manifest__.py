@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Library Management',
-    'version': '17.0.1.0.0',
+    'version': '18.0.0.1',
     'summary': 'Basic module for managing a library.',
     'depends': ['base'],
     'data': [
