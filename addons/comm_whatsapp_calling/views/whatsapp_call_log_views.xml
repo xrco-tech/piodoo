@@ -50,5 +50,11 @@
             <field name="res_model">whatsapp.call.log</field>
             <field name="view_mode">list,form</field>
         </record>
+
+        <menuitem id="menu_whatsapp_calls"
+                  name="Calls"
+                  action="action_whatsapp_call_log"
+                  parent="comm_whatsapp.menu_whatsapp_root"
+                  sequence="20"/>
     </data>
 </odoo>
