@@ -141,23 +141,53 @@
         if (!Array.isArray(notifications)) notifications = [notifications];
         notifications.forEach(function (n) {
             var type = n.type || n.channel;
-            var payload = n.payload || n.message || n.data || n;
-            if (payload && payload.call_log_id && (type === CHANNEL || payload.type === CHANNEL)) {
+            var payload = n.payload !== undefined ? n.payload : (n.message !== undefined ? n.message : n.data || n);
+            if (payload && payload.call_log_id && (type === CHANNEL || (payload && payload.type === CHANNEL))) {
                 showPopup(payload);
             }
         });
     }
 
-    function setupBusListener() {
-        var bus = getBusService();
-        if (bus && typeof bus.addEventListener === "function") {
-            bus.addEventListener("notification", function (event) {
-                var detail = event.detail;
-                if (detail) onNotification(Array.isArray(detail) ? detail : [detail]);
-            });
-            return true;
+    function getSessionInfo() {
+        var s = null;
+        try {
+            if (typeof odoo !== "undefined" && odoo.env && odoo.env.services) {
+                s = odoo.env.services.session || (odoo.env.services.get && odoo.env.services.get("session"));
+            }
+            if (!s && typeof odoo !== "undefined" && odoo.__WOWL_DEBUG__ && odoo.__WOWL_DEBUG__.services) {
+                s = odoo.__WOWL_DEBUG__.services.session;
+            }
+            if (s) {
+                var db = s.db || s.db_name;
+                var uid = s.uid !== undefined ? s.uid : (s.user_id !== undefined ? s.user_id : (s.user && s.user.user_id));
+                if (db && uid !== undefined) return { db: db, uid: uid };
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function addOurChannel(bus) {
+        var session = getSessionInfo();
+        if (session) {
+            var channel = JSON.stringify([session.db, CHANNEL, session.uid]);
+            if (typeof bus.addChannel === "function") {
+                bus.addChannel(channel);
+                return true;
+            }
         }
         return false;
+    }
+
+    function setupBusListener() {
+        var bus = getBusService();
+        if (!bus || typeof bus.addEventListener !== "function") return false;
+        addOurChannel(bus);
+        bus.addEventListener("notification", function (event) {
+            var detail = event.detail;
+            if (detail) onNotification(Array.isArray(detail) ? detail : [detail]);
+        });
+        if (typeof bus.start === "function") bus.start();
+        return true;
     }
 
     function trySetup() {
