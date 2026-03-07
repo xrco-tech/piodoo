@@ -23,12 +23,12 @@ def _parse_webhook_data():
 
 
 def _convert_timestamp(ts):
-    """Convert Unix timestamp to datetime (UTC)."""
+    """Convert Unix timestamp to naive UTC datetime (Odoo Datetime fields expect naive)."""
     if not ts:
         return False
     from datetime import datetime, timezone
     try:
-        return datetime.fromtimestamp(int(ts), tz=timezone.utc)
+        return datetime.fromtimestamp(int(ts), tz=timezone.utc).replace(tzinfo=None)
     except (TypeError, ValueError):
         return False
 
