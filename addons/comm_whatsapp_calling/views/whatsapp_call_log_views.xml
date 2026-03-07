@@ -36,7 +36,7 @@
                                 <field name="duration"/>
                             </group>
                         </group>
-                        <group string="SDP (debug)" attrs="{'invisible': [('sdp_offer', '=', False), ('sdp_answer', '=', False)]}">
+                        <group string="SDP (debug)" invisible="not sdp_offer and not sdp_answer">
                             <field name="sdp_offer" nolabel="1" readonly="1" placeholder="Offer from Meta"/>
                             <field name="sdp_answer" nolabel="1" readonly="1" placeholder="Answer sent to Meta"/>
                         </group>

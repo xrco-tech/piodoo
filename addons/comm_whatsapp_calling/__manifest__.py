@@ -6,7 +6,7 @@
     'summary': 'WhatsApp Cloud API Calling: make and receive calls with comm_whatsapp',
     'description': """
 WhatsApp Calling for Odoo Community
-==================================
+===================================
 Enables receiving and making WhatsApp voice calls when using comm_whatsapp.
 
 - Handles webhook events for the `calls` field
