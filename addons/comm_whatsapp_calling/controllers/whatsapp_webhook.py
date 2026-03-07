@@ -95,6 +95,7 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 if offer_sdp:
                     existing.write({"sdp_offer": offer_sdp, "call_status": "ringing"})
                     existing.action_pre_accept()
+                    self._send_ringing_notification(existing)
             return
 
         # Create new call log
@@ -125,6 +126,45 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
         call_log = CallLog.create(vals)
         if offer_sdp:
             call_log.action_pre_accept()
+        if call_log.call_status == "ringing":
+            self._send_ringing_notification(call_log)
+
+    def _send_ringing_notification(self, call_log):
+        """Notify connected users of an incoming (ringing) WhatsApp call via bus."""
+        try:
+            if "bus.bus" not in request.env:
+                return
+            partner = call_log.partner_id
+            partner_name = partner.name if partner else call_log.from_number or "Unknown"
+            payload = {
+                "type": "whatsapp_incoming_call",
+                "call_log_id": call_log.id,
+                "partner_id": partner.id if partner else False,
+                "partner_name": partner_name,
+                "from_number": call_log.from_number or "",
+                "call_timestamp": (
+                    call_log.call_timestamp.isoformat()
+                    if call_log.call_timestamp
+                    else None
+                ),
+            }
+            users = request.env["res.users"].sudo().search([("active", "=", True)])
+            notifications = [
+                [u.partner_id, "whatsapp_incoming_call", payload]
+                for u in users
+                if u.partner_id
+            ]
+            if notifications:
+                request.env["bus.bus"].sudo()._sendmany(notifications)
+                _logger.info(
+                    "comm_whatsapp_calling: sent ringing notification for call %s to %s users",
+                    call_log.call_id,
+                    len(notifications),
+                )
+        except Exception as e:
+            _logger.warning(
+                "comm_whatsapp_calling: could not send ringing notification: %s", e
+            )
 
     def _update_call_log(self, call_log, call_data, status, extra_vals=None):
         if not status and not extra_vals:

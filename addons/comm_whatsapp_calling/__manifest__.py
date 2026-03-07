@@ -21,12 +21,19 @@ See WHATSAPP_CALLING_PLAN.md for Meta API details and WebRTC options.
     'license': 'LGPL-3',
     'depends': [
         'comm_whatsapp',
+        'bus',
         'mail',
     ],
     'data': [
         'security/ir.model.access.csv',
         'views/whatsapp_call_log_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'comm_whatsapp_calling/static/src/css/incoming_call_popup.css',
+            'comm_whatsapp_calling/static/src/js/incoming_call_popup.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,
