@@ -14,7 +14,7 @@ services:
     depends_on:
       - db
     env_file: .env
-    # ADDED PORTS SECTION BELOW
+    command: ["odoo", "-c", "/etc/odoo/odoo.conf"]
     ports:
       - "8069:8069"
       - "8072:8072"
