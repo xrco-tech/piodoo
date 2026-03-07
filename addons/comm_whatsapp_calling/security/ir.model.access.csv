@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_whatsapp_call_log_user,whatsapp.call.log.user,model_whatsapp_call_log,base.group_user,1,1,0,0
+access_whatsapp_call_log_manager,whatsapp.call.log.manager,model_whatsapp_call_log,base.group_system,1,1,1,1

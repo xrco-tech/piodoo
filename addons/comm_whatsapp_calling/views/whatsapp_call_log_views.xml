@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_whatsapp_call_log_list" model="ir.ui.view">
+            <field name="name">whatsapp.call.log.list</field>
+            <field name="model">whatsapp.call.log</field>
+            <field name="arch" type="xml">
+                <list string="WhatsApp Calls">
+                    <field name="call_timestamp"/>
+                    <field name="from_number"/>
+                    <field name="partner_id"/>
+                    <field name="call_direction"/>
+                    <field name="call_status"/>
+                    <field name="duration"/>
+                </list>
+            </field>
+        </record>
+        <record id="view_whatsapp_call_log_form" model="ir.ui.view">
+            <field name="name">whatsapp.call.log.form</field>
+            <field name="model">whatsapp.call.log</field>
+            <field name="arch" type="xml">
+                <form string="WhatsApp Call">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="call_id" readonly="1"/>
+                                <field name="call_status"/>
+                                <field name="call_direction"/>
+                                <field name="partner_id"/>
+                                <field name="from_number"/>
+                                <field name="to_number"/>
+                            </group>
+                            <group>
+                                <field name="call_timestamp"/>
+                                <field name="end_timestamp"/>
+                                <field name="duration"/>
+                            </group>
+                        </group>
+                        <group string="SDP (debug)" attrs="{'invisible': [('sdp_offer', '=', False), ('sdp_answer', '=', False)]}">
+                            <field name="sdp_offer" nolabel="1" readonly="1" placeholder="Offer from Meta"/>
+                            <field name="sdp_answer" nolabel="1" readonly="1" placeholder="Answer sent to Meta"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        <record id="action_whatsapp_call_log" model="ir.actions.act_window">
+            <field name="name">WhatsApp Calls</field>
+            <field name="res_model">whatsapp.call.log</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>
