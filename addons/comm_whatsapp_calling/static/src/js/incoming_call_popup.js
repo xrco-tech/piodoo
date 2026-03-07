@@ -140,9 +140,15 @@
     function onNotification(notifications) {
         if (!Array.isArray(notifications)) notifications = [notifications];
         notifications.forEach(function (n) {
-            var type = n.type || n.channel;
-            var payload = n.payload !== undefined ? n.payload : (n.message !== undefined ? n.message : n.data || n);
-            if (payload && payload.call_log_id && (type === CHANNEL || (payload && payload.type === CHANNEL))) {
+            var type, payload;
+            if (Array.isArray(n)) {
+                type = n[1];
+                payload = n[2] || n[1];
+            } else {
+                type = n.type || n.channel;
+                payload = n.payload !== undefined ? n.payload : (n.message !== undefined ? n.message : (n.data || n));
+            }
+            if (payload && payload.call_log_id && (type === CHANNEL || (payload.type === CHANNEL))) {
                 showPopup(payload);
             }
         });
@@ -166,26 +172,32 @@
         return null;
     }
 
-    function addOurChannel(bus) {
+    function addOurChannel(bus, cb) {
         var session = getSessionInfo();
         if (session) {
             var channel = JSON.stringify([session.db, CHANNEL, session.uid]);
             if (typeof bus.addChannel === "function") {
                 bus.addChannel(channel);
-                return true;
+                if (cb) cb(true);
+                return;
             }
         }
-        return false;
+        callRpc("/whatsapp/call/bus_channel", {}).then(function (r) {
+            if (r && r.db !== undefined && r.uid !== undefined && typeof bus.addChannel === "function") {
+                bus.addChannel(JSON.stringify([r.db, CHANNEL, r.uid]));
+                if (cb) cb(true);
+            } else if (cb) cb(false);
+        }).catch(function () { if (cb) cb(false); });
     }
 
     function setupBusListener() {
         var bus = getBusService();
         if (!bus || typeof bus.addEventListener !== "function") return false;
-        addOurChannel(bus);
         bus.addEventListener("notification", function (event) {
             var detail = event.detail;
             if (detail) onNotification(Array.isArray(detail) ? detail : [detail]);
         });
+        addOurChannel(bus);
         if (typeof bus.start === "function") bus.start();
         return true;
     }

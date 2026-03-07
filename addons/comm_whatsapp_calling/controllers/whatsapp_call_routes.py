@@ -10,6 +10,11 @@ _logger = logging.getLogger(__name__)
 class WhatsappCallRoutes(http.Controller):
     """JSON routes for the UI to answer/decline/end WhatsApp calls."""
 
+    @http.route("/whatsapp/call/bus_channel", type="json", auth="user")
+    def bus_channel(self, **kwargs):
+        """Return db and uid so the frontend can subscribe to the incoming-call bus channel."""
+        return {"db": request.db, "uid": request.session.uid}
+
     @http.route(
         "/whatsapp/call/answer/<int:call_log_id>",
         type="json",
