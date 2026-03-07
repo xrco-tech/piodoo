@@ -161,11 +161,14 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 elif hasattr(bus, "_sendmany"):
                     bus._sendmany(notifications)
                 else:
+                    # Odoo 15+: _sendone(channel, notification_type, message)
                     for channel, message in notifications:
                         if hasattr(bus, "sendone"):
                             bus.sendone(channel, message)
                         elif hasattr(bus, "_sendone"):
-                            bus._sendone(channel, message)
+                            bus._sendone(channel, "whatsapp_incoming_call", message)
+                        else:
+                            break
                 _logger.info(
                     "comm_whatsapp_calling: sent ringing notification for call %s to %s users",
                     call_log.call_id,
