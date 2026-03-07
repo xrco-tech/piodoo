@@ -2,7 +2,6 @@
 
 import json
 import logging
-import re
 import time
 import requests
 from odoo import api, fields, models
@@ -107,40 +106,82 @@ class WhatsappCallLog(models.Model):
     def _generate_simple_sdp_answer(self, offer_sdp):
         """
         Generate a minimal SDP answer from the offer (server-side).
-        Meta requires SHA-256 fingerprint and valid format.
+        Meta requires: SHA-256 fingerprint (capital letters), valid WebRTC structure.
         For real audio you need browser WebRTC or a media server; this satisfies the API.
         """
         if not offer_sdp or not offer_sdp.strip():
             return None
-        offer = offer_sdp.strip().replace("\r\n", "\n").split("\n")
-        answer = []
-        in_media = False
-        for line in offer:
-            if line.startswith("v="):
-                answer.append(line)
-            elif line.startswith("o="):
-                answer.append("o=- %s 0 IN IP4 127.0.0.1" % int(time.time()))
-            elif line.startswith("s="):
-                answer.append("s=-")
-            elif line.startswith("t="):
-                answer.append("t=0 0")
-            elif line.startswith("m="):
-                in_media = True
-                answer.append(line)
-                answer.append("c=IN IP4 0.0.0.0")
-            elif line.startswith("c=") and in_media:
-                pass
-            elif line.startswith("a=fingerprint:"):
-                if "SHA-256" in line.upper() or "sha-256" in line.lower():
-                    answer.append(re.sub(r"(?i)sha-384|sha-512", "", line))
-            elif line.startswith("a=") and in_media:
-                if line.startswith("a=rtpmap:") or line.startswith("a=fmtp:"):
-                    answer.append(line)
-                elif line == "a=sendrecv":
-                    answer.append("a=sendrecv")
-            elif not line.startswith("a=ice-") and line.strip():
-                answer.append(line)
-        return "\r\n".join(answer) if answer else None
+        try:
+            offer_lines = offer_sdp.strip().replace("\r\n", "\n").split("\n")
+            fingerprint_hash = None
+            ice_ufrag = None
+            ice_pwd = None
+            audio_port = "9"
+            audio_protocol = "RTP/AVP"
+            audio_formats = []
+            rtpmap_lines = []
+
+            for line in offer_lines:
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith("a=fingerprint:"):
+                    # Meta requires "SHA-256" in capital letters; extract hash only
+                    rest = line.split(":", 1)[-1].strip()
+                    if "sha-256" in rest.lower():
+                        parts = rest.split(None, 1)
+                        if len(parts) >= 2:
+                            fingerprint_hash = parts[1]
+                        else:
+                            fingerprint_hash = rest
+                    elif "SHA-256" in rest:
+                        parts = rest.split(None, 1)
+                        if len(parts) >= 2:
+                            fingerprint_hash = parts[1]
+                        else:
+                            fingerprint_hash = rest
+                elif line.startswith("a=ice-ufrag:"):
+                    ice_ufrag = line.split(":", 1)[1].strip()
+                elif line.startswith("a=ice-pwd:"):
+                    ice_pwd = line.split(":", 1)[1].strip()
+                elif line.startswith("m=audio"):
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        audio_port = parts[1]
+                        audio_protocol = parts[2]
+                        audio_formats = parts[3:]
+                elif line.startswith("a=rtpmap:"):
+                    rtpmap_lines.append(line)
+
+            if not fingerprint_hash:
+                _logger.warning("comm_whatsapp_calling: no SHA-256 fingerprint in offer, SDP may be rejected")
+                return None
+
+            answer_lines = [
+                "v=0",
+                "o=- %s 0 IN IP4 127.0.0.1" % int(time.time()),
+                "s=-",
+                "t=0 0",
+                "a=group:BUNDLE audio",
+                "a=msid-semantic: WMS",
+            ]
+            preferred = audio_formats[0] if audio_formats else "0"
+            answer_lines.append("m=audio %s %s %s" % (audio_port, audio_protocol, preferred))
+            answer_lines.append("c=IN IP4 0.0.0.0")
+            answer_lines.append("a=ice-ufrag:%s" % (ice_ufrag or "answer"))
+            answer_lines.append("a=ice-pwd:%s" % (ice_pwd or "answer-password"))
+            # Meta requires capital "SHA-256" in fingerprint
+            answer_lines.append("a=fingerprint:SHA-256 %s" % fingerprint_hash.strip())
+            answer_lines.append("a=setup:active")
+            answer_lines.append("a=mid:audio")
+            answer_lines.append("a=sendrecv")
+            for r in rtpmap_lines:
+                answer_lines.append(r)
+
+            return "\r\n".join(answer_lines)
+        except Exception as e:
+            _logger.exception("comm_whatsapp_calling: _generate_simple_sdp_answer failed: %s", e)
+            return None
 
     def action_pre_accept(self, sdp_answer=None):
         """Generate SDP if needed and send pre_accept to Meta."""
