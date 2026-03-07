@@ -21,7 +21,6 @@ See WHATSAPP_CALLING_PLAN.md for Meta API details and WebRTC options.
     'license': 'LGPL-3',
     'depends': [
         'comm_whatsapp',
-        'bus',
         'mail',
     ],
     'data': [

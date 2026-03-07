@@ -31,12 +31,26 @@ See **WHATSAPP_CALLING_PLAN.md** for Meta API details and WebRTC options.
 - **contact_centre** can list or link to **whatsapp.call.log** (e.g. “WhatsApp Calls” menu, or call history on a contact).  
 - If you add a dependency from **contact_centre** to **comm_whatsapp_calling**, you can add a menu or a button “WhatsApp Calls” that opens `whatsapp.call.log`.
 
+## Incoming call popup
+
+- When an incoming call is **ringing**, the module can show a **popup** (Accept / Decline) in the browser.
+- This uses Odoo’s **bus** for real-time notifications. The module does **not** depend on `bus`; if `bus` is available (e.g. from **mail**), it sends a notification and the frontend script shows the popup. If bus is not available or the real-time connection fails, use **WhatsApp Light → Calls** to see and answer/decline calls.
+
 ## Installation
 
 1. Install **comm_whatsapp** and configure Meta (token, webhook, phone number ID).
 2. Install **comm_whatsapp_calling**.
 3. In Meta, subscribe the webhook to **calls** and enable calling on the number.
 4. Restart Odoo and trigger a test call to your business number.
+
+## Troubleshooting
+
+### “Couldn’t bind the websocket. Is the connection opened on the evented port (8072)?”
+
+This comes from Odoo’s **bus** (real-time) layer, not from this module. The web client tries to use a **WebSocket** connection, but the server is not running the evented worker.
+
+- **Option A – Use longpolling:** Run Odoo with **workers** and route longpolling to the evented port, e.g. start Odoo with `--gevent` (or your distro’s recommended way) and in nginx (or your proxy) proxy `/longpolling` (and websocket if needed) to `127.0.0.1:8072`. See [Odoo longpolling](https://www.odoo.com/documentation/current/administration/install.html#long-polling) and your Odoo version’s docs.
+- **Option B – Ignore the error:** The popup will not appear, but **WhatsApp Light → Calls** still works: you can open the list and use Accept/Decline from the form or your own buttons that call the same JSON routes.
 
 ## Files
 
