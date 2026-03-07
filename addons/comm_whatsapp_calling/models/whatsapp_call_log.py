@@ -47,14 +47,27 @@ class WhatsappCallLog(models.Model):
     sdp_offer = fields.Text("SDP Offer", readonly=True)
     sdp_answer = fields.Text("SDP Answer", readonly=True)
     raw_data = fields.Text("Raw Webhook Data", readonly=True)
+    meta_phone_number_id = fields.Char(
+        "Meta Phone Number ID",
+        readonly=True,
+        help="Phone number ID from webhook metadata; used for API calls when set.",
+    )
 
     def _get_comm_whatsapp_config(self):
-        """Read token and phone_number_id from comm_whatsapp config."""
+        """
+        Read token and phone_number_id from comm_whatsapp config (same as comm_whatsapp).
+        For phone_number_id: use record's meta_phone_number_id from webhook if set,
+        otherwise ir.config_parameter comm_whatsapp.phone_number_id.
+        """
         IrConfig = self.env["ir.config_parameter"].sudo()
         token = IrConfig.get_param("comm_whatsapp.access_token") or IrConfig.get_param(
             "comm_whatsapp.long_lived_token"
         )
-        phone_number_id = IrConfig.get_param("comm_whatsapp.phone_number_id")
+        phone_number_id = None
+        if self and len(self) == 1 and self.meta_phone_number_id:
+            phone_number_id = self.meta_phone_number_id
+        if not phone_number_id:
+            phone_number_id = IrConfig.get_param("comm_whatsapp.phone_number_id")
         return token, phone_number_id
 
     def _send_call_action_to_meta(self, action, sdp_answer=None):
@@ -62,7 +75,11 @@ class WhatsappCallLog(models.Model):
         self.ensure_one()
         token, phone_number_id = self._get_comm_whatsapp_config()
         if not token or not phone_number_id:
-            _logger.warning("comm_whatsapp_calling: missing access_token or phone_number_id")
+            _logger.warning(
+                "comm_whatsapp_calling: missing access_token or phone_number_id. "
+                "Set them in Settings → WhatsApp (same as comm_whatsapp). "
+                "phone_number_id can also be set from webhook metadata when an incoming call is received."
+            )
             return False
         url = f"https://graph.facebook.com/{META_GRAPH_VERSION}/{phone_number_id}/calls"
         payload = {

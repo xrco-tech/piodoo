@@ -23,12 +23,12 @@ def _parse_webhook_data():
 
 
 def _convert_timestamp(ts):
-    """Convert Unix timestamp to datetime."""
+    """Convert Unix timestamp to datetime (UTC)."""
     if not ts:
         return False
-    from datetime import datetime
+    from datetime import datetime, timezone
     try:
-        return datetime.utcfromtimestamp(int(ts))
+        return datetime.fromtimestamp(int(ts), tz=timezone.utc)
     except (TypeError, ValueError):
         return False
 
@@ -85,7 +85,11 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
         existing = CallLog.search([("call_id", "=", call_id)], limit=1)
 
         if existing:
-            self._update_call_log(existing, call_data, status)
+            metadata = entry_data.get("metadata", {}) or call_data.get("metadata", {})
+            update_vals = {}
+            if metadata.get("phone_number_id") and not existing.meta_phone_number_id:
+                update_vals["meta_phone_number_id"] = str(metadata["phone_number_id"])
+            self._update_call_log(existing, call_data, status, update_vals)
             if status == "ringing" and not existing.sdp_offer:
                 offer_sdp = call_data.get("session", {}).get("sdp")
                 if offer_sdp:
@@ -97,7 +101,8 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
         from_number = call_data.get("from", "")
         to_number = call_data.get("to", "")
         metadata = entry_data.get("metadata", {}) or call_data.get("metadata", {})
-        phone_number_id = metadata.get("phone_number_id") or to_number
+        meta_phone_number_id = metadata.get("phone_number_id")
+        phone_number_id = meta_phone_number_id or to_number
         direction = "incoming" if call_data.get("direction") == "USER_INITIATED" else "outgoing"
 
         partner = self._find_or_create_partner(from_number)
@@ -105,12 +110,14 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             "call_id": call_id,
             "partner_id": partner.id if partner else False,
             "from_number": from_number,
-            "to_number": to_number or phone_number_id,
+            "to_number": to_number or str(phone_number_id),
             "call_direction": direction,
             "call_status": status or "ringing",
             "call_timestamp": _convert_timestamp(call_data.get("timestamp")),
             "raw_data": json.dumps(call_data),
         }
+        if meta_phone_number_id:
+            vals["meta_phone_number_id"] = str(meta_phone_number_id)
         offer_sdp = call_data.get("session", {}).get("sdp")
         if offer_sdp:
             vals["sdp_offer"] = offer_sdp
@@ -119,14 +126,18 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
         if offer_sdp:
             call_log.action_pre_accept()
 
-    def _update_call_log(self, call_log, call_data, status):
-        if not status:
+    def _update_call_log(self, call_log, call_data, status, extra_vals=None):
+        if not status and not extra_vals:
             return
-        write_vals = {"call_status": status, "raw_data": json.dumps(call_data)}
-        if status == "ended":
-            write_vals["end_timestamp"] = _convert_timestamp(call_data.get("timestamp"))
-            write_vals["duration"] = call_data.get("duration", 0)
-        call_log.write(write_vals)
+        write_vals = dict(extra_vals or {})
+        if status:
+            write_vals["call_status"] = status
+            write_vals["raw_data"] = json.dumps(call_data)
+            if status == "ended":
+                write_vals["end_timestamp"] = _convert_timestamp(call_data.get("timestamp"))
+                write_vals["duration"] = call_data.get("duration", 0)
+        if write_vals:
+            call_log.write(write_vals)
 
     def _find_or_create_partner(self, phone_number):
         if not phone_number:

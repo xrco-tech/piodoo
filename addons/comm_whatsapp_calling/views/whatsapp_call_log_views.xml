@@ -34,6 +34,7 @@
                                 <field name="call_timestamp"/>
                                 <field name="end_timestamp"/>
                                 <field name="duration"/>
+                                <field name="meta_phone_number_id" optional="hide"/>
                             </group>
                         </group>
                         <group string="SDP (debug)" invisible="not sdp_offer and not sdp_answer">
