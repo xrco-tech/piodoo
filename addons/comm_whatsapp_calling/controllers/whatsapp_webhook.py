@@ -149,13 +149,23 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 ),
             }
             users = request.env["res.users"].sudo().search([("active", "=", True)])
+            # bus.bus API: sendmany([(channel, message), ...]); channel = (db, name, uid)
             notifications = [
-                [u.partner_id, "whatsapp_incoming_call", payload]
+                ((request.db, "whatsapp_incoming_call", u.id), payload)
                 for u in users
-                if u.partner_id
             ]
             if notifications:
-                request.env["bus.bus"].sudo()._sendmany(notifications)
+                bus = request.env["bus.bus"].sudo()
+                if hasattr(bus, "sendmany"):
+                    bus.sendmany(notifications)
+                elif hasattr(bus, "_sendmany"):
+                    bus._sendmany(notifications)
+                else:
+                    for channel, message in notifications:
+                        if hasattr(bus, "sendone"):
+                            bus.sendone(channel, message)
+                        elif hasattr(bus, "_sendone"):
+                            bus._sendone(channel, message)
                 _logger.info(
                     "comm_whatsapp_calling: sent ringing notification for call %s to %s users",
                     call_log.call_id,

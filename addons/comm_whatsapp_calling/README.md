@@ -45,6 +45,10 @@ See **WHATSAPP_CALLING_PLAN.md** for Meta API details and WebRTC options.
 
 ## Troubleshooting
 
+### "Error validating access token: Session has expired"
+
+Your Meta access token has expired. Re-authenticate via **comm_whatsapp**: open the WhatsApp configuration in Odoo (e.g. Settings → WhatsApp or the OAuth flow you used initially) and sign in again so a new token is stored. The same token is used for messaging and calling.
+
 ### “Couldn’t bind the websocket. Is the connection opened on the evented port (8072)?”
 
 This comes from Odoo’s **bus** (real-time) layer, not from this module. The web client tries to use a **WebSocket** connection, but the server is not running the evented worker.
