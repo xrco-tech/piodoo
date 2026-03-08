@@ -45,6 +45,14 @@ See **WHATSAPP_CALLING_PLAN.md** for Meta API details and WebRTC options.
 
 ## Troubleshooting
 
+### Blank screen after adding the module
+
+If the backend shows a blank screen after upgrading, it may be caused by the **systray** component (or another asset). You can temporarily disable the systray by removing from `__manifest__.py` under `web.assets_backend` the lines for `systray_whatsapp_calls.css`, `systray_whatsapp_calls.xml`, and `systray_whatsapp_calls.js`, then update the module again. The rest of the module (Calls menu, webhook, popup) will still work.
+
+### "could not serialize access due to concurrent update" (bus_presence)
+
+This comes from Odoo’s **bus** module when updating `bus_presence` (e.g. on websocket disconnect) with multiple workers: PostgreSQL raises a serialization failure when two processes update the same row. It is **not** caused by comm_whatsapp_calling. You can reduce frequency by using fewer workers, or ignore the error if the UI and bus generally work.
+
 ### "Error validating access token: Session has expired"
 
 Your Meta access token has expired. Re-authenticate via **comm_whatsapp**: open the WhatsApp configuration in Odoo (e.g. Settings → WhatsApp or the OAuth flow you used initially) and sign in again so a new token is stored. The same token is used for messaging and calling.

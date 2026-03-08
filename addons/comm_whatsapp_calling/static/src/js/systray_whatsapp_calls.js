@@ -30,8 +30,12 @@ export class WhatsAppCallsSystray extends Component {
     }
 
     async onClick() {
-        await this.loadUnansweredCount();
-        await this.action.doAction("comm_whatsapp_calling.action_whatsapp_call_log");
+        try {
+            await this.loadUnansweredCount();
+            await this.action.doAction("comm_whatsapp_calling.action_whatsapp_call_log");
+        } catch (e) {
+            // Action may not be loaded or other error; avoid breaking the UI
+        }
     }
 }
 
