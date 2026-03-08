@@ -1,0 +1,30 @@
+/* Systray icon and badge for WhatsApp calls (match chat/activity style) */
+.o_wa_calls_systray {
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.o_wa_calls_icon {
+    font-size: 1.25rem;
+    color: var(--o-systray-color, #5f6368);
+}
+
+.o_wa_calls_systray:hover .o_wa_calls_icon {
+    color: var(--o-systray-hover-color, #1a73e8);
+}
+
+.o_wa_calls_badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 5px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1rem;
+    text-align: center;
+    color: #fff;
+    background: #875a7b;
+    border-radius: 9999px;
+}
