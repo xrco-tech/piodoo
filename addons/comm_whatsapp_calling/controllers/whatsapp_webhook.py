@@ -184,8 +184,17 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             return
         write_vals = dict(extra_vals or {})
         if status:
-            write_vals["call_status"] = status
+            # Always store the last webhook payload for debugging/auditing.
             write_vals["raw_data"] = json.dumps(call_data)
+
+            if status == "ended":
+                # Terminal event: do not overwrite final decision made earlier
+                # (e.g. "answered" / "declined") with a generic "ended".
+                if call_log.call_status not in ("answered", "declined"):
+                    write_vals["call_status"] = status
+            else:
+                write_vals["call_status"] = status
+
             if status == "ended":
                 write_vals["end_timestamp"] = _convert_timestamp(call_data.get("timestamp"))
                 write_vals["duration"] = call_data.get("duration", 0)

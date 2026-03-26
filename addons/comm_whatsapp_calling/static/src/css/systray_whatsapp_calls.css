@@ -1,14 +1,24 @@
-/* Systray icon and badge for WhatsApp calls (match chat/activity style) */
-.o_wa_calls_systray {
-    cursor: pointer;
-    padding: 0 4px;
+/* WhatsApp calls systray: align icon like other systray entries and show dropdown */
+
+.o_wa_calls_systray_wrapper {
     position: relative;
     display: flex;
     align-items: center;
 }
 
+.o_wa_calls_systray {
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
 .o_wa_calls_icon {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
+    line-height: 1;
     color: var(--o-systray-color, #5f6368);
 }
 
@@ -18,17 +28,102 @@
 
 .o_wa_calls_badge {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    min-width: 1rem;
-    height: 1rem;
+    top: -2px;
+    right: -2px;
+    min-width: 18px;
+    height: 18px;
     padding: 0 5px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    line-height: 1rem;
+    line-height: 18px;
+    border-radius: 999px;
     text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
     color: #fff;
     background: #875a7b;
-    border-radius: 9999px;
     box-sizing: border-box;
+}
+
+.o_wa_calls_dropdown {
+    position: absolute;
+    top: 38px;
+    right: 0;
+    width: 360px;
+    max-width: 90vw;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    overflow: hidden;
+}
+
+.o_wa_calls_dropdown_title {
+    padding: 10px 12px;
+    font-weight: 600;
+    background: #f5f5f5;
+}
+
+.o_wa_calls_dropdown_empty {
+    padding: 12px;
+    color: #666;
+    font-size: 0.92rem;
+}
+
+.o_wa_calls_dropdown_list {
+    max-height: 320px;
+    overflow: auto;
+}
+
+.o_wa_calls_dropdown_item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.o_wa_calls_dropdown_item:hover {
+    background: #f7f7f7;
+}
+
+.o_wa_calls_dropdown_item_top {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.o_wa_calls_dropdown_item_label {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #875a7b;
+}
+
+.o_wa_calls_dropdown_item_time {
+    font-size: 0.75rem;
+    color: #888;
+    white-space: nowrap;
+}
+
+.o_wa_calls_dropdown_item_from {
+    font-size: 0.92rem;
+    color: #333;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_wa_calls_dropdown_footer {
+    padding: 10px 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    text-align: right;
+    background: #fff;
+}
+
+.o_wa_calls_view_all {
+    cursor: pointer;
+    color: #875a7b;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    padding: 0;
 }

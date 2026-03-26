@@ -1,13 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="comm_whatsapp_calling.WhatsAppCallsSystray" owl="1">
-        <div class="o_wa_calls_systray" role="button" t-on-click="onClick">
-            <i class="fa fa-phone o_wa_calls_icon"
-               title="WhatsApp Calls"
-               aria-label="WhatsApp Calls"/>
-            <span t-if="state.unansweredCount > 0" class="o_wa_calls_badge">
-                <t t-esc="state.unansweredCount"/>
-            </span>
+        <div class="o_wa_calls_systray_wrapper">
+            <div class="o_wa_calls_systray" role="button" t-on-click="onClickIcon">
+                <i class="fa fa-phone o_wa_calls_icon"
+                   title="WhatsApp Calls"
+                   aria-label="WhatsApp Calls"/>
+                <span t-if="state.unansweredCount &gt; 0" class="o_wa_calls_badge">
+                    <t t-esc="state.unansweredCount"/>
+                </span>
+            </div>
+
+            <div t-if="state.open" class="o_wa_calls_dropdown" t-on-click="onDropdownClick">
+                <div class="o_wa_calls_dropdown_title">WhatsApp Calls</div>
+
+                <div t-if="!state.items.length" class="o_wa_calls_dropdown_empty">
+                    No missed or unhandled calls.
+                </div>
+
+                <div t-if="state.items.length" class="o_wa_calls_dropdown_list">
+                    <t t-foreach="state.items" t-as="c" t-key="c.id">
+                        <div class="o_wa_calls_dropdown_item"
+                             t-att-title="c.from"
+                             t-att-data-call-log-id="c.id"
+                             t-on-click="onRowClick">
+                            <div class="o_wa_calls_dropdown_item_top">
+                                <span class="o_wa_calls_dropdown_item_label">
+                                    <t t-esc="c.label"/>
+                                </span>
+                                <span class="o_wa_calls_dropdown_item_time" t-if="c.timestamp">
+                                    <t t-esc="c.timestamp"/>
+                                </span>
+                            </div>
+                            <div class="o_wa_calls_dropdown_item_from">
+                                <t t-esc="c.from"/>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <div class="o_wa_calls_dropdown_footer">
+                    <button type="button" class="o_wa_calls_view_all" t-on-click="onViewAll">
+                        View all calls
+                    </button>
+                </div>
+            </div>
         </div>
     </t>
 </templates>
