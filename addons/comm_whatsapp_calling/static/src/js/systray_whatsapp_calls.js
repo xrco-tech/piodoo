@@ -1,7 +1,7 @@
 /** @odoo-module */
 
 import { registry } from "@web/core/registry";
-import { Component, useState, onWillStart, onMounted, onWillUnmount, onPatched } from "@odoo/owl";
+import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 
 export class WhatsAppCallsSystray extends Component {
@@ -14,11 +14,8 @@ export class WhatsAppCallsSystray extends Component {
             unansweredCount: 0,
             open: false,
             items: [],
-            /** Viewport placement for fixed dropdown (escapes navbar stacking context). */
-            dropdownPos: null,
         });
 
-        this._repositionScheduled = false;
         this._onDocClick = (ev) => {
             if (!this.state.open || !this.el) {
                 return;
@@ -27,71 +24,19 @@ export class WhatsAppCallsSystray extends Component {
                 return;
             }
             this.state.open = false;
-            this.state.dropdownPos = null;
         };
 
         onWillStart(async () => {
             await this.refreshCounts();
         });
 
-        this._onReposition = () => {
-            if (!this.state.open) {
-                return;
-            }
-            if (this._repositionScheduled) {
-                return;
-            }
-            this._repositionScheduled = true;
-            requestAnimationFrame(() => {
-                this._repositionScheduled = false;
-                this._layoutDropdown();
-            });
-        };
-
         onMounted(() => {
             document.addEventListener("click", this._onDocClick, true);
-            window.addEventListener("scroll", this._onReposition, true);
-            window.addEventListener("resize", this._onReposition);
         });
 
         onWillUnmount(() => {
             document.removeEventListener("click", this._onDocClick, true);
-            window.removeEventListener("scroll", this._onReposition, true);
-            window.removeEventListener("resize", this._onReposition);
         });
-
-        onPatched(() => {
-            if (this.state.open) {
-                this._layoutDropdown();
-            }
-        });
-    }
-
-    /** z-index above action manager / home dashboard tiles (Discuss-style elevation). */
-    static DROPDOWN_Z = 1100;
-
-    _layoutDropdown() {
-        const anchor = this.el?.querySelector(".o_wa_calls_systray");
-        if (!anchor) {
-            return;
-        }
-        const r = anchor.getBoundingClientRect();
-        const top = Math.round(r.bottom + 6);
-        const doc = document.documentElement;
-        const right = Math.round(doc.clientWidth - r.right);
-        const prev = this.state.dropdownPos;
-        if (prev && prev.top === top && prev.right === right) {
-            return;
-        }
-        this.state.dropdownPos = { top, right };
-    }
-
-    dropdownFixedStyle() {
-        const pos = this.state.dropdownPos;
-        if (!pos) {
-            return "";
-        }
-        return `position:fixed;top:${pos.top}px;right:${pos.right}px;z-index:${WhatsAppCallsSystray.DROPDOWN_Z};`;
     }
 
     /**
@@ -173,12 +118,10 @@ export class WhatsAppCallsSystray extends Component {
         ev.stopPropagation();
         if (this.state.open) {
             this.state.open = false;
-            this.state.dropdownPos = null;
             return;
         }
         await this.refreshCounts();
         await this.loadDropdownItems();
-        this._layoutDropdown();
         this.state.open = true;
     }
 
@@ -201,10 +144,8 @@ export class WhatsAppCallsSystray extends Component {
                 target: "current",
             });
             this.state.open = false;
-            this.state.dropdownPos = null;
         } catch (_e) {
             this.state.open = false;
-            this.state.dropdownPos = null;
         }
     }
 
@@ -227,7 +168,6 @@ export class WhatsAppCallsSystray extends Component {
             // ignore
         }
         this.state.open = false;
-        this.state.dropdownPos = null;
     }
 }
 
