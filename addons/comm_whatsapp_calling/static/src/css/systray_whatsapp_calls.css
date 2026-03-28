@@ -1,19 +1,27 @@
-/* WhatsApp calls systray: align icon like other systray entries and show dropdown */
+/* WhatsApp calls systray: match .o_menu_systray entry spacing and core .badge styling */
 
 .o_wa_calls_systray_wrapper {
     position: relative;
     display: flex;
     align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    /* Same horizontal rhythm as other systray items (navbar %-main-navbar-entry-spacing) */
+    height: calc(var(--o-navbar-height, 46px) - 0px);
+    margin-left: var(--NavBar-entry-margin-left, 0);
+    margin-right: var(--NavBar-entry-margin-right, 0);
+    padding-left: var(--NavBar-entry-padding-left, 0.315em);
+    padding-right: var(--NavBar-entry-padding-right, 0.315em);
 }
 
 .o_wa_calls_systray {
     cursor: pointer;
-    width: 32px;
-    height: 32px;
-    display: flex;
+    display: inline-flex;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
     position: relative;
+    line-height: 1;
 }
 
 .o_wa_calls_icon {
@@ -26,26 +34,11 @@
     color: var(--o-systray-hover-color, #1a73e8);
 }
 
-.o_wa_calls_badge {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    line-height: 18px;
-    border-radius: 999px;
-    text-align: center;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #fff;
-    background: #875a7b;
-    box-sizing: border-box;
-}
+/* Do not override .o_menu_systray .badge font-size, colors, padding, or transform */
 
 .o_wa_calls_dropdown {
     position: absolute;
-    top: 38px;
+    top: calc(100% + 6px);
     right: 0;
     width: 360px;
     max-width: 90vw;

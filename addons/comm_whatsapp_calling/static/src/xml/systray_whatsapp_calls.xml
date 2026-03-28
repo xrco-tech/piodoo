@@ -6,7 +6,7 @@
                 <i class="fa fa-phone o_wa_calls_icon"
                    title="WhatsApp Calls"
                    aria-label="WhatsApp Calls"/>
-                <span t-if="state.unansweredCount &gt; 0" class="o_wa_calls_badge">
+                <span t-if="state.unansweredCount &gt; 0" class="badge">
                     <t t-esc="state.unansweredCount"/>
                 </span>
             </div>
