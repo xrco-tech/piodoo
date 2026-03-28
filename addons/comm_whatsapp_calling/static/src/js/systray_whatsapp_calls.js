@@ -73,8 +73,18 @@ export class WhatsAppCallsSystray extends Component {
      */
     static DROPDOWN_LAYER_Z = 11000;
 
+    /** Root of this component is the wrapper; querySelector only matches descendants. */
+    _systrayWrapperEl() {
+        if (!this.el) {
+            return null;
+        }
+        return this.el.classList?.contains("o_wa_calls_systray_wrapper")
+            ? this.el
+            : this.el.querySelector(".o_wa_calls_systray_wrapper");
+    }
+
     _syncDropdownViewport() {
-        const wrap = this.el?.querySelector(".o_wa_calls_systray_wrapper");
+        const wrap = this._systrayWrapperEl();
         if (!wrap) {
             return;
         }
