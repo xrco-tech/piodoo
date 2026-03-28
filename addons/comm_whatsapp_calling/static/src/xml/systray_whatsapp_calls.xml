@@ -11,7 +11,10 @@
                 </span>
             </div>
 
-            <div t-if="state.open" class="o_wa_calls_dropdown" t-on-click="onDropdownClick">
+            <div t-if="state.open"
+                 class="o_wa_calls_dropdown"
+                 t-att-style="dropdownFixedStyle()"
+                 t-on-click="onDropdownClick">
                 <div class="o_wa_calls_dropdown_title">WhatsApp Calls</div>
 
                 <div t-if="!state.items.length" class="o_wa_calls_dropdown_empty">
