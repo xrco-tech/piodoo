@@ -34,7 +34,10 @@
     color: var(--o-systray-hover-color, #1a73e8);
 }
 
-/* Do not override .o_menu_systray .badge font-size, colors, padding, or transform */
+/* Pill shape like other systray counters; keep core badge colors/size/transform */
+.o_wa_calls_systray .badge {
+    border-radius: 50rem;
+}
 
 .o_wa_calls_dropdown {
     position: absolute;
