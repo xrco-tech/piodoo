@@ -39,6 +39,12 @@
     border-radius: 50rem;
 }
 
+/* Clicks land on the button div, not a dead zone on the icon glyph */
+.o_wa_calls_systray .o_wa_calls_icon,
+.o_wa_calls_systray .badge {
+    pointer-events: none;
+}
+
 /* placement + z-index: inline dropdownLayerStyle() — fixed to viewport so we stack above .o_action_manager */
 .o_wa_calls_dropdown {
     width: 360px;

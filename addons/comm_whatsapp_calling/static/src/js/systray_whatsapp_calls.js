@@ -78,9 +78,10 @@ export class WhatsAppCallsSystray extends Component {
         if (!this.el) {
             return null;
         }
-        return this.el.classList?.contains("o_wa_calls_systray_wrapper")
-            ? this.el
-            : this.el.querySelector(".o_wa_calls_systray_wrapper");
+        if (this.el.classList?.contains("o_wa_calls_systray_wrapper")) {
+            return this.el;
+        }
+        return this.el.querySelector(".o_wa_calls_systray_wrapper") || this.el;
     }
 
     _syncDropdownViewport() {
@@ -104,10 +105,9 @@ export class WhatsAppCallsSystray extends Component {
             return "";
         }
         const p = this.state.dropdownPos;
-        if (!p) {
-            return "position:fixed;visibility:hidden;";
-        }
-        return `position:fixed;top:${p.top}px;right:${p.right}px;left:auto;z-index:${WhatsAppCallsSystray.DROPDOWN_LAYER_Z};visibility:visible;`;
+        const top = p?.top ?? 52;
+        const right = p?.right ?? 12;
+        return `position:fixed;top:${top}px;right:${right}px;left:auto;z-index:${WhatsAppCallsSystray.DROPDOWN_LAYER_Z};`;
     }
 
     /**
@@ -184,7 +184,7 @@ export class WhatsAppCallsSystray extends Component {
         return "Call";
     }
 
-    async onClickIcon(ev) {
+    onClickIcon(ev) {
         ev.preventDefault();
         ev.stopPropagation();
         if (this.state.open) {
@@ -192,10 +192,18 @@ export class WhatsAppCallsSystray extends Component {
             this.state.dropdownPos = null;
             return;
         }
-        await this.refreshCounts();
-        await this.loadDropdownItems();
+        // Open synchronously so the UI responds even if RPC is slow; load data after.
         this._syncDropdownViewport();
         this.state.open = true;
+        void this._refreshOpenPanel();
+    }
+
+    async _refreshOpenPanel() {
+        await this.refreshCounts();
+        await this.loadDropdownItems();
+        if (this.state.open) {
+            this._syncDropdownViewport();
+        }
     }
 
     onDropdownClick(ev) {
