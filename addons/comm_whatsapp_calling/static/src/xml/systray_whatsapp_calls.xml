@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="comm_whatsapp_calling.WhatsAppCallsSystray" owl="1">
-        <div class="o_wa_calls_systray_wrapper" t-att-class="{'o_wa_calls_systray_open': state.open}">
+        <div class="o_wa_calls_systray_wrapper">
             <div class="o_wa_calls_systray" role="button" t-on-click="onClickIcon">
                 <i class="fa fa-phone o_wa_calls_icon"
                    title="WhatsApp Calls"
@@ -11,7 +11,10 @@
                 </span>
             </div>
 
-            <div t-if="state.open" class="o_wa_calls_dropdown" t-on-click="onDropdownClick">
+            <div t-if="state.open"
+                 class="o_wa_calls_dropdown"
+                 t-att-style="dropdownLayerStyle()"
+                 t-on-click="onDropdownClick">
                 <div class="o_wa_calls_dropdown_title">WhatsApp Calls</div>
 
                 <div t-if="!state.items.length" class="o_wa_calls_dropdown_empty">

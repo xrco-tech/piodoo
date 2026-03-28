@@ -14,12 +14,6 @@
     padding-right: var(--NavBar-entry-padding-right, 0.315em);
 }
 
-/* Lift entire cell above main content while open (Discuss / activity menus). */
-.o_wa_calls_systray_wrapper.o_wa_calls_systray_open {
-    z-index: 10050;
-    isolation: isolate;
-}
-
 .o_wa_calls_systray {
     cursor: pointer;
     display: inline-flex;
@@ -45,17 +39,14 @@
     border-radius: 50rem;
 }
 
+/* placement + z-index: inline dropdownLayerStyle() — fixed to viewport so we stack above .o_action_manager */
 .o_wa_calls_dropdown {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
     width: 360px;
     max-width: 90vw;
     background: #fff;
     border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    z-index: 10050;
     overflow: hidden;
 }
 

@@ -1,7 +1,7 @@
 /** @odoo-module */
 
 import { registry } from "@web/core/registry";
-import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
+import { Component, useState, onWillStart, onMounted, onWillUnmount, onPatched } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 
 export class WhatsAppCallsSystray extends Component {
@@ -14,8 +14,11 @@ export class WhatsAppCallsSystray extends Component {
             unansweredCount: 0,
             open: false,
             items: [],
+            /** Viewport coords for fixed panel (same box as absolute right:0 under wrapper). */
+            dropdownPos: null,
         });
 
+        this._repositionScheduled = false;
         this._onDocClick = (ev) => {
             if (!this.state.open || !this.el) {
                 return;
@@ -24,19 +27,77 @@ export class WhatsAppCallsSystray extends Component {
                 return;
             }
             this.state.open = false;
+            this.state.dropdownPos = null;
         };
 
         onWillStart(async () => {
             await this.refreshCounts();
         });
 
+        this._onReposition = () => {
+            if (!this.state.open) {
+                return;
+            }
+            if (this._repositionScheduled) {
+                return;
+            }
+            this._repositionScheduled = true;
+            requestAnimationFrame(() => {
+                this._repositionScheduled = false;
+                this._syncDropdownViewport();
+            });
+        };
+
         onMounted(() => {
             document.addEventListener("click", this._onDocClick, true);
+            window.addEventListener("scroll", this._onReposition, true);
+            window.addEventListener("resize", this._onReposition);
         });
 
         onWillUnmount(() => {
             document.removeEventListener("click", this._onDocClick, true);
+            window.removeEventListener("scroll", this._onReposition, true);
+            window.removeEventListener("resize", this._onReposition);
         });
+
+        onPatched(() => {
+            if (this.state.open) {
+                this._syncDropdownViewport();
+            }
+        });
+    }
+
+    /**
+     * Above systray siblings and action content; under full-screen modals (~1055+).
+     * Discuss/mail use Popper at the document root with a similar layer.
+     */
+    static DROPDOWN_LAYER_Z = 11000;
+
+    _syncDropdownViewport() {
+        const wrap = this.el?.querySelector(".o_wa_calls_systray_wrapper");
+        if (!wrap) {
+            return;
+        }
+        const r = wrap.getBoundingClientRect();
+        const doc = document.documentElement;
+        const top = Math.round(r.bottom + 6);
+        const right = Math.round(doc.clientWidth - r.right);
+        const prev = this.state.dropdownPos;
+        if (prev && prev.top === top && prev.right === right) {
+            return;
+        }
+        this.state.dropdownPos = { top, right };
+    }
+
+    dropdownLayerStyle() {
+        if (!this.state.open) {
+            return "";
+        }
+        const p = this.state.dropdownPos;
+        if (!p) {
+            return "position:fixed;visibility:hidden;";
+        }
+        return `position:fixed;top:${p.top}px;right:${p.right}px;left:auto;z-index:${WhatsAppCallsSystray.DROPDOWN_LAYER_Z};visibility:visible;`;
     }
 
     /**
@@ -118,10 +179,12 @@ export class WhatsAppCallsSystray extends Component {
         ev.stopPropagation();
         if (this.state.open) {
             this.state.open = false;
+            this.state.dropdownPos = null;
             return;
         }
         await this.refreshCounts();
         await this.loadDropdownItems();
+        this._syncDropdownViewport();
         this.state.open = true;
     }
 
@@ -144,8 +207,10 @@ export class WhatsAppCallsSystray extends Component {
                 target: "current",
             });
             this.state.open = false;
+            this.state.dropdownPos = null;
         } catch (_e) {
             this.state.open = false;
+            this.state.dropdownPos = null;
         }
     }
 
@@ -168,6 +233,7 @@ export class WhatsAppCallsSystray extends Component {
             // ignore
         }
         this.state.open = false;
+        this.state.dropdownPos = null;
     }
 }
 
