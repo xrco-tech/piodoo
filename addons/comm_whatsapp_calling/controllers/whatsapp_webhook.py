@@ -149,30 +149,31 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 ),
             }
             users = request.env["res.users"].sudo().search([("active", "=", True)])
-            # bus.bus API: sendmany([(channel, message), ...]); channel = (db, name, uid)
-            notifications = [
-                ((request.db, "whatsapp_incoming_call", u.id), payload)
-                for u in users
-            ]
-            if notifications:
-                bus = request.env["bus.bus"].sudo()
-                if hasattr(bus, "sendmany"):
-                    bus.sendmany(notifications)
-                elif hasattr(bus, "_sendmany"):
-                    bus._sendmany(notifications)
-                else:
-                    # Odoo 15+: _sendone(channel, notification_type, message)
-                    for channel, message in notifications:
-                        if hasattr(bus, "sendone"):
-                            bus.sendone(channel, message)
-                        elif hasattr(bus, "_sendone"):
-                            bus._sendone(channel, "whatsapp_incoming_call", message)
-                        else:
-                            break
+            bus = request.env["bus.bus"].sudo()
+            # Channel must match frontend: JSON.stringify([db, "whatsapp_incoming_call", uid])
+            dbname = request.env.cr.dbname
+            n_users = 0
+            for u in users:
+                try:
+                    # Odoo 18+: _sendone(target, notification_type, message); message -> payload
+                    bus._sendone(
+                        (dbname, "whatsapp_incoming_call", u.id),
+                        "whatsapp_incoming_call",
+                        payload,
+                    )
+                    n_users += 1
+                except AttributeError:
+                    # Very old bus API (unlikely): skip per-user send
+                    _logger.warning(
+                        "comm_whatsapp_calling: bus.bus._sendone missing; cannot notify user %s",
+                        u.id,
+                    )
+                    break
+            if n_users:
                 _logger.info(
                     "comm_whatsapp_calling: sent ringing notification for call %s to %s users",
                     call_log.call_id,
-                    len(notifications),
+                    n_users,
                 )
         except Exception as e:
             _logger.warning(

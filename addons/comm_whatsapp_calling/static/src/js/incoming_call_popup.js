@@ -172,33 +172,53 @@
         return null;
     }
 
-    function addOurChannel(bus, cb) {
+    /** @returns {Promise|undefined} */
+    function addOurChannel(bus) {
         var session = getSessionInfo();
         if (session) {
             var channel = JSON.stringify([session.db, CHANNEL, session.uid]);
             if (typeof bus.addChannel === "function") {
-                bus.addChannel(channel);
-                if (cb) cb(true);
-                return;
+                return bus.addChannel(channel);
             }
         }
-        callRpc("/whatsapp/call/bus_channel", {}).then(function (r) {
+        return callRpc("/whatsapp/call/bus_channel", {}).then(function (r) {
             if (r && r.db !== undefined && r.uid !== undefined && typeof bus.addChannel === "function") {
-                bus.addChannel(JSON.stringify([r.db, CHANNEL, r.uid]));
-                if (cb) cb(true);
-            } else if (cb) cb(false);
-        }).catch(function () { if (cb) cb(false); });
+                return bus.addChannel(JSON.stringify([r.db, CHANNEL, r.uid]));
+            }
+        });
     }
 
     function setupBusListener() {
         var bus = getBusService();
-        if (!bus || typeof bus.addEventListener !== "function") return false;
-        bus.addEventListener("notification", function (event) {
-            var detail = event.detail;
-            if (detail) onNotification(Array.isArray(detail) ? detail : [detail]);
-        });
-        addOurChannel(bus);
-        if (typeof bus.start === "function") bus.start();
+        if (!bus) return false;
+        /*
+         * Odoo 18+: worker delivers typed notifications via notificationBus; the main bus
+         * never emits "notification" (internal event). Use subscribe(type, cb) per bus_service.js.
+         */
+        if (typeof bus.subscribe === "function") {
+            bus.subscribe(CHANNEL, function (payload) {
+                if (payload && payload.call_log_id) {
+                    showPopup(payload);
+                }
+            });
+        } else if (typeof bus.addEventListener === "function") {
+            bus.addEventListener("notification", function (event) {
+                var detail = event.detail;
+                if (detail) onNotification(Array.isArray(detail) ? detail : [detail]);
+            });
+        } else {
+            return false;
+        }
+        var p = addOurChannel(bus);
+        if (p && typeof p.then === "function") {
+            p.then(function () {
+                if (typeof bus.start === "function") {
+                    return bus.start();
+                }
+            }).catch(function () { /* channel rpc failed */ });
+        } else if (typeof bus.start === "function") {
+            bus.start();
+        }
         return true;
     }
 
