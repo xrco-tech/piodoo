@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="comm_whatsapp_calling.WhatsAppCallsSystray" owl="1">
-        <div class="o_wa_calls_systray_wrapper">
+        <div class="o_wa_calls_systray_wrapper" data-wa-calls-systray-root="1">
             <div class="o_wa_calls_systray" role="button" t-on-click="onClickIcon">
                 <i class="fa fa-phone o_wa_calls_icon"
                    title="WhatsApp Calls"

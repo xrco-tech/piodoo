@@ -20,11 +20,15 @@ export class WhatsAppCallsSystray extends Component {
 
         this._repositionScheduled = false;
 
-        this._onDocClick = (ev) => {
+        /** Close on outside interaction (Discuss uses pointer/mousedown, not always click). */
+        this._onAway = (ev) => {
             if (!this.state.open || !this.el) {
                 return;
             }
-            if (this.el.contains(ev.target)) {
+            if (ev.button !== 0 && ev.button !== undefined) {
+                return;
+            }
+            if (this._eventIsInsideSystrayUi(ev)) {
                 return;
             }
             this.state.open = false;
@@ -51,13 +55,13 @@ export class WhatsAppCallsSystray extends Component {
         };
 
         onMounted(() => {
-            document.addEventListener("click", this._onDocClick, true);
+            window.addEventListener("pointerdown", this._onAway, true);
             window.addEventListener("scroll", this._onReposition, true);
             window.addEventListener("resize", this._onReposition);
         });
 
         onWillUnmount(() => {
-            document.removeEventListener("click", this._onDocClick, true);
+            window.removeEventListener("pointerdown", this._onAway, true);
             window.removeEventListener("scroll", this._onReposition, true);
             window.removeEventListener("resize", this._onReposition);
             this._setBodyDropdownOpen(false);
@@ -79,6 +83,35 @@ export class WhatsAppCallsSystray extends Component {
         }
     }
 
+    _eventIsInsideSystrayUi(ev) {
+        const root = this.el;
+        if (!root) {
+            return false;
+        }
+        const t = ev.target;
+        if (t instanceof Node && root.contains(t)) {
+            return true;
+        }
+        const path = ev.composedPath?.();
+        if (path) {
+            for (const n of path) {
+                if (n === root) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Anchor for alignment: icon row (Discuss aligns panel right edge with icon right edge). */
+    _systrayIconEl() {
+        const root = this._systrayWrapperEl();
+        if (!root) {
+            return null;
+        }
+        return root.querySelector(".o_wa_calls_systray") || root;
+    }
+
     /** Root of this component is the wrapper; querySelector only matches descendants. */
     _systrayWrapperEl() {
         if (!this.el) {
@@ -91,11 +124,11 @@ export class WhatsAppCallsSystray extends Component {
     }
 
     _syncDropdownViewport() {
-        const wrap = this._systrayWrapperEl();
-        if (!wrap) {
+        const anchor = this._systrayIconEl();
+        if (!anchor) {
             return;
         }
-        const r = wrap.getBoundingClientRect();
+        const r = anchor.getBoundingClientRect();
         const doc = document.documentElement;
         const top = Math.round(r.bottom + 6);
         const right = Math.round(doc.clientWidth - r.right);
