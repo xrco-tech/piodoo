@@ -45,7 +45,7 @@
     pointer-events: none;
 }
 
-/* placement + z-index: inline dropdownLayerStyle() — fixed to viewport so we stack above .o_action_manager */
+/* Panel is rendered on document.body via Owl Portal (escapes .o_main_navbar backdrop-filter stacking). */
 .o_wa_calls_dropdown {
     width: 360px;
     max-width: 90vw;
