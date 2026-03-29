@@ -1,12 +1,11 @@
 /** @odoo-module */
 
 import { registry } from "@web/core/registry";
-import { Component, useState, onWillStart, onMounted, onWillUnmount, onPatched, Portal } from "@odoo/owl";
+import { Component, useState, onWillStart, onMounted, onWillUnmount, onPatched } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 
 export class WhatsAppCallsSystray extends Component {
     static template = "comm_whatsapp_calling.WhatsAppCallsSystray";
-    static components = { Portal };
 
     setup() {
         this.action = useService("action");
@@ -20,8 +19,6 @@ export class WhatsAppCallsSystray extends Component {
         });
 
         this._repositionScheduled = false;
-        /** Portal mounts the panel on `body`; it is not under this.el. */
-        this.portalSelector = "body";
 
         this._onDocClick = (ev) => {
             if (!this.state.open || !this.el) {
@@ -30,11 +27,9 @@ export class WhatsAppCallsSystray extends Component {
             if (this.el.contains(ev.target)) {
                 return;
             }
-            if (ev.target.closest?.(".o_wa_calls_dropdown")) {
-                return;
-            }
             this.state.open = false;
             this.state.dropdownPos = null;
+            this._setBodyDropdownOpen(false);
         };
 
         onWillStart(async () => {
@@ -65,6 +60,7 @@ export class WhatsAppCallsSystray extends Component {
             document.removeEventListener("click", this._onDocClick, true);
             window.removeEventListener("scroll", this._onReposition, true);
             window.removeEventListener("resize", this._onReposition);
+            this._setBodyDropdownOpen(false);
         });
 
         onPatched(() => {
@@ -74,11 +70,14 @@ export class WhatsAppCallsSystray extends Component {
         });
     }
 
-    /**
-     * Root layer once portaled to body (above home cards, floating icons, tooltips).
-     * Below Bootstrap modal (1055) if any; raise if you need above modals.
-     */
+    /** Fixed panel; stacks above action content when navbar backdrop-filter trap is lifted (see CSS). */
     static DROPDOWN_LAYER_Z = 12000;
+
+    _setBodyDropdownOpen(active) {
+        if (typeof document !== "undefined" && document.body) {
+            document.body.classList.toggle("o_wa_calls_systray_dropdown_open", Boolean(active));
+        }
+    }
 
     /** Root of this component is the wrapper; querySelector only matches descendants. */
     _systrayWrapperEl() {
@@ -197,11 +196,13 @@ export class WhatsAppCallsSystray extends Component {
         if (this.state.open) {
             this.state.open = false;
             this.state.dropdownPos = null;
+            this._setBodyDropdownOpen(false);
             return;
         }
         // Open synchronously so the UI responds even if RPC is slow; load data after.
         this._syncDropdownViewport();
         this.state.open = true;
+        this._setBodyDropdownOpen(true);
         void this._refreshOpenPanel();
     }
 
@@ -233,9 +234,11 @@ export class WhatsAppCallsSystray extends Component {
             });
             this.state.open = false;
             this.state.dropdownPos = null;
+            this._setBodyDropdownOpen(false);
         } catch (_e) {
             this.state.open = false;
             this.state.dropdownPos = null;
+            this._setBodyDropdownOpen(false);
         }
     }
 
@@ -259,6 +262,7 @@ export class WhatsAppCallsSystray extends Component {
         }
         this.state.open = false;
         this.state.dropdownPos = null;
+        this._setBodyDropdownOpen(false);
     }
 }
 

@@ -45,7 +45,18 @@
     pointer-events: none;
 }
 
-/* Panel is rendered on document.body via Owl Portal (escapes .o_main_navbar backdrop-filter stacking). */
+/*
+ * home-theme puts backdrop-filter on .o_main_navbar (glass effect). That traps fixed-position
+ * descendants so they paint under the action manager. While our menu is open we turn that
+ * off via body.o_wa_calls_systray_dropdown_open (see JS); then this z-index applies globally.
+ */
+body.o_wa_calls_systray_dropdown_open .o_main_navbar,
+body.o_wa_calls_systray_dropdown_open .o_main_navbar::before,
+body.o_wa_calls_systray_dropdown_open .o_main_navbar::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
 .o_wa_calls_dropdown {
     width: 360px;
     max-width: 90vw;
