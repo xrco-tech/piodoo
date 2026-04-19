@@ -12,6 +12,11 @@
                 </div>
                 <div id="bb-empty" style="display:none; padding:12px;">No steps to display.</div>
               </div>
+              <div class="bb-zoom-controls" aria-label="Zoom controls">
+                <button id="bbZoomOut" type="button" class="bb-zoom-btn" title="Zoom out">-</button>
+                <span id="bbZoomLabel" class="bb-zoom-label">100%</span>
+                <button id="bbZoomIn" type="button" class="bb-zoom-btn" title="Zoom in">+</button>
+              </div>
             </div>
         
             <t t-jquery="body" t-operation="append">
@@ -22,6 +27,54 @@
                     const chatbotId = wrapEl ? parseInt(wrapEl.getAttribute('data-chatbot-id') || '0', 10) : 0;
                     // Always valid JSON
                     const tree = <t t-raw="tree_json or '[]'"/>;
+                    const ZOOM_MIN = 0.5;
+                    const ZOOM_MAX = 2;
+                    const ZOOM_STEP = 0.1;
+                    const supportsCssZoom = typeof document.body.style.zoom !== 'undefined';
+                    let zoomLevel = 1;
+                    let activeGrid = null;
+                    let redrawFlowLines = null;
+
+                    function clamp(v, min, max) {
+                      return Math.min(max, Math.max(min, v));
+                    }
+                    function updateZoomLabel() {
+                      const label = document.getElementById('bbZoomLabel');
+                      if (label) label.textContent = Math.round(zoomLevel * 100) + '%';
+                    }
+                    function applyZoom() {
+                      if (!activeGrid) return;
+                      if (supportsCssZoom) {
+                        activeGrid.style.zoom = String(zoomLevel);
+                        activeGrid.style.transform = '';
+                      } else {
+                        activeGrid.style.zoom = '';
+                        activeGrid.style.transform = `scale(${zoomLevel})`;
+                        activeGrid.style.transformOrigin = 'top left';
+                      }
+                      updateZoomLabel();
+                      if (typeof redrawFlowLines === 'function') redrawFlowLines();
+                    }
+                    function setZoom(nextZoom) {
+                      const z = clamp(nextZoom, ZOOM_MIN, ZOOM_MAX);
+                      if (z === zoomLevel) return;
+                      zoomLevel = z;
+                      applyZoom();
+                    }
+                    function bindZoomControls() {
+                      const wrap = document.getElementById('steps-flow-wrap');
+                      const plus = document.getElementById('bbZoomIn');
+                      const minus = document.getElementById('bbZoomOut');
+                      if (plus) plus.addEventListener('click', () => setZoom(zoomLevel + ZOOM_STEP));
+                      if (minus) minus.addEventListener('click', () => setZoom(zoomLevel - ZOOM_STEP));
+                      if (wrap) {
+                        wrap.addEventListener('wheel', (ev) => {
+                          ev.preventDefault();
+                          setZoom(zoomLevel + (ev.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+                        }, { passive: false });
+                      }
+                      updateZoomLabel();
+                    }
               
                     // ---- helpers ----
                     function flatten(nodes, level=0, parent=null, out=[]) {
@@ -110,6 +163,7 @@
                     function renderFlow() {
                         const wrap = document.getElementById('steps-flow-wrap');
                         const grid = document.getElementById('steps-flow');
+                        activeGrid = grid;
                         // Ensure SVG exists as first child inside the grid
                         let svg = grid.querySelector('#bb-lines');
                         if (!svg) {
@@ -342,6 +396,8 @@
                           setTimeout(drawLines, 100);
                         }, 100);
                         window.addEventListener('resize', drawLines, { passive: true });
+                        redrawFlowLines = drawLines;
+                        applyZoom();
 
                         // Enable click-and-drag panning on the scrollable wrapper
                         enableDragScroll(wrap);
@@ -408,6 +464,7 @@
                       }
               
                     // Init
+                    bindZoomControls();
                     renderFlow();
                   })();
             </script>
@@ -539,6 +596,41 @@
                 
                 .bb-card, .bb-card * {
                 font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                }
+                .bb-zoom-controls {
+                  position: fixed;
+                  left: 50%;
+                  bottom: 16px;
+                  transform: translateX(-50%);
+                  z-index: 50;
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 8px;
+                  padding: 6px 10px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 999px;
+                  background: rgba(255, 255, 255, 0.96);
+                  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+                  backdrop-filter: blur(2px);
+                }
+                .bb-zoom-btn {
+                  width: 30px;
+                  height: 30px;
+                  border: 1px solid #cbd5e1;
+                  border-radius: 999px;
+                  background: #fff;
+                  color: #1f2937;
+                  font-size: 18px;
+                  line-height: 1;
+                  cursor: pointer;
+                }
+                .bb-zoom-btn:hover { background: #f3f4f6; }
+                .bb-zoom-label {
+                  min-width: 56px;
+                  text-align: center;
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: #374151;
                 }
               </style>
             </t>
