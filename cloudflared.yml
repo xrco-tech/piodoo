@@ -1,0 +1,5 @@
+originRequest:
+  disableChunkedEncoding: true
+  connectTimeout: 30s
+  keepAliveTimeout: 90s
+  keepAliveConnections: 100

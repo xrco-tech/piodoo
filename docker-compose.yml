@@ -31,7 +31,9 @@ services:
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: always
-    command: tunnel --no-autoupdate run --protocol http2 --token ${CLOUDFLARE_TOKEN}
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run --token ${CLOUDFLARE_TOKEN}
+    volumes:
+      - ./cloudflared.yml:/etc/cloudflared/config.yml
     # Link to odoo so it can resolve the 'odoo' hostname
     depends_on:
       - odoo
