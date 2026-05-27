@@ -70,7 +70,7 @@
                       if (wrap) {
                         wrap.addEventListener('wheel', (ev) => {
                           ev.preventDefault();
-                          setZoom(zoomLevel + (ev.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+                          setZoom(zoomLevel + (ev.deltaY &lt; 0 ? ZOOM_STEP : -ZOOM_STEP));
                         }, { passive: false });
                       }
                       updateZoomLabel();
