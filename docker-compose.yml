@@ -15,9 +15,6 @@ services:
       - db
     env_file: .env
     command: ["odoo", "-c", "/etc/odoo/odoo.conf"]
-    ports:
-      - "8069:8069"
-      - "8072:8072"
     environment:
       - HOST=db
       - USER=${POSTGRES_USER}
@@ -28,15 +25,24 @@ services:
       - ./config:/etc/odoo
     restart: always
 
+  nginx:
+    image: nginx:alpine
+    depends_on:
+      - odoo
+    ports:
+      - "8069:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    restart: always
+
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: always
     command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run --token ${CLOUDFLARE_TOKEN}
     volumes:
       - ./cloudflared.yml:/etc/cloudflared/config.yml
-    # Link to odoo so it can resolve the 'odoo' hostname
     depends_on:
-      - odoo
+      - nginx
 
   prometheus:
     image: prom/prometheus
