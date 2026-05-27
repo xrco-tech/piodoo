@@ -15,6 +15,11 @@ class WhatsAppChatbot(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(string="Name", tracking=True, required=True)
+    status = fields.Selection([
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+        ('inactive', 'Inactive'),
+    ], string='Status', default='draft', required=True, tracking=True)
     description = fields.Text(string="Description", tracking=True)
     
     # Steps and flow
