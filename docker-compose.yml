@@ -35,6 +35,18 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     restart: always
 
+  mcp-proxy:
+    build: ./mcp-proxy
+    depends_on:
+      - nginx
+    environment:
+      - ODOO_URL=http://nginx:80
+      - ODOO_DB=odoo
+      - ODOO_API_KEY=${ODOO_MCP_API_KEY}
+    ports:
+      - "8081:8080"
+    restart: always
+
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: always
@@ -43,6 +55,7 @@ services:
       - ./cloudflared.yml:/etc/cloudflared/config.yml
     depends_on:
       - nginx
+      - mcp-proxy
 
   prometheus:
     image: prom/prometheus
