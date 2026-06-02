@@ -233,7 +233,7 @@ export class ChatbotFlowAction extends Component {
         grid.style.height = (totalRows * ROW_H + PY * 2 + 80) + "px";
 
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.className = "o_flow_svg";
+        svg.setAttribute("class", "o_flow_svg");
         grid.appendChild(svg);
 
         const nodeById = Object.fromEntries(flat.map(n => [n.id, n]));
