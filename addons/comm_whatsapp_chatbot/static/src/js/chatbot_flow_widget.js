@@ -66,6 +66,7 @@ export class ChatbotFlowAction extends Component {
     setup() {
         this.orm    = useService("orm");
         this.dialog = useService("dialog");
+        this.action = useService("action");
         this.notification = useService("notification");
 
         this.chatbotId   = this.props.action.params?.chatbot_id;
@@ -190,6 +191,15 @@ export class ChatbotFlowAction extends Component {
 
     async _saveStepName(stepId, name) {
         await this.orm.write("whatsapp.chatbot.step", [stepId], { name });
+    }
+
+    _openBotDetails() {
+        this.action.doAction({
+            type:      "ir.actions.act_window",
+            res_model: "whatsapp.chatbot",
+            res_id:    this.chatbotId,
+            views:     [[false, "form"]],
+        });
     }
 
     // ── Type config (also called from OWL template) ───────────────────────────

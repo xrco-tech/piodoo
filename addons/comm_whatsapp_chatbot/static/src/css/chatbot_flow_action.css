@@ -27,7 +27,14 @@
     background: #25d366; color: #fff; font-size: 18px;
     flex-shrink: 0;
 }
-.o_chatbot_flow_title { font-size: 16px; font-weight: 700; color: #1f2937; }
+.o_chatbot_flow_title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    text-decoration: none;
+    cursor: pointer;
+}
+.o_chatbot_flow_title:hover { color: #714b67; text-decoration: underline; }
 .o_flow_add_step_btn { font-weight: 600; }
 .o_flow_zoom_btn   { min-width: 28px; padding: 0 6px; font-size: 16px; }
 .o_flow_zoom_label { min-width: 44px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; }
