@@ -135,8 +135,10 @@
                                 <field name="description" widget="text"/>
                             </group>
                             <group string="Keywords and Variables">
-                                <field name="bot_trigger_ids" widget="many2many_tags" string="Triggers"/>
-                                <field name="bot_variable_ids" widget="many2many_tags" string="Variables"/>
+                                <field name="bot_trigger_ids" widget="many2many_tags" string="Triggers"
+                                       context="{'default_chatbot_id': id}"/>
+                                <field name="bot_variable_ids" widget="many2many_tags" string="Variables"
+                                       context="{'default_chatbot_id': id}"/>
                             </group>
                         </group>
                         <group>
