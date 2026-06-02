@@ -109,25 +109,42 @@ export class ChatbotFlowAction extends Component {
         const steps = await this.orm.searchRead(
             "whatsapp.chatbot.step",
             [["chatbot_id", "=", this.chatbotId]],
-            ["id", "name", "step_type", "parent_id", "body_plain", "sequence", "trigger_answer_ids"],
+            ["id", "name", "step_type", "parent_id", "body_plain", "sequence",
+             "trigger_answer_ids", "wa_message_type", "button_ids", "list_row_ids", "list_button_text"],
             { order: "parent_path, sequence, id" }
         );
 
         // Resolve answer names
-        const allIds = [...new Set(steps.flatMap(s => s.trigger_answer_ids || []))];
+        const allAnsIds = [...new Set(steps.flatMap(s => s.trigger_answer_ids || []))];
         const ansById = {};
-        if (allIds.length) {
-            const ans = await this.orm.read("whatsapp.chatbot.answer", allIds, ["id", "value"]);
+        if (allAnsIds.length) {
+            const ans = await this.orm.read("whatsapp.chatbot.answer", allAnsIds, ["id", "value"]);
             ans.forEach(a => { ansById[a.id] = a.value; });
         }
 
-        this._tree = this._buildTree(steps, ansById);
+        // Resolve reply button titles
+        const allBtnIds = [...new Set(steps.flatMap(s => s.button_ids || []))];
+        const btnById = {};
+        if (allBtnIds.length) {
+            const btns = await this.orm.read("whatsapp.chatbot.step.button", allBtnIds, ["id", "title"]);
+            btns.forEach(b => { btnById[b.id] = b.title; });
+        }
+
+        // Resolve list row titles
+        const allRowIds = [...new Set(steps.flatMap(s => s.list_row_ids || []))];
+        const rowById = {};
+        if (allRowIds.length) {
+            const rows = await this.orm.read("whatsapp.chatbot.step.list.row", allRowIds, ["id", "title"]);
+            rows.forEach(r => { rowById[r.id] = r.title; });
+        }
+
+        this._tree = this._buildTree(steps, ansById, btnById, rowById);
         this.state.loading = false;
         this._pendingDraw  = true;
         // onPatched fires after OWL removes the loading spinner → _renderCanvas runs
     }
 
-    _buildTree(steps, ansById) {
+    _buildTree(steps, ansById, btnById, rowById) {
         const byParent = {};
         for (const s of steps) {
             const pid = Array.isArray(s.parent_id) ? s.parent_id[0] : 0;
@@ -141,8 +158,12 @@ export class ChatbotFlowAction extends Component {
             id:           s.id,
             name:         s.name,
             type:         s.step_type,
+            waType:       s.wa_message_type || "non_interactive",
             preview_html: noPreview.has(s.step_type) ? "" : bodyToHtml(s.body_plain),
             answers:      (s.trigger_answer_ids || []).map(id => ansById[id] || `#${id}`),
+            buttons:      (s.button_ids   || []).map(id => btnById[id]).filter(Boolean),
+            listBtnText:  s.list_button_text || "See all options",
+            listRows:     (s.list_row_ids  || []).map(id => rowById[id]).filter(Boolean),
             children:     build(s.id),
         }));
         return build(0);
@@ -411,8 +432,11 @@ export class ChatbotFlowAction extends Component {
         head.appendChild(badge);
         card.appendChild(head);
 
-        // ── White content box: message preview + answer chips ─────────────────
-        const hasContent = node.preview_html || node.answers?.length;
+        // ── White content box: message preview + answer chips + IA buttons ──────
+        const hasButtons  = node.waType === "interactive_button" && node.buttons?.length;
+        const hasListRows = node.waType === "interactive_list"   && node.listRows?.length;
+        const hasContent  = node.preview_html || node.answers?.length || hasButtons || hasListRows;
+
         if (hasContent) {
             const content = document.createElement("div");
             content.className = "o_flow_card_content";
@@ -434,6 +458,43 @@ export class ChatbotFlowAction extends Component {
                     chips.appendChild(ch);
                 }
                 content.appendChild(chips);
+            }
+
+            // Interactive reply buttons preview
+            if (hasButtons) {
+                const sep = document.createElement("div");
+                sep.className = "o_flow_ia_sep";
+                content.appendChild(sep);
+                for (const label of node.buttons) {
+                    const btn = document.createElement("div");
+                    btn.className   = "o_flow_ia_btn";
+                    btn.textContent = label;
+                    content.appendChild(btn);
+                }
+            }
+
+            // Interactive list preview
+            if (hasListRows) {
+                const sep = document.createElement("div");
+                sep.className = "o_flow_ia_sep";
+                content.appendChild(sep);
+                const listBtn = document.createElement("div");
+                listBtn.className = "o_flow_ia_list_btn";
+                listBtn.innerHTML = `<i class="fa fa-list me-1"/>${node.listBtnText}`;
+                content.appendChild(listBtn);
+                const shown = node.listRows.slice(0, 3);
+                for (const row of shown) {
+                    const item = document.createElement("div");
+                    item.className   = "o_flow_ia_list_row";
+                    item.textContent = row;
+                    content.appendChild(item);
+                }
+                if (node.listRows.length > 3) {
+                    const more = document.createElement("div");
+                    more.className   = "o_flow_ia_list_more";
+                    more.textContent = `+${node.listRows.length - 3} more`;
+                    content.appendChild(more);
+                }
             }
 
             card.appendChild(content);

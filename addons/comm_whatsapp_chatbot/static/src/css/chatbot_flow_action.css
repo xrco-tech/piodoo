@@ -262,6 +262,59 @@
     white-space: nowrap;
 }
 
+/* Interactive preview elements inside card content ─────────────────────────── */
+.o_flow_ia_sep {
+    height: 1px;
+    background: #e4e7f5;
+    margin: 8px 0 6px;
+}
+
+/* Reply buttons (interactive_button) */
+.o_flow_ia_btn {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #0b5ed7;
+    text-align: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid #c8d8f8;
+    background: #f0f5ff;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_flow_ia_btn:last-child { margin-bottom: 0; }
+
+/* List button + rows (interactive_list) */
+.o_flow_ia_list_btn {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #0b5ed7;
+    text-align: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid #c8d8f8;
+    background: #f0f5ff;
+    margin-bottom: 6px;
+}
+.o_flow_ia_list_row {
+    font-size: 11px;
+    color: #374151;
+    padding: 3px 4px;
+    border-bottom: 1px solid #f0f0f5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_flow_ia_list_row:last-of-type { border-bottom: none; }
+.o_flow_ia_list_more {
+    font-size: 10px;
+    color: #9ca3af;
+    text-align: center;
+    padding-top: 3px;
+}
+
 /* Output dot — replaces the + button; click to add a child step */
 .o_flow_out_dot {
     position: absolute;
