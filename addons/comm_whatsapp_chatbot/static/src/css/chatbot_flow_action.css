@@ -27,7 +27,7 @@
     background: #25d366; color: #fff; font-size: 18px;
     flex-shrink: 0;
 }
-.o_chatbot_flow_title { font-size: 16px; font-weight: 700; color: #1f2937; }
+.o_chatbot_flow_title { font-size: 16px; font-weight: 500; color: #212529; letter-spacing: 0; }
 .o_flow_back_btn { color: #374151; padding: 0 6px; font-size: 15px; font-weight: 700; border: none; background: none; }
 .o_flow_back_btn:hover { color: #111827; background: none; }
 .o_flow_add_step_btn { font-weight: 600; }
