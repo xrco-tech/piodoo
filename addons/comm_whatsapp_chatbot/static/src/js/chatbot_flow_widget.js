@@ -42,7 +42,9 @@ function flattenTree(nodes, level = 0, parent = null, out = []) {
     for (const n of nodes) {
         out.push({ id: n.id, name: n.name, type: n.type, level, parent,
                    _col: n._col, preview_html: n.preview_html,
-                   answers: n.answers, children: n.children });
+                   answers: n.answers, children: n.children,
+                   waType: n.waType, buttons: n.buttons,
+                   listBtnText: n.listBtnText, listRows: n.listRows });
         flattenTree(n.children || [], level + 1, n.id, out);
     }
     return out;
