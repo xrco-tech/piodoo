@@ -108,8 +108,8 @@ export class ChatbotFlowAction extends Component {
         const allIds = [...new Set(steps.flatMap(s => s.trigger_answer_ids || []))];
         const ansById = {};
         if (allIds.length) {
-            const ans = await this.orm.read("whatsapp.chatbot.answer", allIds, ["id", "name"]);
-            ans.forEach(a => { ansById[a.id] = a.name; });
+            const ans = await this.orm.read("whatsapp.chatbot.answer", allIds, ["id", "value"]);
+            ans.forEach(a => { ansById[a.id] = a.value; });
         }
 
         this._tree = this._buildTree(steps, ansById);
