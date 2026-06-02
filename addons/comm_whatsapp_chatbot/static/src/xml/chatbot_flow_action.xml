@@ -7,14 +7,15 @@
             <!-- Toolbar -->
             <div class="o_chatbot_flow_toolbar">
                 <div class="o_chatbot_flow_toolbar_left">
+                    <button class="btn btn-sm btn-light o_flow_back_btn"
+                            t-on-click="() => this._goBack()"
+                            title="Back to chatbot details">
+                        <i class="fa fa-arrow-left"/>
+                    </button>
                     <span class="o_chatbot_flow_bot_icon">
                         <i class="fa fa-whatsapp"/>
                     </span>
-                    <a class="o_chatbot_flow_title"
-                       t-on-click.prevent="() => this._openBotDetails()"
-                       t-att-title="'Open details for ' + state.chatbotName">
-                        <t t-esc="state.chatbotName"/>
-                    </a>
+                    <span class="o_chatbot_flow_title" t-esc="state.chatbotName"/>
                     <button class="btn btn-sm btn-primary o_flow_add_step_btn"
                             t-on-click="() => this._openCreateDialog(false)"
                             title="Add a new top-level step">

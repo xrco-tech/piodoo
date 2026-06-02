@@ -193,13 +193,8 @@ export class ChatbotFlowAction extends Component {
         await this.orm.write("whatsapp.chatbot.step", [stepId], { name });
     }
 
-    _openBotDetails() {
-        this.action.doAction({
-            type:      "ir.actions.act_window",
-            res_model: "whatsapp.chatbot",
-            res_id:    this.chatbotId,
-            views:     [[false, "form"]],
-        });
+    _goBack() {
+        history.back();
     }
 
     // ── Type config (also called from OWL template) ───────────────────────────
