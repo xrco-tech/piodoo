@@ -164,7 +164,7 @@
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 2px 12px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.08);
-    overflow: hidden;
+    overflow: visible; /* allow add-btn to protrude below */
     position: relative;
     z-index: 1;
     transition: box-shadow .18s, transform .15s;
@@ -186,6 +186,7 @@
     align-items: center;
     justify-content: center;
     position: relative;
+    border-radius: 10px 10px 0 0; /* clips strip bg to card's top corners */
 }
 .o_flow_card_icon {
     font-size: 24px;
@@ -269,6 +270,7 @@
     padding: 6px 12px 10px;
     border-top: 1px solid #f3f4f6;
     background: #fafafa;
+    border-radius: 0 0 10px 10px; /* clips footer bg to card's bottom corners */
 }
 .o_flow_btn_edit,
 .o_flow_btn_del {
