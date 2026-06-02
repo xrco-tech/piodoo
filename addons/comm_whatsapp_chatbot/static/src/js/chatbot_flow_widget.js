@@ -44,7 +44,8 @@ function flattenTree(nodes, level = 0, parent = null, out = []) {
                    _col: n._col, preview_html: n.preview_html,
                    answers: n.answers, children: n.children,
                    waType: n.waType, buttons: n.buttons,
-                   listBtnText: n.listBtnText, listRows: n.listRows });
+                   listBtnText: n.listBtnText, listRows: n.listRows,
+                   headerType: n.headerType, headerText: n.headerText, footer: n.footer });
         flattenTree(n.children || [], level + 1, n.id, out);
     }
     return out;
@@ -112,7 +113,8 @@ export class ChatbotFlowAction extends Component {
             "whatsapp.chatbot.step",
             [["chatbot_id", "=", this.chatbotId]],
             ["id", "name", "step_type", "parent_id", "body_plain", "sequence",
-             "trigger_answer_ids", "wa_message_type", "button_ids", "list_row_ids", "list_button_text"],
+             "trigger_answer_ids", "wa_message_type", "button_ids", "list_row_ids", "list_button_text",
+             "header_type", "header_text", "footer"],
             { order: "parent_path, sequence, id" }
         );
 
@@ -166,6 +168,9 @@ export class ChatbotFlowAction extends Component {
             buttons:      (s.button_ids   || []).map(id => btnById[id]).filter(Boolean),
             listBtnText:  s.list_button_text || "See all options",
             listRows:     (s.list_row_ids  || []).map(id => rowById[id]).filter(Boolean),
+            headerType:   noPreview.has(s.step_type) ? null : (s.header_type || null),
+            headerText:   s.header_text || "",
+            footer:       noPreview.has(s.step_type) ? "" : (s.footer || ""),
             children:     build(s.id),
         }));
         return build(0);
@@ -437,17 +442,58 @@ export class ChatbotFlowAction extends Component {
         // ── White content box: message preview + answer chips + IA buttons ──────
         const hasButtons  = node.waType === "interactive_button" && node.buttons?.length;
         const hasListRows = node.waType === "interactive_list"   && node.listRows?.length;
-        const hasContent  = node.preview_html || node.answers?.length || hasButtons || hasListRows;
+        const hasContent  = node.preview_html || node.headerType || node.footer ||
+                            node.answers?.length || hasButtons || hasListRows;
 
         if (hasContent) {
             const content = document.createElement("div");
             content.className = "o_flow_card_content";
 
-            if (node.preview_html) {
+            const hasBubble = node.headerType || node.preview_html || node.footer;
+            if (hasBubble) {
                 const bubble = document.createElement("div");
                 bubble.className = "o_flow_bubble";
-                bubble.innerHTML = node.preview_html;
-                bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
+
+                // Header
+                if (node.headerType === "text" && node.headerText) {
+                    const hdr = document.createElement("div");
+                    hdr.className = "o_flow_bubble_header_text";
+                    hdr.textContent = node.headerText;
+                    bubble.appendChild(hdr);
+                } else if (node.headerType === "image") {
+                    const hdr = document.createElement("div");
+                    hdr.className = "o_flow_bubble_header_media";
+                    hdr.innerHTML = `<i class="fa fa-image"></i><span>Image</span>`;
+                    bubble.appendChild(hdr);
+                } else if (node.headerType === "video") {
+                    const hdr = document.createElement("div");
+                    hdr.className = "o_flow_bubble_header_media";
+                    hdr.innerHTML = `<i class="fa fa-play-circle"></i><span>Video</span>`;
+                    bubble.appendChild(hdr);
+                } else if (node.headerType === "document") {
+                    const hdr = document.createElement("div");
+                    hdr.className = "o_flow_bubble_header_doc";
+                    hdr.innerHTML = `<i class="fa fa-file-text-o"></i><span>${node.headerText || "Document"}</span>`;
+                    bubble.appendChild(hdr);
+                }
+
+                // Body
+                if (node.preview_html) {
+                    const body = document.createElement("div");
+                    body.className = "o_flow_bubble_body";
+                    body.innerHTML = node.preview_html;
+                    body.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
+                    bubble.appendChild(body);
+                }
+
+                // Footer
+                if (node.footer) {
+                    const ftr = document.createElement("div");
+                    ftr.className = "o_flow_bubble_footer";
+                    ftr.textContent = node.footer;
+                    bubble.appendChild(ftr);
+                }
+
                 content.appendChild(bubble);
             }
 
