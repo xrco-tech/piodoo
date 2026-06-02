@@ -127,7 +127,8 @@ export class ChatbotFlowAction extends Component {
             "whatsapp.chatbot.step",
             [["chatbot_id", "=", this.chatbotId]],
             ["id", "name", "step_type", "parent_id", "body_plain", "sequence",
-             "trigger_answer_ids", "wa_message_type", "button_ids", "list_row_ids", "list_button_text",
+             "trigger_answer_ids", "trigger_variable_ids", "wa_message_type",
+             "button_ids", "list_row_ids", "list_button_text",
              "header_type", "header_text", "footer", "flow_cta", "flow_id",
              "answer_data_type", "variable_id", "variable_data_source",
              "variable_value", "source_step_id", "source_variable_id"],
@@ -140,6 +141,20 @@ export class ChatbotFlowAction extends Component {
         if (allAnsIds.length) {
             const ans = await this.orm.read("whatsapp.chatbot.answer", allAnsIds, ["id", "value", "operator"]);
             ans.forEach(a => { ansById[a.id] = { value: a.value, operator: a.operator }; });
+        }
+
+        // Resolve variable trigger labels
+        const allVarTrigIds = [...new Set(steps.flatMap(s => s.trigger_variable_ids || []))];
+        const varTrigById = {};
+        if (allVarTrigIds.length) {
+            const vts = await this.orm.read(
+                "whatsapp.chatbot.variable.trigger", allVarTrigIds,
+                ["id", "variable_id", "operator", "value"]
+            );
+            vts.forEach(vt => {
+                const varName = Array.isArray(vt.variable_id) ? vt.variable_id[1] : "?";
+                varTrigById[vt.id] = varName + " " + (OP_PREFIX[vt.operator] || "") + (vt.value || "");
+            });
         }
 
         // Resolve reply button titles
@@ -158,13 +173,13 @@ export class ChatbotFlowAction extends Component {
             rows.forEach(r => { rowById[r.id] = r.title; });
         }
 
-        this._tree = this._buildTree(steps, ansById, btnById, rowById);
+        this._tree = this._buildTree(steps, ansById, varTrigById, btnById, rowById);
         this.state.loading = false;
         this._pendingDraw  = true;
         // onPatched fires after OWL removes the loading spinner → _renderCanvas runs
     }
 
-    _buildTree(steps, ansById, btnById, rowById) {
+    _buildTree(steps, ansById, varTrigById, btnById, rowById) {
         const byParent = {};
         for (const s of steps) {
             const pid = Array.isArray(s.parent_id) ? s.parent_id[0] : 0;
@@ -180,11 +195,14 @@ export class ChatbotFlowAction extends Component {
             type:         s.step_type,
             waType:       s.wa_message_type || "non_interactive",
             preview_html: noPreview.has(s.step_type) ? "" : bodyToHtml(s.body_plain),
-            answers:      (s.trigger_answer_ids || []).map(id => {
-                const a = ansById[id];
-                if (!a) return `#${id}`;
-                return (OP_PREFIX[a.operator] || "") + a.value;
-            }),
+            answers: [
+                ...(s.trigger_answer_ids || []).map(id => {
+                    const a = ansById[id];
+                    if (!a) return `#${id}`;
+                    return (OP_PREFIX[a.operator] || "") + a.value;
+                }),
+                ...(s.trigger_variable_ids || []).map(id => varTrigById[id] || `#${id}`),
+            ],
             buttons:      (s.button_ids   || []).map(id => btnById[id]).filter(Boolean),
             listBtnText:  s.list_button_text || "See all options",
             listRows:     (s.list_row_ids  || []).map(id => rowById[id]).filter(Boolean),

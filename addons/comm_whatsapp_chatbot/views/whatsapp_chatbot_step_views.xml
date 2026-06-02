@@ -146,7 +146,8 @@
                                         <field name="sequence" widget="handle"/>
                                         <field name="name"/>
                                         <field name="step_type"/>
-                                        <field name="trigger_answer_ids" widget="many2many_tags" optional="hide" options="{'no_create': False}" context="{'default_step_id': id}"/>
+                                        <field name="trigger_answer_ids" widget="many2many_tags" optional="show" options="{'no_create': False}" context="{'default_step_id': id}"/>
+                                        <field name="trigger_variable_ids" widget="many2many_tags" optional="show" options="{'no_create': False}" context="{'default_step_id': id}"/>
                                     </list>
                                 </field>
                             </page>

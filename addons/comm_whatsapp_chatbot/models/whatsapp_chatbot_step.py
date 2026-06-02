@@ -109,6 +109,7 @@ class WhatsAppChatbotStep(models.Model):
         ('audio', 'Audio'),
     ], string="Answer Data Type", default='text')
     trigger_answer_ids = fields.Many2many("whatsapp.chatbot.answer", string="Trigger Answers", tracking=True)
+    trigger_variable_ids = fields.One2many("whatsapp.chatbot.variable.trigger", "step_id", string="Trigger Variables", tracking=True)
     
     # Buttons (reply buttons for interactive_button type — max 3 per WhatsApp spec)
     button_ids = fields.One2many("whatsapp.chatbot.step.button", "step_id", string="Buttons", tracking=True)
