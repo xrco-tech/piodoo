@@ -299,6 +299,24 @@
     font-style: italic;
 }
 
+/* Interactive flow CTA — separator + tappable row (matches WhatsApp device rendering) */
+.o_flow_bubble_flow_sep {
+    height: 1px;
+    background: rgba(0,0,0,.12);
+    margin: 4px 0 0;
+}
+.o_flow_bubble_flow_cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #00a884;
+}
+.o_flow_bubble_flow_cta .fa { font-size: 11px; }
+
 /* Answer chips */
 .o_flow_chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .o_flow_chip {

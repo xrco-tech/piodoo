@@ -54,7 +54,8 @@ function flattenTree(nodes, level = 0, parent = null, out = []) {
                    answers: n.answers, children: n.children,
                    waType: n.waType, buttons: n.buttons,
                    listBtnText: n.listBtnText, listRows: n.listRows,
-                   headerType: n.headerType, headerText: n.headerText, footer: n.footer });
+                   headerType: n.headerType, headerText: n.headerText, footer: n.footer,
+                   flowCta: n.flowCta });
         flattenTree(n.children || [], level + 1, n.id, out);
     }
     return out;
@@ -123,7 +124,7 @@ export class ChatbotFlowAction extends Component {
             [["chatbot_id", "=", this.chatbotId]],
             ["id", "name", "step_type", "parent_id", "body_plain", "sequence",
              "trigger_answer_ids", "wa_message_type", "button_ids", "list_row_ids", "list_button_text",
-             "header_type", "header_text", "footer"],
+             "header_type", "header_text", "footer", "flow_cta"],
             { order: "parent_path, sequence, id" }
         );
 
@@ -184,6 +185,7 @@ export class ChatbotFlowAction extends Component {
             headerType:   noPreview.has(s.step_type) ? null : (s.header_type || null),
             headerText:   s.header_text || "",
             footer:       noPreview.has(s.step_type) ? "" : (s.footer || ""),
+            flowCta:      s.flow_cta || "",
             children:     build(s.id),
         }));
         return build(0);
@@ -456,13 +458,15 @@ export class ChatbotFlowAction extends Component {
         const hasButtons  = node.waType === "interactive_button" && node.buttons?.length;
         const hasListRows = node.waType === "interactive_list"   && node.listRows?.length;
         const hasContent  = node.preview_html || node.headerType || node.footer ||
-                            hasButtons || hasListRows;
+                            hasButtons || hasListRows ||
+                            node.waType === "interactive_flow";
 
         if (hasContent) {
             const content = document.createElement("div");
             content.className = "o_flow_card_content";
 
-            const hasBubble = node.headerType || node.preview_html || node.footer;
+            const hasBubble = node.headerType || node.preview_html || node.footer ||
+                              node.waType === "interactive_flow";
             if (hasBubble) {
                 const bubble = document.createElement("div");
                 bubble.className = "o_flow_bubble";
@@ -505,6 +509,17 @@ export class ChatbotFlowAction extends Component {
                     ftr.className = "o_flow_bubble_footer";
                     ftr.textContent = node.footer;
                     bubble.appendChild(ftr);
+                }
+
+                // Interactive flow CTA button (inside bubble, like WhatsApp renders it)
+                if (node.waType === "interactive_flow") {
+                    const fsep = document.createElement("div");
+                    fsep.className = "o_flow_bubble_flow_sep";
+                    bubble.appendChild(fsep);
+                    const fcta = document.createElement("div");
+                    fcta.className = "o_flow_bubble_flow_cta";
+                    fcta.innerHTML = `<span>${node.flowCta || "Open"}</span><i class="fa fa-chevron-right"></i>`;
+                    bubble.appendChild(fcta);
                 }
 
                 content.appendChild(bubble);
