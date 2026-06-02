@@ -84,7 +84,7 @@
                                 </group>
                                 
                                 <group string="Interactive Elements" invisible="wa_message_type == 'non_interactive'">
-                                    <field name="list_button_text" invisible="wa_message_type != 'interactive_list'" nolabel="0"/>
+                                    <!-- Interactive Reply Buttons -->
                                     <field name="button_ids" invisible="wa_message_type != 'interactive_button'" nolabel="1">
                                         <list editable="bottom" create="1" delete="1">
                                             <field name="sequence" widget="handle"/>
@@ -95,6 +95,21 @@
                                     </field>
                                     <div class="text-muted small" invisible="wa_message_type != 'interactive_button'">
                                         WhatsApp allows a maximum of 3 reply buttons per message.
+                                    </div>
+
+                                    <!-- Interactive List -->
+                                    <field name="list_button_text" invisible="wa_message_type != 'interactive_list'"/>
+                                    <field name="list_row_ids" invisible="wa_message_type != 'interactive_list'" nolabel="1">
+                                        <list editable="bottom" create="1" delete="1">
+                                            <field name="sequence" widget="handle"/>
+                                            <field name="section" string="Section" placeholder="Section heading (optional)"/>
+                                            <field name="row_id" string="Row ID" placeholder="e.g. row_1"/>
+                                            <field name="title" string="Title" placeholder="Option text (max 24 chars)"/>
+                                            <field name="description" string="Description" optional="show" placeholder="Optional subtitle"/>
+                                        </list>
+                                    </field>
+                                    <div class="text-muted small" invisible="wa_message_type != 'interactive_list'">
+                                        WhatsApp allows up to 10 rows across all sections.
                                     </div>
                                 </group>
                                 

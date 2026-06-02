@@ -9,4 +9,5 @@ access_whatsapp_chatbot_value_user,whatsapp.chatbot.value.user,model_whatsapp_ch
 access_whatsapp_chatbot_answer_user,whatsapp.chatbot.answer.user,model_whatsapp_chatbot_answer,base.group_user,1,1,1,1
 access_whatsapp_chatbot_step_button_user,whatsapp.chatbot.step.button.user,model_whatsapp_chatbot_step_button,base.group_user,1,1,1,1
 access_whatsapp_chatbot_variable_trigger_user,whatsapp.chatbot.variable.trigger.user,model_whatsapp_chatbot_variable_trigger,base.group_user,1,1,1,1
+access_whatsapp_chatbot_step_list_row_user,whatsapp.chatbot.step.list.row.user,model_whatsapp_chatbot_step_list_row,base.group_user,1,1,1,1
 

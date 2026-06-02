@@ -112,6 +112,8 @@ class WhatsAppChatbotStep(models.Model):
     
     # Buttons (reply buttons for interactive_button type — max 3 per WhatsApp spec)
     button_ids = fields.One2many("whatsapp.chatbot.step.button", "step_id", string="Buttons", tracking=True)
+    # List rows (interactive_list type — grouped by section, max 10 rows per WhatsApp spec)
+    list_row_ids = fields.One2many("whatsapp.chatbot.step.list.row", "step_id", string="List Rows", tracking=True)
     
     # Code execution
     code = fields.Text(string="Executable Code", help="Write Python code to be executed.")
@@ -263,11 +265,25 @@ class WhatsAppChatbotStepButton(models.Model):
     _description = 'WhatsApp Chatbot Step Button'
     _rec_name = 'title'
     _order = 'sequence asc'
-    
+
     step_id = fields.Many2one("whatsapp.chatbot.step", string="Chatbot Step", required=True, tracking=True, ondelete='cascade')
     chatbot_id = fields.Many2one("whatsapp.chatbot", related="step_id.chatbot_id", string="Chatbot", required=True, tracking=True)
     sequence = fields.Integer(string="Sequence", tracking=True, default=10)
     button_id = fields.Char(string="Button ID", tracking=True, required=True)
     title = fields.Char(string="Title", tracking=True, required=True)
     description = fields.Char(string="Description", tracking=True)
+
+
+class WhatsAppChatbotStepListRow(models.Model):
+    _name = 'whatsapp.chatbot.step.list.row'
+    _description = 'WhatsApp Chatbot Step List Row'
+    _rec_name = 'title'
+    _order = 'section, sequence asc'
+
+    step_id  = fields.Many2one("whatsapp.chatbot.step", string="Step", required=True, ondelete='cascade')
+    sequence = fields.Integer(string="Sequence", default=10)
+    section  = fields.Char(string="Section", help="Optional section heading to group rows under")
+    row_id   = fields.Char(string="Row ID", required=True, help="Unique identifier sent back when the user picks this row")
+    title    = fields.Char(string="Title", required=True)
+    description = fields.Char(string="Description")
 
