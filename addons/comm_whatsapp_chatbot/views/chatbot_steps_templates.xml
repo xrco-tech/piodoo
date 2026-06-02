@@ -8,11 +8,16 @@
               <!-- Toolbar -->
               <div class="bb-toolbar">
                 <div class="bb-toolbar-left">
-                  <a href="/web#model=whatsapp.chatbot&amp;view_type=form&amp;id=" class="bb-back-btn" title="Back to chatbot">
+                  <!-- FIX 1: back button now links to the actual chatbot record -->
+                  <a t-att-href="'/web#model=whatsapp.chatbot&amp;view_type=form&amp;id=' + str(chatbot.id)" class="bb-back-btn" title="Back to chatbot">
                     <i class="fa fa-arrow-left"></i>
                   </a>
                   <span class="bb-toolbar-icon">&#128172;</span>
                   <span class="bb-toolbar-title"><t t-esc="chatbot.name"/></span>
+                  <!-- FIX 2: add root-level step -->
+                  <button id="bbAddRoot" type="button" class="bb-add-root-btn" title="Add a new top-level step">
+                    <i class="fa fa-plus"></i> Add Step
+                  </button>
                 </div>
                 <div class="bb-zoom-controls">
                   <button id="bbZoomOut" type="button" class="bb-zoom-btn" title="Zoom out">&#8722;</button>
@@ -32,7 +37,7 @@
                   <div class="bb-empty-state">
                     <div class="bb-empty-icon">&#128172;</div>
                     <div class="bb-empty-title">No steps yet</div>
-                    <div class="bb-empty-sub">Click the + button to add your first step</div>
+                    <div class="bb-empty-sub">Click "Add Step" to create your first step</div>
                   </div>
                 </div>
               </div>
@@ -109,8 +114,26 @@
     updateZoomLabel();
   }
 
-  /* ── Tree helpers ── */
-  function flatten(nodes, level, parent, out) {
+  /* ── FIX 3: Column layout (Reingold-Tilford style) ──
+     Each leaf gets a unique integer column; each parent centres over its children.
+     This guarantees connector lines never cross between branches.
+  */
+  var _colCounter = 0;
+
+  function assignCols(nodes) {
+    nodes.forEach(function (n) {
+      var kids = n.children || [];
+      if (!kids.length) {
+        n._col = _colCounter++;
+      } else {
+        var start = _colCounter;
+        assignCols(kids);
+        n._col = (start + _colCounter - 1) / 2;
+      }
+    });
+  }
+
+  function flattenCols(nodes, level, parent, out) {
     level  = level  || 0;
     parent = parent || null;
     out    = out    || [];
@@ -121,21 +144,19 @@
         type:         n.type,
         level:        level,
         parent:       parent,
+        _col:         n._col,
         children:     n.children     || [],
         preview_html: n.preview_html || '',
         answers:      n.answers      || [],
         variables:    n.variables    || [],
       });
-      flatten(n.children || [], level + 1, n.id, out);
+      flattenCols(n.children || [], level + 1, n.id, out);
     });
     return out;
   }
+
   function maxLevel(a) { return a.reduce(function (m, n) { return Math.max(m, n.level); }, 0); }
-  function groupBy(a, k) {
-    var m = {};
-    a.forEach(function (x) { (m[x[k]] = m[x[k]] || []).push(x); });
-    return m;
-  }
+
   function enhanceLinks(el) {
     el.querySelectorAll('a').forEach(function (a) { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
   }
@@ -266,15 +287,16 @@
   function openStepModal(stepId) {
     openModal('/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;id=' + stepId, 'Edit Step');
   }
+
+  /* FIX 2: null parentStepId creates a root-level step */
   function openAddStepModal(parentStepId) {
-    rpc('whatsapp.chatbot.step', 'create', [{
-      chatbot_id: chatbotId,
-      parent_id:  parentStepId,
-      name:       'New Step',
-    }]).then(function (result) {
+    var data = { chatbot_id: chatbotId, name: 'New Step' };
+    if (parentStepId) data.parent_id = parentStepId;
+    rpc('whatsapp.chatbot.step', 'create', [data]).then(function (result) {
       var stepId = (result &amp;&amp; result.result) ? result.result : false;
       if (stepId) {
-        openModal('/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;id=' + stepId, 'New Step');
+        openModal('/web#model=whatsapp.chatbot.step&amp;view_type=form&amp;id=' + stepId,
+                  parentStepId ? 'New Step' : 'New Root Step');
       } else {
         alert('Failed to create step: ' + ((result &amp;&amp; result.error &amp;&amp; result.error.data &amp;&amp; result.error.data.message) || 'Unknown error.'));
       }
@@ -340,6 +362,7 @@
     titleEl.addEventListener('mousedown', function (e) { e.stopPropagation(); });
     header.appendChild(titleEl);
 
+    /* FIX 5: slightly larger, more readable type chip */
     var chipEl = document.createElement('span');
     chipEl.className = 'bb-type-chip';
     chipEl.textContent = cfg.label;
@@ -439,7 +462,7 @@
     return card;
   }
 
-  /* ── Render flow ── */
+  /* ── FIX 3: Render flow with column-based absolute layout ── */
   function renderFlow() {
     var wrap  = document.getElementById('steps-flow-wrap');
     var grid  = document.getElementById('steps-flow');
@@ -455,23 +478,37 @@
 
     var empty = document.getElementById('bb-empty');
     svg.innerHTML = '';
-    grid.querySelectorAll('.bb-row').forEach(function (r) { r.remove(); });
+    grid.querySelectorAll('.bb-card').forEach(function (c) { c.remove(); });
 
-    var flat = flatten(tree);
+    /* Assign column positions then flatten */
+    _colCounter = 0;
+    assignCols(tree);
+    var flat = flattenCols(tree);
+
     if (!flat.length) { empty.style.display = ''; return; }
     empty.style.display = 'none';
 
-    var nRows   = maxLevel(flat) + 1;
-    var byLevel = groupBy(flat, 'level');
+    var CARD_W = 272, COL_GAP = 32, ROW_H = 220, PAD_X = 80, PAD_Y = 48;
+    var totalCols = _colCounter || 1;
+    var totalRows = maxLevel(flat) + 1;
 
-    for (var row = 0; row &lt; nRows; row++) {
-      var rowEl = document.createElement('div');
-      rowEl.className = 'bb-row';
-      (byLevel[row] || []).forEach(function (node) {
-        rowEl.appendChild(buildCard(node));
-      });
-      grid.appendChild(rowEl);
-    }
+    /* Size the grid explicitly so the SVG overlay matches */
+    grid.style.width  = Math.max(totalCols * (CARD_W + COL_GAP) + PAD_X * 2, 600) + 'px';
+    grid.style.height = (totalRows * ROW_H + PAD_Y * 2 + 80) + 'px';
+
+    /* Lookup for connector labels (FIX 4) */
+    var flatById = {};
+    flat.forEach(function (n) { flatById[n.id] = n; });
+
+    /* Place each card absolutely */
+    flat.forEach(function (node) {
+      var card = buildCard(node);
+      card.style.position = 'absolute';
+      card.style.left  = Math.round(node._col * (CARD_W + COL_GAP) + PAD_X) + 'px';
+      card.style.top   = Math.round(node.level * ROW_H + PAD_Y) + 'px';
+      card.style.width = CARD_W + 'px';
+      grid.appendChild(card);
+    });
 
     /* Draw SVG connectors */
     function drawLines() {
@@ -519,6 +556,35 @@
         path.setAttribute('class', 'bb-connector');
         path.setAttribute('marker-end', 'url(#bb-arrow)');
         svg.appendChild(path);
+
+        /* FIX 4: label connectors that are gated by trigger answers */
+        var childNode = flatById[parseInt(child.dataset.id, 10)];
+        if (childNode &amp;&amp; childNode.answers &amp;&amp; childNode.answers.length) {
+          var lx = (x1 + x2) / 2;
+          var ly = (y1 + y2) / 2;
+          var labelText = childNode.answers.join(' / ');
+          if (labelText.length &gt; 26) labelText = labelText.substring(0, 23) + '…';
+
+          var approxW = Math.min(labelText.length * 6.4 + 18, 190);
+          var bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          bg.setAttribute('x',      lx - approxW / 2);
+          bg.setAttribute('y',      ly - 10);
+          bg.setAttribute('width',  approxW);
+          bg.setAttribute('height', 20);
+          bg.setAttribute('rx',     '10');
+          bg.setAttribute('ry',     '10');
+          bg.setAttribute('class',  'bb-connector-label-bg');
+          svg.appendChild(bg);
+
+          var lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          lbl.setAttribute('x',                 lx);
+          lbl.setAttribute('y',                 ly + 1);
+          lbl.setAttribute('text-anchor',       'middle');
+          lbl.setAttribute('dominant-baseline', 'middle');
+          lbl.setAttribute('class',             'bb-connector-label');
+          lbl.textContent = labelText;
+          svg.appendChild(lbl);
+        }
       });
     }
 
@@ -564,6 +630,12 @@
   /* ── Init ── */
   bindZoom();
   renderFlow();
+
+  /* FIX 2: wire up the toolbar Add Step button */
+  var addRootBtn = document.getElementById('bbAddRoot');
+  if (addRootBtn) {
+    addRootBtn.addEventListener('click', function () { openAddStepModal(null); });
+  }
 })();
                 </script>
             </t>
@@ -594,6 +666,16 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 .bb-toolbar-icon { font-size: 20px; line-height: 1; }
 .bb-toolbar-title { font-size: 15px; font-weight: 700; color: #111827; }
 
+/* FIX 2: Add Step toolbar button */
+.bb-add-root-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 13px; border-radius: 7px;
+  border: 1.5px solid #25d366; background: #25d366; color: #fff;
+  font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.bb-add-root-btn:hover { background: #1db954; border-color: #1db954; }
+
 /* ── Zoom controls ── */
 .bb-zoom-controls {
   display: inline-flex; align-items: center; gap: 6px;
@@ -617,18 +699,22 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 }
 .bb-canvas.bb-dragging { cursor: grabbing; }
 
-/* ── Flow grid (vertical) ── */
+/* ── Flow grid — FIX 3: absolute positioning, dimensions set by JS ── */
 .bb-flow {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 56px; padding: 48px 80px 100px;
-  position: relative; min-width: min-content; width: max-content;
+  position: relative;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
-.bb-row { display: flex; flex-direction: row; gap: 32px; justify-content: center; align-items: flex-start; }
 
 /* SVG overlay */
 .bb-lines { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 10; }
 .bb-connector { fill: none; stroke: #9ca3af; stroke-width: 1.8; }
+
+/* FIX 4: Connector answer labels */
+.bb-connector-label-bg { fill: #eff6ff; stroke: #93c5fd; stroke-width: 1; }
+.bb-connector-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 10px; font-weight: 600; fill: #1d4ed8;
+}
 
 /* ── Cards ── */
 .bb-card {
@@ -661,9 +747,10 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
   background: rgba(255,255,255,.85);
   box-shadow: 0 0 0 2px var(--cc, #6b7280);
 }
+/* FIX 5: larger, more readable type chip */
 .bb-type-chip {
-  flex-shrink: 0; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .4px; padding: 2px 7px; border-radius: 999px;
+  flex-shrink: 0; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .3px; padding: 3px 9px; border-radius: 999px;
   background: var(--cc, #6b7280); color: #fff;
 }
 
