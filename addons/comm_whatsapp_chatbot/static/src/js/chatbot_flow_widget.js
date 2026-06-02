@@ -199,7 +199,7 @@ export class ChatbotFlowAction extends Component {
                 ...(s.trigger_answer_ids || []).map(id => {
                     const a = ansById[id];
                     if (!a) return `#${id}`;
-                    return (OP_PREFIX[a.operator] || "") + a.value;
+                    return "User input " + (OP_PREFIX[a.operator] || "") + a.value;
                 }),
                 ...(s.trigger_variable_ids || []).map(id => varTrigById[id] || `#${id}`),
             ],
@@ -428,8 +428,8 @@ export class ChatbotFlowAction extends Component {
                 if (nd?.answers?.length) {
                     const lx = (x1 + x2) / 2, ly = (y1 + y2) / 2;
                     let txt = nd.answers.join(" / ");
-                    if (txt.length > 32) txt = txt.slice(0, 29) + "…";
-                    const aw = Math.min(txt.length * 6.4 + 18, 220);
+                    if (txt.length > 40) txt = txt.slice(0, 37) + "…";
+                    const aw = Math.min(txt.length * 6.4 + 18, 260);
                     const bg = document.createElementNS(NS, "rect");
                     bg.setAttribute("x", lx - aw/2); bg.setAttribute("y", ly - 10);
                     bg.setAttribute("width", aw); bg.setAttribute("height", 20);

@@ -181,7 +181,7 @@
 
                         <!-- Trigger answers -->
                         <t t-if="state.selectedNode.answers and state.selectedNode.answers.length">
-                            <div class="o_flow_props_label mt-2">Trigger Answers</div>
+                            <div class="o_flow_props_label mt-2">Trigger Conditions</div>
                             <div class="o_flow_chips">
                                 <t t-foreach="state.selectedNode.answers" t-as="ans" t-key="ans_index">
                                     <span class="o_flow_chip"><t t-esc="ans"/></span>
