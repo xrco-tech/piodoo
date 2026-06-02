@@ -189,6 +189,18 @@
     background: #fff;
 }
 .o_flow_props_delete_btn:hover { background: #fef2f2; border-color: #f87171; }
+.o_flow_props_warning {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #92400e;
+    line-height: 1.45;
+    margin-bottom: 10px;
+}
+.o_flow_props_warning .fa { color: #f59e0b; }
+
 .o_flow_props_empty {
     flex: 1;
     display: flex;

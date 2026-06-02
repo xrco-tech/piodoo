@@ -49,6 +49,15 @@
                     </div>
                     <t t-if="state.selectedNode">
 
+                        <!-- Dead-end warning -->
+                        <t t-if="state.selectedNode.isDeadEnd">
+                            <div class="o_flow_props_warning">
+                                <i class="fa fa-exclamation-triangle me-1"/>
+                                <strong>Dead-end step</strong>
+                                <div class="mt-1">This step has no child steps and is not a terminal node. Users will have no path forward. Add a child step, or change the type to <em>End Flow</em> or <em>Transfer to Agent</em>.</div>
+                            </div>
+                        </t>
+
                         <!-- Type badge -->
                         <div class="o_flow_props_type_row">
                             <span class="o_flow_card_badge o_flow_props_badge"

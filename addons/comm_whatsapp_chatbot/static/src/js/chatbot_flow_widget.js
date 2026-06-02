@@ -500,6 +500,7 @@ export class ChatbotFlowAction extends Component {
                 name:               node.name,
                 type:               node.type,
                 sequence:           node.sequence,
+                isDeadEnd:          isDeadEnd,
                 preview_html:       node.preview_html,
                 answers:            node.answers  || [],
                 children:           node.children || [],
