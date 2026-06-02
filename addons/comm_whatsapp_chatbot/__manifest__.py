@@ -28,6 +28,13 @@ and automate WhatsApp messaging.
         'views/chatbot_steps_templates.xml',
         'data/chatbot_data.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'comm_whatsapp_chatbot/static/src/xml/chatbot_flow_action.xml',
+            'comm_whatsapp_chatbot/static/src/css/chatbot_flow_action.css',
+            'comm_whatsapp_chatbot/static/src/js/chatbot_flow_widget.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,

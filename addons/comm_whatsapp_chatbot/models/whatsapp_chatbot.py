@@ -98,17 +98,15 @@ class WhatsAppChatbot(models.Model):
         }
 
     def action_view_step_hierarchy(self):
-        """Open the step hierarchy view for this chatbot"""
+        """Open the native OWL flow designer for this chatbot"""
         self.ensure_one()
         return {
-            'name': f'Step Hierarchy - {self.name}',
-            'type': 'ir.actions.act_window',
-            'res_model': 'whatsapp.chatbot.step',
-            'view_mode': 'list,form',
-            'domain': [('chatbot_id', '=', self.id)],
-            'context': {
-                'default_chatbot_id': self.id,
-                'search_default_root_steps': 1,
+            'type':   'ir.actions.client',
+            'tag':    'comm_whatsapp_chatbot.chatbot_flow',
+            'name':   f'Flow — {self.name}',
+            'params': {
+                'chatbot_id':   self.id,
+                'chatbot_name': self.name,
             },
         }
 

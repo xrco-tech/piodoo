@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="comm_whatsapp_chatbot.ChatbotFlowAction">
+        <div class="o_chatbot_flow_action">
+
+            <!-- Toolbar — matches Odoo's control panel height/style -->
+            <div class="o_chatbot_flow_toolbar">
+                <div class="o_chatbot_flow_toolbar_left">
+                    <span class="o_chatbot_flow_title" t-esc="state.chatbotName"/>
+                    <button class="btn btn-sm btn-success"
+                            t-on-click="() => this._openCreateDialog(false)"
+                            title="Add a new top-level step">
+                        <i class="fa fa-plus me-1"/>Add Step
+                    </button>
+                </div>
+                <div class="o_chatbot_flow_toolbar_right">
+                    <button class="btn btn-sm btn-light o_flow_zoom_btn" t-on-click="() => this._setZoom(state.zoom - 0.1)">−</button>
+                    <span class="o_flow_zoom_label" t-esc="zoomLabel"/>
+                    <button class="btn btn-sm btn-light o_flow_zoom_btn" t-on-click="() => this._setZoom(state.zoom + 0.1)">+</button>
+                </div>
+            </div>
+
+            <!-- Loading spinner (OWL-managed, outside the canvas ref) -->
+            <div t-if="state.loading" class="o_chatbot_flow_loading">
+                <div class="o_loading_spinner"/>
+            </div>
+
+            <!-- Canvas: purely imperative, OWL only holds the ref -->
+            <div t-else="" class="o_chatbot_flow_canvas" t-ref="canvas"/>
+
+        </div>
+    </t>
+
+</templates>

@@ -1,0 +1,224 @@
+/* ── Client action shell ─────────────────────────────────────────────────────── */
+.o_chatbot_flow_action {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #f3f4f6;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────────── */
+.o_chatbot_flow_toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 54px;
+    flex-shrink: 0;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    z-index: 10;
+}
+.o_chatbot_flow_toolbar_left  { display: flex; align-items: center; gap: 12px; }
+.o_chatbot_flow_toolbar_right { display: flex; align-items: center; gap: 6px; }
+.o_chatbot_flow_title { font-size: 16px; font-weight: 700; color: #1f2937; }
+.o_flow_zoom_btn   { min-width: 28px; padding: 0 6px; font-size: 16px; }
+.o_flow_zoom_label { min-width: 44px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; }
+
+/* ── Loading ─────────────────────────────────────────────────────────────────── */
+.o_chatbot_flow_loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Canvas (scrollable viewport) ────────────────────────────────────────────── */
+.o_chatbot_flow_canvas {
+    flex: 1;
+    overflow: auto;
+    cursor: grab;
+    position: relative;
+    background-color: #f3f4f6;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+.o_chatbot_flow_canvas.o_flow_dragging { cursor: grabbing; }
+
+/* ── Flow grid (absolute-positioned card container) ─────────────────────────── */
+.o_flow_grid {
+    position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.o_flow_svg {
+    position: absolute;
+    left: 0; top: 0;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.o_flow_connector { fill: none; stroke: #adb5bd; stroke-width: 1.8; }
+.o_flow_lbl_bg  { fill: #eff6ff; stroke: #93c5fd; stroke-width: 1; }
+.o_flow_lbl_txt {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    fill: #1d4ed8;
+}
+
+/* ── Cards — inspired by Odoo's hierarchy view ───────────────────────────────── */
+.o_flow_card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.09);
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    transition: box-shadow .15s, transform .1s;
+    cursor: default;
+}
+.o_flow_card:hover {
+    box-shadow: 0 6px 22px rgba(0,0,0,.13);
+    transform: translateY(-2px);
+}
+
+/* Colored strip at top (like employee hierarchy card header) */
+.o_flow_card_strip {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.o_flow_card_icon {
+    font-size: 24px;
+    line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,.25));
+}
+
+/* Card body */
+.o_flow_card_body {
+    padding: 10px 12px 8px;
+}
+.o_flow_card_name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 4px;
+    outline: none;
+    border-radius: 4px;
+    padding: 2px 3px;
+    margin: -2px -3px 4px;
+    cursor: text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_flow_card_name:focus {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    background: rgba(255,255,255,.9);
+    box-shadow: 0 0 0 2px #93c5fd;
+}
+.o_flow_card_badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: #fff;
+    margin-bottom: 6px;
+}
+
+/* WhatsApp bubble preview */
+.o_flow_bubble {
+    background: #dcf8c6;
+    border-radius: 2px 10px 10px 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #1f2937;
+    word-break: break-word;
+    margin-bottom: 6px;
+    position: relative;
+}
+.o_flow_bubble::before {
+    content: "";
+    position: absolute; left: -7px; top: 0;
+    border: 7px solid transparent;
+    border-right-color: #dcf8c6; border-top-color: #dcf8c6;
+    border-width: 7px 7px 0 0;
+}
+
+/* Answer chips */
+.o_flow_chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.o_flow_chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1.5px solid #93c5fd;
+    color: #1d4ed8;
+    background: #eff6ff;
+    white-space: nowrap;
+}
+
+/* Footer buttons */
+.o_flow_card_footer {
+    display: flex;
+    gap: 6px;
+    padding: 6px 12px 10px;
+    border-top: 1px solid #f3f4f6;
+    background: #fafafa;
+}
+.o_flow_btn_edit,
+.o_flow_btn_del {
+    flex: 1;
+    font-size: 11.5px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #374151;
+    transition: background .12s, color .12s, border-color .12s;
+}
+.o_flow_btn_edit:hover { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
+.o_flow_btn_del:hover  { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+
+/* Add-child button (sits below card) */
+.o_flow_add_btn {
+    position: absolute;
+    bottom: -14px; left: 50%;
+    transform: translateX(-50%);
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid #adb5bd;
+    background: #fff;
+    color: #6b7280;
+    font-size: 13px;
+    padding: 0;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    z-index: 20;
+    transition: background .12s, border-color .12s, color .12s, box-shadow .12s;
+}
+.o_flow_add_btn:hover {
+    background: #25d366; border-color: #25d366; color: #fff;
+    box-shadow: 0 2px 8px rgba(37,211,102,.4);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────────── */
+.o_flow_empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #9ca3af;
+    text-align: center;
+}
