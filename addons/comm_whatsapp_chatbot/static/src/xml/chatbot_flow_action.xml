@@ -165,6 +165,19 @@
                             </t>
                         </t>
 
+                        <!-- Retry / fallback (question steps) -->
+                        <t t-if="isQuestionType(state.selectedNode.type)">
+                            <div class="o_flow_props_label mt-2">Max Retries</div>
+                            <div class="o_flow_props_value"><t t-esc="state.selectedNode.maxRetries"/></div>
+                            <t t-if="state.selectedNode.fallbackStepName">
+                                <div class="o_flow_props_label mt-1">Fallback Step</div>
+                                <div class="o_flow_props_value o_flow_props_icon_row">
+                                    <i class="fa fa-share-square-o"/>
+                                    <t t-esc="state.selectedNode.fallbackStepName"/>
+                                </div>
+                            </t>
+                        </t>
+
                         <!-- Variable (set_variable steps) -->
                         <t t-if="state.selectedNode.type == 'set_variable' and state.selectedNode.variableName">
                             <div class="o_flow_props_label mt-2">Variable</div>

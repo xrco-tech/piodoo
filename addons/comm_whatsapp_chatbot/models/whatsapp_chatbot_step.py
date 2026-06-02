@@ -48,6 +48,7 @@ class WhatsAppChatbotStep(models.Model):
         ('question_interactive', 'Question (Interactive)'),
         ('set_variable', 'Set Variable'),
         ('execute_code', 'Execute Code'),
+        ('transfer_to_agent', 'Transfer to Agent'),
         ('end_flow', 'End Flow'),
     ], string="Step Type", required=True, default='message')
     
@@ -116,6 +117,25 @@ class WhatsAppChatbotStep(models.Model):
     # List rows (interactive_list type — grouped by section, max 10 rows per WhatsApp spec)
     list_row_ids = fields.One2many("whatsapp.chatbot.step.list.row", "step_id", string="List Rows", tracking=True)
     
+    # Validation retry (question steps)
+    max_retries = fields.Integer(
+        string="Max Retries", default=3,
+        help="Maximum validation attempts before routing to the fallback step",
+    )
+    fallback_step_id = fields.Many2one(
+        "whatsapp.chatbot.step", string="Fallback Step",
+        domain="[('chatbot_id', '=', chatbot_id)]",
+        help="Step to route to after exhausting retries or unhandled input",
+    )
+
+    # Transfer to agent
+    agent_partner_ids = fields.Many2many(
+        "res.partner",
+        "chatbot_step_agent_partner_rel", "step_id", "partner_id",
+        string="Specific Agents",
+        help="Override chatbot-level agents for this transfer step. Leave empty to use chatbot defaults.",
+    )
+
     # Code execution
     code = fields.Text(string="Executable Code", help="Write Python code to be executed.")
     

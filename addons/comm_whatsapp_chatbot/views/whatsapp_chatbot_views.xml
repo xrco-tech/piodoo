@@ -152,6 +152,23 @@
                                 <field name="context_data" widget="text" readonly="1"/>
                             </group>
                         </group>
+                        <group string="Global Interrupt Keywords">
+                            <div class="text-muted small mb-2" style="grid-column: 1 / -1">
+                                Keywords that can interrupt any step — e.g. "cancel", "menu", "human". Matched case-insensitively.
+                            </div>
+                            <field name="global_interrupt_ids" nolabel="1" colspan="2">
+                                <list editable="bottom" create="1" delete="1">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="keyword"/>
+                                    <field name="action"/>
+                                    <field name="target_step_id"
+                                           context="{'default_chatbot_id': id}"
+                                           invisible="action != 'goto_step'"/>
+                                    <field name="response_message" optional="show"/>
+                                </list>
+                            </field>
+                        </group>
+
                         <group>
                             <group string="AI Agent Setup">
                                 <field name="ai_agent_header"/>

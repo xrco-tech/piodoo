@@ -56,6 +56,11 @@ class WhatsAppChatbot(models.Model):
 
     forward_to_external_agent = fields.Boolean(string="Enable Forwarding to External Agent?", default=False, tracking=True)
     external_agent_partner_ids = fields.Many2many("res.partner", string="External Agents", tracking=True)
+
+    global_interrupt_ids = fields.One2many(
+        "whatsapp.chatbot.global.interrupt", "chatbot_id",
+        string="Global Interrupt Keywords", tracking=True,
+    )
     
     @api.depends('step_ids')
     def _compute_step_count(self):

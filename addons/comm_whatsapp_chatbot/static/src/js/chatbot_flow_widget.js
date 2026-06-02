@@ -21,6 +21,7 @@ const TYPE_CFG = {
     question_interactive: { icon: "🔘", label: "Interactive",   color: "#0284c7", bg: "#f0f9ff", border: "#7dd3fc" },
     set_variable:         { icon: "📝", label: "Set Variable",  color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
     execute_code:         { icon: "⚡", label: "Execute Code",  color: "#374151", bg: "#f3f4f6", border: "#9ca3af" },
+    transfer_to_agent:    { icon: "🎧", label: "Transfer",      color: "#9333ea", bg: "#faf5ff", border: "#d8b4fe" },
     end_flow:             { icon: "✅", label: "End Flow",      color: "#16a34a", bg: "#f0fdf4", border: "#86efac" },
 };
 const DEFAULT_CFG = { icon: "●", label: "Step", color: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" };
@@ -59,7 +60,9 @@ function flattenTree(nodes, level = 0, parent = null, out = []) {
                    sequence: n.sequence, answerDataType: n.answerDataType,
                    variableName: n.variableName, variableDataSource: n.variableDataSource,
                    variableValue: n.variableValue, sourceStepName: n.sourceStepName,
-                   sourceVarName: n.sourceVarName });
+                   sourceVarName: n.sourceVarName,
+                   maxRetries: n.maxRetries, fallbackStepId: n.fallbackStepId,
+                   fallbackStepName: n.fallbackStepName });
         flattenTree(n.children || [], level + 1, n.id, out);
     }
     return out;
@@ -131,7 +134,8 @@ export class ChatbotFlowAction extends Component {
              "button_ids", "list_row_ids", "list_button_text",
              "header_type", "header_text", "footer", "flow_cta", "flow_id",
              "answer_data_type", "variable_id", "variable_data_source",
-             "variable_value", "source_step_id", "source_variable_id"],
+             "variable_value", "source_step_id", "source_variable_id",
+             "max_retries", "fallback_step_id"],
             { order: "parent_path, sequence, id" }
         );
 
@@ -212,6 +216,9 @@ export class ChatbotFlowAction extends Component {
             flowCta:            s.flow_cta || "",
             flowName:           Array.isArray(s.flow_id) ? s.flow_id[1] : "",
             sequence:           s.sequence,
+            maxRetries:         s.max_retries || 3,
+            fallbackStepId:     Array.isArray(s.fallback_step_id) ? s.fallback_step_id[0] : null,
+            fallbackStepName:   Array.isArray(s.fallback_step_id) ? s.fallback_step_id[1] : "",
             answerDataType:     s.answer_data_type || "",
             variableName:       Array.isArray(s.variable_id)       ? s.variable_id[1]       : "",
             variableDataSource: s.variable_data_source || "",
@@ -423,6 +430,27 @@ export class ChatbotFlowAction extends Component {
                 endDot.setAttribute("r", "4"); endDot.setAttribute("fill", "#818cf8");
                 svg.appendChild(endDot);
 
+                // Fallback connectors — dashed orange, from question step to fallback step
+                for (const src of grid.querySelectorAll(".o_flow_card[data-fallback]")) {
+                    const fbEl = byId[src.dataset.fallback]; if (!fbEl) continue;
+                    const fx1 = src.offsetLeft  + src.offsetWidth  / 2;
+                    const fy1 = src.offsetTop   + src.offsetHeight / 2;
+                    const fx2 = fbEl.offsetLeft + fbEl.offsetWidth  / 2;
+                    const fy2 = fbEl.offsetTop;
+                    if ([fx1,fy1,fx2,fy2].some(v => !isFinite(v))) continue;
+                    const fmy = (fy1 + fy2) / 2;
+                    const fbPath = document.createElementNS(NS, "path");
+                    fbPath.setAttribute("d", `M ${fx1} ${fy1} C ${fx1} ${fmy}, ${fx2} ${fmy}, ${fx2} ${fy2}`);
+                    fbPath.setAttribute("class", "o_flow_fallback_connector");
+                    svg.appendChild(fbPath);
+                    const fbLbl = document.createElementNS(NS, "text");
+                    fbLbl.setAttribute("x", (fx1+fx2)/2); fbLbl.setAttribute("y", (fy1+fy2)/2 - 4);
+                    fbLbl.setAttribute("text-anchor", "middle");
+                    fbLbl.setAttribute("class", "o_flow_fallback_lbl");
+                    fbLbl.textContent = "fallback";
+                    svg.appendChild(fbLbl);
+                }
+
                 // Connector label for trigger answers
                 const nd = nodeById[parseInt(child.dataset.id)];
                 if (nd?.answers?.length) {
@@ -453,9 +481,13 @@ export class ChatbotFlowAction extends Component {
     _buildCard(node) {
         const cfg  = TYPE_CFG[node.type] || DEFAULT_CFG;
         const card = document.createElement("div");
-        card.className  = "o_flow_card";
+        const TERMINAL_TYPES = new Set(["end_flow", "transfer_to_agent"]);
+        const isDeadEnd = !node.children?.length && !TERMINAL_TYPES.has(node.type);
+
+        card.className  = "o_flow_card" + (isDeadEnd ? " o_flow_card_dead_end" : "");
         card.dataset.id = node.id;
-        if (node.parent) card.dataset.parent = node.parent;
+        if (node.parent)          card.dataset.parent   = node.parent;
+        if (node.fallbackStepId)  card.dataset.fallback = node.fallbackStepId;
 
         card.addEventListener("click", e => {
             if (e.target.closest("button")) return;
@@ -486,6 +518,9 @@ export class ChatbotFlowAction extends Component {
                 variableValue:      node.variableValue,
                 sourceStepName:     node.sourceStepName,
                 sourceVarName:      node.sourceVarName,
+                maxRetries:         node.maxRetries,
+                fallbackStepId:     node.fallbackStepId,
+                fallbackStepName:   node.fallbackStepName,
             };
         });
 
@@ -641,6 +676,15 @@ export class ChatbotFlowAction extends Component {
             }
 
             card.appendChild(content);
+        }
+
+        // ── Dead-end warning badge ────────────────────────────────────────────
+        if (isDeadEnd) {
+            const warn = document.createElement("div");
+            warn.className = "o_flow_dead_end_badge";
+            warn.textContent = "⚠";
+            warn.title = "Dead-end: this step has no children and is not a terminal node";
+            card.appendChild(warn);
         }
 
         // ── Output dot (replaces + button — click adds a child step) ──────────

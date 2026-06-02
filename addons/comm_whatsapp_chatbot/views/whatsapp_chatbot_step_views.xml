@@ -55,13 +55,15 @@
                                 <field name="parent_id" string="Parent Step"/>
                             </group>
                             <group>
-                                <field name="wa_message_type" invisible="step_type in ['set_variable', 'execute_code', 'end_flow']"/>
+                                <field name="wa_message_type" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'end_flow']"/>
                                 <field name="answer_data_type" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date']"/>
+                                <field name="max_retries" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date', 'question_document', 'question_image', 'question_video', 'question_audio', 'question_interactive']"/>
+                                <field name="fallback_step_id" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date', 'question_document', 'question_image', 'question_video', 'question_audio', 'question_interactive']"/>
                             </group>
                         </group>
                         
                         <notebook>
-                            <page string="Message Content" name="content" invisible="step_type in ['set_variable', 'execute_code', 'end_flow']">
+                            <page string="Message Content" name="content" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'end_flow']">
                                 <group>
                                     <group string="Body">
                                         <field name="body_plain" widget="text" nolabel="1" placeholder="Enter message body..."/>
@@ -133,6 +135,17 @@
                                 </group>
                             </page>
                             
+                            <page string="Transfer to Agent" name="transfer" invisible="step_type != 'transfer_to_agent'">
+                                <group>
+                                    <field name="body_plain" widget="text" string="Handover Message" nolabel="1"
+                                           placeholder="Message shown to the user before transferring, e.g. 'Connecting you to an agent...'"/>
+                                </group>
+                                <group string="Agent Routing">
+                                    <field name="agent_partner_ids" widget="many2many_tags"
+                                           placeholder="Leave empty to use chatbot defaults"/>
+                                </group>
+                            </page>
+
                             <page string="Code Execution" name="code" invisible="step_type != 'execute_code'">
                                 <group>
                                     <field name="code" widget="text" nolabel="1" placeholder="Write Python code here..."/>
