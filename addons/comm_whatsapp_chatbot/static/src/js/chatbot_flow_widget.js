@@ -25,6 +25,15 @@ const TYPE_CFG = {
 };
 const DEFAULT_CFG = { icon: "●", label: "Step", color: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" };
 
+const OP_PREFIX = {
+    is_equal_to:      "= ",
+    is_not_equal_to:  "≠ ",
+    contains:         "~ ",
+    does_not_contain: "!~ ",
+    less_than:        "< ",
+    greater_than:     "> ",
+};
+
 // ── Reingold-Tilford column layout ────────────────────────────────────────────
 let _colCtr = 0;
 function assignCols(nodes) {
@@ -122,8 +131,8 @@ export class ChatbotFlowAction extends Component {
         const allAnsIds = [...new Set(steps.flatMap(s => s.trigger_answer_ids || []))];
         const ansById = {};
         if (allAnsIds.length) {
-            const ans = await this.orm.read("whatsapp.chatbot.answer", allAnsIds, ["id", "value"]);
-            ans.forEach(a => { ansById[a.id] = a.value; });
+            const ans = await this.orm.read("whatsapp.chatbot.answer", allAnsIds, ["id", "value", "operator"]);
+            ans.forEach(a => { ansById[a.id] = { value: a.value, operator: a.operator }; });
         }
 
         // Resolve reply button titles
@@ -164,7 +173,11 @@ export class ChatbotFlowAction extends Component {
             type:         s.step_type,
             waType:       s.wa_message_type || "non_interactive",
             preview_html: noPreview.has(s.step_type) ? "" : bodyToHtml(s.body_plain),
-            answers:      (s.trigger_answer_ids || []).map(id => ansById[id] || `#${id}`),
+            answers:      (s.trigger_answer_ids || []).map(id => {
+                const a = ansById[id];
+                if (!a) return `#${id}`;
+                return (OP_PREFIX[a.operator] || "") + a.value;
+            }),
             buttons:      (s.button_ids   || []).map(id => btnById[id]).filter(Boolean),
             listBtnText:  s.list_button_text || "See all options",
             listRows:     (s.list_row_ids  || []).map(id => rowById[id]).filter(Boolean),
@@ -353,8 +366,8 @@ export class ChatbotFlowAction extends Component {
                 if (nd?.answers?.length) {
                     const lx = (x1 + x2) / 2, ly = (y1 + y2) / 2;
                     let txt = nd.answers.join(" / ");
-                    if (txt.length > 26) txt = txt.slice(0, 23) + "…";
-                    const aw = Math.min(txt.length * 6.4 + 18, 190);
+                    if (txt.length > 32) txt = txt.slice(0, 29) + "…";
+                    const aw = Math.min(txt.length * 6.4 + 18, 220);
                     const bg = document.createElementNS(NS, "rect");
                     bg.setAttribute("x", lx - aw/2); bg.setAttribute("y", ly - 10);
                     bg.setAttribute("width", aw); bg.setAttribute("height", 20);
