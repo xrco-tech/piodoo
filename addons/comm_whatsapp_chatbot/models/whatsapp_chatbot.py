@@ -72,6 +72,18 @@ class WhatsAppChatbot(models.Model):
         for rec in self:
             rec.chatbot_message_count = len(rec.chatbot_message_ids)
 
+    def action_publish(self):
+        for rec in self:
+            rec.status = 'published'
+
+    def action_deactivate(self):
+        for rec in self:
+            rec.status = 'inactive'
+
+    def action_reset_to_draft(self):
+        for rec in self:
+            rec.status = 'draft'
+
     def get_root_steps(self):
         """Get root steps (steps without parent) for this chatbot"""
         self.ensure_one()

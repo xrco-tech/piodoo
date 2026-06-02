@@ -90,6 +90,19 @@
             <field name="arch" type="xml">
                 <form string="WhatsApp Chatbot">
                     <header>
+                        <button name="action_publish"
+                                type="object"
+                                string="Publish"
+                                class="btn-primary"
+                                invisible="status == 'published'"/>
+                        <button name="action_deactivate"
+                                type="object"
+                                string="Deactivate"
+                                invisible="status != 'published'"/>
+                        <button name="action_reset_to_draft"
+                                type="object"
+                                string="Reset to Draft"
+                                invisible="status != 'inactive'"/>
                         <field name="status" widget="statusbar" statusbar_visible="draft,published,inactive"/>
                     </header>
                     <sheet>
