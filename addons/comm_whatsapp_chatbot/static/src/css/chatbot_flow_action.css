@@ -150,7 +150,7 @@
     z-index: 5;
 }
 
-.o_flow_connector { fill: none; stroke: #6b7280; stroke-width: 2; }
+.o_flow_connector { fill: none; stroke: #9ca3b8; stroke-width: 1.8; }
 .o_flow_lbl_bg  { fill: #f0fdf4; stroke: #4ade80; stroke-width: 1.2; }
 .o_flow_lbl_txt {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -159,54 +159,51 @@
     fill: #15803d;
 }
 
-/* ── Cards — inspired by Odoo's hierarchy view ───────────────────────────────── */
+/* ── Cards ───────────────────────────────────────────────────────────────────── */
 .o_flow_card {
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.08);
-    overflow: visible; /* allow add-btn to protrude below */
+    background: #eef0f8;
+    border: 1px solid #dde1ee;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    overflow: visible;
     position: relative;
     z-index: 1;
-    transition: box-shadow .18s, transform .15s;
+    transition: box-shadow .18s, transform .15s, border-color .15s;
     cursor: grab;
 }
 .o_flow_card:hover {
-    box-shadow: 0 8px 28px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.1);
-    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,.1);
+    border-color: #c4c9de;
+    transform: translateY(-2px);
 }
 .o_flow_card.o_flow_card_selected {
-    box-shadow: 0 0 0 3px #3b82f6, 0 4px 18px rgba(59,130,246,.25) !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.35), 0 4px 18px rgba(59,130,246,.15) !important;
     transform: translateY(-2px);
 }
 
-/* Colored strip at top (like employee hierarchy card header) */
-.o_flow_card_strip {
-    height: 56px;
+/* Card header: icon + name + type badge */
+.o_flow_card_head {
     display: flex;
     align-items: center;
-    justify-content: center;
-    position: relative;
-    border-radius: 10px 10px 0 0; /* clips strip bg to card's top corners */
+    gap: 7px;
+    padding: 11px 12px 8px;
 }
-.o_flow_card_icon {
-    font-size: 24px;
+.o_flow_card_type_icon {
+    font-size: 15px;
     line-height: 1;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,.25));
-}
-
-/* Card body */
-.o_flow_card_body {
-    padding: 10px 12px 8px;
+    flex-shrink: 0;
 }
 .o_flow_card_name {
+    flex: 1;
+    min-width: 0;
     font-size: 13.5px;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 4px;
+    font-weight: 600;
+    color: #1f2937;
     outline: none;
     border-radius: 4px;
     padding: 2px 3px;
-    margin: -2px -3px 4px;
+    margin: -2px -3px;
     cursor: text;
     white-space: nowrap;
     overflow: hidden;
@@ -221,38 +218,38 @@
 }
 .o_flow_card_badge {
     display: inline-block;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .4px;
-    padding: 2px 8px;
+    letter-spacing: .5px;
+    padding: 2px 7px;
     border-radius: 999px;
     color: #fff;
-    margin-bottom: 6px;
+    flex-shrink: 0;
 }
 
-/* WhatsApp bubble preview */
+/* White content box inside card */
+.o_flow_card_content {
+    margin: 0 10px 10px;
+    background: #fff;
+    border-radius: 9px;
+    padding: 8px 10px;
+    border: 1px solid #e4e7f5;
+}
+
+/* WhatsApp bubble preview (no chat-tail, clean box) */
 .o_flow_bubble {
     background: #dcf8c6;
-    border-radius: 2px 10px 10px 10px;
+    border-radius: 8px;
     padding: 6px 10px;
     font-size: 12px;
     line-height: 1.45;
     color: #1f2937;
     word-break: break-word;
-    margin-bottom: 6px;
-    position: relative;
-}
-.o_flow_bubble::before {
-    content: "";
-    position: absolute; left: -7px; top: 0;
-    border: 7px solid transparent;
-    border-right-color: #dcf8c6; border-top-color: #dcf8c6;
-    border-width: 7px 7px 0 0;
 }
 
 /* Answer chips */
-.o_flow_chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.o_flow_chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .o_flow_chip {
     font-size: 11px;
     padding: 2px 8px;
@@ -263,49 +260,26 @@
     white-space: nowrap;
 }
 
-/* Footer buttons */
-.o_flow_card_footer {
-    display: flex;
-    gap: 6px;
-    padding: 6px 12px 10px;
-    border-top: 1px solid #f3f4f6;
-    background: #fafafa;
-    border-radius: 0 0 10px 10px; /* clips footer bg to card's bottom corners */
-}
-.o_flow_btn_edit,
-.o_flow_btn_del {
-    flex: 1;
-    font-size: 11.5px;
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    color: #374151;
-    transition: background .12s, color .12s, border-color .12s;
-}
-.o_flow_btn_edit:hover { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
-.o_flow_btn_del:hover  { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
-
-/* Add-child button (sits below card) */
-.o_flow_add_btn {
+/* Output dot — replaces the + button; click to add a child step */
+.o_flow_out_dot {
     position: absolute;
-    bottom: -14px; left: 50%;
+    bottom: -7px;
+    left: 50%;
     transform: translateX(-50%);
-    width: 28px; height: 28px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    border: 2px solid #adb5bd;
-    background: #fff;
-    color: #6b7280;
-    font-size: 13px;
-    padding: 0;
-    line-height: 1;
-    display: flex; align-items: center; justify-content: center;
+    background: #818cf8;
+    border: 2.5px solid #fff;
     cursor: pointer;
-    box-shadow: 0 1px 4px rgba(0,0,0,.1);
     z-index: 20;
-    transition: background .12s, border-color .12s, color .12s, box-shadow .12s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.18);
+    transition: transform .15s, background .12s, box-shadow .12s;
 }
-.o_flow_add_btn:hover {
-    background: #25d366; border-color: #25d366; color: #fff;
-    box-shadow: 0 2px 8px rgba(37,211,102,.4);
+.o_flow_out_dot:hover {
+    transform: translateX(-50%) scale(1.55);
+    background: #25d366;
+    box-shadow: 0 2px 8px rgba(37,211,102,.45);
 }
 
 /* ── Empty state ─────────────────────────────────────────────────────────────── */

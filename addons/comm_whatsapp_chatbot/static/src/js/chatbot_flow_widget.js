@@ -291,15 +291,6 @@ export class ChatbotFlowAction extends Component {
             svg.innerHTML = "";
 
             const NS = "http://www.w3.org/2000/svg";
-            const defs   = document.createElementNS(NS, "defs");
-            const marker = document.createElementNS(NS, "marker");
-            marker.setAttribute("id", "o-flow-arr");
-            marker.setAttribute("markerWidth", "9"); marker.setAttribute("markerHeight", "9");
-            marker.setAttribute("refX", "1"); marker.setAttribute("refY", "4.5");
-            marker.setAttribute("orient", "auto"); marker.setAttribute("markerUnits", "strokeWidth");
-            const mp = document.createElementNS(NS, "path");
-            mp.setAttribute("d", "M0,0 L0,9 L7,4.5 z"); mp.setAttribute("fill", "#6b7280");
-            marker.appendChild(mp); defs.appendChild(marker); svg.appendChild(defs);
 
             // offsetLeft/offsetTop: logical coords relative to grid — zoom-independent
             const byId = Object.fromEntries([...grid.querySelectorAll(".o_flow_card")].map(c => [c.dataset.id, c]));
@@ -316,8 +307,13 @@ export class ChatbotFlowAction extends Component {
                 const path = document.createElementNS(NS, "path");
                 path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`);
                 path.setAttribute("class", "o_flow_connector");
-                path.setAttribute("marker-end", "url(#o-flow-arr)");
                 svg.appendChild(path);
+
+                // Small dot at incoming end (shows direction, matches reference design)
+                const endDot = document.createElementNS(NS, "circle");
+                endDot.setAttribute("cx", x2); endDot.setAttribute("cy", y2);
+                endDot.setAttribute("r", "4"); endDot.setAttribute("fill", "#818cf8");
+                svg.appendChild(endDot);
 
                 // Connector label for trigger answers
                 const nd = nodeById[parseInt(child.dataset.id)];
@@ -367,30 +363,22 @@ export class ChatbotFlowAction extends Component {
             };
         });
 
-        // Colored strip (like hierarchy view employee header)
-        const strip = document.createElement("div");
-        strip.className = "o_flow_card_strip";
-        strip.style.background = cfg.color;
+        // ── Header: small icon + editable name + type badge ───────────────────
+        const head = document.createElement("div");
+        head.className = "o_flow_card_head";
 
-        const stripIcon = document.createElement("span");
-        stripIcon.className   = "o_flow_card_icon";
-        stripIcon.textContent = cfg.icon;
-        strip.appendChild(stripIcon);
-        card.appendChild(strip);
+        const typeIcon = document.createElement("span");
+        typeIcon.className   = "o_flow_card_type_icon";
+        typeIcon.textContent = cfg.icon;
 
-        // Card body
-        const body = document.createElement("div");
-        body.className = "o_flow_card_body";
-
-        // Editable name
         const nameEl = document.createElement("div");
         nameEl.className       = "o_flow_card_name";
         nameEl.textContent     = node.name || `Step #${node.id}`;
         nameEl.contentEditable = "true";
         nameEl.title           = "Click to rename";
         let origName = nameEl.textContent;
-        nameEl.addEventListener("focus",   ()  => { origName = nameEl.textContent; });
-        nameEl.addEventListener("keydown", e   => {
+        nameEl.addEventListener("focus",   () => { origName = nameEl.textContent; });
+        nameEl.addEventListener("keydown", e => {
             if (e.key === "Enter")  { e.preventDefault(); nameEl.blur(); }
             if (e.key === "Escape") { nameEl.textContent = origName; nameEl.blur(); }
         });
@@ -407,64 +395,55 @@ export class ChatbotFlowAction extends Component {
             catch { nameEl.textContent = origName; }
         });
         nameEl.addEventListener("mousedown", e => e.stopPropagation());
-        body.appendChild(nameEl);
 
-        // Type badge
         const badge = document.createElement("span");
         badge.className = "o_flow_card_badge";
         badge.style.background = cfg.color;
         badge.textContent = cfg.label;
-        body.appendChild(badge);
 
-        // Message preview bubble
-        if (node.preview_html) {
-            const bubble = document.createElement("div");
-            bubble.className = "o_flow_bubble";
-            bubble.innerHTML = node.preview_html;
-            bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
-            body.appendChild(bubble);
-        }
+        head.appendChild(typeIcon);
+        head.appendChild(nameEl);
+        head.appendChild(badge);
+        card.appendChild(head);
 
-        // Trigger answer chips
-        if (node.answers?.length) {
-            const chips = document.createElement("div");
-            chips.className = "o_flow_chips";
-            for (const a of node.answers) {
-                const ch = document.createElement("span");
-                ch.className = "o_flow_chip"; ch.textContent = a;
-                chips.appendChild(ch);
+        // ── White content box: message preview + answer chips ─────────────────
+        const hasContent = node.preview_html || node.answers?.length;
+        if (hasContent) {
+            const content = document.createElement("div");
+            content.className = "o_flow_card_content";
+
+            if (node.preview_html) {
+                const bubble = document.createElement("div");
+                bubble.className = "o_flow_bubble";
+                bubble.innerHTML = node.preview_html;
+                bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
+                content.appendChild(bubble);
             }
-            body.appendChild(chips);
+
+            if (node.answers?.length) {
+                const chips = document.createElement("div");
+                chips.className = "o_flow_chips";
+                for (const a of node.answers) {
+                    const ch = document.createElement("span");
+                    ch.className = "o_flow_chip"; ch.textContent = a;
+                    chips.appendChild(ch);
+                }
+                content.appendChild(chips);
+            }
+
+            card.appendChild(content);
         }
 
-        card.appendChild(body);
-
-        // Footer action buttons
-        const footer = document.createElement("div");
-        footer.className = "o_flow_card_footer";
-
-        const editBtn = document.createElement("button");
-        editBtn.type = "button"; editBtn.className = "btn btn-sm o_flow_btn_edit";
-        editBtn.innerHTML = '<i class="fa fa-pencil me-1"/>Edit';
-        editBtn.addEventListener("click", e => { e.stopPropagation(); this._openEditDialog(node.id); });
-        footer.appendChild(editBtn);
-
-        const delBtn = document.createElement("button");
-        delBtn.type = "button"; delBtn.className = "btn btn-sm o_flow_btn_del";
-        delBtn.innerHTML = '<i class="fa fa-trash me-1"/>Delete';
-        delBtn.addEventListener("click", e => {
+        // ── Output dot (replaces + button — click adds a child step) ──────────
+        const dot = document.createElement("div");
+        dot.className = "o_flow_out_dot";
+        dot.title     = "Add next step";
+        dot.addEventListener("click", e => {
+            e.preventDefault();
             e.stopPropagation();
-            this._confirmDelete(node.id, !!(node.children && node.children.length));
+            this._openCreateDialog(node.id);
         });
-        footer.appendChild(delBtn);
-        card.appendChild(footer);
-
-        // Add-child button
-        const addBtn = document.createElement("button");
-        addBtn.type = "button"; addBtn.className = "o_flow_add_btn"; addBtn.title = "Add next step";
-        addBtn.innerHTML = '<i class="fa fa-plus"/>';
-        addBtn.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); this._openCreateDialog(node.id); });
-        card.appendChild(addBtn);
+        card.appendChild(dot);
 
         return card;
     }
