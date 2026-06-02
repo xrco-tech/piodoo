@@ -28,7 +28,8 @@
     flex-shrink: 0;
 }
 .o_chatbot_flow_title { font-size: 16px; font-weight: 700; color: #1f2937; }
-.o_flow_back_btn { color: #6b7280; padding: 0 8px; }
+.o_flow_back_btn { color: #374151; padding: 0 6px; font-size: 15px; font-weight: 700; border: none; background: none; }
+.o_flow_back_btn:hover { color: #111827; background: none; }
 .o_flow_add_step_btn { font-weight: 600; }
 .o_flow_zoom_btn   { min-width: 28px; padding: 0 6px; font-size: 16px; }
 .o_flow_zoom_label { min-width: 44px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; }

@@ -10,7 +10,7 @@
                     <button class="btn btn-sm btn-light o_flow_back_btn"
                             t-on-click="() => this._goBack()"
                             title="Back to chatbot details">
-                        <i class="fa fa-arrow-left"/>
+                        <i class="fa fa-chevron-left"/>
                     </button>
                     <span class="o_chatbot_flow_bot_icon">
                         <i class="fa fa-whatsapp"/>
