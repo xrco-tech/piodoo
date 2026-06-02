@@ -48,6 +48,8 @@
                         <i class="fa fa-info-circle me-1"/>Properties
                     </div>
                     <t t-if="state.selectedNode">
+
+                        <!-- Type badge -->
                         <div class="o_flow_props_type_row">
                             <span class="o_flow_card_badge o_flow_props_badge"
                                   t-att-style="'background:' + typeCfg(state.selectedNode.type).color">
@@ -55,29 +57,147 @@
                                 <t t-esc="typeCfg(state.selectedNode.type).label"/>
                             </span>
                         </div>
+
+                        <!-- Name -->
                         <div class="o_flow_props_label">Name</div>
-                        <div class="o_flow_props_value fw-semibold">
+                        <div class="o_flow_props_value fw-semibold mb-2">
                             <t t-esc="state.selectedNode.name"/>
                         </div>
+
+                        <!-- Sequence + WA delivery type (side by side) -->
+                        <div class="o_flow_props_meta_row">
+                            <div>
+                                <div class="o_flow_props_label">Sequence</div>
+                                <div class="o_flow_props_value">#<t t-esc="state.selectedNode.sequence"/></div>
+                            </div>
+                            <t t-if="state.selectedNode.waType and state.selectedNode.waType != 'non_interactive'">
+                                <div>
+                                    <div class="o_flow_props_label">Delivery</div>
+                                    <span class="o_flow_props_wa_badge"
+                                          t-att-style="'background:' + waTypeBadgeColor(state.selectedNode.waType)">
+                                        <t t-esc="waTypeLabel(state.selectedNode.waType)"/>
+                                    </span>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div>
+                                    <div class="o_flow_props_label">Delivery</div>
+                                    <div class="o_flow_props_value">Plain</div>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Message preview -->
                         <t t-if="state.selectedNode.preview_html">
                             <div class="o_flow_props_label mt-2">Message</div>
                             <div class="o_flow_bubble o_flow_props_bubble"
                                  t-out="state.selectedNode.preview_html"/>
                         </t>
+
+                        <!-- Header -->
+                        <t t-if="state.selectedNode.headerType">
+                            <div class="o_flow_props_label mt-2">Header</div>
+                            <div class="o_flow_props_value o_flow_props_icon_row">
+                                <i t-att-class="'fa ' + headerTypeIcon(state.selectedNode.headerType)"/>
+                                <t t-esc="headerTypeLabel(state.selectedNode.headerType)"/>
+                                <t t-if="state.selectedNode.headerType == 'text' and state.selectedNode.headerText">
+                                    — <em><t t-esc="state.selectedNode.headerText"/></em>
+                                </t>
+                            </div>
+                        </t>
+
+                        <!-- Footer -->
+                        <t t-if="state.selectedNode.footer">
+                            <div class="o_flow_props_label mt-2">Footer</div>
+                            <div class="o_flow_props_value o_flow_props_footer_val">
+                                <t t-esc="state.selectedNode.footer"/>
+                            </div>
+                        </t>
+
+                        <!-- Answer type (question steps) -->
+                        <t t-if="isQuestionType(state.selectedNode.type) and state.selectedNode.answerDataType">
+                            <div class="o_flow_props_label mt-2">Expected Answer</div>
+                            <div class="o_flow_props_value">
+                                <t t-esc="answerTypeLabel(state.selectedNode.answerDataType)"/>
+                            </div>
+                        </t>
+
+                        <!-- Reply buttons -->
+                        <t t-if="state.selectedNode.waType == 'interactive_button' and state.selectedNode.buttons.length">
+                            <div class="o_flow_props_label mt-2">Reply Buttons</div>
+                            <div class="o_flow_props_ia_list">
+                                <t t-foreach="state.selectedNode.buttons" t-as="btn" t-key="btn_index">
+                                    <div class="o_flow_props_ia_item"><t t-esc="btn"/></div>
+                                </t>
+                            </div>
+                        </t>
+
+                        <!-- List rows -->
+                        <t t-if="state.selectedNode.waType == 'interactive_list'">
+                            <div class="o_flow_props_label mt-2">List</div>
+                            <div class="o_flow_props_value o_flow_props_icon_row">
+                                <i class="fa fa-list-ul"/>
+                                <t t-esc="state.selectedNode.listBtnText"/>
+                            </div>
+                            <t t-if="state.selectedNode.listRows.length">
+                                <div class="o_flow_props_ia_list">
+                                    <t t-foreach="state.selectedNode.listRows" t-as="row" t-key="row_index">
+                                        <div class="o_flow_props_ia_item"><t t-esc="row"/></div>
+                                    </t>
+                                </div>
+                            </t>
+                        </t>
+
+                        <!-- Interactive flow -->
+                        <t t-if="state.selectedNode.waType == 'interactive_flow'">
+                            <div class="o_flow_props_label mt-2">Flow</div>
+                            <t t-if="state.selectedNode.flowName">
+                                <div class="o_flow_props_value o_flow_props_icon_row">
+                                    <i class="fa fa-bolt"/>
+                                    <t t-esc="state.selectedNode.flowName"/>
+                                </div>
+                            </t>
+                            <t t-if="state.selectedNode.flowCta">
+                                <div class="o_flow_props_label mt-1">CTA</div>
+                                <div class="o_flow_props_value o_flow_props_flow_cta">
+                                    <t t-esc="state.selectedNode.flowCta"/>
+                                </div>
+                            </t>
+                        </t>
+
+                        <!-- Variable (set_variable steps) -->
+                        <t t-if="state.selectedNode.type == 'set_variable' and state.selectedNode.variableName">
+                            <div class="o_flow_props_label mt-2">Variable</div>
+                            <div class="o_flow_props_value fw-semibold">
+                                <t t-esc="state.selectedNode.variableName"/>
+                            </div>
+                            <t t-if="state.selectedNode.variableDataSource">
+                                <div class="o_flow_props_label mt-1">Source</div>
+                                <div class="o_flow_props_value">
+                                    <t t-esc="varSourceLabel(state.selectedNode.variableDataSource, state.selectedNode)"/>
+                                </div>
+                            </t>
+                        </t>
+
+                        <!-- Trigger answers -->
                         <t t-if="state.selectedNode.answers and state.selectedNode.answers.length">
-                            <div class="o_flow_props_label mt-2">Trigger answers</div>
+                            <div class="o_flow_props_label mt-2">Trigger Answers</div>
                             <div class="o_flow_chips">
                                 <t t-foreach="state.selectedNode.answers" t-as="ans" t-key="ans_index">
                                     <span class="o_flow_chip"><t t-esc="ans"/></span>
                                 </t>
                             </div>
                         </t>
+
+                        <!-- Child steps count -->
                         <t t-if="state.selectedNode.children and state.selectedNode.children.length">
-                            <div class="o_flow_props_label mt-2">Child steps</div>
+                            <div class="o_flow_props_label mt-2">Child Steps</div>
                             <div class="o_flow_props_value">
                                 <t t-esc="state.selectedNode.children.length"/>
                             </div>
                         </t>
+
+                        <!-- Actions -->
                         <div class="o_flow_props_actions">
                             <button class="btn btn-sm btn-primary w-100"
                                     t-on-click="() => this._openEditDialog(state.selectedNode.id)">

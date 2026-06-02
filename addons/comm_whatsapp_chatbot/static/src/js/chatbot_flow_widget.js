@@ -55,7 +55,11 @@ function flattenTree(nodes, level = 0, parent = null, out = []) {
                    waType: n.waType, buttons: n.buttons,
                    listBtnText: n.listBtnText, listRows: n.listRows,
                    headerType: n.headerType, headerText: n.headerText, footer: n.footer,
-                   flowCta: n.flowCta });
+                   flowCta: n.flowCta, flowName: n.flowName,
+                   sequence: n.sequence, answerDataType: n.answerDataType,
+                   variableName: n.variableName, variableDataSource: n.variableDataSource,
+                   variableValue: n.variableValue, sourceStepName: n.sourceStepName,
+                   sourceVarName: n.sourceVarName });
         flattenTree(n.children || [], level + 1, n.id, out);
     }
     return out;
@@ -124,7 +128,9 @@ export class ChatbotFlowAction extends Component {
             [["chatbot_id", "=", this.chatbotId]],
             ["id", "name", "step_type", "parent_id", "body_plain", "sequence",
              "trigger_answer_ids", "wa_message_type", "button_ids", "list_row_ids", "list_button_text",
-             "header_type", "header_text", "footer", "flow_cta"],
+             "header_type", "header_text", "footer", "flow_cta", "flow_id",
+             "answer_data_type", "variable_id", "variable_data_source",
+             "variable_value", "source_step_id", "source_variable_id"],
             { order: "parent_path, sequence, id" }
         );
 
@@ -182,11 +188,19 @@ export class ChatbotFlowAction extends Component {
             buttons:      (s.button_ids   || []).map(id => btnById[id]).filter(Boolean),
             listBtnText:  s.list_button_text || "See all options",
             listRows:     (s.list_row_ids  || []).map(id => rowById[id]).filter(Boolean),
-            headerType:   noPreview.has(s.step_type) ? null : (s.header_type || null),
-            headerText:   s.header_text || "",
-            footer:       noPreview.has(s.step_type) ? "" : (s.footer || ""),
-            flowCta:      s.flow_cta || "",
-            children:     build(s.id),
+            headerType:         noPreview.has(s.step_type) ? null : (s.header_type || null),
+            headerText:         s.header_text || "",
+            footer:             noPreview.has(s.step_type) ? "" : (s.footer || ""),
+            flowCta:            s.flow_cta || "",
+            flowName:           Array.isArray(s.flow_id) ? s.flow_id[1] : "",
+            sequence:           s.sequence,
+            answerDataType:     s.answer_data_type || "",
+            variableName:       Array.isArray(s.variable_id)       ? s.variable_id[1]       : "",
+            variableDataSource: s.variable_data_source || "",
+            variableValue:      s.variable_value || "",
+            sourceStepName:     Array.isArray(s.source_step_id)    ? s.source_step_id[1]    : "",
+            sourceVarName:      Array.isArray(s.source_variable_id)? s.source_variable_id[1]: "",
+            children:           build(s.id),
         }));
         return build(0);
     }
@@ -243,6 +257,34 @@ export class ChatbotFlowAction extends Component {
     // ── Type config (also called from OWL template) ───────────────────────────
 
     typeCfg(type) { return TYPE_CFG[type] || DEFAULT_CFG; }
+
+    waTypeLabel(t) {
+        return { non_interactive: "Plain", interactive_button: "Reply Buttons",
+                 interactive_list: "List", interactive_flow: "Flow" }[t] || t;
+    }
+    waTypeBadgeColor(t) {
+        return { non_interactive: "#9ca3af", interactive_button: "#3b82f6",
+                 interactive_list: "#6366f1", interactive_flow: "#16a34a" }[t] || "#9ca3af";
+    }
+    answerTypeLabel(t) {
+        return { text: "Text", integer: "Integer", float: "Decimal", date: "Date",
+                 boolean: "Boolean", document: "Document", image: "Image",
+                 video: "Video", audio: "Audio" }[t] || t;
+    }
+    headerTypeLabel(t) {
+        return { text: "Text", document: "Document", image: "Image", video: "Video" }[t] || t;
+    }
+    headerTypeIcon(t) {
+        return { text: "fa-font", document: "fa-file-text-o",
+                 image: "fa-image", video: "fa-play-circle" }[t] || "fa-question";
+    }
+    varSourceLabel(s, node) {
+        if (s === "static")   return `Static: "${node.variableValue || "—"}"`;
+        if (s === "answer")   return `From answer: ${node.sourceStepName || "—"}`;
+        if (s === "variable") return `From variable: ${node.sourceVarName || "—"}`;
+        return s;
+    }
+    isQuestionType(t) { return t && t.startsWith("question_"); }
 
     // ── Position persistence (localStorage) ──────────────────────────────────
 
@@ -404,10 +446,28 @@ export class ChatbotFlowAction extends Component {
                 ?.classList.remove("o_flow_card_selected");
             card.classList.add("o_flow_card_selected");
             this.state.selectedNode = {
-                id: node.id, name: node.name, type: node.type,
-                preview_html: node.preview_html,
-                answers:  node.answers  || [],
-                children: node.children || [],
+                id:                 node.id,
+                name:               node.name,
+                type:               node.type,
+                sequence:           node.sequence,
+                preview_html:       node.preview_html,
+                answers:            node.answers  || [],
+                children:           node.children || [],
+                waType:             node.waType,
+                headerType:         node.headerType,
+                headerText:         node.headerText,
+                footer:             node.footer,
+                buttons:            node.buttons  || [],
+                listBtnText:        node.listBtnText,
+                listRows:           node.listRows  || [],
+                flowCta:            node.flowCta,
+                flowName:           node.flowName,
+                answerDataType:     node.answerDataType,
+                variableName:       node.variableName,
+                variableDataSource: node.variableDataSource,
+                variableValue:      node.variableValue,
+                sourceStepName:     node.sourceStepName,
+                sourceVarName:      node.sourceVarName,
             };
         });
 
