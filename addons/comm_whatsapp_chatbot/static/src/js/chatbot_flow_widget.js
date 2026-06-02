@@ -70,15 +70,22 @@ export class ChatbotFlowAction extends Component {
 
         this.chatbotId   = this.props.action.params?.chatbot_id;
         this.canvasRef   = useRef("canvas");
-        this._tree       = [];
-        this._drawLinesFn = null;
-        this._pendingDraw = false;
-        this._onResize    = () => { if (this._drawLinesFn) this._drawLinesFn(); };
+        this._tree         = [];
+        this._flat         = [];
+        this._drawLinesFn  = null;
+        this._pendingDraw  = false;
+        this._onResize     = () => { if (this._drawLinesFn) this._drawLinesFn(); };
+        this._canvasClickFn = () => {
+            this.canvasRef.el?.querySelector(".o_flow_card_selected")
+                ?.classList.remove("o_flow_card_selected");
+            this.state.selectedNode = null;
+        };
 
         this.state = useState({
-            loading:     true,
-            chatbotName: this.props.action.params?.chatbot_name || "",
-            zoom:        1,
+            loading:      true,
+            chatbotName:  this.props.action.params?.chatbot_name || "",
+            zoom:         1,
+            selectedNode: null,
         });
 
         onMounted(()  => this._loadData());
@@ -96,6 +103,7 @@ export class ChatbotFlowAction extends Component {
     async _loadData() {
         this._pendingDraw = false;
         this.state.loading = true;
+        this.state.selectedNode = null;
 
         const steps = await this.orm.searchRead(
             "whatsapp.chatbot.step",
@@ -184,6 +192,27 @@ export class ChatbotFlowAction extends Component {
         await this.orm.write("whatsapp.chatbot.step", [stepId], { name });
     }
 
+    // ── Type config (also called from OWL template) ───────────────────────────
+
+    typeCfg(type) { return TYPE_CFG[type] || DEFAULT_CFG; }
+
+    // ── Position persistence (localStorage) ──────────────────────────────────
+
+    _loadPositions() {
+        try { return JSON.parse(localStorage.getItem(`chatbot_flow_pos_${this.chatbotId}`) || "{}"); }
+        catch { return {}; }
+    }
+
+    _savePositions(pos) {
+        try { localStorage.setItem(`chatbot_flow_pos_${this.chatbotId}`, JSON.stringify(pos)); }
+        catch {}
+    }
+
+    _resetLayout() {
+        try { localStorage.removeItem(`chatbot_flow_pos_${this.chatbotId}`); } catch {}
+        this._loadData();
+    }
+
     // ── Zoom ─────────────────────────────────────────────────────────────────
 
     _setZoom(z) {
@@ -202,6 +231,7 @@ export class ChatbotFlowAction extends Component {
         if (!canvas) return;
 
         canvas.querySelectorAll(".o_flow_grid, .o_flow_empty").forEach(n => n.remove());
+        canvas.removeEventListener("click", this._canvasClickFn);
         window.removeEventListener("resize", this._onResize);
         this._drawLinesFn = null;
 
@@ -236,18 +266,23 @@ export class ChatbotFlowAction extends Component {
         svg.setAttribute("class", "o_flow_svg");
         grid.appendChild(svg);
 
-        const nodeById = Object.fromEntries(flat.map(n => [n.id, n]));
+        const nodeById  = Object.fromEntries(flat.map(n => [n.id, n]));
+        const savedPos  = this._loadPositions();
+        this._flat      = flat;
 
         for (const node of flat) {
             const card = this._buildCard(node);
             card.style.position = "absolute";
-            card.style.left  = Math.round(node._col * (CARD_W + GAP) + PX) + "px";
-            card.style.top   = Math.round(node.level * ROW_H + PY) + "px";
+            const sp = savedPos[node.id];
+            card.style.left  = (sp ? sp.x : Math.round(node._col * (CARD_W + GAP) + PX)) + "px";
+            card.style.top   = (sp ? sp.y : Math.round(node.level * ROW_H + PY)) + "px";
             card.style.width = CARD_W + "px";
             grid.appendChild(card);
+            this._makeCardDraggable(card, node.id);
         }
 
         canvas.appendChild(grid);
+        canvas.addEventListener("click", this._canvasClickFn);
 
         const drawLines = () => {
             const w = grid.scrollWidth, h = grid.scrollHeight;
@@ -317,6 +352,20 @@ export class ChatbotFlowAction extends Component {
         card.className  = "o_flow_card";
         card.dataset.id = node.id;
         if (node.parent) card.dataset.parent = node.parent;
+
+        card.addEventListener("click", e => {
+            if (e.target.closest("button")) return;
+            e.stopPropagation();
+            this.canvasRef.el?.querySelector(".o_flow_card_selected")
+                ?.classList.remove("o_flow_card_selected");
+            card.classList.add("o_flow_card_selected");
+            this.state.selectedNode = {
+                id: node.id, name: node.name, type: node.type,
+                preview_html: node.preview_html,
+                answers:  node.answers  || [],
+                children: node.children || [],
+            };
+        });
 
         // Colored strip (like hierarchy view employee header)
         const strip = document.createElement("div");
@@ -439,6 +488,35 @@ export class ChatbotFlowAction extends Component {
             e.preventDefault();
             this._setZoom(this.state.zoom + (e.deltaY < 0 ? 0.1 : -0.1));
         }, { passive: false });
+    }
+
+    _makeCardDraggable(card, nodeId) {
+        card.addEventListener("mousedown", e => {
+            if (e.button !== 0) return;
+            if (e.target.closest("[contenteditable]") || e.target.closest("button")) return;
+            card.style.cursor = "grabbing";
+            card.style.zIndex = "50";
+            const sx = e.clientX, sy = e.clientY;
+            const sl = card.offsetLeft,  st = card.offsetTop;
+            const onMove = mv => {
+                card.style.left = Math.max(0, sl + mv.clientX - sx) + "px";
+                card.style.top  = Math.max(0, st + mv.clientY - sy) + "px";
+                if (this._drawLinesFn) this._drawLinesFn();
+            };
+            const onUp = () => {
+                card.style.cursor = "";
+                card.style.zIndex = "";
+                window.removeEventListener("mousemove", onMove);
+                window.removeEventListener("mouseup",   onUp);
+                const pos = this._loadPositions();
+                pos[nodeId] = { x: card.offsetLeft, y: card.offsetTop };
+                this._savePositions(pos);
+            };
+            window.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup",   onUp);
+            e.stopPropagation();
+            e.preventDefault();
+        });
     }
 }
 
