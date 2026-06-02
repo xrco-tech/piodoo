@@ -443,7 +443,7 @@ export class ChatbotFlowAction extends Component {
         const hasButtons  = node.waType === "interactive_button" && node.buttons?.length;
         const hasListRows = node.waType === "interactive_list"   && node.listRows?.length;
         const hasContent  = node.preview_html || node.headerType || node.footer ||
-                            node.answers?.length || hasButtons || hasListRows;
+                            hasButtons || hasListRows;
 
         if (hasContent) {
             const content = document.createElement("div");
@@ -495,17 +495,6 @@ export class ChatbotFlowAction extends Component {
                 }
 
                 content.appendChild(bubble);
-            }
-
-            if (node.answers?.length) {
-                const chips = document.createElement("div");
-                chips.className = "o_flow_chips";
-                for (const a of node.answers) {
-                    const ch = document.createElement("span");
-                    ch.className = "o_flow_chip"; ch.textContent = a;
-                    chips.appendChild(ch);
-                }
-                content.appendChild(chips);
             }
 
             // Interactive reply buttons preview
