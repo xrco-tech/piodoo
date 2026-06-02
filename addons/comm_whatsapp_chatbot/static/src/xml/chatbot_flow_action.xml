@@ -17,9 +17,6 @@
                             title="Add a new top-level step">
                         Add Step
                     </button>
-                    <span class="o_chatbot_flow_bot_icon">
-                        <i class="fa fa-whatsapp"/>
-                    </span>
                     <span class="o_chatbot_flow_title" t-esc="state.chatbotName"/>
                 </div>
                 <div class="o_chatbot_flow_toolbar_right">
