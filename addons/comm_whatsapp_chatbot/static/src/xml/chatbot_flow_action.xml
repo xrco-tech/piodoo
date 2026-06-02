@@ -7,8 +7,11 @@
             <!-- Toolbar — matches Odoo's control panel height/style -->
             <div class="o_chatbot_flow_toolbar">
                 <div class="o_chatbot_flow_toolbar_left">
+                    <span class="o_chatbot_flow_bot_icon">
+                        <i class="fa fa-whatsapp"/>
+                    </span>
                     <span class="o_chatbot_flow_title" t-esc="state.chatbotName"/>
-                    <button class="btn btn-sm btn-success"
+                    <button class="btn btn-sm btn-success o_flow_add_step_btn"
                             t-on-click="() => this._openCreateDialog(false)"
                             title="Add a new top-level step">
                         <i class="fa fa-plus me-1"/>Add Step

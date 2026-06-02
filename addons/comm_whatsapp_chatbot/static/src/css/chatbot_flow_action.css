@@ -21,7 +21,14 @@
 }
 .o_chatbot_flow_toolbar_left  { display: flex; align-items: center; gap: 12px; }
 .o_chatbot_flow_toolbar_right { display: flex; align-items: center; gap: 6px; }
+.o_chatbot_flow_bot_icon {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px;
+    background: #25d366; color: #fff; font-size: 18px;
+    flex-shrink: 0;
+}
 .o_chatbot_flow_title { font-size: 16px; font-weight: 700; color: #1f2937; }
+.o_flow_add_step_btn { font-weight: 600; }
 .o_flow_zoom_btn   { min-width: 28px; padding: 0 6px; font-size: 16px; }
 .o_flow_zoom_label { min-width: 44px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; }
 
@@ -58,29 +65,29 @@
     z-index: 5;
 }
 
-.o_flow_connector { fill: none; stroke: #adb5bd; stroke-width: 1.8; }
-.o_flow_lbl_bg  { fill: #eff6ff; stroke: #93c5fd; stroke-width: 1; }
+.o_flow_connector { fill: none; stroke: #6b7280; stroke-width: 2; }
+.o_flow_lbl_bg  { fill: #f0fdf4; stroke: #4ade80; stroke-width: 1.2; }
 .o_flow_lbl_txt {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 10px;
-    font-weight: 600;
-    fill: #1d4ed8;
+    font-weight: 700;
+    fill: #15803d;
 }
 
 /* ── Cards — inspired by Odoo's hierarchy view ───────────────────────────────── */
 .o_flow_card {
     background: #fff;
     border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.09);
+    box-shadow: 0 2px 12px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.08);
     overflow: hidden;
     position: relative;
     z-index: 1;
-    transition: box-shadow .15s, transform .1s;
+    transition: box-shadow .18s, transform .15s;
     cursor: default;
 }
 .o_flow_card:hover {
-    box-shadow: 0 6px 22px rgba(0,0,0,.13);
-    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.1);
+    transform: translateY(-3px);
 }
 
 /* Colored strip at top (like employee hierarchy card header) */

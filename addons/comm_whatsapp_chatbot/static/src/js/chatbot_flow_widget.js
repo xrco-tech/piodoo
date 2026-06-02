@@ -259,25 +259,24 @@ export class ChatbotFlowAction extends Component {
             const defs   = document.createElementNS(NS, "defs");
             const marker = document.createElementNS(NS, "marker");
             marker.setAttribute("id", "o-flow-arr");
-            marker.setAttribute("markerWidth", "7"); marker.setAttribute("markerHeight", "7");
-            marker.setAttribute("refX", "0"); marker.setAttribute("refY", "3.5");
+            marker.setAttribute("markerWidth", "9"); marker.setAttribute("markerHeight", "9");
+            marker.setAttribute("refX", "1"); marker.setAttribute("refY", "4.5");
             marker.setAttribute("orient", "auto"); marker.setAttribute("markerUnits", "strokeWidth");
             const mp = document.createElementNS(NS, "path");
-            mp.setAttribute("d", "M0,0 L0,7 L5,3.5 z"); mp.setAttribute("fill", "#adb5bd");
+            mp.setAttribute("d", "M0,0 L0,9 L7,4.5 z"); mp.setAttribute("fill", "#6b7280");
             marker.appendChild(mp); defs.appendChild(marker); svg.appendChild(defs);
 
-            const gr = grid.getBoundingClientRect();
+            // offsetLeft/offsetTop: logical coords relative to grid — zoom-independent
             const byId = Object.fromEntries([...grid.querySelectorAll(".o_flow_card")].map(c => [c.dataset.id, c]));
 
             for (const child of grid.querySelectorAll(".o_flow_card")) {
                 const pid = child.dataset.parent; if (!pid) continue;
                 const par = byId[pid]; if (!par) continue;
-                const pr = par.getBoundingClientRect(), cr = child.getBoundingClientRect();
-                const x1 = pr.left + pr.width  / 2 - gr.left;
-                const y1 = pr.bottom - gr.top + 14; // 14 = add-btn protrusion
-                const x2 = cr.left + cr.width  / 2 - gr.left;
-                const y2 = cr.top  - gr.top;
-                if ([x1,y1,x2,y2].some(isNaN)) continue;
+                const x1 = par.offsetLeft   + par.offsetWidth  / 2;
+                const y1 = par.offsetTop    + par.offsetHeight;  // bottom of card = center of add-btn
+                const x2 = child.offsetLeft + child.offsetWidth / 2;
+                const y2 = child.offsetTop;
+                if ([x1,y1,x2,y2].some(v => !isFinite(v))) continue;
                 const my = (y1 + y2) / 2;
                 const path = document.createElementNS(NS, "path");
                 path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`);
