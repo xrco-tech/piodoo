@@ -764,6 +764,96 @@ class WhatsAppMessage(models.Model):
                 'error': str(e)
             }
 
+    def send_whatsapp_interactive_flow(self, recipient_phone, step, phone_number_id=None, context_message_id=None):
+        """Send a WhatsApp interactive flow message for a chatbot step."""
+        try:
+            import requests
+            import json
+            import uuid
+
+            IrConfigParameter = self.env['ir.config_parameter'].sudo()
+            access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
+                           IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
+            if not access_token:
+                return {'success': False, 'error': 'Access token not configured.'}
+
+            if not phone_number_id:
+                phone_number_id = IrConfigParameter.get_param('comm_whatsapp.phone_number_id')
+            if not phone_number_id:
+                return {'success': False, 'error': 'Phone number ID not configured.'}
+
+            recipient_phone = recipient_phone.replace('+', '').replace(' ', '').replace('-', '')
+            url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json',
+            }
+
+            flow_action = step.flow_action or 'data_exchange'
+            action_params = {
+                'flow_message_version': '3',
+                'flow_token': str(uuid.uuid4()),
+                'flow_id': step.flow_uid,
+                'flow_cta': step.flow_cta or 'Get Started',
+                'flow_action': flow_action,
+            }
+            if flow_action == 'navigate' and step.screen_id:
+                action_params['flow_action_payload'] = {
+                    'screen': step.screen_id,
+                    'data': step.screen_payload_data or {},
+                }
+
+            interactive = {
+                'type': 'flow',
+                'body': {'text': step.body_plain or ''},
+                'action': {'name': 'flow', 'parameters': action_params},
+            }
+            if step.header and step.header_type == 'text' and step.header_text:
+                interactive['header'] = {'type': 'text', 'text': step.header_text}
+            if step.footer:
+                interactive['footer'] = {'text': step.footer}
+
+            payload = {
+                'messaging_product': 'whatsapp',
+                'recipient_type': 'individual',
+                'to': recipient_phone,
+                'type': 'interactive',
+                'interactive': interactive,
+            }
+            if context_message_id:
+                payload['context'] = {'message_id': context_message_id}
+
+            _logger.info(f"Sending interactive flow message to {recipient_phone}, flow_id={step.flow_uid}")
+            _logger.debug(f"Interactive flow payload: {json.dumps(payload, indent=2)}")
+
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            if response.status_code == 200:
+                response_data = response.json()
+                message_id = response_data.get('messages', [{}])[0].get('id')
+                _logger.info(f"Interactive flow message sent. Message ID: {message_id}")
+                self.sudo().create({
+                    'message_id': message_id or f'sent_{fields.Datetime.now()}',
+                    'wa_id': recipient_phone,
+                    'phone_number': recipient_phone,
+                    'contact_name': recipient_phone,
+                    'message_type': 'interactive',
+                    'message_body': step.body_plain or '',
+                    'message_timestamp': fields.Datetime.now(),
+                    'phone_number_id': phone_number_id,
+                    'status': 'processed',
+                    'is_incoming': False,
+                })
+                return {'success': True, 'message_id': message_id, 'response': response_data}
+            else:
+                error_data = response.json() if response.text else {}
+                error_message = error_data.get('error', {}).get('message', response.text)
+                _logger.error(f"Failed to send interactive flow: {response.status_code} - {error_message}")
+                return {'success': False, 'error': error_message, 'status_code': response.status_code}
+
+        except Exception as e:
+            _logger.error(f"Error sending interactive flow message: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+
     def action_send_reply(self):
         """
         Action method to send a reply to the sender of this message.

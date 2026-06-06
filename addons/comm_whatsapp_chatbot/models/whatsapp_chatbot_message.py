@@ -410,14 +410,24 @@ class WhatsAppChatbotMessage(models.Model):
                 phone_number_id = message.wa_message_id.phone_number_id
                 context_message_id = message.wa_message_id.message_id
             
-            # Send message via WhatsApp API
+            # Send message via WhatsApp API — branch on step message type
             WhatsAppMessage = self.env['whatsapp.message'].sudo()
-            result = WhatsAppMessage.send_whatsapp_message(
-                recipient_phone=phone_number,
-                message_text=processed_body,
-                phone_number_id=phone_number_id,
-                context_message_id=context_message_id
-            )
+            wa_type = step.wa_message_type if step.step_type == 'question_interactive' else 'non_interactive'
+
+            if wa_type == 'interactive_flow':
+                result = WhatsAppMessage.send_whatsapp_interactive_flow(
+                    recipient_phone=phone_number,
+                    step=step,
+                    phone_number_id=phone_number_id,
+                    context_message_id=context_message_id,
+                )
+            else:
+                result = WhatsAppMessage.send_whatsapp_message(
+                    recipient_phone=phone_number,
+                    message_text=processed_body,
+                    phone_number_id=phone_number_id,
+                    context_message_id=context_message_id,
+                )
             
             if result.get('success'):
                 _logger.info(f"Chatbot message sent successfully: {result.get('message_id')}")
