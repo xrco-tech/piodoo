@@ -18,18 +18,6 @@
     border: 1px solid transparent;
 }
 
-/* Waffle button alignment — mirrors the Dropdown container it replaced */
-.o_main_navbar button.o_navbar_apps_menu {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    align-self: stretch;
-    padding: 0 12px;
-    background: transparent;
-    border: none;
-    outline: none;
-}
-
 /* Remove any background from navbar children */
 .o_main_navbar > *,
 .o_main_navbar .o_navbar_breadcrumbs,

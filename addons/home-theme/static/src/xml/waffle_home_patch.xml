@@ -1,20 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <!--
-        Replace the apps-menu Dropdown with a direct button that navigates
-        straight to the Home screen, skipping the dropdown entirely.
-    -->
-    <t t-name="home-theme.NavBar.AppsMenu"
-       t-inherit="web.NavBar.AppsMenu"
-       t-inherit-mode="extension">
-        <xpath expr="//Dropdown" position="replace">
-            <button
-                class="o_navbar_apps_menu btn"
-                t-on-click="goToHome"
-                title="Home"
-            >
-                <i class="oi oi-apps" />
-            </button>
-        </xpath>
-    </t>
+    <!-- No template overrides — waffle interception is handled via JS DOM patch -->
 </templates>
