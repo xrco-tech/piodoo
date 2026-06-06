@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'WhatsApp Light',
+    'name': 'WhatsApp CE (Community Edition)',
     'version': '18.0.1.0.31',
     'category': 'Tools',
-    'summary': 'WhatsApp Light Integration Module',
+    'summary': 'WhatsApp Community Edition Integration Module',
     'description': """
-WhatsApp Light
-==============
+WhatsApp CE (Community Edition)
+================================
 
-A lightweight WhatsApp integration module for Odoo.
+A lightweight WhatsApp integration module for Odoo Community Edition.
     """,
     'author': 'XR Co.',
     'license': 'LGPL-3',
