@@ -451,10 +451,11 @@ class WhatsAppChatbotMessage(models.Model):
                 # Update contact's last step
                 self._update_contact_last_interaction(outgoing_message)
                 
-                # Auto-advance: if this step has exactly one child that is not end_flow,
-                # send it immediately (e.g. message → question so user gets both in sequence)
+                # Auto-advance: only for non-question steps (message, set_variable, etc.)
+                # Question/interactive steps wait for user input — never auto-advance them.
+                WAIT_FOR_INPUT = {'question_text', 'question_interactive'}
                 children = step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
-                if len(children) == 1 and children[0].step_type != 'end_flow':
+                if step.step_type not in WAIT_FOR_INPUT and len(children) == 1 and children[0].step_type != 'end_flow':
                     _logger.info(f"Auto-advancing to next step: {children[0].name} (ID: {children[0].id})")
                     return self._send_step_message(message, children[0])
                 
