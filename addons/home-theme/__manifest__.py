@@ -93,6 +93,8 @@ Upgrade Your Odoo Experience Today! ✨
             'home-theme/static/src/css/home_screen.css',
             'home-theme/static/src/js/home_screen.js',
             'home-theme/static/src/xml/home_screen.xml',
+            'home-theme/static/src/js/waffle_home_patch.js',
+            'home-theme/static/src/xml/waffle_home_patch.xml',
         ],
     },
     'images': [
