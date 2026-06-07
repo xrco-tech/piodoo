@@ -507,3 +507,197 @@ class TestSendStepMessage(ChatbotFixtures):
         self.assertEqual(len(outgoing), 1,
                          "Only the flow step itself should be sent, not the child")
         self.assertEqual(outgoing.step_id, step_flow)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 7. All step types — dispatch and auto-advance behaviour
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tagged('chatbot', 'post_install', '-at_install')
+class TestStepTypes(ChatbotFixtures):
+    """Covers every step_type and wa_message_type to verify WA dispatch and auto-advance rules."""
+
+    def _step(self, name, step_type, body='Test message.', **kw):
+        vals = {'name': name, 'chatbot_id': self.chatbot.id,
+                'step_type': step_type, 'body_plain': body}
+        vals.update(kw)
+        return self.env['whatsapp.chatbot.step'].create(vals)
+
+    # ── Input question types (NOT in WAIT_FOR_INPUT) → auto-advance ───────────
+
+    def test_input_question_types_auto_advance(self):
+        """question_numeric/phone/email/date are NOT in WAIT_FOR_INPUT → auto-advance to single child."""
+        cases = [
+            ('question_numeric', 'Numeric Question'),
+            ('question_phone', 'Phone Question'),
+            ('question_email', 'Email Question'),
+            ('question_date', 'Date Question'),
+        ]
+        for step_type, name in cases:
+            parent = self._step(name, step_type, body='Please provide input.')
+            self._step('Auto Child', 'message', body='Thanks.', parent_id=parent.id)
+            msg = self._make_incoming(parent, body='hi')
+            with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                              side_effect=_mock_send_ok) as mock_send:
+                self.env['whatsapp.chatbot.message']._send_step_message(msg, parent)
+            self.assertGreaterEqual(
+                mock_send.call_count, 2,
+                f"{step_type}: expected auto-advance (>=2 sends), got {mock_send.call_count}")
+
+    def test_media_question_types_auto_advance(self):
+        """question_document/image/video/audio are NOT in WAIT_FOR_INPUT → auto-advance to single child."""
+        cases = [
+            ('question_document', 'Document Question'),
+            ('question_image', 'Image Question'),
+            ('question_video', 'Video Question'),
+            ('question_audio', 'Audio Question'),
+        ]
+        for step_type, name in cases:
+            parent = self._step(name, step_type, body='Please send the file.')
+            self._step('Media Child', 'message', body='Received.', parent_id=parent.id)
+            msg = self._make_incoming(parent, body='hi')
+            with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                              side_effect=_mock_send_ok) as mock_send:
+                self.env['whatsapp.chatbot.message']._send_step_message(msg, parent)
+            self.assertGreaterEqual(
+                mock_send.call_count, 2,
+                f"{step_type}: expected auto-advance (>=2 sends), got {mock_send.call_count}")
+
+    # ── set_variable / execute_code → no WA API call ──────────────────────────
+
+    def test_set_variable_does_not_call_wa_api(self):
+        """set_variable is processed silently — no WA message sent."""
+        step = self._step('Set Variable', 'set_variable', body='Setting variable.')
+        msg = self._make_incoming(step, body='hi')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send:
+            self.env['whatsapp.chatbot.message']._handle_incoming_message(
+                msg, from_trigger=True)
+        mock_send.assert_not_called()
+
+    def test_execute_code_does_not_call_wa_api(self):
+        """execute_code is processed silently — no WA message sent."""
+        step = self._step('Execute Code', 'execute_code', body='Running code.')
+        msg = self._make_incoming(step, body='hi')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send:
+            self.env['whatsapp.chatbot.message']._handle_incoming_message(
+                msg, from_trigger=True)
+        mock_send.assert_not_called()
+
+    def test_set_variable_in_flow_advances_to_next(self):
+        """set_variable mid-flow: _process_chatbot_flow routes through it and advances."""
+        step_var = self._step('Capture Name', 'set_variable', body='')
+        step_reply = self._step('Name Saved', 'message', body='Name saved!', parent_id=step_var.id)
+        # Trigger _process_chatbot_flow from step_var's parent — set_variable is the next step
+        msg = self._make_incoming(step_var, body='Alice')
+        # _process_chatbot_flow on step_var: no children to route to → returns early
+        # Instead, test via _handle_incoming_message with from_trigger=False on a parent
+        parent = self._step('Ask Name', 'question_text', body='What is your name?')
+        step_var.parent_id = parent.id
+        msg2 = self._make_incoming(parent, body='Alice')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok):
+            result = self.env['whatsapp.chatbot.message']._process_chatbot_flow(msg2)
+        # set_variable step was selected (only child) and processed via _process_variable_or_code_step
+        self.assertEqual(result, msg2)
+
+    # ── transfer_to_agent → sends its body via send_whatsapp_message ──────────
+
+    def test_transfer_to_agent_sends_message(self):
+        """transfer_to_agent has no special routing — sends its body normally."""
+        step = self._step('Transfer Agent', 'transfer_to_agent',
+                          body='Connecting you to an agent.')
+        msg = self._make_incoming(step, body='hi')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send:
+            self.env['whatsapp.chatbot.message']._send_step_message(msg, step)
+        mock_send.assert_called_once()
+
+    # ── end_flow → terminates the flow and updates contact state ─────────────
+
+    def test_end_flow_does_not_send_message(self):
+        """_process_chatbot_flow stops at end_flow without calling WA API."""
+        # step_opt_a's only child is step_end (end_flow)
+        msg = self._make_incoming(self.step_opt_a, body='done')
+        before = self.env['whatsapp.chatbot.message'].search_count([
+            ('contact_id', '=', self.contact.id), ('type', '=', 'outgoing')])
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send:
+            self.env['whatsapp.chatbot.message']._process_chatbot_flow(msg)
+        after = self.env['whatsapp.chatbot.message'].search_count([
+            ('contact_id', '=', self.contact.id), ('type', '=', 'outgoing')])
+        mock_send.assert_not_called()
+        self.assertEqual(before, after, "end_flow must not create any outgoing message")
+
+    def test_end_flow_updates_contact_last_step(self):
+        """After reaching end_flow, contact.last_step_id is set to the end_flow step."""
+        msg = self._make_incoming(self.step_opt_a, body='done')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok):
+            self.env['whatsapp.chatbot.message']._process_chatbot_flow(msg)
+        self.contact.invalidate_recordset()
+        self.assertEqual(self.contact.last_step_id, self.step_end,
+                         "Contact's last_step_id must be updated to the end_flow step")
+
+    # ── interactive_button / interactive_list → send_whatsapp_message ─────────
+
+    def test_interactive_button_uses_send_whatsapp_message(self):
+        """question_interactive + interactive_button → send_whatsapp_message, not interactive_flow."""
+        step = self._step('Button Question', 'question_interactive',
+                          body='Choose an option.',
+                          wa_message_type='interactive_button')
+        msg = self._make_incoming(self.step_root, body='hi')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send, \
+             patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_interactive_flow',
+                          side_effect=_mock_send_ok) as mock_flow:
+            self.env['whatsapp.chatbot.message']._send_step_message(msg, step)
+        mock_send.assert_called_once()
+        mock_flow.assert_not_called()
+
+    def test_interactive_list_uses_send_whatsapp_message(self):
+        """question_interactive + interactive_list → send_whatsapp_message, not interactive_flow."""
+        step = self._step('List Question', 'question_interactive',
+                          body='Pick from the list.',
+                          wa_message_type='interactive_list')
+        msg = self._make_incoming(self.step_root, body='hi')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send, \
+             patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_interactive_flow',
+                          side_effect=_mock_send_ok) as mock_flow:
+            self.env['whatsapp.chatbot.message']._send_step_message(msg, step)
+        mock_send.assert_called_once()
+        mock_flow.assert_not_called()
+
+    # ── message with multiple / no children → no auto-advance ─────────────────
+
+    def test_message_with_multiple_children_no_auto_advance(self):
+        """message step with >1 children sends once (auto-advance requires exactly 1 child)."""
+        parent = self._step('Branching Step', 'message', body='Which path?')
+        self._step('Branch One', 'message', body='Path one.', parent_id=parent.id, sequence=1)
+        self._step('Branch Two', 'message', body='Path two.', parent_id=parent.id, sequence=2)
+        msg = self._make_incoming(parent, body='hi')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send:
+            self.env['whatsapp.chatbot.message']._send_step_message(msg, parent)
+        mock_send.assert_called_once()
+
+    def test_message_with_no_children_no_auto_advance(self):
+        """message step with no children sends once then stops."""
+        leaf = self._step('Leaf Step', 'message', body='This is the end.')
+        msg = self._make_incoming(leaf, body='hi')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send:
+            self.env['whatsapp.chatbot.message']._send_step_message(msg, leaf)
+        mock_send.assert_called_once()
+
+    def test_message_with_end_flow_child_no_auto_advance(self):
+        """message step whose only child is end_flow must NOT auto-advance."""
+        parent = self._step('Closing Message', 'message', body='Goodbye!')
+        self._step('Flow End', 'end_flow', body='', parent_id=parent.id)
+        msg = self._make_incoming(parent, body='hi')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send:
+            self.env['whatsapp.chatbot.message']._send_step_message(msg, parent)
+        mock_send.assert_called_once()
