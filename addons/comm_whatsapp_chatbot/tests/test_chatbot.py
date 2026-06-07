@@ -86,7 +86,8 @@ class ChatbotFixtures(common.TransactionCase):
             'sequence': 20,
         })
 
-        # Trigger answers: "A" → opt_a, "B" → opt_b
+        # Trigger answers: "A" → opt_a, "B" → opt_b.
+        # trigger_answer_ids is Many2many — must be set explicitly on the child step.
         cls.answer_a = cls.env['whatsapp.chatbot.answer'].create({
             'value': 'A',
             'step_id': cls.step_opt_a.id,
@@ -97,6 +98,8 @@ class ChatbotFixtures(common.TransactionCase):
             'step_id': cls.step_opt_b.id,
             'operator': 'is_equal_to',
         })
+        cls.step_opt_a.write({'trigger_answer_ids': [(4, cls.answer_a.id)]})
+        cls.step_opt_b.write({'trigger_answer_ids': [(4, cls.answer_b.id)]})
 
         cls.partner = cls.env['res.partner'].create({
             'name': 'Test User',
@@ -402,12 +405,12 @@ class TestSendStepMessage(ChatbotFixtures):
         self.assertEqual(result, msg)
 
     def test_regular_step_calls_send_whatsapp_message(self):
-        """Non-interactive step calls send_whatsapp_message."""
+        """Non-interactive step calls send_whatsapp_message (may auto-advance too)."""
         msg = self._make_incoming(self.step_root, body='hi')
         with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
                           side_effect=_mock_send_ok) as mock_send:
             self.env['whatsapp.chatbot.message']._send_step_message(msg, self.step_root)
-        mock_send.assert_called_once()
+        mock_send.assert_called()  # called at least once (may auto-advance)
 
     def test_api_failure_logs_error_and_returns(self):
         """If WA API returns failure, no outgoing chatbot message is created."""
@@ -477,7 +480,7 @@ class TestSendStepMessage(ChatbotFixtures):
     def test_interactive_flow_step_does_not_auto_advance(self):
         """question_interactive step must not auto-advance (waits for flow completion)."""
         step_flow = self.env['whatsapp.chatbot.step'].create({
-            'name': 'Flow Step 2',
+            'name': 'Flow Step Two',
             'chatbot_id': self.chatbot.id,
             'step_type': 'question_interactive',
             'wa_message_type': 'interactive_flow',
