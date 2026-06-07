@@ -789,7 +789,7 @@ class WhatsAppMessage(models.Model):
                 'Content-Type': 'application/json',
             }
 
-            flow_action = step.flow_action or 'data_exchange'
+            flow_action = step.flow_action or 'navigate'
             action_params = {
                 'flow_message_version': '3',
                 'flow_token': str(uuid.uuid4()),
@@ -798,10 +798,10 @@ class WhatsAppMessage(models.Model):
                 'flow_action': flow_action,
             }
             if flow_action == 'navigate' and step.screen_id:
-                action_params['flow_action_payload'] = {
-                    'screen': step.screen_id,
-                    'data': step.screen_payload_data or {},
-                }
+                payload_data = {'screen': step.screen_id}
+                if step.screen_payload_data:
+                    payload_data['data'] = step.screen_payload_data
+                action_params['flow_action_payload'] = payload_data
 
             interactive = {
                 'type': 'flow',
@@ -823,8 +823,8 @@ class WhatsAppMessage(models.Model):
             if context_message_id:
                 payload['context'] = {'message_id': context_message_id}
 
-            _logger.info(f"Sending interactive flow message to {recipient_phone}, flow_id={step.flow_uid}")
-            _logger.debug(f"Interactive flow payload: {json.dumps(payload, indent=2)}")
+            _logger.info(f"Sending interactive flow to {recipient_phone}: flow_id={step.flow_uid}, action={flow_action}")
+            _logger.info(f"Interactive flow payload: {json.dumps(payload)}")
 
             response = requests.post(url, headers=headers, json=payload, timeout=30)
             if response.status_code == 200:
@@ -847,7 +847,8 @@ class WhatsAppMessage(models.Model):
             else:
                 error_data = response.json() if response.text else {}
                 error_message = error_data.get('error', {}).get('message', response.text)
-                _logger.error(f"Failed to send interactive flow: {response.status_code} - {error_message}")
+                error_details = error_data.get('error', {}).get('error_data', {})
+                _logger.error(f"Failed to send interactive flow: {response.status_code} - {error_message} | details: {error_details}")
                 return {'success': False, 'error': error_message, 'status_code': response.status_code}
 
         except Exception as e:
