@@ -96,6 +96,26 @@
                             </t>
                         </div>
 
+                        <!-- Reach / funnel stats -->
+                        <t t-if="state.maxCount > 0">
+                            <div class="o_flow_props_label mt-2">Reached</div>
+                            <div class="o_flow_props_reach_row">
+                                <span class="o_flow_props_reach_num">👤 <t t-esc="state.selectedNode.msgCount or 0"/></span>
+                                <div class="o_flow_props_reach_bar_wrap">
+                                    <div class="o_flow_props_reach_bar_fill"
+                                         t-att-style="'width:' + reachPct(state.selectedNode.msgCount) + '%;background:' + reachColor(state.selectedNode.msgCount)"/>
+                                </div>
+                                <span class="o_flow_props_reach_pct"
+                                      t-att-style="'color:' + reachColor(state.selectedNode.msgCount)">
+                                    <t t-esc="reachPct(state.selectedNode.msgCount)"/>%
+                                </span>
+                            </div>
+                            <t t-set="_drop" t-value="dropOffPct(state.selectedNode.msgCount, state.selectedNode.parentId)"/>
+                            <t t-if="_drop !== null">
+                                <div class="o_flow_props_drop_lbl">↓ <t t-esc="_drop"/>% from parent</div>
+                            </t>
+                        </t>
+
                         <!-- Message preview -->
                         <t t-if="state.selectedNode.preview_html">
                             <div class="o_flow_props_label mt-2">Message</div>

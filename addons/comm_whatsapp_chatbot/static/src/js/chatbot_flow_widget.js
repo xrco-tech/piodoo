@@ -62,7 +62,8 @@ function flattenTree(nodes, level = 0, parent = null, out = []) {
                    variableValue: n.variableValue, sourceStepName: n.sourceStepName,
                    sourceVarName: n.sourceVarName,
                    maxRetries: n.maxRetries, fallbackStepId: n.fallbackStepId,
-                   fallbackStepName: n.fallbackStepName });
+                   fallbackStepName: n.fallbackStepName,
+                   msgCount: n.msgCount });
         flattenTree(n.children || [], level + 1, n.id, out);
     }
     return out;
@@ -93,6 +94,7 @@ export class ChatbotFlowAction extends Component {
         this.canvasRef   = useRef("canvas");
         this._tree         = [];
         this._flat         = [];
+        this._msgCounts    = {};
         this._drawLinesFn  = null;
         this._pendingDraw  = false;
         this._onResize     = () => { if (this._drawLinesFn) this._drawLinesFn(); };
@@ -107,6 +109,7 @@ export class ChatbotFlowAction extends Component {
             chatbotName:  this.props.action.params?.chatbot_name || "",
             zoom:         1,
             selectedNode: null,
+            maxCount:     0,
         });
 
         onMounted(()  => this._loadData());
@@ -177,6 +180,23 @@ export class ChatbotFlowAction extends Component {
             rows.forEach(r => { rowById[r.id] = r.title; });
         }
 
+        // Fetch outgoing message counts per step for funnel analysis
+        const countGroups = await this.orm.readGroup(
+            "whatsapp.chatbot.message",
+            [["chatbot_id", "=", this.chatbotId], ["type", "=", "outgoing"],
+             ["step_id", "!=", false]],
+            ["step_id"],
+            ["step_id"],
+        );
+        this._msgCounts = {};
+        for (const g of countGroups) {
+            const sid = Array.isArray(g.step_id) ? g.step_id[0] : g.step_id;
+            this._msgCounts[sid] = g.__count || g.step_id_count || 0;
+        }
+        this.state.maxCount = Object.values(this._msgCounts).length
+            ? Math.max(...Object.values(this._msgCounts))
+            : 0;
+
         this._tree = this._buildTree(steps, ansById, varTrigById, btnById, rowById);
         this.state.loading = false;
         this._pendingDraw  = true;
@@ -219,6 +239,7 @@ export class ChatbotFlowAction extends Component {
             maxRetries:         s.max_retries || 3,
             fallbackStepId:     Array.isArray(s.fallback_step_id) ? s.fallback_step_id[0] : null,
             fallbackStepName:   Array.isArray(s.fallback_step_id) ? s.fallback_step_id[1] : "",
+            msgCount:           this._msgCounts[s.id] || 0,
             answerDataType:     s.answer_data_type || "",
             variableName:       Array.isArray(s.variable_id)       ? s.variable_id[1]       : "",
             variableDataSource: s.variable_data_source || "",
@@ -310,6 +331,32 @@ export class ChatbotFlowAction extends Component {
         return s;
     }
     isQuestionType(t) { return t && t.startsWith("question_"); }
+
+    // ── Funnel / reach helpers ────────────────────────────────────────────────
+
+    _statFillColor(ratio) {
+        if (ratio >= 0.75) return "#16a34a";
+        if (ratio >= 0.50) return "#84cc16";
+        if (ratio >= 0.25) return "#f59e0b";
+        return "#ef4444";
+    }
+
+    reachPct(msgCount) {
+        if (!this.state.maxCount) return 0;
+        return Math.round((msgCount || 0) / this.state.maxCount * 100);
+    }
+
+    reachColor(msgCount) {
+        return this._statFillColor((msgCount || 0) / (this.state.maxCount || 1));
+    }
+
+    dropOffPct(msgCount, parentId) {
+        if (!parentId || !this._msgCounts) return null;
+        const parentCount = this._msgCounts[parentId] || 0;
+        if (!parentCount || !msgCount) return null;
+        const pct = Math.round((1 - msgCount / parentCount) * 100);
+        return pct >= 0 ? pct : null;
+    }
 
     // ── Position persistence (localStorage) ──────────────────────────────────
 
@@ -522,6 +569,8 @@ export class ChatbotFlowAction extends Component {
                 maxRetries:         node.maxRetries,
                 fallbackStepId:     node.fallbackStepId,
                 fallbackStepName:   node.fallbackStepName,
+                msgCount:           node.msgCount || 0,
+                parentId:           node.parent || null,
             };
         });
 
@@ -686,6 +735,39 @@ export class ChatbotFlowAction extends Component {
             warn.textContent = "⚠";
             warn.title = "Dead-end: this step has no children and is not a terminal node";
             card.appendChild(warn);
+        }
+
+        // ── Message count strip ───────────────────────────────────────────────
+        if (this.state.maxCount > 0) {
+            const count = node.msgCount || 0;
+            const ratio = count / this.state.maxCount;
+            const pct   = Math.round(ratio * 100);
+            const color = this._statFillColor(ratio);
+
+            const stat = document.createElement("div");
+            stat.className = "o_flow_card_stat";
+
+            const countEl = document.createElement("span");
+            countEl.className   = "o_flow_card_stat_count";
+            countEl.textContent = `👤 ${count.toLocaleString()}`;
+
+            const barWrap = document.createElement("div");
+            barWrap.className = "o_flow_card_stat_bar";
+            const barFill = document.createElement("div");
+            barFill.className        = "o_flow_card_stat_fill";
+            barFill.style.width      = `${pct}%`;
+            barFill.style.background = color;
+            barWrap.appendChild(barFill);
+
+            const pctEl = document.createElement("span");
+            pctEl.className   = "o_flow_card_stat_pct";
+            pctEl.style.color = color;
+            pctEl.textContent = `${pct}%`;
+
+            stat.appendChild(countEl);
+            stat.appendChild(barWrap);
+            stat.appendChild(pctEl);
+            card.appendChild(stat);
         }
 
         // ── Output dot (replaces + button — click adds a child step) ──────────
