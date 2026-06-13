@@ -730,3 +730,85 @@ class TestStepTypes(ChatbotFixtures):
                           side_effect=_mock_send_ok) as mock_send:
             self.env['whatsapp.chatbot.message']._send_step_message(msg, parent)
         mock_send.assert_called_once()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 8. _resolve_trigger_for_engaged — cross-bot trigger switching
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tagged('chatbot', 'post_install', '-at_install')
+class TestResolveTriggerForEngaged(ChatbotFixtures):
+    """An engaged contact who sends a trigger word should:
+       — restart the current bot if the trigger belongs to it (existing)
+       — switch to another bot if the trigger belongs there (new behavior)
+       — fall through (no match) for free-text replies"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Second bot with its own root step + trigger word
+        cls.other_bot = cls.env['whatsapp.chatbot'].create({
+            'name': 'Other Bot', 'status': 'published',
+        })
+        cls.env['whatsapp.chatbot.step'].create({
+            'name': 'Other Root',
+            'chatbot_id': cls.other_bot.id,
+            'step_type': 'message',
+            'body_plain': 'Hi from other bot.',
+            'sequence': 1,
+        })
+        cls.env['whatsapp.chatbot.trigger'].create({
+            'name': 'JUMPDEMO', 'chatbot_id': cls.other_bot.id,
+        })
+        # Existing fixture bot keeps its own trigger
+        cls.env['whatsapp.chatbot.trigger'].create({
+            'name': 'RESTART', 'chatbot_id': cls.chatbot.id,
+        })
+
+    def test_same_bot_trigger_returns_restart(self):
+        target, kind = self.env['whatsapp.chatbot.message']._resolve_trigger_for_engaged(
+            self.chatbot, 'RESTART')
+        self.assertEqual(target, self.chatbot)
+        self.assertEqual(kind, 'restart')
+
+    def test_same_bot_trigger_is_case_insensitive(self):
+        target, kind = self.env['whatsapp.chatbot.message']._resolve_trigger_for_engaged(
+            self.chatbot, 'restart')
+        self.assertEqual(target, self.chatbot)
+        self.assertEqual(kind, 'restart')
+
+    def test_cross_bot_trigger_returns_switch(self):
+        target, kind = self.env['whatsapp.chatbot.message']._resolve_trigger_for_engaged(
+            self.chatbot, 'JUMPDEMO')
+        self.assertEqual(target, self.other_bot)
+        self.assertEqual(kind, 'switch')
+
+    def test_no_match_returns_none(self):
+        target, kind = self.env['whatsapp.chatbot.message']._resolve_trigger_for_engaged(
+            self.chatbot, 'just some reply text')
+        self.assertFalse(target)
+        self.assertIsNone(kind)
+
+    def test_empty_message_returns_none(self):
+        target, kind = self.env['whatsapp.chatbot.message']._resolve_trigger_for_engaged(
+            self.chatbot, '')
+        self.assertFalse(target)
+        self.assertIsNone(kind)
+
+    def test_same_bot_wins_when_trigger_exists_on_both(self):
+        """If the same name is a trigger on both the current bot AND another bot,
+        the same-bot trigger wins (restart, not switch)."""
+        # Add 'RESTART' to other_bot too
+        self.env['whatsapp.chatbot.trigger'].create({
+            'name': 'RESTART', 'chatbot_id': self.other_bot.id,
+        })
+        target, kind = self.env['whatsapp.chatbot.message']._resolve_trigger_for_engaged(
+            self.chatbot, 'RESTART')
+        self.assertEqual(target, self.chatbot)
+        self.assertEqual(kind, 'restart')
+
+    def test_no_current_bot_returns_none(self):
+        target, kind = self.env['whatsapp.chatbot.message']._resolve_trigger_for_engaged(
+            self.env['whatsapp.chatbot'], 'JUMPDEMO')
+        self.assertFalse(target)
+        self.assertIsNone(kind)

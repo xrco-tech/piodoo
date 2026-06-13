@@ -285,6 +285,30 @@ class WhatsAppChatbotMessage(models.Model):
                 return False
         return False
     
+    def _resolve_trigger_for_engaged(self, current_chatbot, message_text):
+        """Resolve trigger lookup for a contact already engaged in a flow.
+        Returns (target_chatbot, kind) where kind is:
+            'restart' — message matches a trigger on the current bot
+            'switch'  — message matches a trigger on a DIFFERENT bot
+            None      — no trigger match (treat message as a reply)
+        Pure lookup: does NOT mutate any record.
+        """
+        if not message_text or not current_chatbot:
+            return self.env['whatsapp.chatbot'], None
+        Trigger = self.env['whatsapp.chatbot.trigger'].sudo()
+        same = Trigger.search([
+            ('name', '=', message_text.upper()),
+            ('chatbot_id', '=', current_chatbot.id),
+        ], limit=1)
+        if same:
+            return current_chatbot, 'restart'
+        cross = Trigger.search([
+            ('name', '=', message_text.upper()),
+        ], limit=1)
+        if cross:
+            return cross.chatbot_id, 'switch'
+        return self.env['whatsapp.chatbot'], None
+
     def _find_matching_child_step(self, current_step, user_answer, message=None):
         """
         Find the child step that matches the user's answer based on trigger_answer_ids.
@@ -790,15 +814,20 @@ class WhatsAppChatbotMessage(models.Model):
                 _logger.warning("No chatbot found to process message")
                 return
             
-            # If user is engaged but sends the trigger word again, restart the flow (from_trigger=True)
+            # If user is engaged but sends a trigger word, restart (same-bot
+            # trigger wins) or switch to another bot (cross-bot trigger).
             if chatbot and message_text and not from_trigger:
-                matching_trigger = self.env['whatsapp.chatbot.trigger'].sudo().search([
-                    ('name', '=', message_text.upper()),
-                    ('chatbot_id', '=', chatbot.id),
-                ], limit=1)
-                if matching_trigger:
+                target, kind = self._resolve_trigger_for_engaged(chatbot, message_text)
+                if target:
                     from_trigger = True
-                    _logger.info(f"Trigger '{message_text}' while engaged: restarting flow for {chatbot.name}")
+                    if kind == 'switch':
+                        _logger.info(
+                            f"Trigger '{message_text}' while engaged with '{chatbot.name}': "
+                            f"switching to chatbot '{target.name}'"
+                        )
+                        chatbot = target
+                    else:
+                        _logger.info(f"Trigger '{message_text}' while engaged: restarting flow for {chatbot.name}")
                     chatbot_contact.variable_value_ids.unlink()
                     chatbot_contact.write({
                         'last_chatbot_id': chatbot.id,
