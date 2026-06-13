@@ -64,6 +64,7 @@ function flattenTree(nodes, level = 0, parent = null, out = []) {
                    sourceVarName: n.sourceVarName,
                    maxRetries: n.maxRetries, fallbackStepId: n.fallbackStepId,
                    fallbackStepName: n.fallbackStepName,
+                   targetChatbotId: n.targetChatbotId,
                    targetChatbotName: n.targetChatbotName,
                    targetStepName: n.targetStepName,
                    jumpMode: n.jumpMode,
@@ -252,6 +253,7 @@ export class ChatbotFlowAction extends Component {
             variableValue:      s.variable_value || "",
             sourceStepName:     Array.isArray(s.source_step_id)    ? s.source_step_id[1]    : "",
             sourceVarName:      Array.isArray(s.source_variable_id)? s.source_variable_id[1]: "",
+            targetChatbotId:    Array.isArray(s.target_chatbot_id) ? s.target_chatbot_id[0] : null,
             targetChatbotName:  Array.isArray(s.target_chatbot_id) ? s.target_chatbot_id[1] : "",
             targetStepName:     Array.isArray(s.target_step_id)    ? s.target_step_id[1]    : "",
             jumpMode:           s.jump_mode || "one_way",
@@ -308,6 +310,16 @@ export class ChatbotFlowAction extends Component {
 
     _goBack() {
         history.back();
+    }
+
+    _openTargetChatbot(chatbotId, chatbotName) {
+        if (!chatbotId) return;
+        this.action.doAction({
+            type: "ir.actions.client",
+            tag: "comm_whatsapp_chatbot.chatbot_flow",
+            name: chatbotName || "Chatbot Flow",
+            params: { chatbot_id: chatbotId, chatbot_name: chatbotName || "" },
+        });
     }
 
     // ── Type config (also called from OWL template) ───────────────────────────
@@ -602,6 +614,7 @@ export class ChatbotFlowAction extends Component {
                 maxRetries:         node.maxRetries,
                 fallbackStepId:     node.fallbackStepId,
                 fallbackStepName:   node.fallbackStepName,
+                targetChatbotId:    node.targetChatbotId,
                 targetChatbotName:  node.targetChatbotName,
                 targetStepName:     node.targetStepName,
                 jumpMode:           node.jumpMode,
@@ -661,9 +674,25 @@ export class ChatbotFlowAction extends Component {
 
             const targetRow = document.createElement("div");
             targetRow.className = "o_flow_jump_target";
-            targetRow.innerHTML =
-                `<i class="fa fa-share o_flow_jump_arrow" aria-hidden="true"/>` +
-                `<span class="o_flow_jump_target_name">${(node.targetChatbotName || "— pick a bot —").replace(/</g,"&lt;")}</span>`;
+            const safeName = (node.targetChatbotName || "— pick a bot —").replace(/</g, "&lt;");
+            if (node.targetChatbotId) {
+                targetRow.classList.add("o_flow_jump_target_clickable");
+                targetRow.title = "Open target chatbot";
+                targetRow.innerHTML =
+                    `<i class="fa fa-share o_flow_jump_arrow" aria-hidden="true"/>` +
+                    `<span class="o_flow_jump_target_name">${safeName}</span>` +
+                    `<i class="fa fa-external-link o_flow_jump_open" aria-hidden="true"/>`;
+                targetRow.addEventListener("click", e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this._openTargetChatbot(node.targetChatbotId, node.targetChatbotName);
+                });
+                targetRow.addEventListener("mousedown", e => e.stopPropagation());
+            } else {
+                targetRow.innerHTML =
+                    `<i class="fa fa-share o_flow_jump_arrow" aria-hidden="true"/>` +
+                    `<span class="o_flow_jump_target_name">${safeName}</span>`;
+            }
             jumpBox.appendChild(targetRow);
 
             if (node.targetStepName) {

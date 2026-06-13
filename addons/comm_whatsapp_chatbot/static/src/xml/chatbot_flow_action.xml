@@ -211,8 +211,14 @@
                         <t t-if="state.selectedNode.type == 'jump_to_flow'">
                             <div class="o_flow_props_label mt-2">Target Chatbot</div>
                             <div class="o_flow_props_value fw-semibold">
-                                <t t-if="state.selectedNode.targetChatbotName">
-                                    <t t-esc="state.selectedNode.targetChatbotName"/>
+                                <t t-if="state.selectedNode.targetChatbotId">
+                                    <a href="#"
+                                       class="o_flow_props_target_link"
+                                       title="Open target chatbot"
+                                       t-on-click.prevent.stop="() => this._openTargetChatbot(state.selectedNode.targetChatbotId, state.selectedNode.targetChatbotName)">
+                                        <t t-esc="state.selectedNode.targetChatbotName"/>
+                                        <i class="fa fa-external-link ms-1"/>
+                                    </a>
                                 </t>
                                 <t t-else="">
                                     <span class="text-danger">— Not configured —</span>
