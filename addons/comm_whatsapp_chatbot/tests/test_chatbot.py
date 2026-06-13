@@ -777,6 +777,22 @@ class TestResolveTriggerForEngaged(ChatbotFixtures):
         self.assertEqual(target, self.chatbot)
         self.assertEqual(kind, 'restart')
 
+    def test_trigger_matches_mixed_case_stored_name(self):
+        """Trigger stored as 'Demo' (mixed case) must match user typing
+        'demo', 'DEMO', or 'Demo' — regression for case-sensitive lookup."""
+        mixed = self.env['whatsapp.chatbot'].create({
+            'name': 'Mixed Case Bot', 'status': 'published',
+        })
+        self.env['whatsapp.chatbot.trigger'].create({
+            'name': 'Demo', 'chatbot_id': mixed.id,
+        })
+        for typed in ('demo', 'DEMO', 'Demo', 'dEmO'):
+            target, kind = self.env['whatsapp.chatbot.message']._resolve_trigger_for_engaged(
+                self.chatbot, typed)
+            self.assertEqual(target, mixed,
+                             f"'{typed}' must match stored trigger 'Demo'")
+            self.assertEqual(kind, 'switch')
+
     def test_cross_bot_trigger_returns_switch(self):
         target, kind = self.env['whatsapp.chatbot.message']._resolve_trigger_for_engaged(
             self.chatbot, 'JUMPDEMO')

@@ -295,15 +295,17 @@ class WhatsAppChatbotMessage(models.Model):
         """
         if not message_text or not current_chatbot:
             return self.env['whatsapp.chatbot'], None
+        # Case-insensitive exact match (=ilike) — trigger names are stored as
+        # the user typed them, not normalised to uppercase.
         Trigger = self.env['whatsapp.chatbot.trigger'].sudo()
         same = Trigger.search([
-            ('name', '=', message_text.upper()),
+            ('name', '=ilike', message_text),
             ('chatbot_id', '=', current_chatbot.id),
         ], limit=1)
         if same:
             return current_chatbot, 'restart'
         cross = Trigger.search([
-            ('name', '=', message_text.upper()),
+            ('name', '=ilike', message_text),
         ], limit=1)
         if cross:
             return cross.chatbot_id, 'switch'
@@ -785,10 +787,10 @@ class WhatsAppChatbotMessage(models.Model):
             
             # If not actively engaged, check for trigger words
             if not chatbot and message_text:
-                # Search for matching trigger (exact case-insensitive match)
-                # Use uppercase comparison like whatsapp_custom does for exact matching
+                # Case-insensitive exact match (=ilike) — trigger names are stored
+                # in whatever case they were created with.
                 matching_trigger = self.env['whatsapp.chatbot.trigger'].sudo().search([
-                    ('name', '=', message_text.upper())
+                    ('name', '=ilike', message_text)
                 ], limit=1)
                 
                 if matching_trigger:
