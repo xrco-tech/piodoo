@@ -207,6 +207,45 @@
                             </t>
                         </t>
 
+                        <!-- Jump to Flow/Bot -->
+                        <t t-if="state.selectedNode.type == 'jump_to_flow'">
+                            <div class="o_flow_props_label mt-2">Target Chatbot</div>
+                            <div class="o_flow_props_value fw-semibold">
+                                <t t-if="state.selectedNode.targetChatbotName">
+                                    <t t-esc="state.selectedNode.targetChatbotName"/>
+                                </t>
+                                <t t-else="">
+                                    <span class="text-danger">— Not configured —</span>
+                                </t>
+                            </div>
+                            <div class="o_flow_props_label mt-1">Entry Step</div>
+                            <div class="o_flow_props_value">
+                                <t t-if="state.selectedNode.targetStepName">
+                                    <t t-esc="state.selectedNode.targetStepName"/>
+                                </t>
+                                <t t-else="">
+                                    <em class="text-muted">Root step of target chatbot</em>
+                                </t>
+                            </div>
+                            <div class="o_flow_props_label mt-1">Mode</div>
+                            <div class="o_flow_props_value">
+                                <t t-if="state.selectedNode.jumpMode == 'subroutine'">
+                                    <span class="o_flow_jump_mode o_flow_jump_mode_sub">↺ Subroutine</span>
+                                    <div class="text-muted small mt-1">Resumes the caller when the target ends.</div>
+                                </t>
+                                <t t-else="">
+                                    <span class="o_flow_jump_mode o_flow_jump_mode_one">→ One-way</span>
+                                    <div class="text-muted small mt-1">The new flow takes over — no return.</div>
+                                </t>
+                            </div>
+                            <t t-if="state.selectedNode.varMappingCount">
+                                <div class="o_flow_props_label mt-1">Variable Mapping</div>
+                                <div class="o_flow_props_value">
+                                    <t t-esc="state.selectedNode.varMappingCount"/> rule<t t-if="state.selectedNode.varMappingCount != 1">s</t>
+                                </div>
+                            </t>
+                        </t>
+
                         <!-- Variable (set_variable steps) -->
                         <t t-if="state.selectedNode.type == 'set_variable' and state.selectedNode.variableName">
                             <div class="o_flow_props_label mt-2">Variable</div>

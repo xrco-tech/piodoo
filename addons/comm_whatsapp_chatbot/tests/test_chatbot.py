@@ -602,6 +602,35 @@ class TestStepTypes(ChatbotFixtures):
         # set_variable step was selected (only child) and processed via _process_variable_or_code_step
         self.assertEqual(result, msg2)
 
+    # ── jump_to_flow → no WA call (control-flow only) ─────────────────────────
+
+    def test_jump_to_flow_does_not_call_wa_api(self):
+        """jump_to_flow is control-flow only — never sends its own body."""
+        other_bot = self.env['whatsapp.chatbot'].create({
+            'name': 'Other Bot', 'status': 'published',
+        })
+        other_root = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Other Root',
+            'chatbot_id': other_bot.id,
+            'step_type': 'message',
+            'body_plain': 'From other bot.',
+            'sequence': 1,
+        })
+        jump = self._step(
+            'Bridge Jump', 'jump_to_flow',
+            body='ignored body',
+            target_chatbot_id=other_bot.id,
+            target_step_id=other_root.id,
+            jump_mode='one_way',
+        )
+        msg = self._make_incoming(jump, body='go')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send:
+            self.env['whatsapp.chatbot.message']._process_jump_to_flow_step(msg, jump)
+        # The callee root message gets sent — but the jump step's own 'ignored body' never.
+        sent_bodies = [c.kwargs.get('message_text') for c in mock_send.call_args_list]
+        self.assertNotIn('ignored body', sent_bodies)
+
     # ── transfer_to_agent → sends its body via send_whatsapp_message ──────────
 
     def test_transfer_to_agent_sends_message(self):

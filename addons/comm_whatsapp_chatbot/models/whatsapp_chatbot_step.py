@@ -49,6 +49,7 @@ class WhatsAppChatbotStep(models.Model):
         ('set_variable', 'Set Variable'),
         ('execute_code', 'Execute Code'),
         ('transfer_to_agent', 'Transfer to Agent'),
+        ('jump_to_flow', 'Jump to Flow/Bot'),
         ('end_flow', 'End Flow'),
     ], string="Step Type", required=True, default='message')
     
@@ -134,6 +135,27 @@ class WhatsAppChatbotStep(models.Model):
         "chatbot_step_agent_partner_rel", "step_id", "partner_id",
         string="Specific Agents",
         help="Override chatbot-level agents for this transfer step. Leave empty to use chatbot defaults.",
+    )
+
+    # Jump to Flow/Bot
+    target_chatbot_id = fields.Many2one(
+        "whatsapp.chatbot", string="Target Chatbot",
+        help="Chatbot to jump into. Required for jump_to_flow steps.",
+    )
+    target_step_id = fields.Many2one(
+        "whatsapp.chatbot.step", string="Entry Step",
+        domain="[('chatbot_id', '=', target_chatbot_id), ('parent_id', '=', False)]",
+        help="Step in the target chatbot to start from. Leave empty to use the target's root step.",
+    )
+    jump_mode = fields.Selection([
+        ('one_way', 'One-Way Jump'),
+        ('subroutine', 'Subroutine (return on end)'),
+    ], string="Jump Mode", default='one_way',
+        help="One-way replaces the active flow. Subroutine resumes the caller when the callee ends.")
+    variable_mapping_ids = fields.One2many(
+        "whatsapp.chatbot.step.var.mapping", "step_id",
+        string="Variable Mapping",
+        help="Map caller variables to callee variables (and back, for subroutine mode).",
     )
 
     # Code execution
@@ -280,6 +302,18 @@ class WhatsAppChatbotStep(models.Model):
             if not re.match(r'^[A-Za-z\s-]+$', rec.name):
                 raise ValidationError("The name can only contain alphabets (both uppercase and lowercase), spaces, and dashes.")
 
+    @api.constrains('step_type', 'target_chatbot_id', 'target_step_id')
+    def _check_jump_to_flow_target(self):
+        for rec in self:
+            if rec.step_type != 'jump_to_flow':
+                continue
+            if not rec.target_chatbot_id:
+                raise ValidationError("Jump to Flow/Bot steps require a target chatbot.")
+            if rec.target_chatbot_id.id == rec.chatbot_id.id and rec.target_step_id and rec.target_step_id.id == rec.id:
+                raise ValidationError("A Jump step cannot target itself.")
+            if rec.target_step_id and rec.target_step_id.chatbot_id.id != rec.target_chatbot_id.id:
+                raise ValidationError("The entry step must belong to the target chatbot.")
+
 
 class WhatsAppChatbotStepButton(models.Model):
     _name = 'whatsapp.chatbot.step.button'
@@ -307,4 +341,48 @@ class WhatsAppChatbotStepListRow(models.Model):
     row_id   = fields.Char(string="Row ID", required=True, help="Unique identifier sent back when the user picks this row")
     title    = fields.Char(string="Title", required=True)
     description = fields.Char(string="Description")
+
+
+class WhatsAppChatbotStepVarMapping(models.Model):
+    _name = 'whatsapp.chatbot.step.var.mapping'
+    _description = 'WhatsApp Chatbot Step Variable Mapping'
+    _order = 'sequence asc, id asc'
+
+    step_id = fields.Many2one(
+        "whatsapp.chatbot.step", string="Jump Step",
+        required=True, ondelete='cascade',
+    )
+    sequence = fields.Integer(string="Sequence", default=10)
+    source_chatbot_id = fields.Many2one(
+        "whatsapp.chatbot", string="Source Chatbot",
+        related="step_id.chatbot_id", store=False,
+    )
+    target_chatbot_id = fields.Many2one(
+        "whatsapp.chatbot", string="Target Chatbot",
+        related="step_id.target_chatbot_id", store=False,
+    )
+    source_variable_id = fields.Many2one(
+        "whatsapp.chatbot.variable", string="Source Variable",
+        required=True, ondelete='cascade',
+        domain="[('chatbot_id', '=', source_chatbot_id)]",
+    )
+    target_variable_id = fields.Many2one(
+        "whatsapp.chatbot.variable", string="Target Variable",
+        required=True, ondelete='cascade',
+        domain="[('chatbot_id', '=', target_chatbot_id)]",
+    )
+    direction = fields.Selection([
+        ('in', 'In (caller → callee)'),
+        ('out', 'Out (callee → caller)'),
+        ('both', 'Both'),
+    ], string="Direction", default='in', required=True,
+       help="In copies on jump, Out copies back on return (subroutine only).")
+
+    @api.constrains('source_variable_id', 'target_variable_id', 'step_id')
+    def _check_chatbots_match(self):
+        for rec in self:
+            if rec.source_variable_id.chatbot_id.id != rec.step_id.chatbot_id.id:
+                raise ValidationError("Source variable must belong to the source chatbot.")
+            if rec.step_id.target_chatbot_id and rec.target_variable_id.chatbot_id.id != rec.step_id.target_chatbot_id.id:
+                raise ValidationError("Target variable must belong to the target chatbot.")
 

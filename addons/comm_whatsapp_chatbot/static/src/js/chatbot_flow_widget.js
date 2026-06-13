@@ -22,6 +22,7 @@ const TYPE_CFG = {
     set_variable:         { icon: "📝", label: "Set Variable",  color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
     execute_code:         { icon: "⚡", label: "Execute Code",  color: "#374151", bg: "#f3f4f6", border: "#9ca3af" },
     transfer_to_agent:    { icon: "🎧", label: "Transfer",      color: "#9333ea", bg: "#faf5ff", border: "#d8b4fe" },
+    jump_to_flow:         { icon: "🔀", label: "Jump",          color: "#4338ca", bg: "#eef2ff", border: "#a5b4fc" },
     end_flow:             { icon: "✅", label: "End Flow",      color: "#16a34a", bg: "#f0fdf4", border: "#86efac" },
 };
 const DEFAULT_CFG = { icon: "●", label: "Step", color: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" };
@@ -63,6 +64,10 @@ function flattenTree(nodes, level = 0, parent = null, out = []) {
                    sourceVarName: n.sourceVarName,
                    maxRetries: n.maxRetries, fallbackStepId: n.fallbackStepId,
                    fallbackStepName: n.fallbackStepName,
+                   targetChatbotName: n.targetChatbotName,
+                   targetStepName: n.targetStepName,
+                   jumpMode: n.jumpMode,
+                   varMappingCount: n.varMappingCount,
                    msgCount: n.msgCount });
         flattenTree(n.children || [], level + 1, n.id, out);
     }
@@ -138,7 +143,8 @@ export class ChatbotFlowAction extends Component {
              "header_type", "header_text", "footer", "flow_cta", "flow_id",
              "answer_data_type", "variable_id", "variable_data_source",
              "variable_value", "source_step_id", "source_variable_id",
-             "max_retries", "fallback_step_id"],
+             "max_retries", "fallback_step_id",
+             "target_chatbot_id", "target_step_id", "jump_mode", "variable_mapping_ids"],
             { order: "parent_path, sequence, id" }
         );
 
@@ -212,7 +218,7 @@ export class ChatbotFlowAction extends Component {
         for (const list of Object.values(byParent)) {
             list.sort((a, b) => a.sequence - b.sequence);
         }
-        const noPreview = new Set(["execute_code", "set_variable", "end_flow"]);
+        const noPreview = new Set(["execute_code", "set_variable", "end_flow", "jump_to_flow"]);
         const build = pid => (byParent[pid] || []).map(s => ({
             id:           s.id,
             name:         s.name,
@@ -246,6 +252,10 @@ export class ChatbotFlowAction extends Component {
             variableValue:      s.variable_value || "",
             sourceStepName:     Array.isArray(s.source_step_id)    ? s.source_step_id[1]    : "",
             sourceVarName:      Array.isArray(s.source_variable_id)? s.source_variable_id[1]: "",
+            targetChatbotName:  Array.isArray(s.target_chatbot_id) ? s.target_chatbot_id[1] : "",
+            targetStepName:     Array.isArray(s.target_step_id)    ? s.target_step_id[1]    : "",
+            jumpMode:           s.jump_mode || "one_way",
+            varMappingCount:    (s.variable_mapping_ids || []).length,
             children:           build(s.id),
         }));
         return build(0);
@@ -498,6 +508,23 @@ export class ChatbotFlowAction extends Component {
                     svg.appendChild(fbLbl);
                 }
 
+                // Subroutine return arc: dashed self-loop on the right side of a
+                // jump_to_flow subroutine card — signals "callee returns to this card".
+                for (const jc of grid.querySelectorAll(".o_flow_card[data-jump-sub]")) {
+                    const jx = jc.offsetLeft + jc.offsetWidth;
+                    const jy1 = jc.offsetTop + 20;
+                    const jy2 = jc.offsetTop + jc.offsetHeight - 20;
+                    if ([jx, jy1, jy2].some(v => !isFinite(v))) continue;
+                    const arc = document.createElementNS(NS, "path");
+                    arc.setAttribute("d", `M ${jx} ${jy1} C ${jx + 38} ${jy1}, ${jx + 38} ${jy2}, ${jx} ${jy2}`);
+                    arc.setAttribute("class", "o_flow_jump_arc");
+                    svg.appendChild(arc);
+                    const arrow = document.createElementNS(NS, "polygon");
+                    arrow.setAttribute("points", `${jx - 5},${jy2 - 4} ${jx + 1},${jy2} ${jx - 5},${jy2 + 4}`);
+                    arrow.setAttribute("class", "o_flow_jump_arc_head");
+                    svg.appendChild(arrow);
+                }
+
                 // Connector label for trigger answers
                 const nd = nodeById[parseInt(child.dataset.id)];
                 if (nd?.answers?.length) {
@@ -529,12 +556,18 @@ export class ChatbotFlowAction extends Component {
         const cfg  = TYPE_CFG[node.type] || DEFAULT_CFG;
         const card = document.createElement("div");
         const TERMINAL_TYPES = new Set(["end_flow", "transfer_to_agent"]);
-        const isDeadEnd = !node.children?.length && !TERMINAL_TYPES.has(node.type);
+        // One-way jumps end the local tree; subroutine jumps return so children are valid.
+        const isJumpOneWay = node.type === "jump_to_flow" && node.jumpMode === "one_way";
+        const isTerminal = TERMINAL_TYPES.has(node.type) || isJumpOneWay;
+        const isDeadEnd = !node.children?.length && !isTerminal;
 
         card.className  = "o_flow_card" + (isDeadEnd ? " o_flow_card_dead_end" : "");
         card.dataset.id = node.id;
         if (node.parent)          card.dataset.parent   = node.parent;
         if (node.fallbackStepId)  card.dataset.fallback = node.fallbackStepId;
+        if (node.type === "jump_to_flow" && node.jumpMode === "subroutine") {
+            card.dataset.jumpSub = "1";
+        }
 
         card.addEventListener("click", e => {
             if (e.target.closest("button")) return;
@@ -569,6 +602,10 @@ export class ChatbotFlowAction extends Component {
                 maxRetries:         node.maxRetries,
                 fallbackStepId:     node.fallbackStepId,
                 fallbackStepName:   node.fallbackStepName,
+                targetChatbotName:  node.targetChatbotName,
+                targetStepName:     node.targetStepName,
+                jumpMode:           node.jumpMode,
+                varMappingCount:    node.varMappingCount || 0,
                 msgCount:           node.msgCount || 0,
                 parentId:           node.parent || null,
             };
@@ -616,6 +653,48 @@ export class ChatbotFlowAction extends Component {
         head.appendChild(nameEl);
         head.appendChild(badge);
         card.appendChild(head);
+
+        // ── Jump to Flow/Bot summary block ────────────────────────────────────
+        if (node.type === "jump_to_flow") {
+            const jumpBox = document.createElement("div");
+            jumpBox.className = "o_flow_card_content o_flow_jump_box";
+
+            const targetRow = document.createElement("div");
+            targetRow.className = "o_flow_jump_target";
+            targetRow.innerHTML =
+                `<i class="fa fa-share o_flow_jump_arrow" aria-hidden="true"/>` +
+                `<span class="o_flow_jump_target_name">${(node.targetChatbotName || "— pick a bot —").replace(/</g,"&lt;")}</span>`;
+            jumpBox.appendChild(targetRow);
+
+            if (node.targetStepName) {
+                const stepRow = document.createElement("div");
+                stepRow.className = "o_flow_jump_step";
+                stepRow.textContent = "↳ " + node.targetStepName;
+                jumpBox.appendChild(stepRow);
+            } else {
+                const stepRow = document.createElement("div");
+                stepRow.className = "o_flow_jump_step text-muted";
+                stepRow.textContent = "↳ Root step";
+                jumpBox.appendChild(stepRow);
+            }
+
+            const modeRow = document.createElement("div");
+            modeRow.className = "o_flow_jump_mode " +
+                (node.jumpMode === "subroutine" ? "o_flow_jump_mode_sub" : "o_flow_jump_mode_one");
+            modeRow.textContent = node.jumpMode === "subroutine"
+                ? "↺ Subroutine — returns here"
+                : "→ One-way (no return)";
+            jumpBox.appendChild(modeRow);
+
+            if (node.varMappingCount) {
+                const mapRow = document.createElement("div");
+                mapRow.className = "o_flow_jump_map_count text-muted";
+                mapRow.textContent = `${node.varMappingCount} variable mapping${node.varMappingCount === 1 ? "" : "s"}`;
+                jumpBox.appendChild(mapRow);
+            }
+
+            card.appendChild(jumpBox);
+        }
 
         // ── White content box: message preview + answer chips + IA buttons ──────
         const hasButtons  = node.waType === "interactive_button" && node.buttons?.length;
@@ -771,15 +850,18 @@ export class ChatbotFlowAction extends Component {
         }
 
         // ── Output dot (replaces + button — click adds a child step) ──────────
-        const dot = document.createElement("div");
-        dot.className = "o_flow_out_dot";
-        dot.title     = "Add next step";
-        dot.addEventListener("click", e => {
-            e.preventDefault();
-            e.stopPropagation();
-            this._openCreateDialog(node.id);
-        });
-        card.appendChild(dot);
+        // Skip for terminal nodes (end_flow, transfer_to_agent, one-way jump_to_flow).
+        if (!isTerminal) {
+            const dot = document.createElement("div");
+            dot.className = "o_flow_out_dot";
+            dot.title     = "Add next step";
+            dot.addEventListener("click", e => {
+                e.preventDefault();
+                e.stopPropagation();
+                this._openCreateDialog(node.id);
+            });
+            card.appendChild(dot);
+        }
 
         return card;
     }

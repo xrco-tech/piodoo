@@ -9,6 +9,7 @@ from markupsafe import Markup
 _logger = logging.getLogger(__name__)
 
 MAX_RECURSION_DEPTH = 10
+MAX_CALL_STACK_DEPTH = 8  # subroutine nesting limit (jump_to_flow)
 
 
 class WhatsAppChatbotMessage(models.Model):
@@ -211,6 +212,10 @@ class WhatsAppChatbotMessage(models.Model):
             # From trigger: send this step's message (first step)
             if message.step_id.step_type in ['set_variable', 'execute_code']:
                 return self._process_variable_or_code_step(message, message.step_id, depth=depth + 1, visited_steps=visited_steps)
+            if message.step_id.step_type == 'jump_to_flow':
+                return self._process_jump_to_flow_step(message, message.step_id, depth=depth + 1, visited_steps=visited_steps)
+            if message.step_id.step_type == 'end_flow':
+                return self._handle_end_flow(message, message.step_id, depth=depth + 1, visited_steps=visited_steps)
             return self._send_step_message(message, message.step_id)
         elif not message.step_id:
             # Start from first step
@@ -223,6 +228,10 @@ class WhatsAppChatbotMessage(models.Model):
                 message.step_id = first_step.id
                 if first_step.step_type in ['set_variable', 'execute_code']:
                     return self._process_variable_or_code_step(message, first_step, depth=depth + 1, visited_steps=visited_steps)
+                if first_step.step_type == 'jump_to_flow':
+                    return self._process_jump_to_flow_step(message, first_step, depth=depth + 1, visited_steps=visited_steps)
+                if first_step.step_type == 'end_flow':
+                    return self._handle_end_flow(message, first_step, depth=depth + 1, visited_steps=visited_steps)
                 # Send first message
                 return self._send_step_message(message, first_step)
             else:
@@ -352,14 +361,11 @@ class WhatsAppChatbotMessage(models.Model):
             _logger.info(f"Matched answer '{user_answer}' to step '{next_step.name}' via condition '{matched_answer.display_name if matched_answer else 'N/A'}'")
         
         if next_step.step_type == 'end_flow':
-            message.contact_id.write({
-                'last_chatbot_id': message.chatbot_id.id,
-                'last_step_id': next_step.id,
-                'last_seen_date': fields.Datetime.now(),
-            })
-            return message
+            return self._handle_end_flow(message, next_step, depth=depth + 1, visited_steps=visited_steps)
         if next_step.step_type in ['set_variable', 'execute_code']:
             return self._process_variable_or_code_step(message, next_step, depth=depth + 1, visited_steps=visited_steps)
+        if next_step.step_type == 'jump_to_flow':
+            return self._process_jump_to_flow_step(message, next_step, depth=depth + 1, visited_steps=visited_steps)
         _logger.info(f"Advancing from step '{current_step.name}' to '{next_step.name}' (ID: {next_step.id})")
         return self._send_step_message(message, next_step)
 
@@ -373,6 +379,205 @@ class WhatsAppChatbotMessage(models.Model):
             step.execute_code(message)
         # Move to next step
         return message
+
+    # ── Jump to Flow/Bot ────────────────────────────────────────────────────────
+
+    def _process_jump_to_flow_step(self, message, jump_step, depth=0, visited_steps=None):
+        """Dispatch a jump_to_flow step: switch active chatbot, apply variable
+        mappings, push a stack frame in subroutine mode, and continue at the
+        entry step of the target chatbot."""
+        if depth > MAX_RECURSION_DEPTH:
+            _logger.warning("Max recursion depth in _process_jump_to_flow_step")
+            return message
+        visited_steps = visited_steps or set()
+
+        contact = message.contact_id
+        target_chatbot = jump_step.target_chatbot_id
+        if not target_chatbot:
+            _logger.error(f"Jump step {jump_step.id} ({jump_step.name}) has no target chatbot")
+            return message
+
+        stack = list(contact.call_stack or [])
+        if len(stack) >= MAX_CALL_STACK_DEPTH:
+            _logger.warning(
+                f"Call stack depth {len(stack)} reached MAX_CALL_STACK_DEPTH; "
+                f"refusing jump from step {jump_step.id}"
+            )
+            return message
+
+        # Resolve entry step (explicit target_step_id or target chatbot's root step)
+        entry = jump_step.target_step_id
+        if not entry:
+            entry = self.env['whatsapp.chatbot.step'].search([
+                ('chatbot_id', '=', target_chatbot.id),
+                ('parent_id', '=', False),
+            ], order='sequence asc, id asc', limit=1)
+        if not entry:
+            _logger.error(f"No entry step for target chatbot {target_chatbot.id}")
+            return message
+
+        # In/both mapping: caller variables → callee variables
+        self._apply_var_mapping(
+            contact, jump_step.variable_mapping_ids,
+            directions=('in', 'both'), reverse=False,
+        )
+
+        # Push subroutine frame (snapshot out-mapping so mid-session edits are safe)
+        if jump_step.jump_mode == 'subroutine':
+            out_rows = [
+                {'src_var': m.source_variable_id.id, 'tgt_var': m.target_variable_id.id}
+                for m in jump_step.variable_mapping_ids
+                if m.direction in ('out', 'both')
+            ]
+            stack.append({
+                'caller_chatbot_id': jump_step.chatbot_id.id,
+                'return_step_id': jump_step.id,
+                'out_mapping': out_rows,
+            })
+            contact.call_stack = stack
+
+        # Switch active chatbot/step on both message and contact
+        message.chatbot_id = target_chatbot.id
+        message.step_id = entry.id
+        contact.write({
+            'last_chatbot_id': target_chatbot.id,
+            'last_step_id': entry.id,
+            'last_seen_date': fields.Datetime.now(),
+        })
+
+        _logger.info(
+            f"Jumped to chatbot '{target_chatbot.name}' entry step '{entry.name}' "
+            f"(mode={jump_step.jump_mode}, stack_depth={len(stack)})"
+        )
+
+        # Dispatch the entry step
+        if entry.step_type == 'jump_to_flow':
+            return self._process_jump_to_flow_step(message, entry, depth=depth + 1, visited_steps=visited_steps)
+        if entry.step_type in ('set_variable', 'execute_code'):
+            return self._process_variable_or_code_step(message, entry, depth=depth + 1, visited_steps=visited_steps)
+        if entry.step_type == 'end_flow':
+            return self._handle_end_flow(message, entry, depth=depth + 1, visited_steps=visited_steps)
+        return self._send_step_message(message, entry)
+
+    def _handle_end_flow(self, message, end_step, depth=0, visited_steps=None):
+        """Handle reaching an end_flow step. If the contact has subroutine frames,
+        pop the top frame, copy out-mapped variables back to the caller, and
+        resume from the jump step's first child. Otherwise terminate."""
+        if depth > MAX_RECURSION_DEPTH:
+            return message
+        visited_steps = visited_steps or set()
+        contact = message.contact_id
+        stack = list(contact.call_stack or [])
+
+        if not stack:
+            contact.write({
+                'last_chatbot_id': message.chatbot_id.id,
+                'last_step_id': end_step.id,
+                'last_seen_date': fields.Datetime.now(),
+            })
+            return message
+
+        frame = stack.pop()
+        contact.call_stack = stack
+
+        # Out mapping snapshot: callee variables → caller variables
+        self._apply_var_mapping_snapshot(contact, frame.get('out_mapping') or [])
+
+        caller_chatbot_id = frame.get('caller_chatbot_id')
+        return_step_id = frame.get('return_step_id')
+        caller_chatbot = self.env['whatsapp.chatbot'].browse(caller_chatbot_id).exists() if caller_chatbot_id else False
+        jump_step = self.env['whatsapp.chatbot.step'].browse(return_step_id).exists() if return_step_id else False
+
+        if not caller_chatbot or not jump_step:
+            _logger.warning("Subroutine return frame missing caller context; terminating")
+            return message
+
+        message.chatbot_id = caller_chatbot.id
+        message.step_id = jump_step.id
+        contact.write({
+            'last_chatbot_id': caller_chatbot.id,
+            'last_step_id': jump_step.id,
+            'last_seen_date': fields.Datetime.now(),
+        })
+        _logger.info(
+            f"Returned from subroutine to chatbot '{caller_chatbot.name}' "
+            f"at jump step '{jump_step.name}' (stack_depth={len(stack)})"
+        )
+
+        # Resume from jump step's first non-end child (if any)
+        children = jump_step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+        if not children:
+            return message
+        next_step = children[0]
+        if next_step.step_type == 'end_flow':
+            return self._handle_end_flow(message, next_step, depth=depth + 1, visited_steps=visited_steps)
+        if next_step.step_type == 'jump_to_flow':
+            return self._process_jump_to_flow_step(message, next_step, depth=depth + 1, visited_steps=visited_steps)
+        if next_step.step_type in ('set_variable', 'execute_code'):
+            return self._process_variable_or_code_step(message, next_step, depth=depth + 1, visited_steps=visited_steps)
+        return self._send_step_message(message, next_step)
+
+    def _apply_var_mapping(self, contact, mapping_records, directions, reverse=False):
+        """Copy variable values per mapping rows.
+        reverse=False: source_variable_id (caller) → target_variable_id (callee)
+        reverse=True:  target_variable_id (callee) → source_variable_id (caller)
+        Filters rows by direction tuple.
+        """
+        Value = self.env['whatsapp.chatbot.value'].sudo()
+        for m in mapping_records:
+            if m.direction not in directions:
+                continue
+            src = m.target_variable_id if reverse else m.source_variable_id
+            tgt = m.source_variable_id if reverse else m.target_variable_id
+            if not src or not tgt:
+                continue
+            src_val = Value.search([
+                ('contact_id', '=', contact.id),
+                ('variable_id', '=', src.id),
+            ], limit=1)
+            v = src_val.value if src_val else False
+            existing = Value.search([
+                ('contact_id', '=', contact.id),
+                ('variable_id', '=', tgt.id),
+            ], limit=1)
+            if existing:
+                existing.value = v
+            else:
+                Value.create({
+                    'contact_id': contact.id,
+                    'variable_id': tgt.id,
+                    'value': v,
+                })
+
+    def _apply_var_mapping_snapshot(self, contact, out_rows):
+        """Apply an out-mapping snapshot stored on a stack frame.
+        Each row: {'src_var': caller_var_id, 'tgt_var': callee_var_id}.
+        Copies callee_var (tgt) → caller_var (src) at return time.
+        """
+        Value = self.env['whatsapp.chatbot.value'].sudo()
+        Variable = self.env['whatsapp.chatbot.variable'].sudo()
+        for row in out_rows or []:
+            src_var = Variable.browse(row.get('src_var')).exists()
+            tgt_var = Variable.browse(row.get('tgt_var')).exists()
+            if not src_var or not tgt_var:
+                continue
+            callee_val = Value.search([
+                ('contact_id', '=', contact.id),
+                ('variable_id', '=', tgt_var.id),
+            ], limit=1)
+            v = callee_val.value if callee_val else False
+            caller_existing = Value.search([
+                ('contact_id', '=', contact.id),
+                ('variable_id', '=', src_var.id),
+            ], limit=1)
+            if caller_existing:
+                caller_existing.value = v
+            else:
+                Value.create({
+                    'contact_id': contact.id,
+                    'variable_id': src_var.id,
+                    'value': v,
+                })
 
     def _send_step_message(self, message, step):
         """Send a message for a chatbot step"""
@@ -455,9 +660,19 @@ class WhatsAppChatbotMessage(models.Model):
                 # Question/interactive steps wait for user input — never auto-advance them.
                 WAIT_FOR_INPUT = {'question_text', 'question_interactive'}
                 children = step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
-                if step.step_type not in WAIT_FOR_INPUT and len(children) == 1 and children[0].step_type != 'end_flow':
-                    _logger.info(f"Auto-advancing to next step: {children[0].name} (ID: {children[0].id})")
-                    return self._send_step_message(message, children[0])
+                if step.step_type not in WAIT_FOR_INPUT and len(children) == 1:
+                    child = children[0]
+                    if child.step_type == 'jump_to_flow':
+                        _logger.info(f"Auto-advancing to jump step: {child.name} (ID: {child.id})")
+                        return self._process_jump_to_flow_step(message, child)
+                    if child.step_type == 'end_flow':
+                        # Pop subroutine frame if any, otherwise stay (preserves prior behavior).
+                        if message.contact_id.call_stack:
+                            _logger.info(f"Auto-advancing to end_flow with active call stack: pop")
+                            return self._handle_end_flow(message, child)
+                    elif child.step_type != 'end_flow':
+                        _logger.info(f"Auto-advancing to next step: {child.name} (ID: {child.id})")
+                        return self._send_step_message(message, child)
                 
                 return outgoing_message
             else:
@@ -558,10 +773,11 @@ class WhatsAppChatbotMessage(models.Model):
                     _logger.info(f"Trigger '{message_text}' matched to chatbot: {chatbot.name}")
                     # Clear all variables when starting a new chatbot flow
                     chatbot_contact.variable_value_ids.unlink()
-                    # Reset last step
+                    # Reset last step and call stack
                     chatbot_contact.write({
                         'last_chatbot_id': chatbot.id,
                         'last_step_id': False,
+                        'call_stack': [],
                     })
                 else:
                     # No trigger matched - don't assign a chatbot
@@ -587,6 +803,7 @@ class WhatsAppChatbotMessage(models.Model):
                     chatbot_contact.write({
                         'last_chatbot_id': chatbot.id,
                         'last_step_id': False,
+                        'call_stack': [],
                     })
             
             # Lock this WhatsApp message row so only one webhook delivery creates and sends.

@@ -102,7 +102,11 @@ Shows when a node is clicked:
 | `max_retries` | Integer (default 3) — validation retry limit for question steps |
 | `fallback_step_id` | Many2one to self — route after exhausting retries |
 | `agent_partner_ids` | Many2many to `res.partner` — override agents for transfer step |
-| `step_type` additions | `transfer_to_agent` |
+| `target_chatbot_id` | Many2one to `whatsapp.chatbot` — destination of a jump_to_flow step |
+| `target_step_id` | Many2one to self (target chatbot) — explicit entry; empty = root step |
+| `jump_mode` | Selection: `one_way` / `subroutine` |
+| `variable_mapping_ids` | One2many to `whatsapp.chatbot.step.var.mapping` — cross-bot variable plumbing |
+| `step_type` additions | `transfer_to_agent`, `jump_to_flow` |
 
 ### Chatbot Model Additions
 | Field | Purpose |
@@ -114,12 +118,28 @@ Shows when a node is clicked:
 ### New Models
 - `whatsapp.chatbot.step.list.row` — list row for interactive list messages
 - `whatsapp.chatbot.global.interrupt` — keyword → action interrupts (goto_step / transfer_agent / end_flow)
+- `whatsapp.chatbot.step.var.mapping` — per-jump variable mapping (`source_variable_id → target_variable_id`, direction in/out/both)
+
+### Contact Model Additions
+| Field | Purpose |
+|---|---|
+| `call_stack` | Json (list) — subroutine call stack. Frames: `{caller_chatbot_id, return_step_id, out_mapping: [{src_var, tgt_var}, …]}`. Cleared on trigger restart.
 
 ### Defensive Architecture Features (June 2026)
 1. **Max retries + fallback step** — question steps get retry limit + fallback routing; dashed orange connector shown on canvas
 2. **Transfer to Agent step type** — purple 🎧 badge, terminal node, handover message + agent override
 3. **Dead-end warnings** — amber ⚠ badge on non-terminal leaf nodes + properties panel callout
 4. **Global interrupt keywords** — per-chatbot keyword table in chatbot form; routes to step/agent/end on match
+
+### Jump to Flow/Bot (June 2026)
+- 16th step type `jump_to_flow`: indigo 🔀 badge. Either one-way (terminal) or subroutine (returns to caller's continuation = jump step's children)
+- Runtime helpers in `whatsapp_chatbot_message.py`: `_process_jump_to_flow_step`, `_handle_end_flow`, `_apply_var_mapping`, `_apply_var_mapping_snapshot`
+- `MAX_CALL_STACK_DEPTH = 8` guards against infinite jump loops (e.g. A↔B)
+- Out-mapping snapshot stored on stack frame at jump time so mid-session edits don't break in-flight calls
+- `_send_step_message` auto-advance recognises `jump_to_flow` and pops `end_flow` only when `call_stack` is non-empty
+- Trigger restart now clears `call_stack` alongside variables and `last_step_id`
+- Canvas: dashed indigo self-loop drawn on subroutine jump cards via `[data-jump-sub]` selector; one-way cards are treated as terminal (no out-dot)
+- Tests in `tests/test_jump_to_flow.py`: constraints, one-way dispatch, subroutine push/pop, in/out/both mapping, nested subroutines, recursion guard
 
 ---
 

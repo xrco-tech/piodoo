@@ -23,6 +23,12 @@ class WhatsAppChatbotContact(models.Model):
     last_chatbot_id = fields.Many2one("whatsapp.chatbot", string="Last Chatbot", tracking=True)
     last_step_id = fields.Many2one("whatsapp.chatbot.step", string="Chatbot Step", tracking=True)
     last_seen_date = fields.Datetime('Last Seen Date')
+
+    # Subroutine call stack for jump_to_flow steps.
+    # Each frame: {"caller_chatbot_id": int, "return_step_id": int,
+    #              "out_mapping": [{"src_var": int, "tgt_var": int}, ...]}
+    # Snapshotted at jump time so mid-session edits to the mapping don't break in-flight calls.
+    call_stack = fields.Json(string="Call Stack", default=list)
     
     active_agent = fields.Selection([
         ('flow_agent', 'Flow Agent'),

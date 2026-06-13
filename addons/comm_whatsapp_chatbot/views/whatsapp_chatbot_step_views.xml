@@ -55,7 +55,7 @@
                                 <field name="parent_id" string="Parent Step"/>
                             </group>
                             <group>
-                                <field name="wa_message_type" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'end_flow']"/>
+                                <field name="wa_message_type" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'jump_to_flow', 'end_flow']"/>
                                 <field name="answer_data_type" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date']"/>
                                 <field name="max_retries" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date', 'question_document', 'question_image', 'question_video', 'question_audio', 'question_interactive']"/>
                                 <field name="fallback_step_id" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date', 'question_document', 'question_image', 'question_video', 'question_audio', 'question_interactive']"/>
@@ -63,7 +63,7 @@
                         </group>
                         
                         <notebook>
-                            <page string="Message Content" name="content" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'end_flow']">
+                            <page string="Message Content" name="content" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'jump_to_flow', 'end_flow']">
                                 <group>
                                     <group string="Body">
                                         <field name="body_plain" widget="text" nolabel="1" placeholder="Enter message body..."/>
@@ -149,6 +149,39 @@
                             <page string="Code Execution" name="code" invisible="step_type != 'execute_code'">
                                 <group>
                                     <field name="code" widget="text" nolabel="1" placeholder="Write Python code here..."/>
+                                </group>
+                            </page>
+
+                            <page string="Jump to Flow/Bot" name="jump" invisible="step_type != 'jump_to_flow'">
+                                <group>
+                                    <group string="Target">
+                                        <field name="target_chatbot_id"
+                                               options="{'no_create': True}"
+                                               placeholder="Pick a chatbot to jump into"/>
+                                        <field name="target_step_id"
+                                               options="{'no_create': True}"
+                                               placeholder="Leave empty for root step"/>
+                                        <field name="jump_mode" widget="radio"/>
+                                    </group>
+                                </group>
+                                <group string="Variable Mapping">
+                                    <field name="variable_mapping_ids" nolabel="1">
+                                        <list editable="bottom" create="1" delete="1">
+                                            <field name="sequence" widget="handle"/>
+                                            <field name="source_chatbot_id" column_invisible="1"/>
+                                            <field name="target_chatbot_id" column_invisible="1"/>
+                                            <field name="source_variable_id"
+                                                   options="{'no_create': True}"/>
+                                            <field name="target_variable_id"
+                                                   options="{'no_create': True}"/>
+                                            <field name="direction"/>
+                                        </list>
+                                    </field>
+                                    <div class="text-muted small">
+                                        <strong>In</strong> copies caller → callee on jump.
+                                        <strong>Out</strong> copies callee → caller on return (subroutine only).
+                                        <strong>Both</strong> does each side.
+                                    </div>
                                 </group>
                             </page>
                             
