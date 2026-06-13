@@ -828,3 +828,181 @@ class TestResolveTriggerForEngaged(ChatbotFixtures):
             self.env['whatsapp.chatbot'], 'JUMPDEMO')
         self.assertFalse(target)
         self.assertIsNone(kind)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 9. _process_variable_or_code_step — actually save and auto-advance
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tagged('chatbot', 'post_install', '-at_install')
+class TestVariableOrCodeStep(ChatbotFixtures):
+    """set_variable must persist a value and continue down the tree.
+    Pre-existing skeleton did neither — this is the regression that broke jumps."""
+
+    def _get_value(self, contact, variable):
+        rec = self.env['whatsapp.chatbot.value'].search([
+            ('contact_id', '=', contact.id),
+            ('variable_id', '=', variable.id),
+        ], limit=1)
+        return rec.value if rec else None
+
+    def test_set_variable_static_saves_value(self):
+        var = self.env['whatsapp.chatbot.variable'].create({
+            'name': 'pet', 'data_type': 'text', 'chatbot_id': self.chatbot.id,
+        })
+        step = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Save Pet',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'set_variable',
+            'variable_id': var.id,
+            'variable_data_source': 'static',
+            'variable_value': 'dog',
+        })
+        msg = self._make_incoming(step, body='whatever')
+        self.env['whatsapp.chatbot.message']._process_variable_or_code_step(msg, step)
+        self.assertEqual(self._get_value(self.contact, var), 'dog')
+
+    def test_set_variable_answer_saves_user_reply(self):
+        """source='answer' takes the latest incoming message for source_step_id."""
+        var = self.env['whatsapp.chatbot.variable'].create({
+            'name': 'username', 'data_type': 'text', 'chatbot_id': self.chatbot.id,
+        })
+        # Reuse step_question (question_text) as the source
+        save = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Save Username',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'set_variable',
+            'variable_id': var.id,
+            'variable_data_source': 'answer',
+            'source_step_id': self.step_question.id,
+            'parent_id': self.step_question.id,
+        })
+        # User answers the question
+        msg = self._make_incoming(self.step_question, body='Alice')
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok):
+            self.env['whatsapp.chatbot.message']._process_variable_or_code_step(msg, save)
+        self.assertEqual(self._get_value(self.contact, var), 'Alice')
+
+    def test_set_variable_from_other_variable_copies_value(self):
+        src = self.env['whatsapp.chatbot.variable'].create({
+            'name': 'src_var', 'data_type': 'text', 'chatbot_id': self.chatbot.id,
+        })
+        tgt = self.env['whatsapp.chatbot.variable'].create({
+            'name': 'tgt_var', 'data_type': 'text', 'chatbot_id': self.chatbot.id,
+        })
+        self.env['whatsapp.chatbot.value'].create({
+            'contact_id': self.contact.id, 'variable_id': src.id, 'value': 'copied',
+        })
+        step = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Copy Var',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'set_variable',
+            'variable_id': tgt.id,
+            'variable_data_source': 'variable',
+            'source_variable_id': src.id,
+        })
+        msg = self._make_incoming(step, body='go')
+        self.env['whatsapp.chatbot.message']._process_variable_or_code_step(msg, step)
+        self.assertEqual(self._get_value(self.contact, tgt), 'copied')
+
+    def test_set_variable_upserts_existing_value(self):
+        """Re-setting the same variable updates the value, not creates duplicates."""
+        var = self.env['whatsapp.chatbot.variable'].create({
+            'name': 'mood', 'data_type': 'text', 'chatbot_id': self.chatbot.id,
+        })
+        step = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Set Mood',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'set_variable',
+            'variable_id': var.id,
+            'variable_data_source': 'static',
+            'variable_value': 'happy',
+        })
+        msg = self._make_incoming(step)
+        self.env['whatsapp.chatbot.message']._process_variable_or_code_step(msg, step)
+        # Now overwrite
+        step.variable_value = 'sad'
+        msg2 = self._make_incoming(step)
+        self.env['whatsapp.chatbot.message']._process_variable_or_code_step(msg2, step)
+        self.assertEqual(self._get_value(self.contact, var), 'sad')
+        count = self.env['whatsapp.chatbot.value'].search_count([
+            ('contact_id', '=', self.contact.id),
+            ('variable_id', '=', var.id),
+        ])
+        self.assertEqual(count, 1, "set_variable must upsert, not duplicate")
+
+    def test_set_variable_auto_advances_to_message_child(self):
+        """After saving the variable, runtime advances to the single message child."""
+        var = self.env['whatsapp.chatbot.variable'].create({
+            'name': 'topic', 'data_type': 'text', 'chatbot_id': self.chatbot.id,
+        })
+        save = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Save Topic',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'set_variable',
+            'variable_id': var.id,
+            'variable_data_source': 'static',
+            'variable_value': 'weather',
+        })
+        ack = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Ack',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'message',
+            'body_plain': 'Saved topic.',
+            'parent_id': save.id,
+        })
+        msg = self._make_incoming(save)
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok) as mock_send:
+            self.env['whatsapp.chatbot.message']._process_variable_or_code_step(msg, save)
+        mock_send.assert_called()
+        outgoing = self.env['whatsapp.chatbot.message'].search([
+            ('contact_id', '=', self.contact.id),
+            ('type', '=', 'outgoing'),
+            ('step_id', '=', ack.id),
+        ])
+        self.assertTrue(outgoing, "Should have auto-advanced and sent Ack")
+
+    def test_set_variable_chain_executes_through_jump(self):
+        """set_variable → jump_to_flow chain: the jump is reached and dispatched."""
+        target_bot = self.env['whatsapp.chatbot'].create({
+            'name': 'Sub Bot', 'status': 'published',
+        })
+        target_root = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Sub Root',
+            'chatbot_id': target_bot.id,
+            'step_type': 'message',
+            'body_plain': 'Sub body.',
+        })
+        var = self.env['whatsapp.chatbot.variable'].create({
+            'name': 'transient', 'data_type': 'text', 'chatbot_id': self.chatbot.id,
+        })
+        save = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Pre Jump Save',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'set_variable',
+            'variable_id': var.id,
+            'variable_data_source': 'static',
+            'variable_value': 'x',
+        })
+        self.env['whatsapp.chatbot.step'].create({
+            'name': 'Jump After Save',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'jump_to_flow',
+            'target_chatbot_id': target_bot.id,
+            'target_step_id': target_root.id,
+            'jump_mode': 'one_way',
+            'parent_id': save.id,
+        })
+        msg = self._make_incoming(save)
+        sent = []
+        def capture(self_obj, recipient_phone=None, message_text=None, **kw):
+            sent.append(message_text)
+            return {'success': True, 'message_id': 'wamid.chain'}
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          autospec=True, side_effect=capture):
+            self.env['whatsapp.chatbot.message']._process_variable_or_code_step(msg, save)
+        # Variable was saved AND the jump reached the target bot's body
+        self.assertEqual(self._get_value(self.contact, var), 'x')
+        self.assertIn('Sub body.', sent)

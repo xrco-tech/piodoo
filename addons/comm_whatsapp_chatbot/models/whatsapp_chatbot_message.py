@@ -396,15 +396,96 @@ class WhatsAppChatbotMessage(models.Model):
         return self._send_step_message(message, next_step)
 
     def _process_variable_or_code_step(self, message, step, depth=0, visited_steps=None):
-        """Process variable setting or code execution steps"""
+        """Process a silent step (set_variable / execute_code), then auto-advance
+        to the next step in the flow."""
+        if depth > MAX_RECURSION_DEPTH:
+            return message
+        visited_steps = visited_steps or set()
+
+        # Run side effects FIRST — set_variable's "answer" source looks up the
+        # most recent incoming message with step_id = source_step_id, so we must
+        # not have mutated message.step_id yet.
         if step.step_type == 'set_variable':
-            # Set variable logic
-            pass
+            self._set_variable_from_step(message, step)
         elif step.step_type == 'execute_code':
-            # Execute code
-            step.execute_code(message)
-        # Move to next step
-        return message
+            try:
+                step.execute_code(message)
+            except Exception as e:
+                _logger.error(f"execute_code failed on step {step.id}: {e}", exc_info=True)
+
+        # Now track that the contact has moved through this step
+        message.step_id = step.id
+        message.contact_id.write({
+            'last_chatbot_id': message.chatbot_id.id,
+            'last_step_id': step.id,
+            'last_seen_date': fields.Datetime.now(),
+        })
+
+        # Auto-advance: take the first child (silent chains assume single path)
+        children = step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+        if not children:
+            return message
+        next_step = children[0]
+        if next_step.step_type == 'end_flow':
+            return self._handle_end_flow(message, next_step, depth=depth + 1, visited_steps=visited_steps)
+        if next_step.step_type == 'jump_to_flow':
+            return self._process_jump_to_flow_step(message, next_step, depth=depth + 1, visited_steps=visited_steps)
+        if next_step.step_type in ('set_variable', 'execute_code'):
+            return self._process_variable_or_code_step(message, next_step, depth=depth + 1, visited_steps=visited_steps)
+        return self._send_step_message(message, next_step)
+
+    def _set_variable_from_step(self, message, step):
+        """Compute the source value per step.variable_data_source and upsert
+        a whatsapp.chatbot.value row for (contact, target variable)."""
+        if not step.variable_id:
+            _logger.warning(f"set_variable step {step.id} has no target variable")
+            return
+        contact = message.contact_id
+        target_var = step.variable_id
+        value = False
+
+        if step.variable_data_source == 'static':
+            value = step.variable_value
+        elif step.variable_data_source == 'answer':
+            src_step = step.source_step_id
+            if not src_step:
+                _logger.warning(f"set_variable step {step.id} 'answer' source has no source_step_id")
+                return
+            # Find the most recent incoming reply to src_step (this will include
+            # the current message when src_step is the question the user just answered)
+            ans = self.env['whatsapp.chatbot.message'].sudo().search([
+                ('contact_id', '=', contact.id),
+                ('step_id', '=', src_step.id),
+                ('type', '=', 'incoming'),
+            ], order='create_date desc', limit=1)
+            value = ans.message_plain if ans else False
+        elif step.variable_data_source == 'variable':
+            src_var = step.source_variable_id
+            if not src_var:
+                _logger.warning(f"set_variable step {step.id} 'variable' source has no source_variable_id")
+                return
+            src_val = self.env['whatsapp.chatbot.value'].sudo().search([
+                ('contact_id', '=', contact.id),
+                ('variable_id', '=', src_var.id),
+            ], limit=1)
+            value = src_val.value if src_val else False
+        else:
+            return
+
+        Value = self.env['whatsapp.chatbot.value'].sudo()
+        existing = Value.search([
+            ('contact_id', '=', contact.id),
+            ('variable_id', '=', target_var.id),
+        ], limit=1)
+        if existing:
+            existing.value = value or False
+        else:
+            Value.create({
+                'contact_id': contact.id,
+                'variable_id': target_var.id,
+                'value': value or False,
+            })
+        _logger.info(f"set_variable: {target_var.name} = {value!r} for contact {contact.id}")
 
     # ── Jump to Flow/Bot ────────────────────────────────────────────────────────
 
