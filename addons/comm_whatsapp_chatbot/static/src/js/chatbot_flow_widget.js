@@ -309,16 +309,40 @@ export class ChatbotFlowAction extends Component {
     }
 
     _goBack() {
+        // If we navigated in via _openTargetChatbot, the previous chatbot is on
+        // our own nav stack — pop it and re-open. Otherwise fall back to browser
+        // history (returns to wherever the flow was entered from).
+        const navStack = [...(this.props.action.params?.nav_stack || [])];
+        if (navStack.length) {
+            const prev = navStack.pop();
+            this.action.doAction({
+                type: "ir.actions.client",
+                tag: "comm_whatsapp_chatbot.chatbot_flow",
+                name: prev.name || "Chatbot Flow",
+                params: {
+                    chatbot_id: prev.id,
+                    chatbot_name: prev.name || "",
+                    nav_stack: navStack,
+                },
+            });
+            return;
+        }
         history.back();
     }
 
     _openTargetChatbot(chatbotId, chatbotName) {
         if (!chatbotId) return;
+        const navStack = [...(this.props.action.params?.nav_stack || [])];
+        navStack.push({ id: this.chatbotId, name: this.state.chatbotName });
         this.action.doAction({
             type: "ir.actions.client",
             tag: "comm_whatsapp_chatbot.chatbot_flow",
             name: chatbotName || "Chatbot Flow",
-            params: { chatbot_id: chatbotId, chatbot_name: chatbotName || "" },
+            params: {
+                chatbot_id: chatbotId,
+                chatbot_name: chatbotName || "",
+                nav_stack: navStack,
+            },
         });
     }
 
@@ -675,24 +699,9 @@ export class ChatbotFlowAction extends Component {
             const targetRow = document.createElement("div");
             targetRow.className = "o_flow_jump_target";
             const safeName = (node.targetChatbotName || "— pick a bot —").replace(/</g, "&lt;");
-            if (node.targetChatbotId) {
-                targetRow.classList.add("o_flow_jump_target_clickable");
-                targetRow.title = "Open target chatbot";
-                targetRow.innerHTML =
-                    `<i class="fa fa-share o_flow_jump_arrow" aria-hidden="true"/>` +
-                    `<span class="o_flow_jump_target_name">${safeName}</span>` +
-                    `<i class="fa fa-external-link o_flow_jump_open" aria-hidden="true"/>`;
-                targetRow.addEventListener("click", e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this._openTargetChatbot(node.targetChatbotId, node.targetChatbotName);
-                });
-                targetRow.addEventListener("mousedown", e => e.stopPropagation());
-            } else {
-                targetRow.innerHTML =
-                    `<i class="fa fa-share o_flow_jump_arrow" aria-hidden="true"/>` +
-                    `<span class="o_flow_jump_target_name">${safeName}</span>`;
-            }
+            targetRow.innerHTML =
+                `<i class="fa fa-share o_flow_jump_arrow" aria-hidden="true"/>` +
+                `<span class="o_flow_jump_target_name">${safeName}</span>`;
             jumpBox.appendChild(targetRow);
 
             if (node.targetStepName) {
