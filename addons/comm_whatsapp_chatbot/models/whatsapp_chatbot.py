@@ -51,6 +51,13 @@ class WhatsAppChatbot(models.Model):
 
     chatbot_contact_ids = fields.One2many("whatsapp.chatbot.contact", "last_chatbot_id", string="Active Users", tracking=True)
     chatbot_contact_count = fields.Integer(string="Active Users", compute="_compute_contact_count", store=True)
+    # Every contact that has ever entered this chatbot (regardless of where they
+    # are now). Populated at trigger match / jump entry; backfilled from
+    # whatsapp.chatbot.message history at install time.
+    historical_contact_count = fields.Integer(
+        string="Total Users", compute="_compute_historical_contact_count", store=False,
+        help="Number of contacts who have ever entered this chatbot, including those now in another bot.",
+    )
     chatbot_message_ids = fields.One2many("whatsapp.chatbot.message", "chatbot_id", string="Messages", tracking=True)
     chatbot_message_count = fields.Integer(string="Messages", compute="_compute_message_count", store=True)
 
@@ -77,6 +84,15 @@ class WhatsAppChatbot(models.Model):
         for rec in self:
             rec.chatbot_message_count = len(rec.chatbot_message_ids)
 
+    def _compute_historical_contact_count(self):
+        # search_count on the inverse of contact.chatbot_ids — counts every contact
+        # whose M2M includes this chatbot, regardless of last_chatbot_id.
+        Contact = self.env['whatsapp.chatbot.contact'].sudo()
+        for rec in self:
+            rec.historical_contact_count = Contact.search_count([
+                ('chatbot_ids', 'in', rec.id),
+            ])
+
     def action_publish(self):
         for rec in self:
             rec.status = 'published'
@@ -102,6 +118,16 @@ class WhatsAppChatbot(models.Model):
             'res_model': 'whatsapp.chatbot.contact',
             'view_mode': 'list,form',
             'domain': [('last_chatbot_id', '=', self.id)],
+        }
+
+    def action_view_historical_users(self):
+        self.ensure_one()
+        return {
+            'name': _('Total Users'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'whatsapp.chatbot.contact',
+            'view_mode': 'list,form',
+            'domain': [('chatbot_ids', 'in', self.id)],
         }
 
     def action_view_messages(self):

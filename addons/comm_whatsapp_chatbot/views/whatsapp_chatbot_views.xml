@@ -114,6 +114,13 @@
                                     invisible="chatbot_contact_count == 0">
                                 <field name="chatbot_contact_count" widget="statinfo" string="Active Users"/>
                             </button>
+                            <button name="action_view_historical_users"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-user-plus"
+                                    invisible="historical_contact_count == 0">
+                                <field name="historical_contact_count" widget="statinfo" string="Total Users"/>
+                            </button>
                             <button name="action_view_messages"
                                     type="object"
                                     class="oe_stat_button"

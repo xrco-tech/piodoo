@@ -1003,6 +1003,137 @@ class TestVariableOrCodeStep(ChatbotFixtures):
         with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
                           autospec=True, side_effect=capture):
             self.env['whatsapp.chatbot.message']._process_variable_or_code_step(msg, save)
+        self.assertEqual(self._get_value(self.contact, var), 'x')
+        self.assertIn('Sub body.', sent)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 10. _mark_contact_entered + historical_contact_count
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tagged('chatbot', 'post_install', '-at_install')
+class TestHistoricalContacts(ChatbotFixtures):
+    """contact.chatbot_ids accumulates every bot a contact has ever entered.
+    historical_contact_count derives from that M2M independent of last_chatbot_id."""
+
+    def test_mark_contact_entered_adds_link(self):
+        self.assertEqual(self.contact.chatbot_ids.ids, [])
+        self.env['whatsapp.chatbot.message']._mark_contact_entered(self.contact, self.chatbot)
+        self.contact.invalidate_recordset()
+        self.assertEqual(self.contact.chatbot_ids.ids, [self.chatbot.id])
+
+    def test_mark_contact_entered_is_idempotent(self):
+        m = self.env['whatsapp.chatbot.message']
+        m._mark_contact_entered(self.contact, self.chatbot)
+        m._mark_contact_entered(self.contact, self.chatbot)
+        m._mark_contact_entered(self.contact, self.chatbot)
+        self.contact.invalidate_recordset()
+        self.assertEqual(self.contact.chatbot_ids.ids, [self.chatbot.id])
+
+    def test_mark_contact_entered_handles_falsy_inputs(self):
+        """Defensive: don't blow up on empty contact or chatbot."""
+        m = self.env['whatsapp.chatbot.message']
+        m._mark_contact_entered(self.env['whatsapp.chatbot.contact'], self.chatbot)
+        m._mark_contact_entered(self.contact, self.env['whatsapp.chatbot'])
+        self.contact.invalidate_recordset()
+        self.assertEqual(self.contact.chatbot_ids.ids, [])
+
+    def test_historical_count_persists_after_switching_bots(self):
+        """Entering bot A then jumping to bot B → both bots count this contact."""
+        bot_b = self.env['whatsapp.chatbot'].create({
+            'name': 'Side Bot', 'status': 'published',
+        })
+        m = self.env['whatsapp.chatbot.message']
+        m._mark_contact_entered(self.contact, self.chatbot)
+        m._mark_contact_entered(self.contact, bot_b)
+        self.chatbot.invalidate_recordset()
+        bot_b.invalidate_recordset()
+        self.assertEqual(self.chatbot.historical_contact_count, 1)
+        self.assertEqual(bot_b.historical_contact_count, 1)
+        # And we can move the contact's last_chatbot_id to bot_b — both counts hold
+        self.contact.last_chatbot_id = bot_b.id
+        self.chatbot.invalidate_recordset()
+        bot_b.invalidate_recordset()
+        self.assertEqual(self.chatbot.historical_contact_count, 1)
+        self.assertEqual(bot_b.historical_contact_count, 1)
+
+    def test_historical_count_counts_distinct_contacts(self):
+        other_partner = self.env['res.partner'].create({
+            'name': 'Other User', 'mobile': '27600000002',
+        })
+        other_contact = self.env['whatsapp.chatbot.contact'].create({
+            'partner_id': other_partner.id,
+        })
+        m = self.env['whatsapp.chatbot.message']
+        m._mark_contact_entered(self.contact, self.chatbot)
+        m._mark_contact_entered(other_contact, self.chatbot)
+        self.chatbot.invalidate_recordset()
+        self.assertEqual(self.chatbot.historical_contact_count, 2)
+
+    def test_jump_to_flow_marks_target_chatbot(self):
+        """Jumping into a target bot must add it to the caller's chatbot_ids."""
+        target_bot = self.env['whatsapp.chatbot'].create({
+            'name': 'Marked Target Bot', 'status': 'published',
+        })
+        target_root = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Target Root',
+            'chatbot_id': target_bot.id,
+            'step_type': 'message',
+            'body_plain': 'Hello from target.',
+        })
+        jump = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Jump Mark Test',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'jump_to_flow',
+            'target_chatbot_id': target_bot.id,
+            'target_step_id': target_root.id,
+            'jump_mode': 'one_way',
+        })
+        msg = self._make_incoming(jump)
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          side_effect=_mock_send_ok):
+            self.env['whatsapp.chatbot.message']._process_jump_to_flow_step(msg, jump)
+        self.contact.invalidate_recordset()
+        self.assertIn(target_bot.id, self.contact.chatbot_ids.ids,
+                      "Target chatbot must be added to contact.chatbot_ids on jump")
+        """set_variable → jump_to_flow chain: the jump is reached and dispatched."""
+        target_bot = self.env['whatsapp.chatbot'].create({
+            'name': 'Sub Bot', 'status': 'published',
+        })
+        target_root = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Sub Root',
+            'chatbot_id': target_bot.id,
+            'step_type': 'message',
+            'body_plain': 'Sub body.',
+        })
+        var = self.env['whatsapp.chatbot.variable'].create({
+            'name': 'transient', 'data_type': 'text', 'chatbot_id': self.chatbot.id,
+        })
+        save = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Pre Jump Save',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'set_variable',
+            'variable_id': var.id,
+            'variable_data_source': 'static',
+            'variable_value': 'x',
+        })
+        self.env['whatsapp.chatbot.step'].create({
+            'name': 'Jump After Save',
+            'chatbot_id': self.chatbot.id,
+            'step_type': 'jump_to_flow',
+            'target_chatbot_id': target_bot.id,
+            'target_step_id': target_root.id,
+            'jump_mode': 'one_way',
+            'parent_id': save.id,
+        })
+        msg = self._make_incoming(save)
+        sent = []
+        def capture(self_obj, recipient_phone=None, message_text=None, **kw):
+            sent.append(message_text)
+            return {'success': True, 'message_id': 'wamid.chain'}
+        with patch.object(type(self.env['whatsapp.message']), 'send_whatsapp_message',
+                          autospec=True, side_effect=capture):
+            self.env['whatsapp.chatbot.message']._process_variable_or_code_step(msg, save)
         # Variable was saved AND the jump reached the target bot's body
         self.assertEqual(self._get_value(self.contact, var), 'x')
         self.assertIn('Sub body.', sent)

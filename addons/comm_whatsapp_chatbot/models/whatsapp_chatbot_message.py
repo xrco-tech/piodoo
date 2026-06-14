@@ -285,6 +285,17 @@ class WhatsAppChatbotMessage(models.Model):
                 return False
         return False
     
+    def _mark_contact_entered(self, contact, chatbot):
+        """Idempotently record that `contact` has entered `chatbot`.
+        Tracked on the historical contact.chatbot_ids M2M (distinct from
+        last_chatbot_id, which only reflects the currently engaged bot)."""
+        if not contact or not chatbot:
+            return
+        # Avoid writing if the link already exists — saves a tracking message.
+        if chatbot.id in contact.chatbot_ids.ids:
+            return
+        contact.sudo().write({'chatbot_ids': [(4, chatbot.id)]})
+
     def _resolve_trigger_for_engaged(self, current_chatbot, message_text):
         """Resolve trigger lookup for a contact already engaged in a flow.
         Returns (target_chatbot, kind) where kind is:
@@ -551,6 +562,7 @@ class WhatsAppChatbotMessage(models.Model):
             'last_step_id': entry.id,
             'last_seen_date': fields.Datetime.now(),
         })
+        self._mark_contact_entered(contact, target_chatbot)
 
         _logger.info(
             f"Jumped to chatbot '{target_chatbot.name}' entry step '{entry.name}' "
@@ -886,6 +898,7 @@ class WhatsAppChatbotMessage(models.Model):
                         'last_step_id': False,
                         'call_stack': [],
                     })
+                    self._mark_contact_entered(chatbot_contact, chatbot)
                 else:
                     # No trigger matched - don't assign a chatbot
                     # Only process messages that match triggers or are already in a conversation
@@ -917,6 +930,7 @@ class WhatsAppChatbotMessage(models.Model):
                         'last_step_id': False,
                         'call_stack': [],
                     })
+                    self._mark_contact_entered(chatbot_contact, chatbot)
             
             # Lock this WhatsApp message row so only one webhook delivery creates and sends.
             # The second delivery will block here until the first commits, then see existing.
