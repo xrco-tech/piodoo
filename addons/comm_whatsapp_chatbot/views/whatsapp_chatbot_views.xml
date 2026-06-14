@@ -36,6 +36,7 @@
                     <field name="description"/>
                     <field name="step_count" widget="statinfo" string="Steps"/>
                     <field name="chatbot_contact_count" widget="statinfo" string="Active Users"/>
+                    <field name="historical_contact_count" widget="statinfo" string="Total Users"/>
                     <field name="chatbot_message_count" widget="statinfo" string="Messages"/>
                 </list>
             </field>
@@ -51,6 +52,7 @@
                     <field name="status"/>
                     <field name="step_count"/>
                     <field name="chatbot_contact_count"/>
+                    <field name="historical_contact_count"/>
                     <field name="chatbot_message_count"/>
                     <field name="description"/>
                     <templates>
@@ -68,9 +70,15 @@
                                     <i class="fa fa-sitemap me-1"/>
                                     <t t-esc="record.step_count.value"/> Steps
                                 </span>
-                                <span class="badge rounded-pill text-bg-info">
+                                <span class="badge rounded-pill text-bg-info"
+                                      title="Currently engaged in this chatbot">
                                     <i class="fa fa-users me-1"/>
-                                    <t t-esc="record.chatbot_contact_count.value"/> Users
+                                    <t t-esc="record.chatbot_contact_count.value"/> Active
+                                </span>
+                                <span class="badge rounded-pill text-bg-primary"
+                                      title="Ever entered this chatbot">
+                                    <i class="fa fa-user-plus me-1"/>
+                                    <t t-esc="record.historical_contact_count.value"/> Total
                                 </span>
                                 <span class="badge rounded-pill text-bg-success">
                                     <i class="fa fa-comments me-1"/>
