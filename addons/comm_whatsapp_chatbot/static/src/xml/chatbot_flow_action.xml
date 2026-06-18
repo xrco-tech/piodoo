@@ -28,6 +28,12 @@
                             title="Reset to automatic tree layout">
                         <i class="fa fa-sitemap"/>
                     </button>
+                    <button class="btn btn-sm btn-light"
+                            t-on-click="() => this._togglePanel()"
+                            t-att-title="state.panelVisible ? 'Hide properties panel' : 'Show properties panel'"
+                            t-att-class="state.panelVisible ? '' : 'active'">
+                        <i t-att-class="state.panelVisible ? 'fa fa-angle-double-right' : 'fa fa-angle-double-left'"/>
+                    </button>
                 </div>
             </div>
 
@@ -43,7 +49,8 @@
                 </div>
 
                 <!-- Properties panel -->
-                <div class="o_chatbot_flow_props" t-if="!state.loading">
+                <div t-att-class="'o_chatbot_flow_props' + (state.panelVisible ? '' : ' o_chatbot_flow_props_collapsed')"
+                     t-if="!state.loading">
                     <div class="o_flow_props_header">
                         <i class="fa fa-info-circle me-1"/>Properties
                     </div>

@@ -116,6 +116,7 @@ export class ChatbotFlowAction extends Component {
             zoom:         1,
             selectedNode: null,
             maxCount:     0,
+            panelVisible: this._initialPanelVisible(),
         });
 
         onMounted(()  => this._loadData());
@@ -306,6 +307,30 @@ export class ChatbotFlowAction extends Component {
 
     async _saveStepName(stepId, name) {
         await this.orm.write("whatsapp.chatbot.step", [stepId], { name });
+    }
+
+    // ── Properties panel show/hide ───────────────────────────────────────────
+
+    _initialPanelVisible() {
+        try {
+            const stored = localStorage.getItem("chatbot_flow_panel_visible");
+            if (stored === "0") return false;
+            if (stored === "1") return true;
+        } catch {}
+        // No saved preference → default: shown on desktop, hidden on narrow viewports
+        return typeof window !== "undefined" ? window.innerWidth >= 768 : true;
+    }
+
+    _togglePanel() {
+        this.state.panelVisible = !this.state.panelVisible;
+        try {
+            localStorage.setItem("chatbot_flow_panel_visible",
+                                 this.state.panelVisible ? "1" : "0");
+        } catch {}
+        // Connector lines depend on canvas width — let CSS transition settle, then redraw.
+        if (this._drawLinesFn) {
+            setTimeout(() => this._drawLinesFn?.(), 280);
+        }
     }
 
     _goBack() {
