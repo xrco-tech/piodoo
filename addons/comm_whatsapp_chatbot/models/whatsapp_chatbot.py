@@ -26,8 +26,28 @@ class WhatsAppChatbot(models.Model):
     channel = fields.Selection([
         ('whatsapp', 'WhatsApp'),
         ('sms', 'SMS'),
+        ('ussd', 'USSD'),
     ], string='Channel', default='whatsapp', required=True, tracking=True,
-       help="The messaging channel this chatbot runs on. SMS bots cannot use interactive step types.")
+       help=(
+           "The messaging channel this chatbot runs on. "
+           "SMS and USSD bots cannot use interactive WhatsApp step types; "
+           "USSD bots additionally cannot use media-question step types "
+           "(image/video/audio/document) since USSD is text-only."
+       ))
+    # Channel-specific addressable identifier. For WhatsApp this is the Meta
+    # phone_number_id; for SMS the carrier sender ID; for USSD the dialled
+    # service code (e.g. *123#). Empty = bot acts as a catch-all for its
+    # channel — preserves pre-multi-number behaviour.
+    sender_address = fields.Char(
+        string="Sender Address", tracking=True, index='btree',
+        help=(
+            "The address this chatbot listens on. Per channel:\n"
+            "  WhatsApp — Meta phone_number_id (e.g. 447501465113088)\n"
+            "  SMS — carrier sender ID (e.g. 27693808740 or PIODOO)\n"
+            "  USSD — service code (e.g. *123#)\n"
+            "Leave blank to act as a catch-all for any inbound on this channel."
+        ),
+    )
     
     # Steps and flow
     step_ids = fields.One2many("whatsapp.chatbot.step", "chatbot_id", string="Steps", tracking=True)

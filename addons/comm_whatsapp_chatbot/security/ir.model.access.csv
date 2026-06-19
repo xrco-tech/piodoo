@@ -12,4 +12,5 @@ access_whatsapp_chatbot_variable_trigger_user,whatsapp.chatbot.variable.trigger.
 access_whatsapp_chatbot_step_list_row_user,whatsapp.chatbot.step.list.row.user,model_whatsapp_chatbot_step_list_row,base.group_user,1,1,1,1
 access_whatsapp_chatbot_global_interrupt_user,whatsapp.chatbot.global.interrupt.user,model_whatsapp_chatbot_global_interrupt,base.group_user,1,1,1,1
 access_whatsapp_chatbot_step_var_mapping_user,whatsapp.chatbot.step.var.mapping.user,model_whatsapp_chatbot_step_var_mapping,base.group_user,1,1,1,1
+access_whatsapp_chatbot_ussd_session_user,whatsapp.chatbot.ussd.session.user,model_whatsapp_chatbot_ussd_session,base.group_user,1,1,1,1
 

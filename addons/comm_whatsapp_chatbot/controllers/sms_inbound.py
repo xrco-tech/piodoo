@@ -56,18 +56,20 @@ class InfobipMOController(http.Controller):
             ChatbotMessage = request.env["whatsapp.chatbot.message"].sudo()
             for msg in messages:
                 from_number = msg.get("from") or msg.get("sender") or ""
+                to_number = msg.get("to") or msg.get("destination") or ""
                 # Infobip prefers cleanText (decoded UTF-8 payload) over the
                 # raw text but either is acceptable.
                 body = msg.get("cleanText") or msg.get("text") or ""
                 infobip_id = msg.get("messageId") or msg.get("id")
                 _logger.info(
-                    f"Infobip MO from={from_number!r} body={body[:120]!r} id={infobip_id}"
+                    f"Infobip MO from={from_number!r} to={to_number!r} body={body[:120]!r} id={infobip_id}"
                 )
                 try:
                     ChatbotMessage.process_incoming_sms_message(
                         from_number=from_number,
                         message_text=body,
                         sms_message_id=infobip_id,
+                        to_number=to_number,
                     )
                 except Exception as inner:
                     # One malformed message shouldn't drop the rest of the batch.

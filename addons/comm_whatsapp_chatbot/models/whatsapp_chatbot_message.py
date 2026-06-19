@@ -345,6 +345,259 @@ class WhatsAppChatbotMessage(models.Model):
             _logger.error(f"SMS send failed: {e}", exc_info=True)
             return {'success': False, 'message_id': None, 'error': str(e)}
 
+    # ── USSD synchronous render walker ───────────────────────────────────────
+
+    USSD_MAX_BODY_CHARS = 182  # carrier-imposed limit per screen
+
+    @api.model
+    def render_ussd_session(self, session, user_input):
+        """Walk the flow for a USSD turn and return (body, terminate).
+
+        body — the screen text (will be sent prefixed CON or END to the carrier)
+        terminate — True if the session ends, False to keep it open
+
+        On entry: session.current_step_id is the step that was waiting for the
+        last user input (None on first turn). user_input is the most recent
+        keypress / text (None on first turn).
+
+        Note: variable + call_stack state lives on session.contact_id, NOT on
+        the session record. A contact running parallel WA and USSD flows would
+        therefore share state — accepted v1 limitation, document with caveats
+        if it becomes a problem.
+        """
+        chatbot = session.chatbot_id
+        if not chatbot:
+            return ("Bot misconfigured.", True)
+        try:
+            entry_step = self._ussd_resolve_entry(session, user_input)
+            if not entry_step:
+                return ("This service has no flow configured.", True)
+            body, terminate = self._ussd_walk(session, entry_step, user_input, depth=0)
+            body = (body or '').strip()
+            if len(body) > self.USSD_MAX_BODY_CHARS:
+                body = body[:self.USSD_MAX_BODY_CHARS - 1] + '…'
+            session.last_response = body
+            if terminate:
+                self._close_ussd_session(session, outcome='completed')
+            return (body, terminate)
+        except Exception as e:
+            _logger.error(f"USSD render error in session {session.session_id}: {e}", exc_info=True)
+            self._close_ussd_session(session, outcome='error')
+            return ("Sorry, something went wrong.", True)
+
+    def _ussd_resolve_entry(self, session, user_input):
+        """Find which step to start this turn at.
+        - First turn: root step of the chatbot.
+        - Subsequent turns: the matched child of session.current_step_id based
+          on user_input, or fall back to first child if no condition matches.
+        """
+        if not session.current_step_id:
+            return self.env['whatsapp.chatbot.step'].sudo().search([
+                ('chatbot_id', '=', session.chatbot_id.id),
+                ('parent_id', '=', False),
+            ], order='sequence asc, id asc', limit=1)
+        current = session.current_step_id
+        # Save the user's answer first (it'll be looked up by set_variable steps).
+        if user_input is not None:
+            self._ussd_record_answer(session, current, user_input)
+        # Find matching child
+        matched, _ = self._find_matching_child_step(current, user_input or '')
+        if matched:
+            return matched
+        children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+        return children[0] if children else False
+
+    def _ussd_record_answer(self, session, question_step, user_input):
+        """Persist the user's input as an incoming chatbot message so the
+        existing set_variable 'answer' source resolves correctly."""
+        if not user_input:
+            return
+        self.sudo().create({
+            'contact_id': session.contact_id.id,
+            'mobile_number': session.phone_number or '',
+            'chatbot_id': session.chatbot_id.id,
+            'step_id': question_step.id,
+            'message_plain': user_input,
+            'message_html': user_input,
+            'type': 'incoming',
+        })
+
+    def _ussd_walk(self, session, step, user_input, depth=0):
+        """Accumulate body until we hit a step that waits for input (returns
+        CON) or terminates the session (returns END). Reuses the same
+        helpers (set_variable, jump_to_flow, end_flow) the push runtime uses."""
+        if depth > MAX_RECURSION_DEPTH:
+            return ("Flow too deep.", True)
+        body_parts = []
+        current = step
+        guard = 0
+        while current and guard < 50:
+            guard += 1
+            st = current.step_type
+            if st == 'message':
+                rendered = self._ussd_render_body(session, current.body_plain)
+                if rendered:
+                    body_parts.append(rendered)
+                children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                if not children:
+                    return (self._ussd_join(body_parts), True)
+                if len(children) > 1:
+                    body_parts.append(self._ussd_render_menu(children))
+                    session.current_step_id = current.id
+                    return (self._ussd_join(body_parts), False)
+                current = children[0]
+                continue
+            if st.startswith('question_'):
+                rendered = self._ussd_render_body(session, current.body_plain)
+                if rendered:
+                    body_parts.append(rendered)
+                children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                if len(children) > 1:
+                    body_parts.append(self._ussd_render_menu(children))
+                session.current_step_id = current.id
+                return (self._ussd_join(body_parts), False)
+            if st == 'set_variable':
+                # Reuse the push runtime's variable resolver — it works against
+                # the contact's stored answer messages, which we just persisted.
+                self._set_variable_from_step(self._ussd_message_facade(session), current)
+                children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                current = children[0] if children else False
+                continue
+            if st == 'execute_code':
+                try:
+                    current.execute_code(self._ussd_message_facade(session))
+                except Exception as e:
+                    _logger.error(f"USSD execute_code failed on step {current.id}: {e}", exc_info=True)
+                children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                current = children[0] if children else False
+                continue
+            if st == 'jump_to_flow':
+                # Reuse existing jump infrastructure by mutating contact state.
+                facade = self._ussd_message_facade(session)
+                self._process_jump_to_flow_step(facade, current, depth=depth + 1)
+                # The facade's step_id is now the entry step in the target bot.
+                # Update session and continue from there.
+                session.chatbot_id = facade.chatbot_id.id
+                next_step = facade.step_id
+                current = next_step
+                continue
+            if st == 'end_flow':
+                # Pop call stack if any (mirrors _handle_end_flow's behavior)
+                contact = session.contact_id
+                stack = list(contact.call_stack or [])
+                if stack:
+                    frame = stack.pop()
+                    contact.call_stack = stack
+                    self._apply_var_mapping_snapshot(contact, frame.get('out_mapping') or [])
+                    caller_bot = self.env['whatsapp.chatbot'].browse(frame.get('caller_chatbot_id')).exists()
+                    jump_step = self.env['whatsapp.chatbot.step'].browse(frame.get('return_step_id')).exists()
+                    if caller_bot and jump_step:
+                        session.chatbot_id = caller_bot.id
+                        children = jump_step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                        current = children[0] if children else False
+                        continue
+                return (self._ussd_join(body_parts), True)
+            if st == 'transfer_to_agent':
+                # USSD has no live-handoff equivalent — render the body if any and end.
+                rendered = self._ussd_render_body(session, current.body_plain)
+                if rendered:
+                    body_parts.append(rendered)
+                return (self._ussd_join(body_parts), True)
+            # Unknown step type — advance to first child or stop
+            children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+            current = children[0] if children else False
+        return (self._ussd_join(body_parts), True)
+
+    def _ussd_render_body(self, session, body_plain):
+        if not body_plain:
+            return ''
+        variables = {v.variable_id.name: v for v in session.contact_id.variable_value_ids
+                     if v.chatbot_id.id == session.chatbot_id.id}
+        return self._replace_variables_in_message(body_plain, variables)
+
+    def _ussd_render_menu(self, children):
+        """Render a numbered menu from the trigger-answer values of children.
+        Falls back to step names when no trigger answers are configured."""
+        lines = []
+        for i, child in enumerate(children, start=1):
+            ans = child.trigger_answer_ids.sorted(key=lambda a: (a.sequence, a.id))
+            label = ans[0].value if ans else child.name
+            lines.append(f"{i}. {label}")
+        return "\n".join(lines)
+
+    def _ussd_join(self, body_parts):
+        return "\n".join(p for p in body_parts if p)
+
+    def _ussd_message_facade(self, session):
+        """Return a transient chatbot_message-like record bound to the
+        session's contact so the existing push-runtime helpers (set_variable,
+        jump_to_flow) can mutate state without us reinventing them."""
+        # Cache a single outgoing facade per session per turn.
+        existing = self.search([
+            ('contact_id', '=', session.contact_id.id),
+            ('chatbot_id', '=', session.chatbot_id.id),
+            ('type', '=', 'outgoing'),
+        ], order='create_date desc', limit=1)
+        if existing:
+            return existing
+        return self.sudo().create({
+            'contact_id': session.contact_id.id,
+            'chatbot_id': session.chatbot_id.id,
+            'mobile_number': session.phone_number or '',
+            'message_plain': '',
+            'message_html': '',
+            'type': 'outgoing',
+        })
+
+    def _close_ussd_session(self, session, outcome='completed'):
+        session.outcome = outcome
+
+    # ── Channel routing helpers ─────────────────────────────────────────────
+
+    def _find_chatbot_for_trigger(self, message_text, channel, sender_address=None):
+        """Match a trigger word to a chatbot, preferring bots whose
+        sender_address matches the inbound. Falls back to catch-all bots
+        (sender_address blank) so pre-multi-number setups keep working."""
+        if not message_text:
+            return self.env['whatsapp.chatbot']
+        Trigger = self.env['whatsapp.chatbot.trigger'].sudo()
+        if sender_address:
+            m = Trigger.search([
+                ('name', '=ilike', message_text),
+                ('chatbot_id.channel', '=', channel),
+                ('chatbot_id.sender_address', '=', sender_address),
+            ], limit=1)
+            if m:
+                return m.chatbot_id
+        # Backward-compat: catch-all bots (sender_address blank)
+        m = Trigger.search([
+            ('name', '=ilike', message_text),
+            ('chatbot_id.channel', '=', channel),
+            '|',
+            ('chatbot_id.sender_address', '=', False),
+            ('chatbot_id.sender_address', '=', ''),
+        ], limit=1)
+        return m.chatbot_id if m else self.env['whatsapp.chatbot']
+
+    def _is_engagement_valid(self, chatbot_contact, channel, sender_address=None):
+        """Whether the contact's recorded engagement applies to this inbound.
+        Engagement is scoped to (channel, sender_address) — a contact engaged
+        in a bot on sender X doesn't continue when messaging on sender Y."""
+        if not chatbot_contact.last_chatbot_id or not chatbot_contact.last_step_id:
+            return False
+        if chatbot_contact.last_step_id.step_type == 'end_flow':
+            return False
+        bot = chatbot_contact.last_chatbot_id
+        if bot.channel != channel:
+            return False
+        bot_sender = bot.sender_address or ''
+        if not bot_sender:
+            # Catch-all bot — match any inbound on this channel (backward compat)
+            return True
+        if not sender_address:
+            return False  # Bot expects a specific sender; we have none
+        return bot_sender == sender_address
+
     def _mark_contact_entered(self, contact, chatbot):
         """Idempotently record that `contact` has entered `chatbot`.
         Tracked on the historical contact.chatbot_ids M2M (distinct from
@@ -356,20 +609,21 @@ class WhatsAppChatbotMessage(models.Model):
             return
         contact.sudo().write({'chatbot_ids': [(4, chatbot.id)]})
 
-    def _resolve_trigger_for_engaged(self, current_chatbot, message_text, channel=None):
+    def _resolve_trigger_for_engaged(self, current_chatbot, message_text,
+                                     channel=None, sender_address=None):
         """Resolve trigger lookup for a contact already engaged in a flow.
         Returns (target_chatbot, kind) where kind is:
             'restart' — message matches a trigger on the current bot
             'switch'  — message matches a trigger on a DIFFERENT bot
             None      — no trigger match (treat message as a reply)
+
         When `channel` is given, cross-bot switches are restricted to bots on
-        the same channel (jumping from a WhatsApp conversation into an SMS bot
-        mid-message doesn't make sense). Pure lookup: does NOT mutate any record.
+        the same channel. When `sender_address` is also given, the cross-bot
+        switch prefers bots with that sender, falling back to catch-all bots.
+        Pure lookup — does NOT mutate any record.
         """
         if not message_text or not current_chatbot:
             return self.env['whatsapp.chatbot'], None
-        # Case-insensitive exact match (=ilike) — trigger names are stored as
-        # the user typed them, not normalised to uppercase.
         Trigger = self.env['whatsapp.chatbot.trigger'].sudo()
         same = Trigger.search([
             ('name', '=ilike', message_text),
@@ -377,10 +631,27 @@ class WhatsAppChatbotMessage(models.Model):
         ], limit=1)
         if same:
             return current_chatbot, 'restart'
-        cross_domain = [('name', '=ilike', message_text)]
-        if channel:
-            cross_domain.append(('chatbot_id.channel', '=', channel))
-        cross = Trigger.search(cross_domain, limit=1)
+        if not channel:
+            cross = Trigger.search([('name', '=ilike', message_text)], limit=1)
+            if cross:
+                return cross.chatbot_id, 'switch'
+            return self.env['whatsapp.chatbot'], None
+        # Channel-restricted lookup: prefer sender-specific bots.
+        if sender_address:
+            cross = Trigger.search([
+                ('name', '=ilike', message_text),
+                ('chatbot_id.channel', '=', channel),
+                ('chatbot_id.sender_address', '=', sender_address),
+            ], limit=1)
+            if cross:
+                return cross.chatbot_id, 'switch'
+        cross = Trigger.search([
+            ('name', '=ilike', message_text),
+            ('chatbot_id.channel', '=', channel),
+            '|',
+            ('chatbot_id.sender_address', '=', False),
+            ('chatbot_id.sender_address', '=', ''),
+        ], limit=1)
         if cross:
             return cross.chatbot_id, 'switch'
         return self.env['whatsapp.chatbot'], None
@@ -920,34 +1191,25 @@ class WhatsAppChatbotMessage(models.Model):
                     'partner_id': partner.id,
                 })
             
-            # Extract message text for trigger matching
+            # Extract message text + recipient address for trigger matching
             message_text = message_body.strip() if message_body else ''
-            
+            phone_number_id = (value_data.get('metadata', {}) or {}).get('phone_number_id', '') or ''
+
             # Track whether we're starting from a trigger (send first step) or continuing (process reply)
             from_trigger = False
             chatbot = None
-            if chatbot_contact.last_chatbot_id and chatbot_contact.last_step_id:
-                # An engagement only counts if it's on the same channel as this
-                # inbound (a contact engaged in an SMS bot doesn't continue that
-                # conversation when they message via WhatsApp).
-                if chatbot_contact.last_step_id.step_type != 'end_flow' and \
-                        chatbot_contact.last_chatbot_id.channel == 'whatsapp':
-                    chatbot = chatbot_contact.last_chatbot_id
-                    _logger.info(f"Contact is actively engaged with chatbot: {chatbot.name}")
+            if self._is_engagement_valid(chatbot_contact, 'whatsapp', phone_number_id):
+                chatbot = chatbot_contact.last_chatbot_id
+                _logger.info(f"Contact is actively engaged with chatbot: {chatbot.name}")
 
             # If not actively engaged, check for trigger words on a WhatsApp bot
+            # whose sender_address matches the inbound's phone_number_id
+            # (falling back to catch-all bots for backward compat).
             if not chatbot and message_text:
-                # Case-insensitive exact match (=ilike) — trigger names are stored
-                # in whatever case they were created with. Filtered to WhatsApp
-                # bots so an SMS bot's trigger doesn't claim a WA message.
-                matching_trigger = self.env['whatsapp.chatbot.trigger'].sudo().search([
-                    ('name', '=ilike', message_text),
-                    ('chatbot_id.channel', '=', 'whatsapp'),
-                ], limit=1)
-                
-                if matching_trigger:
+                resolved = self._find_chatbot_for_trigger(message_text, 'whatsapp', phone_number_id)
+                if resolved:
                     from_trigger = True
-                    chatbot = matching_trigger.chatbot_id
+                    chatbot = resolved
                     _logger.info(f"Trigger '{message_text}' matched to chatbot: {chatbot.name}")
                     # Clear all variables when starting a new chatbot flow
                     chatbot_contact.variable_value_ids.unlink()
@@ -972,7 +1234,10 @@ class WhatsAppChatbotMessage(models.Model):
             # If user is engaged but sends a trigger word, restart (same-bot
             # trigger wins) or switch to another bot (cross-bot trigger).
             if chatbot and message_text and not from_trigger:
-                target, kind = self._resolve_trigger_for_engaged(chatbot, message_text, channel='whatsapp')
+                target, kind = self._resolve_trigger_for_engaged(
+                    chatbot, message_text,
+                    channel='whatsapp', sender_address=phone_number_id,
+                )
                 if target:
                     from_trigger = True
                     if kind == 'switch':
@@ -1071,17 +1336,21 @@ class WhatsAppChatbotMessage(models.Model):
             _logger.error(f"Error processing chatbot message: {e}", exc_info=True)
     
     @api.model
-    def process_incoming_sms_message(self, from_number, message_text, sms_message_id=None):
+    def process_incoming_sms_message(self, from_number, message_text,
+                                     sms_message_id=None, to_number=None):
         """Process an inbound SMS through the chatbot system. Called by the
         Infobip MO webhook controller after normalising the payload.
 
         Mirrors process_incoming_webhook_message but routes all trigger and
-        engagement lookups through the SMS channel.
+        engagement lookups through the SMS channel. `to_number` is the SMS
+        sender ID the user sent to — used to route to the right bot when
+        multiple SMS bots share the same Odoo install.
         """
         try:
             ChatbotContact = self.env['whatsapp.chatbot.contact'].sudo()
             from_number = (from_number or '').strip()
             message_text = (message_text or '').strip()
+            to_number = (to_number or '').strip()
             if not from_number:
                 _logger.warning("Inbound SMS missing sender number")
                 return
@@ -1100,21 +1369,16 @@ class WhatsAppChatbotMessage(models.Model):
             from_trigger = False
             chatbot = None
 
-            # Engagement only carries over within the same channel.
-            if chatbot_contact.last_chatbot_id and chatbot_contact.last_step_id:
-                if chatbot_contact.last_step_id.step_type != 'end_flow' and \
-                        chatbot_contact.last_chatbot_id.channel == 'sms':
-                    chatbot = chatbot_contact.last_chatbot_id
-                    _logger.info(f"SMS contact actively engaged with chatbot: {chatbot.name}")
+            # Engagement only carries over within (channel, sender_address).
+            if self._is_engagement_valid(chatbot_contact, 'sms', to_number):
+                chatbot = chatbot_contact.last_chatbot_id
+                _logger.info(f"SMS contact actively engaged with chatbot: {chatbot.name}")
 
             if not chatbot and message_text:
-                matching_trigger = self.env['whatsapp.chatbot.trigger'].sudo().search([
-                    ('name', '=ilike', message_text),
-                    ('chatbot_id.channel', '=', 'sms'),
-                ], limit=1)
-                if matching_trigger:
+                resolved = self._find_chatbot_for_trigger(message_text, 'sms', to_number)
+                if resolved:
                     from_trigger = True
-                    chatbot = matching_trigger.chatbot_id
+                    chatbot = resolved
                     _logger.info(f"SMS trigger '{message_text}' matched chatbot: {chatbot.name}")
                     chatbot_contact.variable_value_ids.unlink()
                     chatbot_contact.write({
@@ -1133,7 +1397,10 @@ class WhatsAppChatbotMessage(models.Model):
 
             # Engaged + matched a trigger word → restart or switch within SMS channel.
             if chatbot and message_text and not from_trigger:
-                target, kind = self._resolve_trigger_for_engaged(chatbot, message_text, channel='sms')
+                target, kind = self._resolve_trigger_for_engaged(
+                    chatbot, message_text,
+                    channel='sms', sender_address=to_number,
+                )
                 if target:
                     from_trigger = True
                     if kind == 'switch':

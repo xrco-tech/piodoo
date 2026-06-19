@@ -251,6 +251,95 @@ class TestChannelTriggerRouting(ChannelFixtures):
         # No new engagement
         self.assertFalse(self.contact.last_chatbot_id)
 
+    # ── Sender-address routing ──────────────────────────────────────────────
+
+    def test_find_chatbot_for_trigger_prefers_sender_match(self):
+        """A bot configured with sender_address 'A' wins over a catch-all bot
+        when the inbound's sender_address is 'A'."""
+        catchall = self.env['whatsapp.chatbot'].create({
+            'name': 'WA Catchall', 'channel': 'whatsapp', 'status': 'published',
+        })
+        specific = self.env['whatsapp.chatbot'].create({
+            'name': 'WA Specific', 'channel': 'whatsapp', 'status': 'published',
+            'sender_address': 'NUM-A',
+        })
+        self.env['whatsapp.chatbot.trigger'].create({'name': 'BOTH', 'chatbot_id': catchall.id})
+        self.env['whatsapp.chatbot.trigger'].create({'name': 'BOTH', 'chatbot_id': specific.id})
+        m = self.env['whatsapp.chatbot.message']
+        # Inbound for NUM-A → routes to specific
+        self.assertEqual(
+            m._find_chatbot_for_trigger('BOTH', 'whatsapp', sender_address='NUM-A'),
+            specific,
+        )
+        # Inbound for NUM-B (no match) → falls back to catchall
+        self.assertEqual(
+            m._find_chatbot_for_trigger('BOTH', 'whatsapp', sender_address='NUM-B'),
+            catchall,
+        )
+
+    def test_find_chatbot_for_trigger_no_sender_falls_back_to_catchall(self):
+        """Inbound with no sender info matches only catch-all bots."""
+        specific = self.env['whatsapp.chatbot'].create({
+            'name': 'WA Specific 2', 'channel': 'whatsapp', 'status': 'published',
+            'sender_address': 'X',
+        })
+        self.env['whatsapp.chatbot.trigger'].create({'name': 'ONLYHERE', 'chatbot_id': specific.id})
+        m = self.env['whatsapp.chatbot.message']
+        # No sender_address on inbound and no catch-all bot has this trigger
+        self.assertFalse(m._find_chatbot_for_trigger('ONLYHERE', 'whatsapp', sender_address=''))
+
+    def test_engagement_valid_requires_matching_sender(self):
+        """A contact engaged in bot with sender_address X is not engaged for
+        inbound on sender_address Y."""
+        bot = self.env['whatsapp.chatbot'].create({
+            'name': 'Bot With Sender', 'channel': 'whatsapp',
+            'sender_address': 'NUMBER-A',
+        })
+        root = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Eng Root', 'chatbot_id': bot.id,
+            'step_type': 'question_text', 'body_plain': '?',
+        })
+        self.contact.last_chatbot_id = bot.id
+        self.contact.last_step_id = root.id
+        m = self.env['whatsapp.chatbot.message']
+        self.assertTrue(m._is_engagement_valid(self.contact, 'whatsapp', 'NUMBER-A'))
+        self.assertFalse(m._is_engagement_valid(self.contact, 'whatsapp', 'NUMBER-B'))
+        self.assertFalse(m._is_engagement_valid(self.contact, 'sms', 'NUMBER-A'))
+
+    def test_engagement_valid_catchall_accepts_any_sender(self):
+        """A catch-all bot (sender_address blank) accepts any inbound on its
+        channel — preserves pre-multi-number behaviour."""
+        bot = self.env['whatsapp.chatbot'].create({
+            'name': 'Catchall Bot', 'channel': 'whatsapp',
+            # sender_address intentionally blank
+        })
+        root = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Catchall Root', 'chatbot_id': bot.id,
+            'step_type': 'question_text', 'body_plain': '?',
+        })
+        self.contact.last_chatbot_id = bot.id
+        self.contact.last_step_id = root.id
+        m = self.env['whatsapp.chatbot.message']
+        self.assertTrue(m._is_engagement_valid(self.contact, 'whatsapp', 'ANYTHING'))
+        self.assertTrue(m._is_engagement_valid(self.contact, 'whatsapp', ''))
+        self.assertFalse(m._is_engagement_valid(self.contact, 'sms', 'ANYTHING'))
+
+    def test_resolve_trigger_for_engaged_prefers_sender(self):
+        bot_a = self.env['whatsapp.chatbot'].create({
+            'name': 'Switch Target A', 'channel': 'whatsapp', 'sender_address': 'NUM-A',
+        })
+        bot_b = self.env['whatsapp.chatbot'].create({
+            'name': 'Switch Target B', 'channel': 'whatsapp', 'sender_address': 'NUM-B',
+        })
+        self.env['whatsapp.chatbot.trigger'].create({'name': 'SWITCH', 'chatbot_id': bot_a.id})
+        self.env['whatsapp.chatbot.trigger'].create({'name': 'SWITCH', 'chatbot_id': bot_b.id})
+        m = self.env['whatsapp.chatbot.message']
+        target, kind = m._resolve_trigger_for_engaged(
+            self.wa_bot, 'SWITCH', channel='whatsapp', sender_address='NUM-B',
+        )
+        self.assertEqual(target, bot_b)
+        self.assertEqual(kind, 'switch')
+
     def test_engaged_in_sms_bot_ignored_on_whatsapp_inbound(self):
         """A contact engaged in an SMS flow doesn't have that engagement
         carry over when they send a WhatsApp message — channels are isolated."""

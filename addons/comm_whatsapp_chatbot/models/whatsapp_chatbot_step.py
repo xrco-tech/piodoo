@@ -323,7 +323,7 @@ class WhatsAppChatbotStep(models.Model):
 
     @api.constrains('step_type', 'wa_message_type', 'chatbot_id')
     def _check_interactive_only_on_whatsapp(self):
-        """SMS bots cannot use interactive WhatsApp step types."""
+        """SMS and USSD bots cannot use interactive WhatsApp step types."""
         interactive = {'interactive_button', 'interactive_list', 'interactive_flow'}
         for rec in self:
             if rec.wa_message_type in interactive and rec.chatbot_id.channel != 'whatsapp':
@@ -331,6 +331,19 @@ class WhatsAppChatbotStep(models.Model):
                     f"Interactive message type '{rec.wa_message_type}' is only supported on "
                     "WhatsApp chatbots. Switch the chatbot's channel to WhatsApp or change the "
                     "message type to Non-Interactive."
+                )
+
+    @api.constrains('step_type', 'chatbot_id')
+    def _check_ussd_step_types(self):
+        """USSD is text-only: media-question step types are not allowed."""
+        media_questions = {
+            'question_document', 'question_image', 'question_video', 'question_audio',
+        }
+        for rec in self:
+            if rec.chatbot_id.channel == 'ussd' and rec.step_type in media_questions:
+                raise ValidationError(
+                    f"Step type '{rec.step_type}' is not supported on USSD chatbots — "
+                    "USSD is text-only. Use a question_text step instead."
                 )
 
 

@@ -31,7 +31,9 @@
                     <field name="name"/>
                     <field name="channel" widget="badge"
                         decoration-success="channel == 'whatsapp'"
-                        decoration-info="channel == 'sms'"/>
+                        decoration-info="channel == 'sms'"
+                        decoration-warning="channel == 'ussd'"/>
+                    <field name="sender_address" optional="show"/>
                     <field name="status" widget="badge"
                         decoration-success="status == 'published'"
                         decoration-warning="status == 'draft'"
@@ -65,8 +67,8 @@
                                 <div class="fw-bold">
                                     <field name="name"/>
                                 </div>
-                                <span t-attf-class="badge rounded-pill #{record.channel.raw_value == 'sms' ? 'text-bg-info' : 'text-bg-success'}">
-                                    <i t-attf-class="fa #{record.channel.raw_value == 'sms' ? 'fa-mobile' : 'fa-whatsapp'} me-1"/>
+                                <span t-attf-class="badge rounded-pill #{record.channel.raw_value == 'ussd' ? 'text-bg-warning' : (record.channel.raw_value == 'sms' ? 'text-bg-info' : 'text-bg-success')}">
+                                    <i t-attf-class="fa #{record.channel.raw_value == 'ussd' ? 'fa-hashtag' : (record.channel.raw_value == 'sms' ? 'fa-mobile' : 'fa-whatsapp')} me-1"/>
                                     <t t-esc="record.channel.value"/>
                                 </span>
                             </div>
@@ -158,6 +160,17 @@
                             <group string="Basic Information">
                                 <field name="name"/>
                                 <field name="channel" widget="radio" options="{'horizontal': true}"/>
+                                <field name="sender_address"
+                                       placeholder="Optional — leave blank to act as catch-all"/>
+                                <div class="text-muted small" colspan="2" invisible="channel != 'whatsapp'">
+                                    Meta phone_number_id (e.g. 447501465113088). Inbound is routed to this bot when metadata.phone_number_id matches.
+                                </div>
+                                <div class="text-muted small" colspan="2" invisible="channel != 'sms'">
+                                    Carrier sender ID (e.g. 27693808740 or PIODOO). Inbound is routed when the SMS `to` field matches.
+                                </div>
+                                <div class="text-muted small" colspan="2" invisible="channel != 'ussd'">
+                                    Dialled service code (e.g. *123#). Inbound is routed when serviceCode matches.
+                                </div>
                                 <field name="description" widget="text"/>
                             </group>
                             <group string="Keywords and Variables">
