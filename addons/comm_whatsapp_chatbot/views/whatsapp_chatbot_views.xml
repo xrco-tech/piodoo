@@ -29,6 +29,9 @@
             <field name="arch" type="xml">
                 <list string="WhatsApp Chatbots">
                     <field name="name"/>
+                    <field name="channel" widget="badge"
+                        decoration-success="channel == 'whatsapp'"
+                        decoration-info="channel == 'sms'"/>
                     <field name="status" widget="badge"
                         decoration-success="status == 'published'"
                         decoration-warning="status == 'draft'"
@@ -50,6 +53,7 @@
                 <kanban default_group_by="status" class="o_kanban_small_column">
                     <field name="name"/>
                     <field name="status"/>
+                    <field name="channel"/>
                     <field name="step_count"/>
                     <field name="chatbot_contact_count"/>
                     <field name="historical_contact_count"/>
@@ -57,8 +61,14 @@
                     <field name="description"/>
                     <templates>
                         <t t-name="card">
-                            <div class="fw-bold mb-1">
-                                <field name="name"/>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="fw-bold">
+                                    <field name="name"/>
+                                </div>
+                                <span t-attf-class="badge rounded-pill #{record.channel.raw_value == 'sms' ? 'text-bg-info' : 'text-bg-success'}">
+                                    <i t-attf-class="fa #{record.channel.raw_value == 'sms' ? 'fa-mobile' : 'fa-whatsapp'} me-1"/>
+                                    <t t-esc="record.channel.value"/>
+                                </span>
                             </div>
                             <t t-if="record.description.value">
                                 <div class="text-muted small mb-2">
@@ -147,6 +157,7 @@
                         <group>
                             <group string="Basic Information">
                                 <field name="name"/>
+                                <field name="channel" widget="radio" options="{'horizontal': true}"/>
                                 <field name="description" widget="text"/>
                             </group>
                             <group string="Keywords and Variables">

@@ -21,6 +21,13 @@ class WhatsAppChatbot(models.Model):
         ('inactive', 'Inactive'),
     ], string='Status', default='draft', required=True, tracking=True)
     description = fields.Text(string="Description", tracking=True)
+    # Delivery channel. One bot per channel — flows that should run on both
+    # WhatsApp and SMS are modelled as two records.
+    channel = fields.Selection([
+        ('whatsapp', 'WhatsApp'),
+        ('sms', 'SMS'),
+    ], string='Channel', default='whatsapp', required=True, tracking=True,
+       help="The messaging channel this chatbot runs on. SMS bots cannot use interactive step types.")
     
     # Steps and flow
     step_ids = fields.One2many("whatsapp.chatbot.step", "chatbot_id", string="Steps", tracking=True)

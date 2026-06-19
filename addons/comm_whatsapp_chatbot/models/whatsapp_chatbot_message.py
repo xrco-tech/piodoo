@@ -285,6 +285,66 @@ class WhatsAppChatbotMessage(models.Model):
                 return False
         return False
     
+    # ── Channel adapters ─────────────────────────────────────────────────────
+
+    def _send_message_via_channel(self, chatbot, step, recipient_phone, body,
+                                  phone_number_id=None, context_message_id=None):
+        """Route outbound sends through the chatbot's configured channel.
+        Returns {'success': bool, 'message_id': str | None, 'error': str | None}."""
+        if chatbot.channel == 'sms':
+            return self._send_via_sms(recipient_phone, body)
+        # Default: WhatsApp.
+        return self._send_via_whatsapp(
+            step=step,
+            recipient_phone=recipient_phone,
+            body=body,
+            phone_number_id=phone_number_id,
+            context_message_id=context_message_id,
+        )
+
+    def _send_via_whatsapp(self, step, recipient_phone, body,
+                           phone_number_id=None, context_message_id=None):
+        """Existing WhatsApp send path: interactive_flow uses the flow endpoint,
+        everything else uses the plain message endpoint."""
+        WhatsAppMessage = self.env['whatsapp.message'].sudo()
+        wa_type = step.wa_message_type if step.step_type == 'question_interactive' else 'non_interactive'
+        if wa_type == 'interactive_flow':
+            return WhatsAppMessage.send_whatsapp_interactive_flow(
+                recipient_phone=recipient_phone,
+                step=step,
+                phone_number_id=phone_number_id,
+                context_message_id=context_message_id,
+            )
+        return WhatsAppMessage.send_whatsapp_message(
+            recipient_phone=recipient_phone,
+            message_text=body,
+            phone_number_id=phone_number_id,
+            context_message_id=context_message_id,
+        )
+
+    def _send_via_sms(self, recipient_phone, body):
+        """Create and dispatch an sms.sms record. comm_sms picks the Infobip
+        transport based on the sms.use_infobip_api config flag."""
+        if not recipient_phone:
+            return {'success': False, 'message_id': None, 'error': 'missing recipient'}
+        try:
+            sms = self.env['sms.sms'].sudo().create({
+                'number': recipient_phone,
+                'body': body or '',
+            })
+            sms._send(unlink_failed=False, unlink_sent=False, raise_exception=False)
+            sms.flush_recordset()
+            if sms.state in ('sent', 'pending', 'process'):
+                return {'success': True, 'message_id': sms.uuid or str(sms.id), 'error': None}
+            return {
+                'success': False,
+                'message_id': sms.uuid or str(sms.id),
+                'error': sms.failure_type or sms.state or 'sms send failed',
+            }
+        except Exception as e:
+            _logger.error(f"SMS send failed: {e}", exc_info=True)
+            return {'success': False, 'message_id': None, 'error': str(e)}
+
     def _mark_contact_entered(self, contact, chatbot):
         """Idempotently record that `contact` has entered `chatbot`.
         Tracked on the historical contact.chatbot_ids M2M (distinct from
@@ -296,13 +356,15 @@ class WhatsAppChatbotMessage(models.Model):
             return
         contact.sudo().write({'chatbot_ids': [(4, chatbot.id)]})
 
-    def _resolve_trigger_for_engaged(self, current_chatbot, message_text):
+    def _resolve_trigger_for_engaged(self, current_chatbot, message_text, channel=None):
         """Resolve trigger lookup for a contact already engaged in a flow.
         Returns (target_chatbot, kind) where kind is:
             'restart' — message matches a trigger on the current bot
             'switch'  — message matches a trigger on a DIFFERENT bot
             None      — no trigger match (treat message as a reply)
-        Pure lookup: does NOT mutate any record.
+        When `channel` is given, cross-bot switches are restricted to bots on
+        the same channel (jumping from a WhatsApp conversation into an SMS bot
+        mid-message doesn't make sense). Pure lookup: does NOT mutate any record.
         """
         if not message_text or not current_chatbot:
             return self.env['whatsapp.chatbot'], None
@@ -315,9 +377,10 @@ class WhatsAppChatbotMessage(models.Model):
         ], limit=1)
         if same:
             return current_chatbot, 'restart'
-        cross = Trigger.search([
-            ('name', '=ilike', message_text),
-        ], limit=1)
+        cross_domain = [('name', '=ilike', message_text)]
+        if channel:
+            cross_domain.append(('chatbot_id.channel', '=', channel))
+        cross = Trigger.search(cross_domain, limit=1)
         if cross:
             return cross.chatbot_id, 'switch'
         return self.env['whatsapp.chatbot'], None
@@ -734,24 +797,15 @@ class WhatsAppChatbotMessage(models.Model):
                 phone_number_id = message.wa_message_id.phone_number_id
                 context_message_id = message.wa_message_id.message_id
             
-            # Send message via WhatsApp API — branch on step message type
-            WhatsAppMessage = self.env['whatsapp.message'].sudo()
-            wa_type = step.wa_message_type if step.step_type == 'question_interactive' else 'non_interactive'
-
-            if wa_type == 'interactive_flow':
-                result = WhatsAppMessage.send_whatsapp_interactive_flow(
-                    recipient_phone=phone_number,
-                    step=step,
-                    phone_number_id=phone_number_id,
-                    context_message_id=context_message_id,
-                )
-            else:
-                result = WhatsAppMessage.send_whatsapp_message(
-                    recipient_phone=phone_number,
-                    message_text=processed_body,
-                    phone_number_id=phone_number_id,
-                    context_message_id=context_message_id,
-                )
+            # Send via the bot's configured channel adapter (WhatsApp or SMS).
+            result = self._send_message_via_channel(
+                chatbot=step.chatbot_id,
+                step=step,
+                recipient_phone=phone_number,
+                body=processed_body,
+                phone_number_id=phone_number_id,
+                context_message_id=context_message_id,
+            )
             
             if result.get('success'):
                 _logger.info(f"Chatbot message sent successfully: {result.get('message_id')}")
@@ -873,17 +927,22 @@ class WhatsAppChatbotMessage(models.Model):
             from_trigger = False
             chatbot = None
             if chatbot_contact.last_chatbot_id and chatbot_contact.last_step_id:
-                # Check if the last step is not an end_flow step
-                if chatbot_contact.last_step_id.step_type != 'end_flow':
+                # An engagement only counts if it's on the same channel as this
+                # inbound (a contact engaged in an SMS bot doesn't continue that
+                # conversation when they message via WhatsApp).
+                if chatbot_contact.last_step_id.step_type != 'end_flow' and \
+                        chatbot_contact.last_chatbot_id.channel == 'whatsapp':
                     chatbot = chatbot_contact.last_chatbot_id
                     _logger.info(f"Contact is actively engaged with chatbot: {chatbot.name}")
-            
-            # If not actively engaged, check for trigger words
+
+            # If not actively engaged, check for trigger words on a WhatsApp bot
             if not chatbot and message_text:
                 # Case-insensitive exact match (=ilike) — trigger names are stored
-                # in whatever case they were created with.
+                # in whatever case they were created with. Filtered to WhatsApp
+                # bots so an SMS bot's trigger doesn't claim a WA message.
                 matching_trigger = self.env['whatsapp.chatbot.trigger'].sudo().search([
-                    ('name', '=ilike', message_text)
+                    ('name', '=ilike', message_text),
+                    ('chatbot_id.channel', '=', 'whatsapp'),
                 ], limit=1)
                 
                 if matching_trigger:
@@ -913,7 +972,7 @@ class WhatsAppChatbotMessage(models.Model):
             # If user is engaged but sends a trigger word, restart (same-bot
             # trigger wins) or switch to another bot (cross-bot trigger).
             if chatbot and message_text and not from_trigger:
-                target, kind = self._resolve_trigger_for_engaged(chatbot, message_text)
+                target, kind = self._resolve_trigger_for_engaged(chatbot, message_text, channel='whatsapp')
                 if target:
                     from_trigger = True
                     if kind == 'switch':
@@ -1011,6 +1070,117 @@ class WhatsAppChatbotMessage(models.Model):
         except Exception as e:
             _logger.error(f"Error processing chatbot message: {e}", exc_info=True)
     
+    @api.model
+    def process_incoming_sms_message(self, from_number, message_text, sms_message_id=None):
+        """Process an inbound SMS through the chatbot system. Called by the
+        Infobip MO webhook controller after normalising the payload.
+
+        Mirrors process_incoming_webhook_message but routes all trigger and
+        engagement lookups through the SMS channel.
+        """
+        try:
+            ChatbotContact = self.env['whatsapp.chatbot.contact'].sudo()
+            from_number = (from_number or '').strip()
+            message_text = (message_text or '').strip()
+            if not from_number:
+                _logger.warning("Inbound SMS missing sender number")
+                return
+
+            partner = self._find_or_create_partner(
+                from_number, {'wa_id': from_number, 'profile': {}},
+            )
+            if not partner:
+                _logger.warning(f"Could not find or create partner for SMS from {from_number}")
+                return
+
+            chatbot_contact = ChatbotContact.search([('partner_id', '=', partner.id)], limit=1)
+            if not chatbot_contact:
+                chatbot_contact = ChatbotContact.create({'partner_id': partner.id})
+
+            from_trigger = False
+            chatbot = None
+
+            # Engagement only carries over within the same channel.
+            if chatbot_contact.last_chatbot_id and chatbot_contact.last_step_id:
+                if chatbot_contact.last_step_id.step_type != 'end_flow' and \
+                        chatbot_contact.last_chatbot_id.channel == 'sms':
+                    chatbot = chatbot_contact.last_chatbot_id
+                    _logger.info(f"SMS contact actively engaged with chatbot: {chatbot.name}")
+
+            if not chatbot and message_text:
+                matching_trigger = self.env['whatsapp.chatbot.trigger'].sudo().search([
+                    ('name', '=ilike', message_text),
+                    ('chatbot_id.channel', '=', 'sms'),
+                ], limit=1)
+                if matching_trigger:
+                    from_trigger = True
+                    chatbot = matching_trigger.chatbot_id
+                    _logger.info(f"SMS trigger '{message_text}' matched chatbot: {chatbot.name}")
+                    chatbot_contact.variable_value_ids.unlink()
+                    chatbot_contact.write({
+                        'last_chatbot_id': chatbot.id,
+                        'last_step_id': False,
+                        'call_stack': [],
+                    })
+                    self._mark_contact_entered(chatbot_contact, chatbot)
+                else:
+                    _logger.info(f"No SMS trigger matched '{message_text}'. Skipping.")
+                    return
+
+            if not chatbot:
+                _logger.warning("No SMS chatbot found to process message")
+                return
+
+            # Engaged + matched a trigger word → restart or switch within SMS channel.
+            if chatbot and message_text and not from_trigger:
+                target, kind = self._resolve_trigger_for_engaged(chatbot, message_text, channel='sms')
+                if target:
+                    from_trigger = True
+                    if kind == 'switch':
+                        _logger.info(
+                            f"SMS trigger '{message_text}' while engaged with '{chatbot.name}': "
+                            f"switching to chatbot '{target.name}'"
+                        )
+                        chatbot = target
+                    else:
+                        _logger.info(f"SMS trigger '{message_text}' while engaged: restarting flow for {chatbot.name}")
+                    chatbot_contact.variable_value_ids.unlink()
+                    chatbot_contact.write({
+                        'last_chatbot_id': chatbot.id,
+                        'last_step_id': False,
+                        'call_stack': [],
+                    })
+                    self._mark_contact_entered(chatbot_contact, chatbot)
+
+            if from_trigger:
+                step_to_use = self.env['whatsapp.chatbot.step'].sudo().search([
+                    ('chatbot_id', '=', chatbot.id),
+                    ('parent_id', '=', False),
+                ], order='sequence asc', limit=1)
+            else:
+                step_to_use = chatbot_contact.last_step_id
+
+            chatbot_message = self.create({
+                'contact_id': chatbot_contact.id,
+                'mobile_number': from_number,
+                'chatbot_id': chatbot.id,
+                'message_plain': message_text,
+                'message_html': message_text,
+                'type': 'incoming',
+                'step_id': step_to_use.id if step_to_use else False,
+            })
+            _logger.info(
+                f"Created incoming SMS chatbot message: {chatbot_message.id} "
+                f"(infobip messageId={sms_message_id})"
+            )
+            chatbot_message.flush_recordset()
+
+            return self._handle_incoming_message(
+                chatbot_message, depth=0, visited_steps=set(), from_trigger=from_trigger,
+            )
+        except Exception as e:
+            _logger.error(f"Error processing SMS chatbot message: {e}", exc_info=True)
+
     def _find_or_create_partner(self, wa_id, contact_data):
         """
         Find or create a partner based on WhatsApp ID.

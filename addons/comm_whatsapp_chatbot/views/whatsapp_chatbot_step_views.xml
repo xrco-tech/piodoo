@@ -55,7 +55,7 @@
                                 <field name="parent_id" string="Parent Step"/>
                             </group>
                             <group>
-                                <field name="wa_message_type" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'jump_to_flow', 'end_flow']"/>
+                                <field name="wa_message_type" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'jump_to_flow', 'end_flow'] or chatbot_id.channel == 'sms'"/>
                                 <field name="answer_data_type" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date']"/>
                                 <field name="max_retries" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date', 'question_document', 'question_image', 'question_video', 'question_audio', 'question_interactive']"/>
                                 <field name="fallback_step_id" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date', 'question_document', 'question_image', 'question_video', 'question_audio', 'question_interactive']"/>
@@ -155,8 +155,10 @@
                             <page string="Jump to Flow/Bot" name="jump" invisible="step_type != 'jump_to_flow'">
                                 <group>
                                     <group string="Target">
+                                        <field name="chatbot_channel" invisible="1"/>
                                         <field name="target_chatbot_id"
                                                options="{'no_create': True}"
+                                               domain="[('channel', '=', chatbot_channel)]"
                                                placeholder="Pick a chatbot to jump into"/>
                                         <field name="target_step_id"
                                                options="{'no_create': True}"

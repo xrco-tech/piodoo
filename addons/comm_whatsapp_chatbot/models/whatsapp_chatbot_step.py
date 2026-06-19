@@ -33,6 +33,7 @@ class WhatsAppChatbotStep(models.Model):
     name = fields.Char(string="Step", tracking=True, required=True)
     sequence = fields.Integer(string="Sequence", tracking=True, default=10)
     chatbot_id = fields.Many2one("whatsapp.chatbot", string="Chatbot", required=True, tracking=True, ondelete='cascade')
+    chatbot_channel = fields.Selection(related="chatbot_id.channel", string="Channel", store=False, readonly=True)
     
     step_type = fields.Selection([
         ('message', 'Message'),
@@ -140,7 +141,7 @@ class WhatsAppChatbotStep(models.Model):
     # Jump to Flow/Bot
     target_chatbot_id = fields.Many2one(
         "whatsapp.chatbot", string="Target Chatbot",
-        help="Chatbot to jump into. Required for jump_to_flow steps.",
+        help="Chatbot to jump into. Required for jump_to_flow steps. Must match the caller's channel.",
     )
     target_step_id = fields.Many2one(
         "whatsapp.chatbot.step", string="Entry Step",
@@ -313,6 +314,24 @@ class WhatsAppChatbotStep(models.Model):
                 raise ValidationError("A Jump step cannot target itself.")
             if rec.target_step_id and rec.target_step_id.chatbot_id.id != rec.target_chatbot_id.id:
                 raise ValidationError("The entry step must belong to the target chatbot.")
+            if rec.chatbot_id.channel and rec.target_chatbot_id.channel and \
+                    rec.chatbot_id.channel != rec.target_chatbot_id.channel:
+                raise ValidationError(
+                    f"A Jump step on a {rec.chatbot_id.channel.upper()} bot cannot target a "
+                    f"{rec.target_chatbot_id.channel.upper()} bot. Channels must match."
+                )
+
+    @api.constrains('step_type', 'wa_message_type', 'chatbot_id')
+    def _check_interactive_only_on_whatsapp(self):
+        """SMS bots cannot use interactive WhatsApp step types."""
+        interactive = {'interactive_button', 'interactive_list', 'interactive_flow'}
+        for rec in self:
+            if rec.wa_message_type in interactive and rec.chatbot_id.channel != 'whatsapp':
+                raise ValidationError(
+                    f"Interactive message type '{rec.wa_message_type}' is only supported on "
+                    "WhatsApp chatbots. Switch the chatbot's channel to WhatsApp or change the "
+                    "message type to Non-Interactive."
+                )
 
 
 class WhatsAppChatbotStepButton(models.Model):
