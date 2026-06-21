@@ -2,3 +2,4 @@ from . import test_chatbot
 from . import test_jump_to_flow
 from . import test_channels
 from . import test_ussd
+from . import test_accounts

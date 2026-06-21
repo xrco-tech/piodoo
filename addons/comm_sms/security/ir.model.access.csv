@@ -1,2 +1,4 @@
 id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
 access_sms_sms,sms_sms,model_sms_sms,base.group_user,1,1,1,1
+access_comm_sms_account_user,comm_sms_account_user,model_comm_sms_account,base.group_user,1,0,0,0
+access_comm_sms_account_admin,comm_sms_account_admin,model_comm_sms_account,base.group_system,1,1,1,1

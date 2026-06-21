@@ -163,20 +163,30 @@ class UssdController(http.Controller):
 
     @staticmethod
     def _resolve_ussd_chatbot(service_code):
+        """Resolve a USSD chatbot for the dialled service code.
+
+        Routing order:
+          1. Find the comm.ussd.account whose service_code matches; pick the
+             first published bot wired to that account.
+          2. If no account matches, fall back to a published USSD bot with no
+             account configured (the install-wide catch-all).
+        """
         Bot = request.env["whatsapp.chatbot"].sudo()
+        Account = request.env["comm.ussd.account"].sudo()
         if service_code:
-            specific = Bot.search([
-                ("channel", "=", "ussd"),
-                ("sender_address", "=", service_code),
-                ("status", "=", "published"),
-            ], limit=1)
-            if specific:
-                return specific
-        # Catch-all: any published USSD bot with no sender_address.
+            account = Account.find_for_service_code(service_code)
+            if account:
+                specific = Bot.search([
+                    ("channel", "=", "ussd"),
+                    ("ussd_account_id", "=", account.id),
+                    ("status", "=", "published"),
+                ], limit=1)
+                if specific:
+                    return specific
         return Bot.search([
             ("channel", "=", "ussd"),
             ("status", "=", "published"),
-            "|", ("sender_address", "=", False), ("sender_address", "=", ""),
+            ("ussd_account_id", "=", False),
         ], limit=1)
 
     @staticmethod

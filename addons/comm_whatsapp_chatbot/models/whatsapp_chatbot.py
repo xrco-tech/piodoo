@@ -34,20 +34,49 @@ class WhatsAppChatbot(models.Model):
            "USSD bots additionally cannot use media-question step types "
            "(image/video/audio/document) since USSD is text-only."
        ))
-    # Channel-specific addressable identifier. For WhatsApp this is the Meta
-    # phone_number_id; for SMS the carrier sender ID; for USSD the dialled
-    # service code (e.g. *123#). Empty = bot acts as a catch-all for its
-    # channel — preserves pre-multi-number behaviour.
-    sender_address = fields.Char(
-        string="Sender Address", tracking=True, index='btree',
-        help=(
-            "The address this chatbot listens on. Per channel:\n"
-            "  WhatsApp — Meta phone_number_id (e.g. 447501465113088)\n"
-            "  SMS — carrier sender ID (e.g. 27693808740 or PIODOO)\n"
-            "  USSD — service code (e.g. *123#)\n"
-            "Leave blank to act as a catch-all for any inbound on this channel."
-        ),
+    # Per-channel account FKs — supersede the legacy single-line sender_address.
+    # Only the field matching `channel` is meaningful on a given bot; the form
+    # view shows them conditionally. A bot with no account is a catch-all for
+    # its channel — preserves pre-multi-number behaviour.
+    whatsapp_account_id = fields.Many2one(
+        'comm.whatsapp.account', string="WhatsApp Account", ondelete='restrict',
+        help="The WhatsApp account this chatbot listens on. Empty = catch-all.",
     )
+    sms_account_id = fields.Many2one(
+        'comm.sms.account', string="SMS Account", ondelete='restrict',
+        help="The SMS account this chatbot listens on. Empty = catch-all.",
+    )
+    ussd_account_id = fields.Many2one(
+        'comm.ussd.account', string="USSD Account", ondelete='restrict',
+        help="The USSD account this chatbot listens on. Empty = catch-all.",
+    )
+
+    # Compatibility back-pointer. The migration removes the column once the
+    # FK fields are populated; in the meantime existing callers can still read
+    # it. Computed read-only so nothing accidentally writes through it.
+    sender_address = fields.Char(
+        string="Sender Address",
+        compute='_compute_sender_address', store=True, index='btree',
+        help="Channel-specific identifier derived from the matching account: "
+             "WhatsApp phone_number_id, SMS sender_id, or USSD service_code.",
+    )
+
+    @api.depends(
+        'channel',
+        'whatsapp_account_id.phone_number_id',
+        'sms_account_id.sender_id',
+        'ussd_account_id.service_code',
+    )
+    def _compute_sender_address(self):
+        for rec in self:
+            if rec.channel == 'whatsapp':
+                rec.sender_address = rec.whatsapp_account_id.phone_number_id or ''
+            elif rec.channel == 'sms':
+                rec.sender_address = rec.sms_account_id.sender_id or ''
+            elif rec.channel == 'ussd':
+                rec.sender_address = rec.ussd_account_id.service_code or ''
+            else:
+                rec.sender_address = ''
     
     # Steps and flow
     step_ids = fields.One2many("whatsapp.chatbot.step", "chatbot_id", string="Steps", tracking=True)

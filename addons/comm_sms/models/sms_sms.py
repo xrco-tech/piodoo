@@ -21,6 +21,12 @@ class SmsSms(models.Model):
     sms_count = fields.Integer("SMS Count")
     price_per_message = fields.Float("Price Per Message")
     currency = fields.Char("Currency")
+    # Optional pointer to the multi-account credential record. When set, _send
+    # uses this account's sender_id + base_url + api_key instead of the global
+    # ir.config_parameter values, so different SMS bots can use different
+    # senders / providers.
+    account_id = fields.Many2one('comm.sms.account', string="Account",
+                                 ondelete='restrict')
 
     @staticmethod
     def get_mapped_infobip_state(status):
@@ -97,8 +103,17 @@ class SmsSms(models.Model):
         
     def _send_using_infobip_api(self, messages, raise_exception=False):
         _logger.info(f'messages: {messages}')
-        infobip_api_base_url = self.env['ir.config_parameter'].get_param('infobip.base_url', default=False)
-        infobip_api_key = self.env['ir.config_parameter'].get_param('infobip.api_key', default=False)
+        # Per-account credentials win over the global ir.config_parameter when
+        # every SMS in this batch points at the same account. (Heterogeneous
+        # batches fall back to the global config — _send groups by body, not
+        # by account, so single-account installs hit the existing path.)
+        account = self.account_id if len(self.account_id) == 1 else False
+        if account and account.base_url and account.api_key:
+            infobip_api_base_url = account.base_url
+            infobip_api_key = account.api_key
+        else:
+            infobip_api_base_url = self.env['ir.config_parameter'].get_param('infobip.base_url', default=False)
+            infobip_api_key = self.env['ir.config_parameter'].get_param('infobip.api_key', default=False)
         if not infobip_api_base_url or not infobip_api_key:
             if raise_exception:
                 raise ValidationError("Invalid InfoBip API Credentials Set")
@@ -155,8 +170,15 @@ class SmsSms(models.Model):
         """Send SMS after checking the number (presence and formatting)."""
         # Override default send method if InfoBip explecitly selected
         check_use_infobib_api = self.env['ir.config_parameter'].get_param('sms.use_infobip_api', default=False)
-        if check_use_infobib_api:
-            default_from_number = self.env['ir.config_parameter'].get_param('infobip.default_from_number', default=False)
+        # If every SMS in the batch points at the same Infobip account, that
+        # account's sender_id wins over the global default_from_number — the
+        # multi-account hook for outbound routing.
+        account = self.account_id if len(self.account_id) == 1 else False
+        if check_use_infobib_api or (account and account.provider == 'infobip'):
+            if account and account.sender_id:
+                default_from_number = account.sender_id
+            else:
+                default_from_number = self.env['ir.config_parameter'].get_param('infobip.default_from_number', default=False)
             if not default_from_number:
                 if raise_exception:
                     raise ValidationError("Default From (Sender) Number Not Set For InfoBip API")

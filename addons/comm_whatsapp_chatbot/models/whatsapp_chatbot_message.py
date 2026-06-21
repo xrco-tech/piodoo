@@ -290,20 +290,24 @@ class WhatsAppChatbotMessage(models.Model):
     def _send_message_via_channel(self, chatbot, step, recipient_phone, body,
                                   phone_number_id=None, context_message_id=None):
         """Route outbound sends through the chatbot's configured channel.
-        Returns {'success': bool, 'message_id': str | None, 'error': str | None}."""
+        Returns {'success': bool, 'message_id': str | None, 'error': str | None}.
+
+        The chatbot's per-channel account FK supplies credentials; legacy
+        single-account installs fall through to ir.config_parameter as before.
+        """
         if chatbot.channel == 'sms':
-            return self._send_via_sms(recipient_phone, body)
-        # Default: WhatsApp.
+            return self._send_via_sms(recipient_phone, body, account=chatbot.sms_account_id)
         return self._send_via_whatsapp(
             step=step,
             recipient_phone=recipient_phone,
             body=body,
             phone_number_id=phone_number_id,
             context_message_id=context_message_id,
+            account=chatbot.whatsapp_account_id,
         )
 
     def _send_via_whatsapp(self, step, recipient_phone, body,
-                           phone_number_id=None, context_message_id=None):
+                           phone_number_id=None, context_message_id=None, account=None):
         """Existing WhatsApp send path: interactive_flow uses the flow endpoint,
         everything else uses the plain message endpoint."""
         WhatsAppMessage = self.env['whatsapp.message'].sudo()
@@ -314,24 +318,30 @@ class WhatsAppChatbotMessage(models.Model):
                 step=step,
                 phone_number_id=phone_number_id,
                 context_message_id=context_message_id,
+                account=account or False,
             )
         return WhatsAppMessage.send_whatsapp_message(
             recipient_phone=recipient_phone,
             message_text=body,
             phone_number_id=phone_number_id,
             context_message_id=context_message_id,
+            account=account or False,
         )
 
-    def _send_via_sms(self, recipient_phone, body):
-        """Create and dispatch an sms.sms record. comm_sms picks the Infobip
-        transport based on the sms.use_infobip_api config flag."""
+    def _send_via_sms(self, recipient_phone, body, account=None):
+        """Create and dispatch an sms.sms record. When `account` is given, the
+        record's account_id wires it to that account's credentials and sender
+        ID; otherwise the global config wins (single-account fallback)."""
         if not recipient_phone:
             return {'success': False, 'message_id': None, 'error': 'missing recipient'}
         try:
-            sms = self.env['sms.sms'].sudo().create({
+            vals = {
                 'number': recipient_phone,
                 'body': body or '',
-            })
+            }
+            if account:
+                vals['account_id'] = account.id
+            sms = self.env['sms.sms'].sudo().create(vals)
             sms._send(unlink_failed=False, unlink_sent=False, raise_exception=False)
             sms.flush_recordset()
             if sms.state in ('sent', 'pending', 'process'):

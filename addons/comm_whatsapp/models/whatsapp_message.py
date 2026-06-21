@@ -645,37 +645,51 @@ class WhatsAppMessage(models.Model):
                 _logger.error(f"Failed to create error record: {create_error}", exc_info=True)
                 return False
 
-    def send_whatsapp_message(self, recipient_phone, message_text, phone_number_id=None, context_message_id=None):
+    def send_whatsapp_message(self, recipient_phone, message_text, phone_number_id=None,
+                              context_message_id=None, account=None):
         """
         Send a WhatsApp message using Meta Cloud API.
-        
+
         Based on: https://developers.facebook.com/documentation/business-messaging/whatsapp/overview
-        
+
         :param recipient_phone: Recipient phone number in international format (e.g., '27683264051')
         :param message_text: Text content of the message
-        :param phone_number_id: Phone number ID (optional, will use from config if not provided)
+        :param phone_number_id: Phone number ID (optional, will resolve to an account)
         :param context_message_id: Message ID to quote/reply to (optional, will show as quoted message)
+        :param account: comm.whatsapp.account record (optional). If provided,
+                       overrides phone_number_id + global config for both the
+                       phone_number_id and access_token. This is the preferred
+                       multi-account API.
         :return: Dictionary with success status and message ID or error
         """
         try:
             import requests
             import json
-            
-            # Get access token and phone number ID
-            IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                          IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
-            
+
+            # Credential resolution order:
+            #   1. Explicit `account` argument (preferred for multi-account callers)
+            #   2. account looked up by phone_number_id
+            #   3. global ir.config_parameter (legacy fallback)
+            access_token = None
+            Account = self.env['comm.whatsapp.account'].sudo()
+            if not account and phone_number_id:
+                account = Account.find_for_phone_number_id(phone_number_id)
+            if account:
+                access_token = account.access_token
+                phone_number_id = account.phone_number_id
+
+            if not access_token:
+                IrConfigParameter = self.env['ir.config_parameter'].sudo()
+                access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
+                              IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
+                if not phone_number_id:
+                    phone_number_id = IrConfigParameter.get_param('comm_whatsapp.phone_number_id')
+
             if not access_token:
                 return {
                     'success': False,
                     'error': 'Access token not configured. Please authenticate first.'
                 }
-            
-            # Use provided phone_number_id or get from config
-            if not phone_number_id:
-                phone_number_id = IrConfigParameter.get_param('comm_whatsapp.phone_number_id')
-            
             if not phone_number_id:
                 return {
                     'success': False,
@@ -764,21 +778,31 @@ class WhatsAppMessage(models.Model):
                 'error': str(e)
             }
 
-    def send_whatsapp_interactive_flow(self, recipient_phone, step, phone_number_id=None, context_message_id=None):
+    def send_whatsapp_interactive_flow(self, recipient_phone, step, phone_number_id=None,
+                                       context_message_id=None, account=None):
         """Send a WhatsApp interactive flow message for a chatbot step."""
         try:
             import requests
             import json
             import uuid
 
-            IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                           IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
+            access_token = None
+            Account = self.env['comm.whatsapp.account'].sudo()
+            if not account and phone_number_id:
+                account = Account.find_for_phone_number_id(phone_number_id)
+            if account:
+                access_token = account.access_token
+                phone_number_id = account.phone_number_id
+
+            if not access_token:
+                IrConfigParameter = self.env['ir.config_parameter'].sudo()
+                access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
+                               IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
+                if not phone_number_id:
+                    phone_number_id = IrConfigParameter.get_param('comm_whatsapp.phone_number_id')
+
             if not access_token:
                 return {'success': False, 'error': 'Access token not configured.'}
-
-            if not phone_number_id:
-                phone_number_id = IrConfigParameter.get_param('comm_whatsapp.phone_number_id')
             if not phone_number_id:
                 return {'success': False, 'error': 'Phone number ID not configured.'}
 

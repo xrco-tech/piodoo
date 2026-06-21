@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Light Chatbot',
-    'version': '18.0.1.0.4',
+    'version': '18.0.1.0.5',
     'category': 'Tools',
     'summary': 'Chatbot functionality for WhatsApp Light',
     'description': """
@@ -14,9 +14,10 @@ and automate WhatsApp messaging.
     """,
     'author': 'XR Co.',
     'license': 'LGPL-3',
-    'depends': ['base', 'web', 'comm_whatsapp', 'mail'],
+    'depends': ['base', 'web', 'comm_whatsapp', 'comm_sms', 'mail'],
     'data': [
         'security/ir.model.access.csv',
+        'views/whatsapp_chatbot_ussd_account_views.xml',
         'views/whatsapp_chatbot_views.xml',
         'views/whatsapp_chatbot_step_views.xml',
         'views/whatsapp_chatbot_contact_views.xml',

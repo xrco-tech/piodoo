@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_comm_ussd_account_tree" model="ir.ui.view">
+            <field name="name">comm.ussd.account.tree</field>
+            <field name="model">comm.ussd.account</field>
+            <field name="arch" type="xml">
+                <list string="USSD Accounts" default_order="sequence, id">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="provider"/>
+                    <field name="service_code"/>
+                    <field name="is_default" widget="boolean_toggle"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_comm_ussd_account_form" model="ir.ui.view">
+            <field name="name">comm.ussd.account.form</field>
+            <field name="model">comm.ussd.account</field>
+            <field name="arch" type="xml">
+                <form string="USSD Account">
+                    <sheet>
+                        <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1><field name="name" placeholder="e.g. Customer Service Code"/></h1>
+                        </div>
+                        <group>
+                            <group string="Identity">
+                                <field name="provider"/>
+                                <field name="service_code" placeholder="*384*123#"/>
+                            </group>
+                            <group string="Routing">
+                                <field name="is_default"/>
+                                <field name="active" invisible="1"/>
+                                <field name="sequence"/>
+                            </group>
+                        </group>
+                        <group string="Optional Credentials">
+                            <field name="api_key" password="True"/>
+                            <field name="base_url"/>
+                        </group>
+                        <div class="alert alert-info" role="alert">
+                            Inbound callback: <code>/ussd/inbound</code>.
+                            Notifications: <code>/ussd/notifications</code>.
+                            Routed by the gateway's <em>serviceCode</em> matched against
+                            <strong>Service Code</strong> above.
+                        </div>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_comm_ussd_account" model="ir.actions.act_window">
+            <field name="name">USSD Accounts</field>
+            <field name="res_model">comm.ussd.account</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <menuitem id="menu_comm_ussd_accounts"
+                  name="USSD Accounts"
+                  parent="base.menu_administration"
+                  action="action_comm_ussd_account"
+                  groups="base.group_system"
+                  sequence="70"/>
+
+    </data>
+</odoo>

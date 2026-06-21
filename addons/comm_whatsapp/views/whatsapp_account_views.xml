@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_comm_whatsapp_account_tree" model="ir.ui.view">
+            <field name="name">comm.whatsapp.account.tree</field>
+            <field name="model">comm.whatsapp.account</field>
+            <field name="arch" type="xml">
+                <list string="WhatsApp Accounts" default_order="sequence, id">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="phone_number"/>
+                    <field name="phone_number_id"/>
+                    <field name="business_account_id" optional="hide"/>
+                    <field name="is_default" widget="boolean_toggle"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_comm_whatsapp_account_form" model="ir.ui.view">
+            <field name="name">comm.whatsapp.account.form</field>
+            <field name="model">comm.whatsapp.account</field>
+            <field name="arch" type="xml">
+                <form string="WhatsApp Account">
+                    <sheet>
+                        <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1><field name="name" placeholder="e.g. Support Line"/></h1>
+                        </div>
+                        <group>
+                            <group string="Number">
+                                <field name="phone_number" placeholder="+27693808740"/>
+                                <field name="phone_number_id" placeholder="447501465113088"/>
+                                <field name="business_account_id" placeholder="WABA ID (optional)"/>
+                            </group>
+                            <group string="Routing">
+                                <field name="is_default"/>
+                                <field name="active" invisible="1"/>
+                                <field name="sequence"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Credentials" name="credentials">
+                                <group>
+                                    <field name="access_token" password="True"
+                                           placeholder="EAAxxxx... (bearer token used for /messages)"/>
+                                    <field name="app_secret" password="True"
+                                           placeholder="Verifies X-Hub-Signature on inbound webhooks"/>
+                                    <field name="webhook_verify_token"
+                                           placeholder="Challenge response for the verification GET"/>
+                                </group>
+                                <div class="alert alert-info" role="alert">
+                                    Webhook callback URL for this account:
+                                    <code>/whatsapp/webhook</code> — the controller looks up the
+                                    matching account by <em>metadata.phone_number_id</em>.
+                                </div>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_comm_whatsapp_account" model="ir.actions.act_window">
+            <field name="name">WhatsApp Accounts</field>
+            <field name="res_model">comm.whatsapp.account</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <menuitem id="menu_comm_whatsapp_accounts"
+                  name="WhatsApp Accounts"
+                  parent="base.menu_administration"
+                  action="action_comm_whatsapp_account"
+                  groups="comm_whatsapp.group_whatsapp_administrator"
+                  sequence="50"/>
+
+    </data>
+</odoo>

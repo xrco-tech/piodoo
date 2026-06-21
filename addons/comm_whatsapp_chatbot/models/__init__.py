@@ -8,6 +8,7 @@ from . import whatsapp_chatbot_message
 from . import whatsapp_chatbot_variable
 from . import whatsapp_chatbot_answer
 from . import whatsapp_chatbot_global_interrupt
+from . import whatsapp_chatbot_ussd_account
 from . import whatsapp_chatbot_ussd_session
 # Import whatsapp_message extension last since it depends on chatbot models
 from . import whatsapp_message
