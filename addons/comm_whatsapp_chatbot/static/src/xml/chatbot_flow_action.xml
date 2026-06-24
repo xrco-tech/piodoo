@@ -51,10 +51,71 @@
                 <!-- Properties panel -->
                 <div t-att-class="'o_chatbot_flow_props' + (state.panelVisible ? '' : ' o_chatbot_flow_props_collapsed')"
                      t-if="!state.loading">
-                    <div class="o_flow_props_header">
-                        <i class="fa fa-info-circle me-1"/>Properties
+                    <!-- Tab switcher: Properties | Simulator -->
+                    <div class="o_flow_panel_tabs">
+                        <button t-att-class="'o_flow_panel_tab' + (state.panelMode === 'props' ? ' active' : '')"
+                                t-on-click="() => this._setPanelMode('props')">
+                            <i class="fa fa-info-circle me-1"/>Properties
+                        </button>
+                        <button t-att-class="'o_flow_panel_tab' + (state.panelMode === 'sim' ? ' active' : '')"
+                                t-on-click="() => this._setPanelMode('sim')">
+                            <i class="fa fa-play-circle me-1"/>Simulator
+                        </button>
                     </div>
-                    <t t-if="state.selectedNode">
+
+                    <!-- Simulator tab content -->
+                    <t t-if="state.panelMode === 'sim'">
+                        <div t-attf-class="o_flow_sim o_flow_sim_#{state.sim.channel}">
+                            <div class="o_flow_sim_phone">
+                                <div class="o_flow_sim_phone_status">
+                                    <span class="o_flow_sim_channel_pill">
+                                        <t t-esc="state.sim.channel.toUpperCase()"/>
+                                    </span>
+                                    <button class="btn btn-sm btn-link o_flow_sim_restart"
+                                            t-on-click="() => this._simStart()"
+                                            title="Restart simulator session">
+                                        <i class="fa fa-refresh"/>
+                                    </button>
+                                </div>
+                                <div class="o_flow_sim_chat">
+                                    <t t-foreach="state.sim.bubbles" t-as="b" t-key="b_index">
+                                        <div t-attf-class="o_flow_sim_bubble o_flow_sim_bubble_#{b.dir} o_flow_sim_bubble_t_#{b.step_type}">
+                                            <t t-foreach="b.text.split('\n')" t-as="line" t-key="line_index">
+                                                <div t-esc="line"/>
+                                            </t>
+                                        </div>
+                                    </t>
+                                    <t t-if="state.sim.sending">
+                                        <div class="o_flow_sim_bubble o_flow_sim_bubble_in o_flow_sim_typing">
+                                            <span class="dot"/><span class="dot"/><span class="dot"/>
+                                        </div>
+                                    </t>
+                                </div>
+                                <t t-if="state.sim.terminate">
+                                    <div class="o_flow_sim_terminated">
+                                        Session ended. Click <i class="fa fa-refresh"/> to restart.
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="o_flow_sim_input_row">
+                                        <input type="text" class="o_flow_sim_input"
+                                               t-model="state.sim.userInput"
+                                               t-on-keydown="(ev) => this._simOnInputKey(ev)"
+                                               t-att-placeholder="state.sim.channel === 'ussd' ? 'Type your input...' : 'Type a message...'"
+                                               t-att-disabled="state.sim.sending"/>
+                                        <button class="btn btn-sm btn-primary o_flow_sim_send"
+                                                t-on-click="() => this._simSendInput()"
+                                                t-att-disabled="state.sim.sending or !state.sim.userInput.trim()">
+                                            <i class="fa fa-paper-plane"/>
+                                        </button>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- Properties tab content -->
+                    <t t-if="state.panelMode === 'props' and state.selectedNode">
 
                         <!-- Dead-end warning -->
                         <t t-if="state.selectedNode.isDeadEnd">
@@ -307,7 +368,7 @@
                             </button>
                         </div>
                     </t>
-                    <t t-else="">
+                    <t t-if="state.panelMode === 'props' and !state.selectedNode">
                         <div class="o_flow_props_empty">
                             <i class="fa fa-hand-pointer-o fa-2x mb-2"/>
                             <div>Click a node to inspect it</div>

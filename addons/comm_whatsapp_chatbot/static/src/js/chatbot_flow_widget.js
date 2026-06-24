@@ -3,6 +3,7 @@
 import { Component, onMounted, onPatched, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { rpc } from "@web/core/network/rpc";
 import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 
@@ -117,6 +118,19 @@ export class ChatbotFlowAction extends Component {
             selectedNode: null,
             maxCount:     0,
             panelVisible: this._initialPanelVisible(),
+            // Right-panel mode: "props" (default) | "sim" (live simulator)
+            panelMode:    "props",
+            // Simulator state — kept here so it survives re-renders within the session.
+            sim: {
+                bubbles: [],
+                session_state: null,
+                userInput: "",
+                terminate: false,
+                waitForInput: false,
+                channel: "whatsapp",
+                sending: false,
+                started: false,
+            },
         });
 
         onMounted(()  => this._loadData());
@@ -330,6 +344,82 @@ export class ChatbotFlowAction extends Component {
         // Connector lines depend on canvas width — let CSS transition settle, then redraw.
         if (this._drawLinesFn) {
             setTimeout(() => this._drawLinesFn?.(), 280);
+        }
+    }
+
+    // ── Simulator ─────────────────────────────────────────────────────────
+
+    _setPanelMode(mode) {
+        this.state.panelMode = mode;
+        // Auto-start a simulator session the first time the user switches in.
+        if (mode === "sim" && !this.state.sim.started && !this.state.sim.sending) {
+            this._simStart();
+        }
+    }
+
+    async _simStart() {
+        Object.assign(this.state.sim, {
+            bubbles: [],
+            session_state: null,
+            userInput: "",
+            terminate: false,
+            waitForInput: false,
+            sending: true,
+            started: true,
+        });
+        await this._simSendTurn(null);
+    }
+
+    async _simSendInput() {
+        const txt = (this.state.sim.userInput || "").trim();
+        if (!txt || this.state.sim.sending || this.state.sim.terminate) return;
+        // Echo the user's input first so the chat reads naturally.
+        this.state.sim.bubbles.push({ text: txt, dir: "out", step_type: "user" });
+        this.state.sim.userInput = "";
+        this.state.sim.sending = true;
+        await this._simSendTurn(txt);
+    }
+
+    async _simSendTurn(userInput) {
+        try {
+            const data = await rpc("/chatbot/simulate", {
+                chatbot_id:    this.chatbotId,
+                session_state: this.state.sim.session_state,
+                user_input:    userInput,
+            });
+            if (!data) return;
+            for (const b of (data.bubbles || [])) {
+                this.state.sim.bubbles.push({
+                    text: b.text || "",
+                    dir: "in",
+                    step_type: b.step_type || "message",
+                    step_id: b.step_id || null,
+                });
+            }
+            this.state.sim.session_state = data.session_state;
+            this.state.sim.terminate    = !!data.terminate;
+            this.state.sim.waitForInput = !!data.wait_for_input;
+            this.state.sim.channel      = data.channel || this.state.sim.channel;
+        } catch (e) {
+            this.state.sim.bubbles.push({
+                text: "Simulator error.",
+                dir: "in", step_type: "error",
+            });
+            this.state.sim.terminate = true;
+        } finally {
+            this.state.sim.sending = false;
+            // Auto-scroll the chat to bottom on next paint.
+            queueMicrotask(() => {
+                const el = document.querySelector(".o_flow_sim_chat");
+                if (el) el.scrollTop = el.scrollHeight;
+            });
+        }
+    }
+
+    _simOnInputKey(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this._simSendInput();
         }
     }
 

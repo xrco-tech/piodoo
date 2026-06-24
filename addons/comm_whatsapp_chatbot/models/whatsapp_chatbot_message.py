@@ -12,6 +12,11 @@ MAX_RECURSION_DEPTH = 10
 MAX_CALL_STACK_DEPTH = 8  # subroutine nesting limit (jump_to_flow)
 
 
+class _SimGuardTripped(Exception):
+    """Internal: the simulator walker hit a safety limit."""
+    pass
+
+
 class WhatsAppChatbotMessage(models.Model):
     _name = 'whatsapp.chatbot.message'
     _description = 'WhatsApp Chatbot Message'
@@ -354,6 +359,318 @@ class WhatsAppChatbotMessage(models.Model):
         except Exception as e:
             _logger.error(f"SMS send failed: {e}", exc_info=True)
             return {'success': False, 'message_id': None, 'error': str(e)}
+
+    # ── Simulator (ephemeral, no DB writes) ─────────────────────────────────
+
+    @api.model
+    def simulate_turn(self, chatbot_id, session_state=None, user_input=None):
+        """Run one simulator turn for the flow builder's right-panel demo.
+
+        Pure function: never writes to the database, never calls real WA/SMS/USSD
+        transports. Variables, call stack and current step travel inside
+        session_state as a plain dict so the OWL frontend can keep the whole
+        session client-side and just feed it back on each turn.
+
+        Args:
+            chatbot_id: int
+            session_state: dict | None
+                {
+                    "current_step_id": int | None,
+                    "current_chatbot_id": int,
+                    "variables": {"name": "value", ...},
+                    "call_stack": [{
+                        "caller_chatbot_id": int,
+                        "return_step_id": int,
+                        "out_mapping": [{"src_var_name": "...", "tgt_var_name": "..."}],
+                    }, ...],
+                    "step_count": int,  # safety counter
+                }
+            user_input: str | None
+                The user's typed input for this turn. None on first turn.
+
+        Returns:
+            {
+                "session_state": dict,
+                "bubbles": [
+                    {"text": "...", "step_type": "message", "step_id": 123},
+                    ...
+                ],
+                "terminate": bool,
+                "channel": "whatsapp" | "sms" | "ussd",
+                "wait_for_input": bool,  # True when stopped at a question_*
+            }
+        """
+        chatbot = self.env['whatsapp.chatbot'].sudo().browse(chatbot_id).exists()
+        if not chatbot:
+            return self._sim_error("Chatbot not found.")
+
+        state = dict(session_state or {})
+        state.setdefault('current_chatbot_id', chatbot.id)
+        state.setdefault('variables', {})
+        state.setdefault('call_stack', [])
+        state.setdefault('step_count', 0)
+
+        # Resolve the current chatbot from state (jumps may have switched it)
+        current_bot = self.env['whatsapp.chatbot'].sudo().browse(
+            state.get('current_chatbot_id') or chatbot.id,
+        ).exists() or chatbot
+
+        bubbles = []
+
+        try:
+            # First turn or empty state: start at the bot's root step.
+            current_step = self._sim_resolve_entry(current_bot, state, user_input)
+            if not current_step:
+                return self._sim_error("No flow configured on this bot.", channel=current_bot.channel)
+
+            terminate, wait_for_input = self._sim_walk(current_bot, current_step, state, bubbles)
+        except _SimGuardTripped as e:
+            return self._sim_error(str(e), channel=current_bot.channel)
+
+        return {
+            "session_state": state,
+            "bubbles": bubbles,
+            "terminate": terminate,
+            "channel": current_bot.channel,
+            "wait_for_input": wait_for_input,
+        }
+
+    def _sim_error(self, msg, channel='whatsapp'):
+        return {
+            "session_state": None,
+            "bubbles": [{"text": msg, "step_type": "error", "step_id": None}],
+            "terminate": True,
+            "channel": channel,
+            "wait_for_input": False,
+        }
+
+    def _sim_resolve_entry(self, current_bot, state, user_input):
+        """Pick the step the walker should start this turn at."""
+        Step = self.env['whatsapp.chatbot.step'].sudo()
+        current_step_id = state.get('current_step_id')
+        if not current_step_id:
+            return Step.search([
+                ('chatbot_id', '=', current_bot.id),
+                ('parent_id', '=', False),
+            ], order='sequence asc, id asc', limit=1)
+        current = Step.browse(current_step_id).exists()
+        if not current:
+            # Step deleted mid-session; restart at root.
+            state['current_step_id'] = None
+            return self._sim_resolve_entry(current_bot, state, None)
+        # We were waiting for the user's answer at `current`. Route based on input.
+        if user_input is not None:
+            matched, _ = self._find_matching_child_step(current, user_input or '')
+            if matched:
+                return matched
+            children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+            if children:
+                return children[0]
+        return current
+
+    def _sim_walk(self, current_bot, step, state, bubbles):
+        """Advance through steps, emitting bubbles, until we stop waiting for
+        input or terminate. Returns (terminate, wait_for_input)."""
+        current = step
+        guard = 0
+        max_steps = 50
+        while current and guard < max_steps:
+            guard += 1
+            state['step_count'] = state.get('step_count', 0) + 1
+            if state['step_count'] > 200:
+                raise _SimGuardTripped("Simulator exceeded 200 steps — possible loop in the flow.")
+
+            st = current.step_type
+            if st == 'message':
+                body = self._sim_render_body(current.body_plain or '', state['variables'])
+                if body:
+                    bubbles.append({"text": body, "step_type": "message", "step_id": current.id})
+                children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                if not children:
+                    state['current_step_id'] = current.id
+                    return (True, False)
+                # Multiple children w/o a question step → render as numbered menu,
+                # stop and wait for input (mirrors USSD's numbered-menu UX in WA/SMS too).
+                if len(children) > 1:
+                    bubbles.append({
+                        "text": self._sim_render_menu(children),
+                        "step_type": "menu",
+                        "step_id": current.id,
+                    })
+                    state['current_step_id'] = current.id
+                    return (False, True)
+                current = children[0]
+                continue
+
+            if st.startswith('question_'):
+                body = self._sim_render_body(current.body_plain or '', state['variables'])
+                if body:
+                    bubbles.append({"text": body, "step_type": st, "step_id": current.id})
+                children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                if len(children) > 1:
+                    bubbles.append({
+                        "text": self._sim_render_menu(children),
+                        "step_type": "menu",
+                        "step_id": current.id,
+                    })
+                state['current_step_id'] = current.id
+                return (False, True)
+
+            if st == 'set_variable':
+                self._sim_apply_set_variable(current, state)
+                children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                current = children[0] if children else False
+                continue
+
+            if st == 'execute_code':
+                # Sim mode: silently skip. Real code execution could have arbitrary
+                # side effects (DB writes, API calls); the simulator stays clean.
+                bubbles.append({
+                    "text": "[code step skipped in simulator]",
+                    "step_type": "sim_note",
+                    "step_id": current.id,
+                })
+                children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                current = children[0] if children else False
+                continue
+
+            if st == 'jump_to_flow':
+                target_bot, entry = self._sim_apply_jump(current, state)
+                if not target_bot or not entry:
+                    bubbles.append({
+                        "text": "[jump target missing — flow ended]",
+                        "step_type": "sim_note",
+                        "step_id": current.id,
+                    })
+                    return (True, False)
+                state['current_chatbot_id'] = target_bot.id
+                current_bot = target_bot
+                current = entry
+                continue
+
+            if st == 'end_flow':
+                # Subroutine pop?
+                if state['call_stack']:
+                    frame = state['call_stack'].pop()
+                    self._sim_apply_out_mapping(frame.get('out_mapping') or [], state)
+                    caller_bot = self.env['whatsapp.chatbot'].sudo().browse(
+                        frame.get('caller_chatbot_id'),
+                    ).exists()
+                    jump_step = self.env['whatsapp.chatbot.step'].sudo().browse(
+                        frame.get('return_step_id'),
+                    ).exists()
+                    if caller_bot and jump_step:
+                        state['current_chatbot_id'] = caller_bot.id
+                        current_bot = caller_bot
+                        # Resume at the jump step's first child.
+                        children = jump_step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+                        current = children[0] if children else False
+                        continue
+                return (True, False)
+
+            if st == 'transfer_to_agent':
+                body = self._sim_render_body(current.body_plain or '', state['variables'])
+                if body:
+                    bubbles.append({"text": body, "step_type": st, "step_id": current.id})
+                bubbles.append({
+                    "text": "[transferred to human agent — flow ended in simulator]",
+                    "step_type": "sim_note", "step_id": current.id,
+                })
+                return (True, False)
+
+            # Unknown step type → advance to first child or end.
+            children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+            current = children[0] if children else False
+
+        return (True, False)
+
+    def _sim_render_body(self, body_plain, variables_dict):
+        """Variable substitution against the session's in-memory variables dict.
+        Mirrors _replace_variables_in_message but reads from a plain dict."""
+        if not body_plain:
+            return ''
+        pattern = r"\{\{variables\.([\w]+)\}\}"
+        def repl(m):
+            return str(variables_dict.get(m.group(1), f"{{{{variables.{m.group(1)}}}}}"))
+        return re.sub(pattern, repl, body_plain)
+
+    def _sim_render_menu(self, children):
+        lines = []
+        for i, child in enumerate(children, start=1):
+            ans = child.trigger_answer_ids.sorted(key=lambda a: (a.sequence, a.id))
+            label = ans[0].value if ans else child.name
+            lines.append(f"{i}. {label}")
+        return "\n".join(lines)
+
+    def _sim_apply_set_variable(self, step, state):
+        """Resolve the source value and write it onto state['variables']."""
+        var = step.variable_id
+        if not var:
+            return
+        value = None
+        src = step.variable_data_source
+        if src == 'static':
+            value = step.variable_value
+        elif src == 'answer':
+            # In the simulator, answer-sourced variables only have meaning if the
+            # user's input for the source question is already in the state — we
+            # track each question's last answer under the same variable namespace.
+            src_step = step.source_step_id
+            if src_step:
+                # Look it up by the "last user input for this step" convention.
+                key = f"__answer_step_{src_step.id}"
+                value = state['variables'].get(key)
+        elif src == 'variable':
+            src_var = step.source_variable_id
+            if src_var:
+                value = state['variables'].get(src_var.name)
+        if value is not None:
+            state['variables'][var.name] = value
+
+    def _sim_apply_jump(self, jump_step, state):
+        """Push a subroutine frame and resolve the entry step in the target bot."""
+        target_bot = jump_step.target_chatbot_id
+        if not target_bot:
+            return (False, False)
+        entry = jump_step.target_step_id or self.env['whatsapp.chatbot.step'].sudo().search([
+            ('chatbot_id', '=', target_bot.id),
+            ('parent_id', '=', False),
+        ], order='sequence asc, id asc', limit=1)
+        if not entry:
+            return (target_bot, False)
+        # Apply 'in' / 'both' mapping (caller → callee) into the variables dict.
+        for m in jump_step.variable_mapping_ids:
+            if m.direction in ('in', 'both') and m.source_variable_id and m.target_variable_id:
+                src_val = state['variables'].get(m.source_variable_id.name)
+                if src_val is not None:
+                    state['variables'][m.target_variable_id.name] = src_val
+        # Push subroutine frame if needed.
+        if jump_step.jump_mode == 'subroutine':
+            if len(state['call_stack']) >= MAX_CALL_STACK_DEPTH:
+                raise _SimGuardTripped("Subroutine stack overflow.")
+            out_rows = [
+                {
+                    'src_var_name': m.source_variable_id.name,
+                    'tgt_var_name': m.target_variable_id.name,
+                }
+                for m in jump_step.variable_mapping_ids
+                if m.direction in ('out', 'both')
+            ]
+            state['call_stack'].append({
+                'caller_chatbot_id': jump_step.chatbot_id.id,
+                'return_step_id': jump_step.id,
+                'out_mapping': out_rows,
+            })
+        return (target_bot, entry)
+
+    def _sim_apply_out_mapping(self, out_rows, state):
+        """On subroutine return: copy callee variables back into caller's
+        namespace via the rows snapshot."""
+        for row in out_rows:
+            tgt_name = row.get('tgt_var_name')
+            src_name = row.get('src_var_name')
+            if tgt_name and src_name and tgt_name in state['variables']:
+                state['variables'][src_name] = state['variables'][tgt_name]
 
     # ── USSD synchronous render walker ───────────────────────────────────────
 

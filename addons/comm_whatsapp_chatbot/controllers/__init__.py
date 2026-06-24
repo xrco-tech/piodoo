@@ -3,4 +3,5 @@
 from . import main
 from . import sms_inbound
 from . import ussd_inbound
+from . import simulator
 

@@ -83,6 +83,171 @@
     gap: 0;
     transition: width 0.25s ease, padding 0.25s ease, opacity 0.18s ease;
 }
+/* Simulator mode needs more horizontal space for the phone frame. */
+.o_chatbot_flow_props:has(.o_flow_sim) {
+    width: 320px;
+}
+
+/* ── Right-panel tab switcher ────────────────────────────────────────────────── */
+.o_flow_panel_tabs {
+    display: flex;
+    gap: 4px;
+    margin: -8px -4px 12px -4px;
+    padding: 4px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.o_flow_panel_tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 6px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.o_flow_panel_tab:hover { color: #111827; }
+.o_flow_panel_tab.active {
+    background: #fff;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* ── Simulator ──────────────────────────────────────────────────────────────── */
+.o_flow_sim {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.o_flow_sim_phone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    min-height: 480px;
+    background: #fff;
+}
+.o_flow_sim_phone_status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+.o_flow_sim_channel_pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: #111827;
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+.o_flow_sim_restart { color: #6b7280; padding: 2px 6px; }
+.o_flow_sim_restart:hover { color: #111827; }
+
+.o_flow_sim_chat {
+    flex: 1;
+    padding: 12px 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #efeae2;  /* WhatsApp default */
+}
+.o_flow_sim_bubble {
+    max-width: 75%;
+    padding: 6px 9px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.35;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    background: #fff;
+}
+.o_flow_sim_bubble_in  { align-self: flex-start; }
+.o_flow_sim_bubble_out { align-self: flex-end; background: #d9fdd3; }
+.o_flow_sim_bubble_t_error    { background: #fee2e2; color: #b91c1c; }
+.o_flow_sim_bubble_t_sim_note { background: #fef3c7; color: #92400e; font-style: italic; font-size: 11px; }
+.o_flow_sim_bubble_t_menu     { background: #fff; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+
+.o_flow_sim_typing { display: flex; gap: 4px; padding: 8px 10px; }
+.o_flow_sim_typing .dot {
+    width: 6px; height: 6px; background: #9ca3af; border-radius: 50%;
+    animation: o_flow_sim_typing_blink 1.2s infinite ease-in-out;
+}
+.o_flow_sim_typing .dot:nth-child(2) { animation-delay: 0.2s; }
+.o_flow_sim_typing .dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes o_flow_sim_typing_blink {
+    0%, 80%, 100% { opacity: 0.3; }
+    40%           { opacity: 1; }
+}
+
+.o_flow_sim_input_row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    background: #f3f4f6;
+    border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+.o_flow_sim_input {
+    flex: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 13px;
+    background: #fff;
+    outline: none;
+}
+.o_flow_sim_input:focus { border-color: #9ca3af; }
+.o_flow_sim_send { border-radius: 50%; width: 30px; height: 30px; padding: 0; }
+.o_flow_sim_send i { font-size: 12px; }
+
+.o_flow_sim_terminated {
+    text-align: center;
+    padding: 10px;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+/* Channel-specific theming */
+.o_flow_sim_whatsapp .o_flow_sim_channel_pill { background: #25d366; }
+.o_flow_sim_whatsapp .o_flow_sim_chat         { background: #efeae2; }
+
+.o_flow_sim_sms .o_flow_sim_channel_pill { background: #3b82f6; }
+.o_flow_sim_sms .o_flow_sim_chat         { background: #f1f5f9; }
+.o_flow_sim_sms .o_flow_sim_bubble_in,
+.o_flow_sim_sms .o_flow_sim_bubble_out   { background: #fff; border: 1px solid #e2e8f0; }
+.o_flow_sim_sms .o_flow_sim_bubble_out   { background: #dbeafe; border-color: #93c5fd; }
+
+.o_flow_sim_ussd .o_flow_sim_channel_pill { background: #4338ca; }
+.o_flow_sim_ussd .o_flow_sim_phone        { background: #111; }
+.o_flow_sim_ussd .o_flow_sim_phone_status { background: #1f2937; border-color: #374151; }
+.o_flow_sim_ussd .o_flow_sim_chat         { background: #111; color: #d1d5db; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.o_flow_sim_ussd .o_flow_sim_bubble,
+.o_flow_sim_ussd .o_flow_sim_bubble_in,
+.o_flow_sim_ussd .o_flow_sim_bubble_out   {
+    background: transparent; color: #f9fafb; max-width: 100%;
+    border-radius: 0; padding: 4px 0; align-self: stretch;
+    border-bottom: 1px dashed #374151;
+}
+.o_flow_sim_ussd .o_flow_sim_bubble_out::before { content: "> "; color: #6ee7b7; }
+.o_flow_sim_ussd .o_flow_sim_input_row { background: #1f2937; border-color: #374151; }
+.o_flow_sim_ussd .o_flow_sim_input     { background: #111; border-color: #374151; color: #f9fafb; }
+.o_flow_sim_ussd .o_flow_sim_terminated{ background: #1f2937; color: #9ca3af; }
 /* Desktop collapsed: panel slides shut sideways, canvas takes the freed width. */
 .o_chatbot_flow_props_collapsed {
     width: 0 !important;
