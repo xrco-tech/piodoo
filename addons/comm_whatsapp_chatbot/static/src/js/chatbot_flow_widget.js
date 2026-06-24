@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onMounted, onPatched, onWillUnmount, useRef, useState } from "@odoo/owl";
+import { Component, markup, onMounted, onPatched, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { rpc } from "@web/core/network/rpc";
@@ -440,11 +440,14 @@ export class ChatbotFlowAction extends Component {
     }
 
     // Formatters exposed to the OWL template for the simulator bubbles.
+    // Wrapped in markup() so OWL's t-out treats the returned strings as HTML
+    // instead of escaping them — both helpers already escape user content
+    // before injecting their own tags, so they're safe.
     simFormatBody(text, channel) {
-        return (channel === "whatsapp" ? bodyToHtml(text) : plainToHtml(text));
+        return markup(channel === "whatsapp" ? bodyToHtml(text) : plainToHtml(text));
     }
     simEscape(text) {
-        return plainToHtml(text);
+        return markup(plainToHtml(text));
     }
 
     _goBack() {
