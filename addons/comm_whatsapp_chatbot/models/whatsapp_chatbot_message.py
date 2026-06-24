@@ -460,6 +460,12 @@ class WhatsAppChatbotMessage(models.Model):
             return self._sim_resolve_entry(current_bot, state, None)
         # We were waiting for the user's answer at `current`. Route based on input.
         if user_input is not None:
+            # Persist the answer under a per-step key so a downstream
+            # set_variable step with source='answer' and source_step_id=current
+            # can find it via _sim_apply_set_variable. This is the simulator's
+            # equivalent of the real runtime persisting an incoming chatbot
+            # message keyed on (contact, step).
+            state.setdefault('variables', {})[f"__answer_step_{current.id}"] = user_input
             matched, _ = self._find_matching_child_step(current, user_input or '')
             if matched:
                 return matched

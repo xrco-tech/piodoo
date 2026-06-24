@@ -166,6 +166,24 @@ class TestSimulatorBasic(SimFixtures):
 @tagged('chatbot', 'sim', 'post_install', '-at_install')
 class TestSimulatorVariables(SimFixtures):
 
+    def test_answer_key_is_recorded_on_step_transition(self):
+        """When the user submits input while parked at a question step, the
+        simulator stores it under __answer_step_<id> so downstream
+        set_variable steps with source='answer' can find it. Regression for
+        the screenshot where {{variables.user_name}} rendered literally."""
+        r1 = self._sim(self.caller.id)
+        state = r1['session_state']
+        self.assertEqual(state['current_step_id'], self.ask.id)
+        r2 = self._sim(self.caller.id, state=state, user_input='Alice')
+        # __answer_step_<ask.id> should now hold 'Alice', AND the set_variable
+        # 'Save Name' (source=answer, source_step_id=ask) should have copied
+        # that into user_name itself.
+        self.assertEqual(
+            r2['session_state']['variables'].get(f'__answer_step_{self.ask.id}'),
+            'Alice',
+        )
+        self.assertEqual(r2['session_state']['variables'].get('user_name'), 'Alice')
+
     def test_user_input_persists_in_state(self):
         r1 = self._sim(self.caller.id)
         state = r1['session_state']
