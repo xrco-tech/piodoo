@@ -105,7 +105,13 @@ class WhatsAppChatbot(models.Model):
 
     preview_url = fields.Char(string="Preview URL", compute='_compute_preview_url', tracking=True)
 
-    chatbot_contact_ids = fields.One2many("whatsapp.chatbot.contact", "last_chatbot_id", string="Active Users", tracking=True)
+    # active users only includes real (non-simulator) contacts. Domain on the
+    # One2many keeps both the form list and the smart-button count in sync.
+    chatbot_contact_ids = fields.One2many(
+        "whatsapp.chatbot.contact", "last_chatbot_id",
+        string="Active Users", tracking=True,
+        domain=[('is_simulator', '=', False)],
+    )
     chatbot_contact_count = fields.Integer(string="Active Users", compute="_compute_contact_count", store=True)
     # Every contact that has ever entered this chatbot (regardless of where they
     # are now). Populated at trigger match / jump entry; backfilled from
@@ -114,7 +120,11 @@ class WhatsAppChatbot(models.Model):
         string="Total Users", compute="_compute_historical_contact_count", store=False,
         help="Number of contacts who have ever entered this chatbot, including those now in another bot.",
     )
-    chatbot_message_ids = fields.One2many("whatsapp.chatbot.message", "chatbot_id", string="Messages", tracking=True)
+    chatbot_message_ids = fields.One2many(
+        "whatsapp.chatbot.message", "chatbot_id",
+        string="Messages", tracking=True,
+        domain=[('is_simulator', '=', False)],
+    )
     chatbot_message_count = fields.Integer(string="Messages", compute="_compute_message_count", store=True)
 
     forward_to_external_agent = fields.Boolean(string="Enable Forwarding to External Agent?", default=False, tracking=True)
@@ -141,12 +151,13 @@ class WhatsAppChatbot(models.Model):
             rec.chatbot_message_count = len(rec.chatbot_message_ids)
 
     def _compute_historical_contact_count(self):
-        # search_count on the inverse of contact.chatbot_ids — counts every contact
-        # whose M2M includes this chatbot, regardless of last_chatbot_id.
+        # search_count on the inverse of contact.chatbot_ids — counts every
+        # real (non-simulator) contact whose M2M includes this chatbot.
         Contact = self.env['whatsapp.chatbot.contact'].sudo()
         for rec in self:
             rec.historical_contact_count = Contact.search_count([
                 ('chatbot_ids', 'in', rec.id),
+                ('is_simulator', '=', False),
             ])
 
     def action_publish(self):
@@ -173,7 +184,7 @@ class WhatsAppChatbot(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'whatsapp.chatbot.contact',
             'view_mode': 'list,form',
-            'domain': [('last_chatbot_id', '=', self.id)],
+            'domain': [('last_chatbot_id', '=', self.id), ('is_simulator', '=', False)],
         }
 
     def action_view_historical_users(self):
@@ -183,7 +194,7 @@ class WhatsAppChatbot(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'whatsapp.chatbot.contact',
             'view_mode': 'list,form',
-            'domain': [('chatbot_ids', 'in', self.id)],
+            'domain': [('chatbot_ids', 'in', self.id), ('is_simulator', '=', False)],
         }
 
     def action_view_messages(self):
@@ -193,7 +204,7 @@ class WhatsAppChatbot(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'whatsapp.chatbot.message',
             'view_mode': 'list,form',
-            'domain': [('chatbot_id', '=', self.id)],
+            'domain': [('chatbot_id', '=', self.id), ('is_simulator', '=', False)],
         }
 
     def action_view_step_hierarchy(self):

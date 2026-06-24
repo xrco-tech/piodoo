@@ -63,6 +63,11 @@
                     <separator/>
                     <filter string="Incoming" name="incoming" domain="[('type', '=', 'incoming')]"/>
                     <filter string="Outgoing" name="outgoing" domain="[('type', '=', 'outgoing')]"/>
+                    <separator/>
+                    <filter string="Real Messages" name="real_messages"
+                            domain="[('is_simulator', '=', False)]"/>
+                    <filter string="Simulator Runs" name="simulator_runs"
+                            domain="[('is_simulator', '=', True)]"/>
                 </search>
             </field>
         </record>
@@ -147,6 +152,7 @@
             <field name="res_model">whatsapp.chatbot.message</field>
             <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_whatsapp_chatbot_message_search"/>
+            <field name="context">{'search_default_real_messages': 1}</field>
         </record>
     </data>
 </odoo>

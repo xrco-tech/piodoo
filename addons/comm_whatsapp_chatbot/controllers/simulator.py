@@ -2,8 +2,11 @@
 """Flow simulator endpoint.
 
 Used by the OWL flow-builder right-panel simulator. Runs a turn of the
-chatbot's flow against an ephemeral in-memory session and returns the
-outgoing bubbles + updated session state. Never writes to the database.
+chatbot's flow against the REAL engine — every variable / jump /
+execute_code path that production traffic exercises is exercised here
+too. Records are persisted with is_simulator=True so analytics queries
+filter them out; outbound WA / SMS sends are short-circuited via the
+env context so no real APIs are called.
 
 Auth=user so it can't be hit from outside the Odoo session.
 """

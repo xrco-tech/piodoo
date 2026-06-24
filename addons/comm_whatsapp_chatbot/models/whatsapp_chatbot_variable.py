@@ -52,6 +52,9 @@ class WhatsAppChatbotVariableValue(models.Model):
     variable_id = fields.Many2one("whatsapp.chatbot.variable", string="Variable", required=True, tracking=True, ondelete='cascade')
     variable_type = fields.Selection(related="variable_id.data_type", string="Variable Type", tracking=True, store=True)
     chatbot_id = fields.Many2one("whatsapp.chatbot", related="variable_id.chatbot_id", string="Chatbot", tracking=True, store=True)
+    is_simulator = fields.Boolean(
+        string="Simulator Run", related='contact_id.is_simulator', store=True, index=True,
+    )
 
     value_text = fields.Char(string="Text Value", compute="_compute_value_text", store=True)
     value_integer = fields.Integer(string="Integer Value", compute="_compute_value_integer", store=True)

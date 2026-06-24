@@ -24,6 +24,12 @@ class WhatsAppChatbotContact(models.Model):
     last_step_id = fields.Many2one("whatsapp.chatbot.step", string="Chatbot Step", tracking=True)
     last_seen_date = fields.Datetime('Last Seen Date')
 
+    # Flag set on contacts spawned by the flow-builder simulator. All
+    # analytics queries (chatbot_contact_count, historical_contact_count,
+    # message lists) exclude is_simulator=True rows so test runs never leak
+    # into the real numbers.
+    is_simulator = fields.Boolean(string="Simulator Contact", default=False, index=True)
+
     # Subroutine call stack for jump_to_flow steps.
     # Each frame: {"caller_chatbot_id": int, "return_step_id": int,
     #              "out_mapping": [{"src_var": int, "tgt_var": int}, ...]}
