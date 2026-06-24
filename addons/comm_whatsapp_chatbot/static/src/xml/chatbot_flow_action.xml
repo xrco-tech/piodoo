@@ -79,12 +79,94 @@
                                 </div>
                                 <div class="o_flow_sim_chat">
                                     <t t-foreach="state.sim.bubbles" t-as="b" t-key="b_index">
-                                        <div t-attf-class="o_flow_sim_bubble o_flow_sim_bubble_#{b.dir} o_flow_sim_bubble_t_#{b.step_type}">
-                                            <t t-foreach="b.text.split('\n')" t-as="line" t-key="line_index">
-                                                <div t-esc="line"/>
-                                            </t>
-                                        </div>
+
+                                        <!-- User-sent bubble: plain escaped text -->
+                                        <t t-if="b.dir === 'out'">
+                                            <div class="o_flow_sim_bubble o_flow_sim_bubble_out o_flow_sim_bubble_t_user"
+                                                 t-out="simEscape(b.text)"/>
+                                        </t>
+
+                                        <!-- Numbered menu (always plain monospace) -->
+                                        <t t-elif="b.step_type === 'menu'">
+                                            <div class="o_flow_sim_bubble o_flow_sim_bubble_in o_flow_sim_bubble_t_menu"
+                                                 t-out="simEscape(b.text)"/>
+                                        </t>
+
+                                        <!-- Notes / errors -->
+                                        <t t-elif="b.step_type === 'error' or b.step_type === 'sim_note'">
+                                            <div t-attf-class="o_flow_sim_bubble o_flow_sim_bubble_in o_flow_sim_bubble_t_#{b.step_type}"
+                                                 t-out="simEscape(b.text)"/>
+                                        </t>
+
+                                        <!-- Bot bubble: rich rendering per channel -->
+                                        <t t-else="">
+                                            <div t-attf-class="o_flow_sim_bubble o_flow_sim_bubble_in o_flow_sim_bubble_t_#{b.step_type}">
+
+                                                <!-- WhatsApp: header (text/media/document) -->
+                                                <t t-if="b.channel === 'whatsapp' and b.header_type === 'text' and b.header_text">
+                                                    <div class="o_flow_bubble_header_text" t-out="simEscape(b.header_text)"/>
+                                                </t>
+                                                <t t-if="b.channel === 'whatsapp' and b.header_type === 'image'">
+                                                    <div class="o_flow_bubble_header_media">
+                                                        <i class="fa fa-image"/><span>Image</span>
+                                                    </div>
+                                                </t>
+                                                <t t-if="b.channel === 'whatsapp' and b.header_type === 'video'">
+                                                    <div class="o_flow_bubble_header_media">
+                                                        <i class="fa fa-play-circle"/><span>Video</span>
+                                                    </div>
+                                                </t>
+                                                <t t-if="b.channel === 'whatsapp' and b.header_type === 'document'">
+                                                    <div class="o_flow_bubble_header_doc">
+                                                        <i class="fa fa-file-text-o"/>
+                                                        <span><t t-esc="b.header_text or 'Document'"/></span>
+                                                    </div>
+                                                </t>
+
+                                                <!-- Body with channel-appropriate formatting -->
+                                                <t t-if="b.body or b.text">
+                                                    <div class="o_flow_bubble_body"
+                                                         t-out="simFormatBody(b.body or b.text, b.channel || state.sim.channel)"/>
+                                                </t>
+
+                                                <!-- Footer (WhatsApp) -->
+                                                <t t-if="b.channel === 'whatsapp' and b.footer">
+                                                    <div class="o_flow_bubble_footer" t-out="simEscape(b.footer)"/>
+                                                </t>
+
+                                                <!-- Interactive flow CTA (WhatsApp) -->
+                                                <t t-if="b.channel === 'whatsapp' and b.wa_message_type === 'interactive_flow'">
+                                                    <div class="o_flow_bubble_flow_sep"/>
+                                                    <div class="o_flow_bubble_flow_cta">
+                                                        <span><t t-esc="b.flow_cta or 'Open'"/></span>
+                                                        <i class="fa fa-chevron-right"/>
+                                                    </div>
+                                                </t>
+
+                                                <!-- Reply buttons (WhatsApp) -->
+                                                <t t-if="b.channel === 'whatsapp' and b.buttons and b.buttons.length">
+                                                    <div class="o_flow_ia_sep"/>
+                                                    <t t-foreach="b.buttons" t-as="btn" t-key="btn_index">
+                                                        <div class="o_flow_ia_btn" t-esc="btn"/>
+                                                    </t>
+                                                </t>
+
+                                                <!-- Interactive list (WhatsApp) -->
+                                                <t t-if="b.channel === 'whatsapp' and b.list_rows and b.list_rows.length">
+                                                    <div class="o_flow_ia_sep"/>
+                                                    <div class="o_flow_ia_list_btn">
+                                                        <i class="fa fa-list me-1"/>
+                                                        <t t-esc="b.list_button_text or 'See all options'"/>
+                                                    </div>
+                                                    <t t-foreach="b.list_rows" t-as="row" t-key="row_index">
+                                                        <div class="o_flow_ia_list_row" t-esc="row"/>
+                                                    </t>
+                                                </t>
+
+                                            </div>
+                                        </t>
                                     </t>
+
                                     <t t-if="state.sim.sending">
                                         <div class="o_flow_sim_bubble o_flow_sim_bubble_in o_flow_sim_typing">
                                             <span class="dot"/><span class="dot"/><span class="dot"/>

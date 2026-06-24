@@ -79,10 +79,26 @@ function flattenTree(nodes, level = 0, parent = null, out = []) {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function bodyToHtml(text) {
     if (!text) return "";
-    return text
+    // Escape first so user content can't inject markup.
+    let s = String(text)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // WhatsApp formatting markers, in this order:
+    //   ```code``` → monospace (apply before single-char markers so we don't
+    //                eat backticks mid-rewrite)
+    //   *bold*    → <strong>
+    //   _italic_  → <em>
+    //   ~strike~  → <s>
+    s = s.replace(/```([^`\n]+)```/g, "<code>$1</code>");
+    s = s.replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>");
+    s = s.replace(/_([^_\n]+)_/g, "<em>$1</em>");
+    s = s.replace(/~([^~\n]+)~/g, "<s>$1</s>");
+    return s.replace(/\n/g, "<br>");
+}
+function plainToHtml(text) {
+    // SMS / USSD: just escape + preserve line breaks; no formatting.
+    if (!text) return "";
+    return String(text)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
-        .replace(/_([^_\n]+)_/g, "<em>$1</em>")
         .replace(/\n/g, "<br>");
 }
 
@@ -421,6 +437,14 @@ export class ChatbotFlowAction extends Component {
             ev.preventDefault();
             this._simSendInput();
         }
+    }
+
+    // Formatters exposed to the OWL template for the simulator bubbles.
+    simFormatBody(text, channel) {
+        return (channel === "whatsapp" ? bodyToHtml(text) : plainToHtml(text));
+    }
+    simEscape(text) {
+        return plainToHtml(text);
     }
 
     _goBack() {

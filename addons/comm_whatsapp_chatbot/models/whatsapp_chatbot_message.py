@@ -482,9 +482,9 @@ class WhatsAppChatbotMessage(models.Model):
 
             st = current.step_type
             if st == 'message':
-                body = self._sim_render_body(current.body_plain or '', state['variables'])
-                if body:
-                    bubbles.append({"text": body, "step_type": "message", "step_id": current.id})
+                bubble = self._sim_make_step_bubble(current, current_bot, state)
+                if bubble:
+                    bubbles.append(bubble)
                 children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
                 if not children:
                     state['current_step_id'] = current.id
@@ -503,9 +503,9 @@ class WhatsAppChatbotMessage(models.Model):
                 continue
 
             if st.startswith('question_'):
-                body = self._sim_render_body(current.body_plain or '', state['variables'])
-                if body:
-                    bubbles.append({"text": body, "step_type": st, "step_id": current.id})
+                bubble = self._sim_make_step_bubble(current, current_bot, state)
+                if bubble:
+                    bubbles.append(bubble)
                 children = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))
                 if len(children) > 1:
                     bubbles.append({
@@ -583,6 +583,70 @@ class WhatsAppChatbotMessage(models.Model):
             current = children[0] if children else False
 
         return (True, False)
+
+    def _sim_make_step_bubble(self, step, current_bot, state):
+        """Serialise a message / question step into a rich bubble dict so the
+        frontend can render it with the same fidelity as the canvas preview.
+
+        Channel-aware:
+          - WhatsApp → full bubble shape (header, body, footer, wa_message_type,
+            buttons, list_rows, flow_cta) so the simulator looks like the
+            WhatsApp app.
+          - SMS / USSD → text-only; those channels have no headers, footers,
+            or interactive elements anyway.
+        """
+        vars_dict = state.get('variables') or {}
+        body = self._sim_render_body(step.body_plain or '', vars_dict)
+        channel = (current_bot.channel or '').lower()
+
+        # Non-WhatsApp channels: bubbles stay simple. We still return the body
+        # under the 'text' key for backward compatibility with the basic
+        # rendering path on the frontend.
+        if channel != 'whatsapp':
+            if not body:
+                return None
+            return {
+                'text': body,
+                'body': body,
+                'step_type': step.step_type,
+                'step_id': step.id,
+                'channel': channel,
+            }
+
+        # WhatsApp: enrich with everything the canvas preview shows.
+        header_type = step.header_type or None
+        header_text = step.header_text or ''
+        footer = step.footer or ''
+        wa_type = step.wa_message_type or 'non_interactive'
+
+        bubble = {
+            'text': body,             # back-compat plain text
+            'body': body,
+            'step_type': step.step_type,
+            'step_id': step.id,
+            'channel': 'whatsapp',
+            'header_type': header_type,
+            'header_text': header_text if header_type == 'text' else '',
+            'footer': footer,
+            'wa_message_type': wa_type,
+        }
+
+        if wa_type == 'interactive_button' and step.button_ids:
+            bubble['buttons'] = [b.title for b in step.button_ids.sorted(key=lambda b: (b.sequence, b.id))]
+        elif wa_type == 'interactive_list' and step.list_row_ids:
+            bubble['list_button_text'] = step.list_button_text or 'See all options'
+            bubble['list_rows'] = [r.title for r in step.list_row_ids.sorted(key=lambda r: (r.sequence, r.id))]
+        elif wa_type == 'interactive_flow':
+            bubble['flow_cta'] = step.flow_cta or 'Open'
+            bubble['flow_name'] = step.flow_id.display_name if step.flow_id else ''
+
+        # If the bubble is empty (no body and no header/footer/interactive), drop it.
+        has_any_content = (
+            body or header_type or footer or
+            bubble.get('buttons') or bubble.get('list_rows') or
+            wa_type == 'interactive_flow'
+        )
+        return bubble if has_any_content else None
 
     def _sim_render_body(self, body_plain, variables_dict):
         """Variable substitution against the session's in-memory variables dict.

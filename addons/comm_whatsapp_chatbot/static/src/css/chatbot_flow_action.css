@@ -179,6 +179,76 @@
 .o_flow_sim_bubble_t_error    { background: #fee2e2; color: #b91c1c; }
 .o_flow_sim_bubble_t_sim_note { background: #fef3c7; color: #92400e; font-style: italic; font-size: 11px; }
 .o_flow_sim_bubble_t_menu     { background: #fff; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+.o_flow_sim_bubble_t_user     { white-space: pre-wrap; }
+
+/* Simulator bubble sub-elements — reuse the canvas-bubble CSS classes for
+   visual parity with the card preview but tighten spacing so they read
+   cleanly inside a chat bubble. */
+.o_flow_sim_bubble .o_flow_bubble_header_text {
+    margin-bottom: 4px; font-size: 13px;
+}
+.o_flow_sim_bubble .o_flow_bubble_header_media,
+.o_flow_sim_bubble .o_flow_bubble_header_doc {
+    margin: -2px -2px 6px -2px; padding: 14px 10px;
+}
+.o_flow_sim_bubble .o_flow_bubble_body {
+    font-size: 13px; line-height: 1.35;
+}
+.o_flow_sim_bubble .o_flow_bubble_body code {
+    background: rgba(0, 0, 0, 0.07);
+    padding: 1px 4px; border-radius: 3px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+}
+.o_flow_sim_bubble .o_flow_bubble_footer {
+    margin-top: 4px; font-size: 11px; color: #6b7280; font-style: italic;
+}
+
+/* Interactive flow CTA inside the bubble */
+.o_flow_sim_bubble .o_flow_bubble_flow_sep {
+    height: 1px; background: rgba(0, 0, 0, 0.08); margin: 8px -8px;
+}
+.o_flow_sim_bubble .o_flow_bubble_flow_cta {
+    display: flex; align-items: center; justify-content: space-between;
+    color: #0b8a8a; font-weight: 600; font-size: 13px;
+    margin: -2px -2px 0 -2px; padding: 4px 0 0;
+}
+
+/* Reply buttons & interactive list sit OUTSIDE the body bubble in real
+   WhatsApp, but inside it on the canvas preview. We follow the canvas
+   convention so the simulator visually matches the card. */
+.o_flow_sim_bubble .o_flow_ia_sep {
+    height: 1px; background: rgba(0, 0, 0, 0.08); margin: 8px -8px;
+}
+.o_flow_sim_bubble .o_flow_ia_btn {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    padding: 5px 8px;
+    margin-top: 4px;
+    color: #0b8a8a;
+    font-weight: 600;
+    font-size: 12px;
+}
+.o_flow_sim_bubble .o_flow_ia_list_btn {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    padding: 5px 8px;
+    margin-top: 4px;
+    color: #0b8a8a;
+    font-weight: 600;
+    font-size: 12px;
+    text-align: center;
+}
+.o_flow_sim_bubble .o_flow_ia_list_row {
+    padding: 4px 0 4px 6px;
+    margin-top: 2px;
+    font-size: 12px;
+    color: #1f2937;
+    border-left: 2px solid #cfd8dc;
+}
 
 .o_flow_sim_typing { display: flex; gap: 4px; padding: 8px 10px; }
 .o_flow_sim_typing .dot {
