@@ -463,6 +463,15 @@ export class ChatbotFlowAction extends Component {
         }
     }
 
+    // Quick-reply: user tapped a button/list row/flow CTA. Send its label
+    // as the next user input so the engine routes via trigger_answer_ids.
+    async _simSendQuickReply(text) {
+        if (!text || this.state.sim.sending || this.state.sim.terminate) return;
+        this.state.sim.bubbles.push({ text, dir: "out", step_type: "user" });
+        this.state.sim.sending = true;
+        await this._simSendTurn(text);
+    }
+
     // Formatters exposed to the OWL template for the simulator bubbles.
     // Wrapped in markup() so OWL's t-out treats the returned strings as HTML
     // instead of escaping them — both helpers already escape user content

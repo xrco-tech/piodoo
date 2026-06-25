@@ -306,6 +306,63 @@
     border-left: 2px solid #cfd8dc;
 }
 
+/* Clickable interactive elements (reply buttons / list rows / flow CTA).
+   When the user taps one, the simulator forwards its label as the next
+   user input — exactly what real WhatsApp does behind the scenes. */
+.o_flow_sim_bubble .o_flow_sim_clickable {
+    display: block;
+    width: 100%;
+    text-align: center;
+    border: 1px solid #cfd8dc;
+    background: rgba(255, 255, 255, 0.6);
+    color: #0b8a8a;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+    font: inherit;
+}
+.o_flow_sim_bubble button.o_flow_ia_btn {
+    background: rgba(255, 255, 255, 0.6);
+    color: #0b8a8a;
+}
+.o_flow_sim_bubble button.o_flow_ia_list_row {
+    background: rgba(255, 255, 255, 0.6);
+    color: #1f2937;
+    text-align: left;
+    border-left: 2px solid #cfd8dc;
+    border-top: none; border-right: none; border-bottom: none;
+}
+.o_flow_sim_bubble .o_flow_sim_clickable:hover:not([disabled]) {
+    background: #e0f7f4;
+}
+.o_flow_sim_bubble .o_flow_sim_clickable:active:not([disabled]) {
+    transform: scale(0.98);
+}
+.o_flow_sim_bubble .o_flow_sim_clickable[disabled] {
+    opacity: 0.6; cursor: not-allowed;
+}
+.o_flow_sim_bubble button.o_flow_bubble_flow_cta {
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+/* Media-question placeholders — small dashed bordered chip with an icon. */
+.o_flow_sim_media_prompt {
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px dashed #94a3b8;
+    border-radius: 8px;
+    color: #475569;
+    font-size: 12px;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.o_flow_sim_media_prompt i { color: #64748b; font-size: 14px; }
+
 .o_flow_sim_typing { display: flex; gap: 4px; padding: 8px 10px; }
 .o_flow_sim_typing .dot {
     width: 6px; height: 6px; background: #9ca3af; border-radius: 50%;

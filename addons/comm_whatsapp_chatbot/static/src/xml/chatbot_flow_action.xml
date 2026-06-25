@@ -167,24 +167,55 @@
                                                     <div class="o_flow_bubble_footer" t-out="simEscape(b.footer)"/>
                                                 </t>
 
-                                                <!-- Interactive flow CTA (WhatsApp) -->
-                                                <t t-if="b.channel === 'whatsapp' and b.wa_message_type === 'interactive_flow'">
-                                                    <div class="o_flow_bubble_flow_sep"/>
-                                                    <div class="o_flow_bubble_flow_cta">
-                                                        <span><t t-esc="b.flow_cta or 'Open'"/></span>
-                                                        <i class="fa fa-chevron-right"/>
+                                                <!-- Media-question placeholder (image/video/audio/document) -->
+                                                <t t-if="b.step_type === 'question_image'">
+                                                    <div class="o_flow_sim_media_prompt">
+                                                        <i class="fa fa-camera"/>
+                                                        <span>Send a photo to continue</span>
+                                                    </div>
+                                                </t>
+                                                <t t-elif="b.step_type === 'question_video'">
+                                                    <div class="o_flow_sim_media_prompt">
+                                                        <i class="fa fa-video-camera"/>
+                                                        <span>Send a video to continue</span>
+                                                    </div>
+                                                </t>
+                                                <t t-elif="b.step_type === 'question_audio'">
+                                                    <div class="o_flow_sim_media_prompt">
+                                                        <i class="fa fa-microphone"/>
+                                                        <span>Send a voice note to continue</span>
+                                                    </div>
+                                                </t>
+                                                <t t-elif="b.step_type === 'question_document'">
+                                                    <div class="o_flow_sim_media_prompt">
+                                                        <i class="fa fa-file-text-o"/>
+                                                        <span>Send a document to continue</span>
                                                     </div>
                                                 </t>
 
-                                                <!-- Reply buttons (WhatsApp) -->
+                                                <!-- Interactive flow CTA (WhatsApp) — clickable -->
+                                                <t t-if="b.channel === 'whatsapp' and b.wa_message_type === 'interactive_flow'">
+                                                    <div class="o_flow_bubble_flow_sep"/>
+                                                    <button class="o_flow_bubble_flow_cta o_flow_sim_clickable"
+                                                            t-att-disabled="state.sim.sending or state.sim.terminate"
+                                                            t-on-click="() => this._simSendQuickReply(b.flow_cta or 'Open')">
+                                                        <span><t t-esc="b.flow_cta or 'Open'"/></span>
+                                                        <i class="fa fa-chevron-right"/>
+                                                    </button>
+                                                </t>
+
+                                                <!-- Reply buttons (WhatsApp) — clickable -->
                                                 <t t-if="b.channel === 'whatsapp' and b.buttons and b.buttons.length">
                                                     <div class="o_flow_ia_sep"/>
                                                     <t t-foreach="b.buttons" t-as="btn" t-key="btn_index">
-                                                        <div class="o_flow_ia_btn" t-esc="btn"/>
+                                                        <button class="o_flow_ia_btn o_flow_sim_clickable"
+                                                                t-att-disabled="state.sim.sending or state.sim.terminate"
+                                                                t-on-click="() => this._simSendQuickReply(btn)"
+                                                                t-esc="btn"/>
                                                     </t>
                                                 </t>
 
-                                                <!-- Interactive list (WhatsApp) -->
+                                                <!-- Interactive list (WhatsApp) — clickable rows -->
                                                 <t t-if="b.channel === 'whatsapp' and b.list_rows and b.list_rows.length">
                                                     <div class="o_flow_ia_sep"/>
                                                     <div class="o_flow_ia_list_btn">
@@ -192,7 +223,10 @@
                                                         <t t-esc="b.list_button_text or 'See all options'"/>
                                                     </div>
                                                     <t t-foreach="b.list_rows" t-as="row" t-key="row_index">
-                                                        <div class="o_flow_ia_list_row" t-esc="row"/>
+                                                        <button class="o_flow_ia_list_row o_flow_sim_clickable"
+                                                                t-att-disabled="state.sim.sending or state.sim.terminate"
+                                                                t-on-click="() => this._simSendQuickReply(row)"
+                                                                t-esc="row"/>
                                                     </t>
                                                 </t>
 
