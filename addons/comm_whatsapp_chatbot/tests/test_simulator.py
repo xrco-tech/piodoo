@@ -430,6 +430,27 @@ class TestSimulatorVarsEditor(SimFixtures):
         seeded = contact.variable_value_ids.filtered(lambda v: v.variable_id == self.caller_name)
         self.assertEqual(seeded.value, 'Preset')
 
+    def test_seeded_variable_survives_first_turn_engine_drive(self):
+        """Regression: _sim_drive_inbound used to wipe variable_value_ids
+        when from_trigger=True, undoing the initial_variables seed. Pre-seed
+        user_name=Preset → the first turn's engine run must still see it,
+        so the value persists on the contact after the trigger fires."""
+        r = self.env['whatsapp.chatbot.message'].simulate_turn(
+            chatbot_id=self.caller.id,
+            contact_details={'name': 'Persist', 'mobile': '+27600000150'},
+            initial_variables=[
+                {'variable_id': self.caller_name.id, 'value': 'Preset'},
+            ],
+        )
+        contact = self.env['whatsapp.chatbot.contact'].browse(
+            r['session_state']['contact_id'],
+        )
+        kept = contact.variable_value_ids.filtered(lambda v: v.variable_id == self.caller_name)
+        self.assertEqual(
+            kept.value, 'Preset',
+            "Seeded variable must survive the trigger-reset path in _sim_drive_inbound",
+        )
+
     def test_seed_upserts_no_duplicates(self):
         r = self._sim(self.caller.id, contact_details={
             'name': 'Up', 'mobile': '+27600000114',

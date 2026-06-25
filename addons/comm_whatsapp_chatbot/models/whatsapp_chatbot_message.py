@@ -789,11 +789,15 @@ class WhatsAppChatbotMessage(models.Model):
         """Single entry point that the simulator uses to feed input into the
         real engine. We bypass the channel-specific webhook plumbing (which
         depends on Cloudflare-routed payloads) and call the same
-        _handle_incoming_message path that those webhooks ultimately invoke."""
-        # On the first turn we may need to seed the contact's last_chatbot_id;
-        # on subsequent turns the engine has already done so.
+        _handle_incoming_message path that those webhooks ultimately invoke.
+
+        Note: variable_value_ids is intentionally NOT wiped here even when
+        from_trigger=True. The contact reset on a fresh session is already
+        handled upstream by _sim_reset_contact, and pre-seeded values from
+        initial_variables must survive into the first turn so the engine
+        sees them when branching / substituting bodies.
+        """
         if from_trigger:
-            contact.variable_value_ids.unlink()
             contact.write({
                 'last_chatbot_id': chatbot.id,
                 'last_step_id': False,
