@@ -66,11 +66,44 @@
                     <!-- Simulator tab content -->
                     <t t-if="state.panelMode === 'sim'">
                         <div t-attf-class="o_flow_sim o_flow_sim_#{state.sim.channel}">
-                            <div class="o_flow_sim_phone">
+
+                            <!-- Persona form (shown before the session starts) -->
+                            <t t-if="!state.sim.started">
+                                <div class="o_flow_sim_persona_form">
+                                    <div class="o_flow_sim_persona_title">
+                                        Run as a contact
+                                    </div>
+                                    <div class="o_flow_sim_persona_help">
+                                        Set the name and mobile of the test user; the bot will
+                                        run as if this contact dialled / messaged it.
+                                    </div>
+                                    <label class="o_flow_sim_persona_label">Name</label>
+                                    <input type="text" class="o_flow_sim_persona_input"
+                                           t-model="state.sim.personaName"
+                                           placeholder="e.g. Alice Test"/>
+                                    <label class="o_flow_sim_persona_label">Mobile</label>
+                                    <input type="tel" class="o_flow_sim_persona_input"
+                                           t-model="state.sim.personaMobile"
+                                           placeholder="+27600000001"/>
+                                    <button class="btn btn-primary w-100 mt-2"
+                                            t-on-click="() => this._simStart()">
+                                        <i class="fa fa-play me-1"/>Start session
+                                    </button>
+                                </div>
+                            </t>
+
+                            <div t-if="state.sim.started" class="o_flow_sim_phone">
                                 <div class="o_flow_sim_phone_status">
                                     <span class="o_flow_sim_channel_pill">
                                         <t t-esc="state.sim.channel.toUpperCase()"/>
                                     </span>
+                                    <div class="o_flow_sim_persona_chip" t-on-click="() => this._simChangePersona()"
+                                         title="Click to change persona">
+                                        <i class="fa fa-user me-1"/>
+                                        <span class="o_flow_sim_persona_chip_name"
+                                              t-esc="state.sim.personaName or state.sim.personaMobile"/>
+                                        <i class="fa fa-pencil ms-1 o_flow_sim_persona_chip_pencil"/>
+                                    </div>
                                     <button class="btn btn-sm btn-link o_flow_sim_restart"
                                             t-on-click="() => this._simStart()"
                                             title="Restart simulator session">

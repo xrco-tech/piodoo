@@ -146,6 +146,10 @@ export class ChatbotFlowAction extends Component {
                 channel: "whatsapp",
                 sending: false,
                 started: false,
+                // Persona the simulator runs as. Surface a form before
+                // starting so authors can demo different contacts.
+                personaName: "Sim User",
+                personaMobile: "+27600000001",
             },
         });
 
@@ -367,13 +371,16 @@ export class ChatbotFlowAction extends Component {
 
     _setPanelMode(mode) {
         this.state.panelMode = mode;
-        // Auto-start a simulator session the first time the user switches in.
-        if (mode === "sim" && !this.state.sim.started && !this.state.sim.sending) {
-            this._simStart();
-        }
+        // No auto-start — the user picks a persona via the form first.
     }
 
     async _simStart() {
+        const name = (this.state.sim.personaName || "").trim();
+        const mobile = (this.state.sim.personaMobile || "").trim();
+        if (!mobile) {
+            this.notification.add("Mobile number is required to start a session.", { type: "warning" });
+            return;
+        }
         Object.assign(this.state.sim, {
             bubbles: [],
             session_state: null,
@@ -384,6 +391,19 @@ export class ChatbotFlowAction extends Component {
             started: true,
         });
         await this._simSendTurn(null);
+    }
+
+    _simChangePersona() {
+        // Back to the form so the user can change name/mobile or restart fresh.
+        Object.assign(this.state.sim, {
+            bubbles: [],
+            session_state: null,
+            userInput: "",
+            terminate: false,
+            waitForInput: false,
+            sending: false,
+            started: false,
+        });
     }
 
     async _simSendInput() {
@@ -399,9 +419,13 @@ export class ChatbotFlowAction extends Component {
     async _simSendTurn(userInput) {
         try {
             const data = await rpc("/chatbot/simulate", {
-                chatbot_id:    this.chatbotId,
-                session_state: this.state.sim.session_state,
-                user_input:    userInput,
+                chatbot_id:      this.chatbotId,
+                session_state:   this.state.sim.session_state,
+                user_input:      userInput,
+                contact_details: {
+                    name:   (this.state.sim.personaName || "").trim(),
+                    mobile: (this.state.sim.personaMobile || "").trim(),
+                },
             });
             if (!data) return;
             for (const b of (data.bubbles || [])) {

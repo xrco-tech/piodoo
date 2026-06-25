@@ -418,7 +418,8 @@ class WhatsAppChatbotMessage(models.Model):
     # ── Simulator (ephemeral, no DB writes) ─────────────────────────────────
 
     @api.model
-    def simulate_turn(self, chatbot_id, session_state=None, user_input=None):
+    def simulate_turn(self, chatbot_id, session_state=None, user_input=None,
+                      contact_details=None):
         """Run one simulator turn for the flow builder's right-panel demo.
 
         Drives the real chatbot runtime against a dedicated per-user
@@ -471,7 +472,11 @@ class WhatsAppChatbotMessage(models.Model):
         is_first_turn = not state.get('contact_id')
 
         try:
-            contact = self._sim_get_or_create_contact(chatbot, state, fresh=is_first_turn)
+            contact = self._sim_get_or_create_contact(
+                chatbot, state,
+                fresh=is_first_turn,
+                contact_details=contact_details or {},
+            )
         except UserError as e:
             return self._sim_error(str(e), channel=chatbot.channel)
 
@@ -542,31 +547,65 @@ class WhatsAppChatbotMessage(models.Model):
 
     # ── Simulator support ──────────────────────────────────────────────────
 
-    def _sim_get_or_create_contact(self, chatbot, state, fresh=False):
-        """Resolve the per-user simulator contact. One contact per Odoo user
-        so multiple browser tabs from the same user share it (and we don't
-        spawn N test users)."""
-        existing_id = state.get('contact_id') if not fresh else None
+    def _sim_get_or_create_contact(self, chatbot, state, fresh=False, contact_details=None):
+        """Resolve the simulator contact for this session.
+
+        Persona-keyed: each simulator partner+contact is identified by its
+        mobile number, so two browser tabs running different mobiles get
+        independent state, and re-running the same mobile reuses the same
+        persona (handy for "returning user" demos).
+
+        On a fresh session the contact's variable values + last step + call
+        stack are wiped so the new run starts clean. A persistent session
+        (state carries contact_id) reuses the contact's current state.
+        """
         Contact = self.env['whatsapp.chatbot.contact'].sudo()
+        Partner = self.env['res.partner'].sudo()
+        details = contact_details or {}
+
+        # Persisted session — reuse the contact already on the state.
+        existing_id = state.get('contact_id') if not fresh else None
         if existing_id:
             contact = Contact.browse(existing_id).exists()
             if contact and contact.is_simulator:
-                if fresh:
-                    self._sim_reset_contact(contact)
                 return contact
-        # Look up by partner (one simulator partner per uid).
-        uid = self.env.uid
-        sim_email = f"simulator+uid{uid}@chatbot.local"
-        Partner = self.env['res.partner'].sudo()
-        partner = Partner.search([('email', '=', sim_email)], limit=1)
+
+        # Resolve persona details for a fresh session.
+        mobile = (details.get('mobile') or '').strip()
+        name = (details.get('name') or '').strip()
+        if not mobile:
+            # Backward-compat fallback: one persona per Odoo uid when the
+            # frontend didn't supply mobile + name. Preserves the v1 behaviour
+            # for anyone who calls simulate_turn without contact_details.
+            uid = self.env.uid
+            mobile = f"+27000{uid:07d}"
+            name = name or f"Chatbot Simulator (uid {uid})"
+        if not name:
+            name = f"Simulator {mobile}"
+
+        # Find-or-create the simulator partner by mobile. We don't want a
+        # simulator session to silently latch onto a REAL customer partner
+        # that happens to share the mobile, so we restrict the search to
+        # partners flagged via a marker email.
+        sim_email = f"sim+{mobile}@chatbot.local"
+        partner = Partner.search([
+            '|',
+            ('email', '=', sim_email),
+            '&', ('mobile', '=', mobile), ('email', '=ilike', 'sim+%@chatbot.local'),
+        ], limit=1)
         if not partner:
             partner = Partner.create({
-                'name':   f"Chatbot Simulator (uid {uid})",
-                'email':  sim_email,
-                'mobile': f"+27000{uid:07d}",
+                'name':       name,
+                'email':      sim_email,
+                'mobile':     mobile,
                 'is_company': False,
             })
-        contact = Contact.search([('partner_id', '=', partner.id), ('is_simulator', '=', True)], limit=1)
+        elif partner.name != name:
+            partner.name = name  # let users relabel an existing persona
+
+        contact = Contact.search([
+            ('partner_id', '=', partner.id), ('is_simulator', '=', True),
+        ], limit=1)
         if not contact:
             contact = Contact.create({
                 'partner_id':   partner.id,

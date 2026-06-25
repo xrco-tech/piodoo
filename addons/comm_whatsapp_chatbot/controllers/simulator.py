@@ -26,7 +26,8 @@ class ChatbotSimulatorController(http.Controller):
         "/chatbot/simulate",
         type="json", auth="user", methods=["POST"], csrf=False,
     )
-    def simulate(self, chatbot_id=None, session_state=None, user_input=None, **_kw):
+    def simulate(self, chatbot_id=None, session_state=None, user_input=None,
+                 contact_details=None, **_kw):
         if not chatbot_id:
             return {
                 "session_state": None,
@@ -40,6 +41,7 @@ class ChatbotSimulatorController(http.Controller):
                 chatbot_id=int(chatbot_id),
                 session_state=session_state,
                 user_input=user_input,
+                contact_details=contact_details,
             )
             return result
         except Exception as e:

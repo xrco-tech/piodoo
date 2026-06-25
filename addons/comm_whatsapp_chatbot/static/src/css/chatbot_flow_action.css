@@ -124,6 +124,62 @@
     flex-direction: column;
     min-height: 0;
 }
+
+/* Persona form — shown before the session starts */
+.o_flow_sim_persona_form {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.o_flow_sim_persona_title {
+    font-weight: 700; font-size: 13px; color: #111827;
+}
+.o_flow_sim_persona_help {
+    color: #6b7280; font-size: 11px; line-height: 1.4; margin-bottom: 8px;
+}
+.o_flow_sim_persona_label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: #6b7280; font-weight: 700; margin-bottom: 0;
+}
+.o_flow_sim_persona_input {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+    width: 100%;
+}
+.o_flow_sim_persona_input:focus { border-color: #9ca3af; }
+
+/* Persona chip — small pill in the phone status bar once session is running */
+.o_flow_sim_persona_chip {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 8px;
+    padding: 3px 8px;
+    background: #f3f4f6;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    max-width: 100%;
+    min-width: 0;
+}
+.o_flow_sim_persona_chip:hover { background: #e5e7eb; }
+.o_flow_sim_persona_chip_name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1; min-width: 0;
+}
+.o_flow_sim_persona_chip_pencil { font-size: 9px; opacity: 0.6; }
 .o_flow_sim_phone {
     flex: 1;
     display: flex;
@@ -318,6 +374,8 @@
 .o_flow_sim_ussd .o_flow_sim_input_row { background: #1f2937; border-color: #374151; }
 .o_flow_sim_ussd .o_flow_sim_input     { background: #111; border-color: #374151; color: #f9fafb; }
 .o_flow_sim_ussd .o_flow_sim_terminated{ background: #1f2937; color: #9ca3af; }
+.o_flow_sim_ussd .o_flow_sim_persona_chip { background: #374151; color: #f9fafb; }
+.o_flow_sim_ussd .o_flow_sim_persona_chip:hover { background: #4b5563; }
 /* Desktop collapsed: panel slides shut sideways, canvas takes the freed width. */
 .o_chatbot_flow_props_collapsed {
     width: 0 !important;

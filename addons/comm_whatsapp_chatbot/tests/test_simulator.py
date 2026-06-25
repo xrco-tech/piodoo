@@ -127,9 +127,12 @@ class SimFixtures(common.TransactionCase):
             'step_type': 'end_flow', 'parent_id': cls.thanks.id,
         })
 
-    def _sim(self, chatbot_id, state=None, user_input=None):
+    def _sim(self, chatbot_id, state=None, user_input=None, contact_details=None):
         return self.env['whatsapp.chatbot.message'].simulate_turn(
             chatbot_id=chatbot_id, session_state=state, user_input=user_input,
+            contact_details=contact_details or {
+                'name': 'Test Persona', 'mobile': '+27600000001',
+            },
         )
 
 
@@ -283,6 +286,95 @@ class TestSimulatorReset(SimFixtures):
         ])
         self.assertEqual(leftover, 0,
                          "Fresh session must wipe previous variable values on the simulator contact")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Persona — contact_details keyed by mobile
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tagged('chatbot', 'sim', 'post_install', '-at_install')
+class TestSimulatorPersona(SimFixtures):
+
+    def test_persona_keyed_by_mobile_creates_distinct_contacts(self):
+        """Two sessions with different mobiles → two independent simulator
+        contacts, so personas don't share variable state."""
+        r_alice = self._sim(self.caller.id, contact_details={
+            'name': 'Alice', 'mobile': '+27600000010',
+        })
+        r_bob = self._sim(self.caller.id, contact_details={
+            'name': 'Bob', 'mobile': '+27600000011',
+        })
+        self.assertNotEqual(
+            r_alice['session_state']['contact_id'],
+            r_bob['session_state']['contact_id'],
+            "Different mobiles must yield different simulator contacts",
+        )
+        Contact = self.env['whatsapp.chatbot.contact']
+        alice = Contact.browse(r_alice['session_state']['contact_id'])
+        bob = Contact.browse(r_bob['session_state']['contact_id'])
+        self.assertEqual(alice.partner_id.name, 'Alice')
+        self.assertEqual(bob.partner_id.name, 'Bob')
+        self.assertEqual(alice.partner_id.mobile, '+27600000010')
+        self.assertEqual(bob.partner_id.mobile, '+27600000011')
+
+    def test_same_mobile_reuses_existing_persona(self):
+        """A second fresh session with the same mobile reuses the previous
+        simulator partner+contact (handy for 'returning user' demos)."""
+        r1 = self._sim(self.caller.id, contact_details={
+            'name': 'Carla', 'mobile': '+27600000020',
+        })
+        r2 = self._sim(self.caller.id, contact_details={
+            'name': 'Carla', 'mobile': '+27600000020',
+        })
+        self.assertEqual(
+            r1['session_state']['contact_id'],
+            r2['session_state']['contact_id'],
+            "Same mobile must reuse the same simulator contact",
+        )
+
+    def test_rename_existing_persona(self):
+        """Editing the name with an unchanged mobile relabels the existing
+        simulator partner — no orphan partner spam."""
+        r1 = self._sim(self.caller.id, contact_details={
+            'name': 'Dee', 'mobile': '+27600000030',
+        })
+        contact_id = r1['session_state']['contact_id']
+        self._sim(self.caller.id, contact_details={
+            'name': 'Dee Renamed', 'mobile': '+27600000030',
+        })
+        c = self.env['whatsapp.chatbot.contact'].browse(contact_id)
+        self.assertEqual(c.partner_id.name, 'Dee Renamed')
+
+    def test_simulator_does_not_latch_onto_real_partner_with_matching_mobile(self):
+        """If a real (non-simulator) partner happens to share the mobile,
+        the simulator must NOT use them — it creates its own sim+<mobile>
+        partner instead."""
+        # Create a "real" partner with the same mobile but no sim marker.
+        real = self.env['res.partner'].create({
+            'name': 'Real Customer', 'mobile': '+27600000040',
+            'email': 'customer@example.com',
+        })
+        r = self._sim(self.caller.id, contact_details={
+            'name': 'Sim User', 'mobile': '+27600000040',
+        })
+        sim_contact = self.env['whatsapp.chatbot.contact'].browse(
+            r['session_state']['contact_id'],
+        )
+        self.assertNotEqual(sim_contact.partner_id, real,
+            "Simulator must not latch onto a real partner sharing the mobile",
+        )
+        self.assertTrue(sim_contact.partner_id.email.startswith('sim+'),
+            "Simulator partner must use the sim+<mobile>@chatbot.local marker email",
+        )
+
+    def test_fallback_when_no_contact_details_given(self):
+        """For backward compat: callers that omit contact_details still get a
+        working per-uid persona (so any tests / scripts written against the
+        v1 signature don't break)."""
+        r = self.env['whatsapp.chatbot.message'].simulate_turn(
+            chatbot_id=self.caller.id,
+        )
+        self.assertIn('contact_id', r['session_state'] or {})
 
 
 # ──────────────────────────────────────────────────────────────────────────────
