@@ -1439,35 +1439,102 @@ class WhatsAppChatbotMessage(models.Model):
 
     def _find_matching_child_step(self, current_step, user_answer, message=None):
         """
-        Find the child step that matches the user's answer based on trigger_answer_ids.
-        Returns tuple (matching_step, matched_answer_record) or (None, None) if no match found.
+        Find the child step that matches based on either:
+          1. trigger_answer_ids — conditions evaluated against the user's input
+          2. trigger_variable_ids — conditions evaluated against the contact's
+             current variable values
+
+        Variable triggers are evaluated against contact.variable_value_ids so
+        an author can branch on `{Varone == Hey}` without the user having to
+        type anything. This is what makes pre-seeded variables actually drive
+        the flow.
+
+        Returns (matching_step, matched_record) or (None, None) if no match.
         """
-        if not current_step or not user_answer:
+        if not current_step:
             return None, None
-        
+
         children = current_step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
-        
-        # First, try to find a step with matching trigger_answer_ids
-        # Check steps in sequence order to ensure consistent matching
+        # Build a {var_name: stringified value} lookup once for variable-trigger
+        # evaluation. Sourced from the message's contact when available so the
+        # routing matches what the engine just persisted.
+        contact = message.contact_id if message else self.env['whatsapp.chatbot.contact']
+        contact_vars = {}
+        if contact:
+            for v in contact.variable_value_ids:
+                if v.variable_id:
+                    contact_vars[v.variable_id.name] = v.value or ''
+
         for child_step in children:
-            if child_step.trigger_answer_ids:
-                _logger.debug(f"Checking step '{child_step.name}' (ID: {child_step.id}) with {len(child_step.trigger_answer_ids)} trigger answers")
-                # Check if any trigger answer matches the user's answer
-                # Sort answers by sequence to check in order
+            # 1. User-input triggers — only meaningful when the user actually typed something.
+            if user_answer and child_step.trigger_answer_ids:
+                _logger.debug(f"Checking step '{child_step.name}' against trigger_answer_ids")
                 sorted_answers = child_step.trigger_answer_ids.sorted(key=lambda a: (a.sequence, a.id))
                 for answer_record in sorted_answers:
-                    matches = self._evaluate_answer_condition(answer_record, user_answer)
-                    _logger.debug(f"  Checking answer '{answer_record.value}' (operator: {answer_record.operator}): {matches}")
-                    if matches:
-                        _logger.info(f"Answer '{user_answer}' matched condition '{answer_record.display_name}' for step '{child_step.name}' (ID: {child_step.id})")
-                        # Store the matched answer in the message if provided
+                    if self._evaluate_answer_condition(answer_record, user_answer):
+                        _logger.info(
+                            f"Answer '{user_answer}' matched condition "
+                            f"'{answer_record.display_name}' for step '{child_step.name}'"
+                        )
                         if message:
                             message.user_chatbot_answer_id = answer_record.id
                         return child_step, answer_record
-        
-        # If no step has trigger_answer_ids or no match found, return None
-        # (caller will fall back to first child)
+
+            # 2. Variable triggers — evaluated against the contact's current values.
+            if child_step.trigger_variable_ids:
+                _logger.debug(f"Checking step '{child_step.name}' against trigger_variable_ids")
+                sorted_var_triggers = child_step.trigger_variable_ids.sorted(key=lambda t: (t.sequence, t.id))
+                for vt in sorted_var_triggers:
+                    var_name = vt.variable_id.name if vt.variable_id else None
+                    if not var_name:
+                        continue
+                    current_value = contact_vars.get(var_name, '')
+                    if self._evaluate_variable_trigger(vt, current_value):
+                        _logger.info(
+                            f"Variable '{var_name}'='{current_value}' matched trigger "
+                            f"'{vt.display_name}' for step '{child_step.name}'"
+                        )
+                        return child_step, vt
+
         return None, None
+
+    def _evaluate_variable_trigger(self, trigger, current_value):
+        """Evaluate a whatsapp.chatbot.variable.trigger against the contact's
+        current value for that variable. Mirrors _evaluate_answer_condition's
+        semantics (case-insensitive text equality, numeric coercion) so authors
+        get consistent behaviour whether they trigger on user input or a
+        variable.
+        """
+        if not trigger:
+            return False
+        operator = trigger.operator
+        expected = trigger.value or ''
+        current = str(current_value or '')
+        data_type = trigger.variable_data_type or 'text'
+
+        if data_type == 'text':
+            expected = expected.upper().strip()
+            current = current.upper().strip()
+
+        if operator == 'is_equal_to':
+            return current == expected
+        if operator == 'is_not_equal_to':
+            return current != expected
+        if operator == 'contains':
+            return expected in current
+        if operator == 'does_not_contain':
+            return expected not in current
+        if operator == 'less_than':
+            try:
+                return float(current) < float(expected)
+            except (TypeError, ValueError):
+                return False
+        if operator == 'greater_than':
+            try:
+                return float(current) > float(expected)
+            except (TypeError, ValueError):
+                return False
+        return False
     
     def _process_chatbot_flow(self, message, depth=0, visited_steps=None):
         """

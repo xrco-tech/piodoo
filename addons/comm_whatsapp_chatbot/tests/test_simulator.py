@@ -451,6 +451,63 @@ class TestSimulatorVarsEditor(SimFixtures):
             "Seeded variable must survive the trigger-reset path in _sim_drive_inbound",
         )
 
+    def test_variable_trigger_routes_to_matched_child(self):
+        """Pre-seed a variable then drive an input → engine takes the branch
+        whose trigger_variable_ids matches the seeded value, not the first
+        fallback child. Regression for the simulator screenshot where
+        Varone='Hey' didn't take the matching branch."""
+        # Set up a flow: Root (message) → two children
+        #   A: trigger_variable_ids = { user_name == 'Alice' }
+        #   B: no trigger (fallback)
+        Step = self.env['whatsapp.chatbot.step']
+        bot = self.env['whatsapp.chatbot'].create({
+            'name': 'Var Trigger Bot', 'channel': 'whatsapp',
+            'status': 'published',
+        })
+        self.env['whatsapp.chatbot.trigger'].create({
+            'name': 'GO', 'chatbot_id': bot.id,
+        })
+        var = self.env['whatsapp.chatbot.variable'].create({
+            'name': 'user_name', 'data_type': 'text', 'chatbot_id': bot.id,
+        })
+        root = Step.create({
+            'name': 'Root', 'chatbot_id': bot.id,
+            'step_type': 'message', 'body_plain': 'Welcome!',
+            'sequence': 1,
+        })
+        match_step = Step.create({
+            'name': 'Var Match', 'chatbot_id': bot.id,
+            'step_type': 'message', 'body_plain': 'Hi Alice!',
+            'parent_id': root.id, 'sequence': 10,
+        })
+        self.env['whatsapp.chatbot.variable.trigger'].create({
+            'step_id': match_step.id,
+            'variable_id': var.id, 'operator': 'is_equal_to', 'value': 'Alice',
+        })
+        Step.create({
+            'name': 'Fallback', 'chatbot_id': bot.id,
+            'step_type': 'message', 'body_plain': 'Unknown user',
+            'parent_id': root.id, 'sequence': 20,
+        })
+
+        # Seed user_name=Alice and start. After the welcome, user types anything;
+        # the engine should route to the variable-matched branch.
+        r = self.env['whatsapp.chatbot.message'].simulate_turn(
+            chatbot_id=bot.id,
+            contact_details={'name': 'X', 'mobile': '+27600000160'},
+            initial_variables=[{'variable_id': var.id, 'value': 'Alice'}],
+        )
+        # Drive a follow-up turn so the engine evaluates the children.
+        r2 = self.env['whatsapp.chatbot.message'].simulate_turn(
+            chatbot_id=bot.id, session_state=r['session_state'],
+            user_input='anything',
+        )
+        texts = ' '.join(b.get('body') or b.get('text', '') for b in r2['bubbles'])
+        self.assertIn('Hi Alice!', texts,
+            "Engine should have taken the trigger_variable_ids branch, not the fallback",
+        )
+        self.assertNotIn('Unknown user', texts)
+
     def test_seed_upserts_no_duplicates(self):
         r = self._sim(self.caller.id, contact_details={
             'name': 'Up', 'mobile': '+27600000114',
