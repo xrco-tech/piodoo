@@ -27,7 +27,7 @@ class ChatbotSimulatorController(http.Controller):
         type="json", auth="user", methods=["POST"], csrf=False,
     )
     def simulate(self, chatbot_id=None, session_state=None, user_input=None,
-                 contact_details=None, **_kw):
+                 contact_details=None, initial_variables=None, **_kw):
         if not chatbot_id:
             return {
                 "session_state": None,
@@ -42,6 +42,7 @@ class ChatbotSimulatorController(http.Controller):
                 session_state=session_state,
                 user_input=user_input,
                 contact_details=contact_details,
+                initial_variables=initial_variables,
             )
             return result
         except Exception as e:
@@ -53,3 +54,43 @@ class ChatbotSimulatorController(http.Controller):
                 "channel": "whatsapp",
                 "wait_for_input": False,
             }
+
+    @http.route(
+        "/chatbot/simulate/setup",
+        type="json", auth="user", methods=["POST"], csrf=False,
+    )
+    def setup(self, chatbot_id=None, contact_details=None, **_kw):
+        """Returns persona defaults + variable groups (root bot + every
+        chatbot reachable via jump_to_flow) so the frontend can render
+        editable inputs before / during a session."""
+        if not chatbot_id:
+            return {"persona": {}, "bots": []}
+        try:
+            return request.env["whatsapp.chatbot.message"].sudo().simulator_setup(
+                chatbot_id=int(chatbot_id),
+                contact_details=contact_details,
+            )
+        except Exception as e:
+            _logger.error("Simulator setup failed: %s", e, exc_info=True)
+            return {"persona": {}, "bots": []}
+
+    @http.route(
+        "/chatbot/simulate/update",
+        type="json", auth="user", methods=["POST"], csrf=False,
+    )
+    def update_state(self, chatbot_id=None, session_state=None,
+                     contact_details=None, initial_variables=None, **_kw):
+        """Apply persona + variable edits to a RUNNING simulator session
+        without advancing the flow. Used by the in-session inline editor."""
+        if not chatbot_id:
+            return {"session_state": None}
+        try:
+            return request.env["whatsapp.chatbot.message"].sudo().simulator_update_state(
+                chatbot_id=int(chatbot_id),
+                session_state=session_state,
+                contact_details=contact_details,
+                initial_variables=initial_variables,
+            )
+        except Exception as e:
+            _logger.error("Simulator update_state failed: %s", e, exc_info=True)
+            return {"session_state": session_state}

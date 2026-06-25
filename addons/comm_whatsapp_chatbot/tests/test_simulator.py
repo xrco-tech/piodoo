@@ -378,6 +378,104 @@ class TestSimulatorPersona(SimFixtures):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Variables editor — setup discovery, seeding, in-session update
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tagged('chatbot', 'sim', 'post_install', '-at_install')
+class TestSimulatorVarsEditor(SimFixtures):
+
+    def test_setup_discovers_root_and_linked_bots(self):
+        """The setup endpoint should return the root bot AND every bot
+        reachable via jump_to_flow (here: caller jumps into sub)."""
+        data = self.env['whatsapp.chatbot.message'].simulator_setup(
+            chatbot_id=self.caller.id, contact_details={'mobile': '+27600000111'},
+        )
+        bot_ids = [b['chatbot_id'] for b in data['bots']]
+        self.assertIn(self.caller.id, bot_ids)
+        self.assertIn(self.sub.id, bot_ids)
+        # Root flag is set only on the entry bot.
+        for b in data['bots']:
+            if b['chatbot_id'] == self.caller.id:
+                self.assertTrue(b['is_root'])
+            else:
+                self.assertFalse(b['is_root'])
+
+    def test_setup_returns_variables_per_bot(self):
+        data = self.env['whatsapp.chatbot.message'].simulator_setup(
+            chatbot_id=self.caller.id, contact_details={'mobile': '+27600000112'},
+        )
+        caller_vars = next(b for b in data['bots']
+                           if b['chatbot_id'] == self.caller.id)['variables']
+        names = {v['name'] for v in caller_vars}
+        self.assertIn('user_name', names)
+        self.assertIn('score', names)
+
+    def test_initial_variables_seed_before_engine_runs(self):
+        """When initial_variables is passed on the first turn, the engine
+        sees those values when substituting bodies."""
+        # Set user_name to 'Preset' BEFORE the engine runs the Welcome step.
+        r = self._sim(self.caller.id, contact_details={
+            'name': 'Seeded', 'mobile': '+27600000113',
+        })
+        # First turn was already run. Now do a fresh-start where user_name is preseeded.
+        contact_id = r['session_state']['contact_id']
+        # Wipe and restart with seed.
+        self.env['whatsapp.chatbot.contact'].browse(contact_id).variable_value_ids.unlink()
+        r2 = self.env['whatsapp.chatbot.message'].simulate_turn(
+            chatbot_id=self.caller.id,
+            contact_details={'name': 'Seeded', 'mobile': '+27600000113'},
+            initial_variables=[{'variable_id': self.caller_name.id, 'value': 'Preset'}],
+        )
+        contact = self.env['whatsapp.chatbot.contact'].browse(r2['session_state']['contact_id'])
+        seeded = contact.variable_value_ids.filtered(lambda v: v.variable_id == self.caller_name)
+        self.assertEqual(seeded.value, 'Preset')
+
+    def test_seed_upserts_no_duplicates(self):
+        r = self._sim(self.caller.id, contact_details={
+            'name': 'Up', 'mobile': '+27600000114',
+        })
+        contact_id = r['session_state']['contact_id']
+        # Two seeds for the same variable should result in ONE row.
+        self.env['whatsapp.chatbot.message']._sim_seed_variables(
+            self.env['whatsapp.chatbot.contact'].browse(contact_id),
+            [{'variable_id': self.caller_name.id, 'value': 'A'}],
+        )
+        self.env['whatsapp.chatbot.message']._sim_seed_variables(
+            self.env['whatsapp.chatbot.contact'].browse(contact_id),
+            [{'variable_id': self.caller_name.id, 'value': 'B'}],
+        )
+        count = self.env['whatsapp.chatbot.value'].search_count([
+            ('contact_id', '=', contact_id),
+            ('variable_id', '=', self.caller_name.id),
+        ])
+        self.assertEqual(count, 1)
+        self.assertEqual(
+            self.env['whatsapp.chatbot.value'].search([
+                ('contact_id', '=', contact_id),
+                ('variable_id', '=', self.caller_name.id),
+            ], limit=1).value,
+            'B',
+        )
+
+    def test_simulator_update_state_persists_persona_and_vars(self):
+        r = self._sim(self.caller.id, contact_details={
+            'name': 'Original', 'mobile': '+27600000115',
+        })
+        state = r['session_state']
+        # Apply edits without advancing.
+        self.env['whatsapp.chatbot.message'].simulator_update_state(
+            chatbot_id=self.caller.id,
+            session_state=state,
+            contact_details={'name': 'Renamed', 'mobile': '+27600000115'},
+            initial_variables=[{'variable_id': self.caller_name.id, 'value': 'LiveEdit'}],
+        )
+        contact = self.env['whatsapp.chatbot.contact'].browse(state['contact_id'])
+        self.assertEqual(contact.partner_id.name, 'Renamed')
+        v = contact.variable_value_ids.filtered(lambda x: x.variable_id == self.caller_name)
+        self.assertEqual(v.value, 'LiveEdit')
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Errors
 # ──────────────────────────────────────────────────────────────────────────────
 

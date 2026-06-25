@@ -150,6 +150,15 @@ export class ChatbotFlowAction extends Component {
                 // starting so authors can demo different contacts.
                 personaName: "Sim User",
                 personaMobile: "+27600000001",
+                // Variables editor — populated by the /chatbot/simulate/setup
+                // endpoint. Shape: [{chatbot_id, chatbot_name, is_root,
+                // variables: [{id, name, data_type, value}]}, ...].
+                setupBots: [],
+                setupLoading: false,
+                // In-session editor: shows the persona+variables form again
+                // over the chat without restarting the flow.
+                editorOpen: false,
+                editorSaving: false,
             },
         });
 
@@ -372,6 +381,46 @@ export class ChatbotFlowAction extends Component {
     _setPanelMode(mode) {
         this.state.panelMode = mode;
         // No auto-start — the user picks a persona via the form first.
+        // Lazy-load the variable form data the first time the user opens
+        // the simulator panel.
+        if (mode === "sim" && !this.state.sim.setupBots.length && !this.state.sim.setupLoading) {
+            this._simLoadSetup();
+        }
+    }
+
+    async _simLoadSetup() {
+        this.state.sim.setupLoading = true;
+        try {
+            const data = await rpc("/chatbot/simulate/setup", {
+                chatbot_id: this.chatbotId,
+                contact_details: {
+                    name:   (this.state.sim.personaName || "").trim(),
+                    mobile: (this.state.sim.personaMobile || "").trim(),
+                },
+            });
+            this.state.sim.setupBots = data?.bots || [];
+            // If the backend found an existing persona, prefill the form.
+            const p = data?.persona || {};
+            if (p.name)   this.state.sim.personaName   = p.name;
+            if (p.mobile) this.state.sim.personaMobile = p.mobile;
+        } catch (e) {
+            // Non-fatal — the form just shows persona-only.
+        } finally {
+            this.state.sim.setupLoading = false;
+        }
+    }
+
+    // Flatten setupBots into the {variable_id, value} list the backend wants.
+    _simCollectInitialVariables() {
+        const out = [];
+        for (const bot of (this.state.sim.setupBots || [])) {
+            for (const v of (bot.variables || [])) {
+                if (v.value !== "" && v.value !== null && v.value !== undefined) {
+                    out.push({ variable_id: v.id, value: v.value });
+                }
+            }
+        }
+        return out;
     }
 
     async _simStart() {
@@ -403,7 +452,35 @@ export class ChatbotFlowAction extends Component {
             waitForInput: false,
             sending: false,
             started: false,
+            editorOpen: false,
         });
+    }
+
+    _simToggleEditor() {
+        this.state.sim.editorOpen = !this.state.sim.editorOpen;
+    }
+
+    async _simApplyEditor() {
+        // Push persona + variable edits to the running session without
+        // restarting the flow.
+        if (this.state.sim.editorSaving) return;
+        this.state.sim.editorSaving = true;
+        try {
+            await rpc("/chatbot/simulate/update", {
+                chatbot_id:    this.chatbotId,
+                session_state: this.state.sim.session_state,
+                contact_details: {
+                    name:   (this.state.sim.personaName || "").trim(),
+                    mobile: (this.state.sim.personaMobile || "").trim(),
+                },
+                initial_variables: this._simCollectInitialVariables(),
+            });
+            this.state.sim.editorOpen = false;
+        } catch (e) {
+            this.notification.add("Could not apply changes.", { type: "danger" });
+        } finally {
+            this.state.sim.editorSaving = false;
+        }
     }
 
     async _simSendInput() {
@@ -426,6 +503,7 @@ export class ChatbotFlowAction extends Component {
                     name:   (this.state.sim.personaName || "").trim(),
                     mobile: (this.state.sim.personaMobile || "").trim(),
                 },
+                initial_variables: this._simCollectInitialVariables(),
             });
             if (!data) return;
             for (const b of (data.bubbles || [])) {

@@ -85,6 +85,31 @@
                                     <input type="tel" class="o_flow_sim_persona_input"
                                            t-model="state.sim.personaMobile"
                                            placeholder="+27600000001"/>
+
+                                    <!-- Variables: grouped per chatbot (root + linked via jump_to_flow) -->
+                                    <t t-foreach="state.sim.setupBots" t-as="bot" t-key="bot.chatbot_id">
+                                        <t t-if="bot.variables and bot.variables.length">
+                                            <div class="o_flow_sim_vars_group">
+                                                <div class="o_flow_sim_vars_group_title">
+                                                    <i class="fa fa-tag me-1"/>
+                                                    <t t-esc="bot.chatbot_name"/>
+                                                    <span t-if="!bot.is_root" class="text-muted small ms-1">(linked)</span>
+                                                </div>
+                                                <t t-foreach="bot.variables" t-as="v" t-key="v.id">
+                                                    <label class="o_flow_sim_persona_label" t-attf-for="sim_var_#{v.id}">
+                                                        <t t-esc="v.name"/>
+                                                        <span class="text-muted small ms-1">(<t t-esc="v.data_type"/>)</span>
+                                                    </label>
+                                                    <input class="o_flow_sim_persona_input"
+                                                           t-attf-id="sim_var_#{v.id}"
+                                                           t-att-type="v.data_type === 'integer' || v.data_type === 'float' ? 'number' : (v.data_type === 'date' ? 'date' : 'text')"
+                                                           t-model="v.value"
+                                                           t-attf-placeholder="e.g. value for #{v.name}"/>
+                                                </t>
+                                            </div>
+                                        </t>
+                                    </t>
+
                                     <button class="btn btn-primary w-100 mt-2"
                                             t-on-click="() => this._simStart()">
                                         <i class="fa fa-play me-1"/>Start session
@@ -97,8 +122,8 @@
                                     <span class="o_flow_sim_channel_pill">
                                         <t t-esc="state.sim.channel.toUpperCase()"/>
                                     </span>
-                                    <div class="o_flow_sim_persona_chip" t-on-click="() => this._simChangePersona()"
-                                         title="Click to change persona">
+                                    <div class="o_flow_sim_persona_chip" t-on-click="() => this._simToggleEditor()"
+                                         title="Click to edit persona + variables">
                                         <i class="fa fa-user me-1"/>
                                         <span class="o_flow_sim_persona_chip_name"
                                               t-esc="state.sim.personaName or state.sim.personaMobile"/>
@@ -110,6 +135,55 @@
                                         <i class="fa fa-refresh"/>
                                     </button>
                                 </div>
+
+                                <!-- In-session editor: persona + variables editable without
+                                     restarting the flow. Toggled by clicking the persona chip. -->
+                                <t t-if="state.sim.editorOpen">
+                                    <div class="o_flow_sim_editor">
+                                        <div class="o_flow_sim_editor_title">
+                                            <i class="fa fa-pencil-square-o me-1"/>Edit persona &amp; variables
+                                            <button class="btn btn-sm btn-link float-end p-0"
+                                                    t-on-click="() => this._simToggleEditor()"
+                                                    title="Close">
+                                                <i class="fa fa-times"/>
+                                            </button>
+                                        </div>
+                                        <label class="o_flow_sim_persona_label">Name</label>
+                                        <input type="text" class="o_flow_sim_persona_input"
+                                               t-model="state.sim.personaName"/>
+                                        <label class="o_flow_sim_persona_label">Mobile</label>
+                                        <input type="tel" class="o_flow_sim_persona_input"
+                                               t-model="state.sim.personaMobile"/>
+                                        <t t-foreach="state.sim.setupBots" t-as="bot" t-key="bot.chatbot_id">
+                                            <t t-if="bot.variables and bot.variables.length">
+                                                <div class="o_flow_sim_vars_group">
+                                                    <div class="o_flow_sim_vars_group_title">
+                                                        <i class="fa fa-tag me-1"/>
+                                                        <t t-esc="bot.chatbot_name"/>
+                                                        <span t-if="!bot.is_root" class="text-muted small ms-1">(linked)</span>
+                                                    </div>
+                                                    <t t-foreach="bot.variables" t-as="v" t-key="v.id">
+                                                        <label class="o_flow_sim_persona_label">
+                                                            <t t-esc="v.name"/>
+                                                            <span class="text-muted small ms-1">(<t t-esc="v.data_type"/>)</span>
+                                                        </label>
+                                                        <input class="o_flow_sim_persona_input"
+                                                               t-att-type="v.data_type === 'integer' || v.data_type === 'float' ? 'number' : (v.data_type === 'date' ? 'date' : 'text')"
+                                                               t-model="v.value"/>
+                                                    </t>
+                                                </div>
+                                            </t>
+                                        </t>
+                                        <button class="btn btn-primary w-100 mt-2"
+                                                t-att-disabled="state.sim.editorSaving"
+                                                t-on-click="() => this._simApplyEditor()">
+                                            <i class="fa fa-check me-1"/>
+                                            <t t-if="state.sim.editorSaving">Applying...</t>
+                                            <t t-else="">Apply changes</t>
+                                        </button>
+                                    </div>
+                                </t>
+
                                 <div class="o_flow_sim_chat">
                                     <t t-foreach="state.sim.bubbles" t-as="b" t-key="b_index">
 

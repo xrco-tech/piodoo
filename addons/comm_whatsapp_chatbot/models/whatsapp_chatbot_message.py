@@ -419,7 +419,7 @@ class WhatsAppChatbotMessage(models.Model):
 
     @api.model
     def simulate_turn(self, chatbot_id, session_state=None, user_input=None,
-                      contact_details=None):
+                      contact_details=None, initial_variables=None):
         """Run one simulator turn for the flow builder's right-panel demo.
 
         Drives the real chatbot runtime against a dedicated per-user
@@ -479,6 +479,12 @@ class WhatsAppChatbotMessage(models.Model):
             )
         except UserError as e:
             return self._sim_error(str(e), channel=chatbot.channel)
+
+        # Seed any pre-set variable values BEFORE the engine runs so the
+        # bot's first body substitutions see them. Only applies on the very
+        # first turn; subsequent turns pass through the regular runtime.
+        if is_first_turn and initial_variables:
+            self._sim_seed_variables(contact, initial_variables)
 
         bubbles = []
         # Drive the real engine with sim_capture set so outbound bubbles are
@@ -614,6 +620,148 @@ class WhatsAppChatbotMessage(models.Model):
         if fresh:
             self._sim_reset_contact(contact)
         return contact
+
+    def _sim_seed_variables(self, contact, initial_variables):
+        """Upsert variable values onto the simulator contact before the engine
+        runs. initial_variables is a list of {variable_id: int, value: str}
+        — variable_id is authoritative; the chatbot is derived from it.
+        Skip rows whose value is empty so the bot can still ask the user.
+        """
+        Value = self.env['whatsapp.chatbot.value'].sudo()
+        Variable = self.env['whatsapp.chatbot.variable'].sudo()
+        for row in initial_variables or []:
+            try:
+                vid = int(row.get('variable_id') or 0)
+            except (TypeError, ValueError):
+                continue
+            if not vid:
+                continue
+            value = row.get('value')
+            if value in (None, '', False):
+                continue
+            variable = Variable.browse(vid).exists()
+            if not variable:
+                continue
+            existing = Value.search([
+                ('contact_id', '=', contact.id),
+                ('variable_id', '=', variable.id),
+            ], limit=1)
+            if existing:
+                existing.value = str(value)
+            else:
+                Value.create({
+                    'contact_id':  contact.id,
+                    'variable_id': variable.id,
+                    'value':       str(value),
+                })
+
+    @api.model
+    def simulator_setup(self, chatbot_id, contact_details=None):
+        """Return the form-setup data the simulator panel needs:
+        persona defaults (current values if the persona already exists) +
+        the variables defined on the chatbot + every chatbot reachable
+        from it via jump_to_flow (bounded BFS).
+        """
+        chatbot = self.env['whatsapp.chatbot'].sudo().browse(chatbot_id).exists()
+        if not chatbot:
+            return {'persona': {}, 'bots': []}
+
+        # Resolve current persona contact (so we can prefill any saved
+        # variable values) WITHOUT spawning a new contact if one doesn't
+        # already exist.
+        Contact = self.env['whatsapp.chatbot.contact'].sudo()
+        Partner = self.env['res.partner'].sudo()
+        details = contact_details or {}
+        mobile = (details.get('mobile') or '').strip()
+        contact = self.env['whatsapp.chatbot.contact']
+        if mobile:
+            sim_email = f"sim+{mobile}@chatbot.local"
+            partner = Partner.search([('email', '=', sim_email)], limit=1)
+            if partner:
+                contact = Contact.search([
+                    ('partner_id', '=', partner.id), ('is_simulator', '=', True),
+                ], limit=1)
+
+        # Build per-contact lookup of saved variable values.
+        saved_values = {}
+        if contact:
+            for v in contact.variable_value_ids:
+                if v.variable_id:
+                    saved_values[v.variable_id.id] = v.value or ''
+
+        # BFS over jump_to_flow to find reachable bots, bounded so a cycle
+        # can't blow up.
+        visited = set()
+        order = []
+        queue = [chatbot.id]
+        Step = self.env['whatsapp.chatbot.step'].sudo()
+        while queue and len(visited) < 12:
+            cid = queue.pop(0)
+            if cid in visited:
+                continue
+            visited.add(cid)
+            order.append(cid)
+            # Find every jump_to_flow step on this bot and queue its target.
+            jumps = Step.search([
+                ('chatbot_id', '=', cid),
+                ('step_type', '=', 'jump_to_flow'),
+            ])
+            for j in jumps:
+                if j.target_chatbot_id and j.target_chatbot_id.id not in visited:
+                    queue.append(j.target_chatbot_id.id)
+
+        # Serialize bots + variables in BFS order (root first, then linked).
+        bots = []
+        for cid in order:
+            bot = self.env['whatsapp.chatbot'].sudo().browse(cid)
+            if not bot.exists():
+                continue
+            bots.append({
+                'chatbot_id':   bot.id,
+                'chatbot_name': bot.name,
+                'is_root':      (bot.id == chatbot.id),
+                'variables': [{
+                    'id':        var.id,
+                    'name':      var.name,
+                    'data_type': var.data_type,
+                    'value':     saved_values.get(var.id, ''),
+                } for var in bot.bot_variable_ids.sorted(key=lambda v: (v.name, v.id))],
+            })
+
+        return {
+            'persona': {
+                'name':   contact.partner_id.name if contact else (details.get('name') or ''),
+                'mobile': mobile or (contact.partner_id.mobile if contact else ''),
+            },
+            'bots': bots,
+        }
+
+    @api.model
+    def simulator_update_state(self, chatbot_id, session_state=None,
+                               contact_details=None, initial_variables=None):
+        """Apply persona + variable edits to a running simulator session
+        WITHOUT advancing the flow. Returns the updated session_state so
+        the frontend can stitch the changes back into its UI."""
+        chatbot = self.env['whatsapp.chatbot'].sudo().browse(chatbot_id).exists()
+        if not chatbot:
+            return {'session_state': None}
+        state = dict(session_state or {})
+        existing_id = state.get('contact_id')
+        if not existing_id:
+            return {'session_state': state}
+        contact = self.env['whatsapp.chatbot.contact'].sudo().browse(existing_id).exists()
+        if not contact or not contact.is_simulator:
+            return {'session_state': state}
+        # Persona — relabel the partner if requested, but don't switch contacts
+        # mid-session (that'd require a fresh start).
+        details = contact_details or {}
+        new_name = (details.get('name') or '').strip()
+        if new_name and contact.partner_id and contact.partner_id.name != new_name:
+            contact.partner_id.name = new_name
+        # Variables — upsert.
+        if initial_variables:
+            self._sim_seed_variables(contact, initial_variables)
+        return {'session_state': state}
 
     def _sim_reset_contact(self, contact):
         """Wipe a simulator contact's state so a fresh session can start."""
