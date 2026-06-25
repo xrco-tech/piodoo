@@ -429,11 +429,15 @@ export class ChatbotFlowAction extends Component {
             });
             if (!data) return;
             for (const b of (data.bubbles || [])) {
+                // Preserve every field the backend sent — header_type / footer /
+                // wa_message_type / buttons / list_rows / flow_cta / channel etc.
+                // The template reads these directly. Force dir='in' since the
+                // backend never marks bubbles as user-sent.
                 this.state.sim.bubbles.push({
-                    text: b.text || "",
+                    ...b,
                     dir: "in",
+                    text: b.text || b.body || "",
                     step_type: b.step_type || "message",
-                    step_id: b.step_id || null,
                 });
             }
             this.state.sim.session_state = data.session_state;
