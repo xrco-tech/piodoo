@@ -299,9 +299,17 @@ class WhatsAppChatbotStep(models.Model):
 
     @api.constrains('name')
     def _check_name_characters(self):
+        # USSD menu labels and price-style names (e.g. "Daily 500MB - $1",
+        # "Mini Combo (7d)") need digits, parens, slashes and currency
+        # symbols. The constraint stays in place to block control chars
+        # but allows the everyday menu vocabulary authors actually use.
+        allowed = re.compile(r'^[A-Za-z0-9\s\-\.\,\&\/\+\$\(\)\!\?\:]+$')
         for rec in self:
-            if not re.match(r'^[A-Za-z\s-]+$', rec.name):
-                raise ValidationError("The name can only contain alphabets (both uppercase and lowercase), spaces, and dashes.")
+            if not allowed.match(rec.name or ''):
+                raise ValidationError(
+                    "The name can only contain letters, digits, spaces, and the "
+                    "common punctuation - . , & / + $ ( ) ! ? :"
+                )
 
     @api.constrains('step_type', 'target_chatbot_id', 'target_step_id')
     def _check_jump_to_flow_target(self):
