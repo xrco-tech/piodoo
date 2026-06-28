@@ -329,11 +329,26 @@ class WhatsAppChatbotMessage(models.Model):
         """Build a rich bubble dict for the simulator from an already-rendered
         body. Reuses _sim_make_step_bubble's serialisation logic for header /
         footer / wa_message_type / buttons / list / flow CTA, but trusts the
-        engine's substituted `body` instead of re-running the substitution."""
+        engine's substituted `body` instead of re-running the substitution.
+
+        For USSD bots, also auto-appends the numbered menu (same renderer
+        the real USSD walker uses) when the step has multiple children —
+        so the simulator shows the same screen the carrier would render.
+        """
         channel = (chatbot.channel or '').lower()
+        body_text = body or ''
+        # USSD: mimic _ussd_walk's menu-on-a-question-step behaviour so the
+        # simulator displays the option list (the standard engine doesn't
+        # do this on its own; only render_ussd_session does in production).
+        if channel == 'ussd':
+            children = step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
+            if len(children) > 1:
+                menu = self._ussd_render_menu(children)
+                if menu:
+                    body_text = (body_text + '\n' + menu) if body_text else menu
         bubble = {
-            'text': body or '',
-            'body': body or '',
+            'text': body_text,
+            'body': body_text,
             'step_type': step.step_type,
             'step_id': step.id,
             'channel': channel,
