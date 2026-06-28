@@ -1297,13 +1297,20 @@ class WhatsAppChatbotMessage(models.Model):
         return self._replace_variables_in_message(body_plain, variables)
 
     def _ussd_render_menu(self, children):
-        """Render a numbered menu from the trigger-answer values of children.
-        Falls back to step names when no trigger answers are configured."""
+        """Render a numbered menu from the children.
+
+        The leading number is the trigger answer's `value` when it's set
+        (so authors can render '0. Back' or '9. Exit' alongside the regular
+        1-N entries). When no trigger value is configured, we fall back to
+        the child's sequence position. The label always comes from the step
+        name — that's the most human-readable field on a step.
+        """
         lines = []
         for i, child in enumerate(children, start=1):
             ans = child.trigger_answer_ids.sorted(key=lambda a: (a.sequence, a.id))
-            label = ans[0].value if ans else child.name
-            lines.append(f"{i}. {label}")
+            number = (ans[0].value if ans and ans[0].value else str(i))
+            label = child.name or (ans[0].value if ans else f"Option {i}")
+            lines.append(f"{number}. {label}")
         return "\n".join(lines)
 
     def _ussd_join(self, body_parts):
