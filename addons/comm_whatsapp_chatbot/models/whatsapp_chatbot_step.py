@@ -346,14 +346,27 @@ class WhatsAppChatbotStep(models.Model):
 
     @api.constrains('step_type', 'wa_message_type', 'chatbot_id')
     def _check_interactive_only_on_whatsapp(self):
-        """SMS and USSD bots cannot use interactive WhatsApp step types."""
-        interactive = {'interactive_button', 'interactive_list', 'interactive_flow'}
+        """Channel-specific interactive-type rules:
+        - WhatsApp: all three interactive types allowed.
+        - Voice: button + list allowed (the agent's UI elements — buttons
+          become clickable quick-decisions and lists become drilldowns).
+        - SMS / USSD: none allowed (no rendering on the user's device).
+        - interactive_flow is WhatsApp-only — it's Meta Flows, a WA-specific
+          full-screen form pop-up.
+        """
         for rec in self:
-            if rec.wa_message_type in interactive and rec.chatbot_id.channel != 'whatsapp':
+            wa_type = rec.wa_message_type
+            channel = rec.chatbot_id.channel
+            if wa_type == 'interactive_flow' and channel != 'whatsapp':
                 raise ValidationError(
-                    f"Interactive message type '{rec.wa_message_type}' is only supported on "
-                    "WhatsApp chatbots. Switch the chatbot's channel to WhatsApp or change the "
-                    "message type to Non-Interactive."
+                    "Interactive Flow steps are only supported on WhatsApp chatbots "
+                    "(they use Meta's WhatsApp Flows, which doesn't exist on other channels)."
+                )
+            if wa_type in ('interactive_button', 'interactive_list') and channel in ('sms', 'ussd'):
+                raise ValidationError(
+                    f"Interactive message type '{wa_type}' is not supported on "
+                    f"{channel.upper()} chatbots — neither channel renders interactive UI. "
+                    "Change the message type to Non-Interactive."
                 )
 
     @api.constrains('step_type', 'chatbot_id')

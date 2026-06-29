@@ -55,7 +55,7 @@
                                 <field name="parent_id" string="Parent Step"/>
                             </group>
                             <group>
-                                <field name="wa_message_type" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'jump_to_flow', 'end_flow'] or chatbot_id.channel == 'sms'"/>
+                                <field name="wa_message_type" invisible="step_type in ['set_variable', 'execute_code', 'transfer_to_agent', 'jump_to_flow', 'end_flow'] or chatbot_id.channel in ['sms', 'ussd']"/>
                                 <field name="answer_data_type" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date']"/>
                                 <field name="max_retries" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date', 'question_document', 'question_image', 'question_video', 'question_audio', 'question_interactive']"/>
                                 <field name="fallback_step_id" invisible="step_type not in ['question_text', 'question_numeric', 'question_phone', 'question_email', 'question_date', 'question_document', 'question_image', 'question_video', 'question_audio', 'question_interactive']"/>
@@ -115,7 +115,7 @@
                                     </div>
                                 </group>
                                 
-                                <group string="Flow Integration" invisible="wa_message_type != 'interactive_flow'">
+                                <group string="Flow Integration" invisible="wa_message_type != 'interactive_flow' or chatbot_id.channel != 'whatsapp'">
                                     <field name="flow_id" domain="[('status', '=', 'PUBLISHED')]"/>
                                     <field name="flow_uid" readonly="1"/>
                                     <field name="flow_action"/>

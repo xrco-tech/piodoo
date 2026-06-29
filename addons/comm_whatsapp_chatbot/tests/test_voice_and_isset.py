@@ -48,6 +48,59 @@ class TestVoiceChannelConstraints(common.TransactionCase):
                     'body_plain': 'irrelevant',
                 })
 
+    def test_voice_allows_interactive_button(self):
+        """Quick-decision buttons are the agent's navigation primitive — must work."""
+        s = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Refund or Replacement', 'chatbot_id': self.voice_bot.id,
+            'step_type': 'question_interactive',
+            'wa_message_type': 'interactive_button',
+            'body_plain': 'Refund or replacement?',
+        })
+        self.env['whatsapp.chatbot.step.button'].create({
+            'step_id': s.id, 'button_id': 'btn_refund', 'title': 'Refund',
+        })
+        self.env['whatsapp.chatbot.step.button'].create({
+            'step_id': s.id, 'button_id': 'btn_replace', 'title': 'Replacement',
+        })
+        self.assertEqual(len(s.button_ids), 2)
+
+    def test_voice_allows_interactive_list(self):
+        """Drilldown lists for long option sets (e.g. product issue picker)."""
+        s = self.env['whatsapp.chatbot.step'].create({
+            'name': 'Issue Picker', 'chatbot_id': self.voice_bot.id,
+            'step_type': 'question_interactive',
+            'wa_message_type': 'interactive_list',
+            'body_plain': 'Select the closest issue type:',
+            'list_button_text': 'Choose issue',
+        })
+        self.env['whatsapp.chatbot.step.list.row'].create({
+            'step_id': s.id, 'row_id': 'damaged', 'title': 'Damaged on arrival',
+        })
+        self.env['whatsapp.chatbot.step.list.row'].create({
+            'step_id': s.id, 'row_id': 'wrong', 'title': 'Wrong item shipped',
+        })
+        self.assertEqual(len(s.list_row_ids), 2)
+
+    def test_voice_still_rejects_interactive_flow(self):
+        """interactive_flow is Meta Flows — WhatsApp-only by definition."""
+        with self.assertRaises(ValidationError):
+            self.env['whatsapp.chatbot.step'].create({
+                'name': 'Bad Flow', 'chatbot_id': self.voice_bot.id,
+                'step_type': 'question_interactive',
+                'wa_message_type': 'interactive_flow',
+            })
+
+    def test_sms_still_rejects_interactive_button(self):
+        sms_bot = self.env['whatsapp.chatbot'].create({
+            'name': 'SMS Reject Bot', 'channel': 'sms',
+        })
+        with self.assertRaises(ValidationError):
+            self.env['whatsapp.chatbot.step'].create({
+                'name': 'Bad', 'chatbot_id': sms_bot.id,
+                'step_type': 'question_interactive',
+                'wa_message_type': 'interactive_button',
+            })
+
     def test_voice_allows_text_question_and_message(self):
         # The two step types that matter for a voice script.
         m = self.env['whatsapp.chatbot.step'].create({
