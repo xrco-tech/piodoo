@@ -120,15 +120,68 @@
                                     Drag the handle to reorder. Click a screen to add components.
                                     Mark one screen as <strong>Terminal</strong> so the user can complete the flow.
                                 </div>
+                                <div class="text-muted small mb-2" invisible="not screen_count">
+                                    <i class="fa fa-lightbulb-o me-1"/>
+                                    Click a row to edit its <strong>components</strong> (text, inputs,
+                                    buttons, etc.).
+                                </div>
                                 <field name="screen_ids" mode="list">
-                                    <list editable="bottom" default_order="sequence asc">
+                                    <list default_order="sequence asc">
                                         <field name="sequence" widget="handle"/>
-                                        <field name="screen_id" placeholder="WELCOME"/>
-                                        <field name="title" placeholder="Welcome to our shop"/>
-                                        <field name="component_count" readonly="1"/>
+                                        <field name="screen_id"/>
+                                        <field name="title"/>
+                                        <field name="component_count" string="Components"/>
                                         <field name="terminal" widget="boolean_toggle"/>
                                         <field name="success" widget="boolean_toggle"/>
                                     </list>
+                                    <form string="Screen">
+                                        <sheet>
+                                            <div class="oe_title">
+                                                <label for="title"/>
+                                                <h1><field name="title" placeholder="Welcome"/></h1>
+                                            </div>
+                                            <group>
+                                                <group>
+                                                    <field name="screen_id" placeholder="WELCOME"/>
+                                                    <field name="layout_type"/>
+                                                    <field name="sequence"/>
+                                                </group>
+                                                <group>
+                                                    <field name="terminal"/>
+                                                    <field name="success"/>
+                                                </group>
+                                            </group>
+                                            <notebook>
+                                                <page string="Components" name="components">
+                                                    <div class="alert alert-info" role="alert"
+                                                         invisible="component_ids">
+                                                        <i class="fa fa-info-circle me-1"/>
+                                                        Add components below — pick a type from the dropdown,
+                                                        then click the row to set its full options (text,
+                                                        action target, etc.).
+                                                    </div>
+                                                    <field name="component_ids">
+                                                        <list default_order="sequence asc">
+                                                            <field name="sequence" widget="handle"/>
+                                                            <field name="component_type"/>
+                                                            <field name="label"/>
+                                                            <field name="name"/>
+                                                            <field name="required" optional="show"/>
+                                                            <field name="action_type" optional="show"/>
+                                                        </list>
+                                                    </field>
+                                                </page>
+                                                <page string="Data Schema" name="data_schema">
+                                                    <div class="text-muted small mb-2">
+                                                        Optional JSON Schema describing dynamic data
+                                                        injected from your data_exchange endpoint.
+                                                    </div>
+                                                    <field name="data_schema" widget="text" nolabel="1"
+                                                           placeholder='{"type": "object", "properties": {...}}'/>
+                                                </page>
+                                            </notebook>
+                                        </sheet>
+                                    </form>
                                 </field>
                             </page>
 
