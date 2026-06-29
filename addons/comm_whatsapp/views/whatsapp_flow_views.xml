@@ -99,9 +99,25 @@
                             </page>
 
                             <page string="Screens" name="screens" invisible="use_raw_json">
-                                <div class="alert alert-info" role="alert">
+                                <div class="alert alert-info" role="alert" invisible="screen_count">
+                                    <i class="fa fa-magic me-1"/>
+                                    <strong>Start from a template</strong> — or add screens manually below.
+                                    Templates only apply to empty flows.
+                                    <div class="mt-2">
+                                        <button name="action_template_lead_capture" type="object"
+                                                string="Lead Capture" class="btn btn-secondary me-1"
+                                                icon="fa-user-plus"/>
+                                        <button name="action_template_nps" type="object"
+                                                string="NPS Survey" class="btn btn-secondary me-1"
+                                                icon="fa-star"/>
+                                        <button name="action_template_appointment" type="object"
+                                                string="Appointment Booking" class="btn btn-secondary"
+                                                icon="fa-calendar"/>
+                                    </div>
+                                </div>
+                                <div class="alert alert-info" role="alert" invisible="not screen_count">
                                     <i class="fa fa-info-circle me-1"/>
-                                    Add screens, drag the handle to reorder, click a screen to add components.
+                                    Drag the handle to reorder. Click a screen to add components.
                                     Mark one screen as <strong>Terminal</strong> so the user can complete the flow.
                                 </div>
                                 <field name="screen_ids" mode="list">

@@ -374,6 +374,210 @@ class WhatsAppFlow(models.Model):
 
         return issues
 
+    # ------------------------------------------------------------------
+    # Starter templates — buttons on the empty-Screens alert. Each builder
+    # populates *self* with screens/components/options for a common pattern,
+    # then returns an action to reload the form so the author can tweak.
+    # ------------------------------------------------------------------
+
+    def _ensure_template_target_empty(self):
+        """Templates overwrite the current flow's structured records. Guard
+        against accidentally clobbering an existing flow."""
+        self.ensure_one()
+        if self.screen_ids:
+            from odoo.exceptions import UserError
+            raise UserError(
+                "This flow already has screens — templates only apply to "
+                "empty flows. Create a new flow first, or delete the existing "
+                "screens.")
+
+    def _reload_self(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'whatsapp.flow',
+            'res_id': self.id,
+            'views': [[False, 'form']],
+            'target': 'current',
+        }
+
+    def action_template_lead_capture(self):
+        """Two-screen lead-capture: form on screen 1, thank-you on screen 2."""
+        self._ensure_template_target_empty()
+        Screen = self.env['whatsapp.flow.screen']
+        Comp = self.env['whatsapp.flow.component']
+        Opt = self.env['whatsapp.flow.component.option']
+
+        welcome = Screen.create({
+            'flow_id': self.id, 'screen_id': 'WELCOME',
+            'title': 'Get in touch', 'sequence': 10,
+        })
+        Comp.create({'screen_id': welcome.id, 'component_type': 'TextHeading',
+                     'text': 'Get in touch', 'sequence': 10})
+        Comp.create({'screen_id': welcome.id, 'component_type': 'TextBody',
+                     'text': "Tell us a bit about yourself and we'll be in touch.",
+                     'sequence': 20})
+        Comp.create({'screen_id': welcome.id, 'component_type': 'TextInput',
+                     'name': 'full_name', 'label': 'Full name',
+                     'required': True, 'sequence': 30})
+        Comp.create({'screen_id': welcome.id, 'component_type': 'TextInput',
+                     'name': 'email', 'label': 'Email',
+                     'input_type': 'email', 'required': True, 'sequence': 40})
+        Comp.create({'screen_id': welcome.id, 'component_type': 'TextInput',
+                     'name': 'phone', 'label': 'Phone (optional)',
+                     'input_type': 'phone', 'sequence': 50})
+        interest = Comp.create({
+            'screen_id': welcome.id, 'component_type': 'Dropdown',
+            'name': 'interest', 'label': 'What are you interested in?',
+            'required': True, 'sequence': 60,
+        })
+        for i, (oid, title) in enumerate([
+            ('sales', 'Sales'),
+            ('support', 'Support'),
+            ('partnership', 'Partnership'),
+            ('other', 'Other'),
+        ], start=1):
+            Opt.create({'component_id': interest.id, 'option_id': oid,
+                        'title': title, 'sequence': i * 10})
+
+        thanks = Screen.create({
+            'flow_id': self.id, 'screen_id': 'THANKS',
+            'title': 'Thank you', 'sequence': 20,
+            'terminal': True, 'success': True,
+        })
+        Comp.create({'screen_id': welcome.id, 'component_type': 'Footer',
+                     'label': 'Submit', 'sequence': 100,
+                     'action_type': 'navigate', 'target_screen_id': thanks.id})
+        Comp.create({'screen_id': thanks.id, 'component_type': 'TextHeading',
+                     'text': 'Thank you!', 'sequence': 10})
+        Comp.create({'screen_id': thanks.id, 'component_type': 'TextBody',
+                     'text': "We've got your details. A team member will be in "
+                             "touch within 24 hours.", 'sequence': 20})
+        Comp.create({'screen_id': thanks.id, 'component_type': 'Footer',
+                     'label': 'Done', 'sequence': 30, 'action_type': 'complete'})
+
+        self.category = self.category or 'LEAD_GENERATION'
+        return self._reload_self()
+
+    def action_template_nps(self):
+        """Two-screen NPS: score selector, then free-text feedback."""
+        self._ensure_template_target_empty()
+        Screen = self.env['whatsapp.flow.screen']
+        Comp = self.env['whatsapp.flow.component']
+        Opt = self.env['whatsapp.flow.component.option']
+
+        score_screen = Screen.create({
+            'flow_id': self.id, 'screen_id': 'SCORE',
+            'title': 'How likely are you to recommend us?', 'sequence': 10,
+        })
+        Comp.create({'screen_id': score_screen.id, 'component_type': 'TextHeading',
+                     'text': 'How likely are you to recommend us?', 'sequence': 10})
+        Comp.create({'screen_id': score_screen.id, 'component_type': 'TextBody',
+                     'text': '0 = Not at all likely, 10 = Extremely likely',
+                     'sequence': 20})
+        score = Comp.create({
+            'screen_id': score_screen.id, 'component_type': 'RadioButtonsGroup',
+            'name': 'score', 'label': 'Your score', 'required': True,
+            'sequence': 30,
+        })
+        for i in range(0, 11):
+            Opt.create({'component_id': score.id, 'option_id': str(i),
+                        'title': str(i), 'sequence': (i + 1) * 10})
+
+        feedback = Screen.create({
+            'flow_id': self.id, 'screen_id': 'FEEDBACK',
+            'title': 'Tell us more', 'sequence': 20,
+            'terminal': True, 'success': True,
+        })
+        Comp.create({'screen_id': score_screen.id, 'component_type': 'Footer',
+                     'label': 'Next', 'sequence': 100,
+                     'action_type': 'navigate', 'target_screen_id': feedback.id})
+        Comp.create({'screen_id': feedback.id, 'component_type': 'TextHeading',
+                     'text': 'Tell us more (optional)', 'sequence': 10})
+        Comp.create({'screen_id': feedback.id, 'component_type': 'TextArea',
+                     'name': 'comment',
+                     'label': "What's the main reason for your score?",
+                     'sequence': 20})
+        Comp.create({'screen_id': feedback.id, 'component_type': 'Footer',
+                     'label': 'Submit feedback', 'sequence': 30,
+                     'action_type': 'complete'})
+
+        self.category = self.category or 'SURVEY'
+        return self._reload_self()
+
+    def action_template_appointment(self):
+        """Three-screen booking: pick service, pick date+time, confirmation."""
+        self._ensure_template_target_empty()
+        Screen = self.env['whatsapp.flow.screen']
+        Comp = self.env['whatsapp.flow.component']
+        Opt = self.env['whatsapp.flow.component.option']
+
+        service = Screen.create({
+            'flow_id': self.id, 'screen_id': 'SERVICE',
+            'title': 'Book an appointment', 'sequence': 10,
+        })
+        Comp.create({'screen_id': service.id, 'component_type': 'TextHeading',
+                     'text': 'Book an appointment', 'sequence': 10})
+        svc = Comp.create({
+            'screen_id': service.id, 'component_type': 'Dropdown',
+            'name': 'service', 'label': 'Service', 'required': True,
+            'sequence': 20,
+        })
+        for i, (oid, title) in enumerate([
+            ('consultation', 'Consultation'),
+            ('follow_up', 'Follow-up'),
+            ('initial_visit', 'Initial visit'),
+        ], start=1):
+            Opt.create({'component_id': svc.id, 'option_id': oid,
+                        'title': title, 'sequence': i * 10})
+
+        time_screen = Screen.create({
+            'flow_id': self.id, 'screen_id': 'TIME',
+            'title': 'Pick a date and time', 'sequence': 20,
+        })
+        Comp.create({'screen_id': service.id, 'component_type': 'Footer',
+                     'label': 'Next', 'sequence': 100,
+                     'action_type': 'navigate', 'target_screen_id': time_screen.id})
+
+        Comp.create({'screen_id': time_screen.id, 'component_type': 'TextHeading',
+                     'text': 'Pick a date and time', 'sequence': 10})
+        Comp.create({'screen_id': time_screen.id, 'component_type': 'DatePicker',
+                     'name': 'preferred_date', 'label': 'Preferred date',
+                     'required': True, 'sequence': 20})
+        tod = Comp.create({
+            'screen_id': time_screen.id, 'component_type': 'Dropdown',
+            'name': 'preferred_time', 'label': 'Time of day',
+            'required': True, 'sequence': 30,
+        })
+        for i, (oid, title) in enumerate([
+            ('morning', 'Morning (08:00 - 12:00)'),
+            ('afternoon', 'Afternoon (12:00 - 17:00)'),
+            ('evening', 'Evening (17:00 - 20:00)'),
+        ], start=1):
+            Opt.create({'component_id': tod.id, 'option_id': oid,
+                        'title': title, 'sequence': i * 10})
+        Comp.create({'screen_id': time_screen.id, 'component_type': 'TextArea',
+                     'name': 'notes', 'label': 'Any notes for us?',
+                     'sequence': 40})
+
+        confirm = Screen.create({
+            'flow_id': self.id, 'screen_id': 'CONFIRM',
+            'title': 'Confirmation', 'sequence': 30,
+            'terminal': True, 'success': True,
+        })
+        Comp.create({'screen_id': time_screen.id, 'component_type': 'Footer',
+                     'label': 'Next', 'sequence': 100,
+                     'action_type': 'navigate', 'target_screen_id': confirm.id})
+        Comp.create({'screen_id': confirm.id, 'component_type': 'TextHeading',
+                     'text': 'All set!', 'sequence': 10})
+        Comp.create({'screen_id': confirm.id, 'component_type': 'TextBody',
+                     'text': "We'll send you a confirmation message shortly. "
+                             "Thanks for booking with us.", 'sequence': 20})
+        Comp.create({'screen_id': confirm.id, 'component_type': 'Footer',
+                     'label': 'Done', 'sequence': 30, 'action_type': 'complete'})
+
+        self.category = self.category or 'APPOINTMENT_BOOKING'
+        return self._reload_self()
+
     def action_create_flow_meta(self):
         """
         Create flow in Meta WhatsApp Business API.
