@@ -85,6 +85,19 @@ class WhatsAppFlow(models.Model):
         string='Flow Map', compute='_compute_flow_map_svg', sanitize=False,
         help="Visual overview of how screens connect via navigate actions.",
     )
+    # Structured properties: cards listing each screen's components, action
+    # types, and target screens. Mirrors what the SVG conveys structurally
+    # but in tabular form for fast scanning + cross-referencing.
+    flow_properties_html = fields.Html(
+        string='Flow Properties', compute='_compute_flow_extras',
+        sanitize=False,
+    )
+    # Phone-style preview: each screen rendered as a WhatsApp-frame mockup
+    # with all its components drawn in their approximate runtime appearance.
+    flow_phone_preview_html = fields.Html(
+        string='Phone Preview', compute='_compute_flow_extras',
+        sanitize=False,
+    )
     
     # Flow metadata
     description = fields.Text(string='Description', help='Flow description for internal use')
@@ -487,6 +500,359 @@ class WhatsAppFlow(models.Model):
         parts.append('</svg>')
         parts.append('</div>')
         return ''.join(parts)
+
+    # ── Properties grid + phone preview ─────────────────────────────────
+
+    @api.depends(
+        'use_raw_json',
+        'screen_ids', 'screen_ids.screen_id', 'screen_ids.title',
+        'screen_ids.terminal', 'screen_ids.success', 'screen_ids.sequence',
+        'screen_ids.component_ids',
+        'screen_ids.component_ids.component_type',
+        'screen_ids.component_ids.name', 'screen_ids.component_ids.label',
+        'screen_ids.component_ids.text', 'screen_ids.component_ids.helper_text',
+        'screen_ids.component_ids.required',
+        'screen_ids.component_ids.input_type',
+        'screen_ids.component_ids.init_value',
+        'screen_ids.component_ids.image_src',
+        'screen_ids.component_ids.action_type',
+        'screen_ids.component_ids.target_screen_id',
+        'screen_ids.component_ids.open_url',
+        'screen_ids.component_ids.option_ids',
+        'screen_ids.component_ids.option_ids.title',
+        'screen_ids.component_ids.option_ids.sequence',
+    )
+    def _compute_flow_extras(self):
+        for rec in self:
+            if rec.use_raw_json:
+                empty = Markup(
+                    '<div class="text-muted small">Only available in '
+                    'structured mode.</div>'
+                )
+                rec.flow_properties_html = empty
+                rec.flow_phone_preview_html = empty
+                continue
+            if not rec.screen_ids:
+                empty = Markup(
+                    '<div class="text-muted small">Add at least one screen '
+                    'to see this view.</div>'
+                )
+                rec.flow_properties_html = empty
+                rec.flow_phone_preview_html = empty
+                continue
+            rec.flow_properties_html = Markup(rec._build_properties_html())
+            rec.flow_phone_preview_html = Markup(rec._build_phone_preview_html())
+
+    def _build_properties_html(self):
+        """Grid of screen cards. Each card shows: id, title, badges, and a
+        table of its components with type, label, name, action target."""
+        self.ensure_one()
+        parts = [
+            '<div style="display:grid;'
+            'grid-template-columns:repeat(auto-fill,minmax(340px,1fr));'
+            'gap:16px;">'
+        ]
+        for s in self.screen_ids.sorted('sequence'):
+            badges = ''
+            if s.terminal:
+                badges += (
+                    '<span style="background:#ffc107;color:#fff;padding:2px '
+                    '8px;border-radius:10px;font-size:10px;margin-left:6px;">'
+                    'terminal</span>'
+                )
+            if s.success:
+                badges += (
+                    '<span style="background:#28a745;color:#fff;padding:2px '
+                    '8px;border-radius:10px;font-size:10px;margin-left:6px;">'
+                    '✓ success</span>'
+                )
+            rows = []
+            for c in s.component_ids.sorted('sequence'):
+                hint = ''
+                if c.action_type == 'navigate' and c.target_screen_id:
+                    hint = (
+                        f'<span style="color:#4a6cf7;">→ '
+                        f'{escape(c.target_screen_id.screen_id)}</span>'
+                    )
+                elif c.action_type == 'complete':
+                    hint = '<span style="color:#28a745;">✓ complete</span>'
+                elif c.action_type == 'open_url':
+                    hint = '<span style="color:#6c757d;">↗ open URL</span>'
+                lbl = escape((c.label or c.text or '')[:36])
+                name = escape(c.name or '')
+                rows.append(
+                    '<tr style="border-bottom:1px solid #f1f3f5;">'
+                    '<td style="padding:5px 8px;white-space:nowrap;">'
+                    f'<code style="background:#eef;color:#33c;padding:1px '
+                    f'5px;border-radius:3px;font-size:11px;">'
+                    f'{escape(c.component_type)}</code></td>'
+                    f'<td style="padding:5px 8px;font-size:12px;">{lbl}</td>'
+                    f'<td style="padding:5px 8px;font-size:11px;color:#888;'
+                    f'font-family:monospace;">{name}</td>'
+                    f'<td style="padding:5px 8px;font-size:11px;">{hint}</td>'
+                    '</tr>'
+                )
+            comp_html = (
+                '<table style="width:100%;border-collapse:collapse;">'
+                + ''.join(rows) + '</table>'
+            ) if rows else (
+                '<div style="color:#aaa;font-size:12px;padding:8px;">'
+                'No components yet.</div>'
+            )
+            parts.append(
+                '<div style="border:1px solid #dee2e6;border-radius:8px;'
+                'overflow:hidden;background:#fff;">'
+                '<div style="padding:10px 14px;background:#f8f9fa;'
+                'border-bottom:1px solid #dee2e6;">'
+                f'<div style="font-family:monospace;font-weight:bold;'
+                f'font-size:13px;color:#212529;">{escape(s.screen_id)}'
+                f'{badges}</div>'
+                f'<div style="font-size:12px;color:#495057;margin-top:2px;">'
+                f'{escape(s.title or "")}</div>'
+                '</div>'
+                f'<div>{comp_html}</div>'
+                '</div>'
+            )
+        parts.append('</div>')
+        return ''.join(parts)
+
+    def _build_phone_preview_html(self):
+        """Horizontal row of phone-mockup renders, one per screen."""
+        self.ensure_one()
+        parts = [
+            '<div style="display:flex;gap:24px;overflow-x:auto;'
+            'padding:8px 4px 16px;">'
+        ]
+        for s in self.screen_ids.sorted('sequence'):
+            parts.append(self._render_phone(s))
+        parts.append('</div>')
+        return ''.join(parts)
+
+    def _render_phone(self, screen):
+        body = ''.join(
+            self._render_phone_component(c)
+            for c in screen.component_ids.sorted('sequence')
+        ) or (
+            '<div style="color:#aaa;padding:24px;text-align:center;'
+            'font-size:12px;">(no components)</div>'
+        )
+        end_hint = ''
+        if screen.success:
+            end_hint = (' · <span style="color:#28a745;">success</span>')
+        elif screen.terminal:
+            end_hint = ' · <span style="color:#fd7e14;">terminal</span>'
+        return (
+            '<div style="flex:0 0 290px;">'
+            '<div style="border:12px solid #1f2937;border-radius:32px;'
+            'width:290px;height:560px;display:flex;flex-direction:column;'
+            'overflow:hidden;background:#fff;'
+            'box-shadow:0 8px 24px rgba(0,0,0,0.18);">'
+            '<div style="background:#075E54;color:#fff;padding:10px 14px;'
+            'font-size:13px;font-family:sans-serif;display:flex;'
+            'align-items:center;flex:0 0 auto;">'
+            '<span style="margin-right:8px;">&larr;</span>'
+            f'<span style="font-weight:bold;">'
+            f'{escape(screen.title or screen.screen_id)}</span>'
+            '</div>'
+            '<div style="flex:1;background:#ECE5DD;padding:14px;'
+            'overflow-y:auto;font-family:sans-serif;font-size:13px;'
+            'display:flex;flex-direction:column;">'
+            f'<div style="flex:1;">{body}</div>'
+            '</div>'
+            '</div>'
+            '<div style="text-align:center;margin-top:8px;font-size:11px;'
+            'font-family:monospace;color:#6c757d;">'
+            f'{escape(screen.screen_id)}{end_hint}</div>'
+            '</div>'
+        )
+
+    def _render_phone_component(self, c):
+        t = c.component_type
+        label = escape(c.label or '')
+        text = escape(c.text or '')
+        req = ' <span style="color:#dc3545;">*</span>' if c.required else ''
+
+        if t == 'TextHeading':
+            return (
+                f'<div style="font-size:18px;font-weight:bold;color:#111;'
+                f'margin:4px 0 10px;">{text or label}</div>'
+            )
+        if t == 'TextSubheading':
+            return (
+                f'<div style="font-size:15px;font-weight:600;color:#222;'
+                f'margin:8px 0 4px;">{text or label}</div>'
+            )
+        if t == 'TextBody':
+            return (
+                f'<div style="font-size:13px;color:#333;margin:4px 0;'
+                f'line-height:1.4;">{text or label}</div>'
+            )
+        if t == 'TextCaption':
+            return (
+                f'<div style="font-size:11px;color:#666;margin:4px 0;">'
+                f'{text or label}</div>'
+            )
+        if t == 'RichText':
+            return (
+                f'<div style="font-size:13px;color:#333;margin:6px 0;'
+                f'line-height:1.4;">{text or label}</div>'
+            )
+        if t == 'Image':
+            src = (c.image_src or '').strip()
+            if src and (src.startswith('http') or src.startswith('data:')):
+                return (
+                    f'<img src="{escape(src)}" alt="" '
+                    f'style="max-width:100%;height:auto;border-radius:6px;'
+                    f'margin:6px 0;"/>'
+                )
+            return (
+                '<div style="background:#ddd;height:110px;border-radius:6px;'
+                'margin:6px 0;display:flex;align-items:center;'
+                'justify-content:center;color:#888;font-size:13px;">'
+                '🖼 Image</div>'
+            )
+        if t == 'TextInput':
+            init = escape(c.init_value or '')
+            ph = init or f'Enter {label.lower() or "value"}'
+            return (
+                '<div style="margin:8px 0;">'
+                f'<div style="font-size:11px;color:#555;margin-bottom:2px;">'
+                f'{label}{req}</div>'
+                f'<div style="border:1px solid #ccc;border-radius:6px;'
+                f'padding:9px 10px;background:#fff;color:#aaa;font-size:13px;">'
+                f'{ph}</div>'
+                '</div>'
+            )
+        if t == 'TextArea':
+            init = escape(c.init_value or '')
+            return (
+                '<div style="margin:8px 0;">'
+                f'<div style="font-size:11px;color:#555;margin-bottom:2px;">'
+                f'{label}{req}</div>'
+                f'<div style="border:1px solid #ccc;border-radius:6px;'
+                f'padding:9px 10px;background:#fff;color:#aaa;font-size:13px;'
+                f'min-height:60px;">{init or "Type your reply…"}</div>'
+                '</div>'
+            )
+        if t == 'Dropdown':
+            opts = c.option_ids.sorted('sequence')
+            first = escape(opts[0].title) if opts else 'Select…'
+            return (
+                '<div style="margin:8px 0;">'
+                f'<div style="font-size:11px;color:#555;margin-bottom:2px;">'
+                f'{label}{req}</div>'
+                '<div style="border:1px solid #ccc;border-radius:6px;'
+                'padding:9px 10px;background:#fff;color:#333;font-size:13px;'
+                'display:flex;justify-content:space-between;align-items:center;">'
+                f'<span>{first}</span><span style="color:#888;">▾</span>'
+                '</div>'
+                '</div>'
+            )
+        if t == 'RadioButtonsGroup':
+            opts = ''.join(
+                '<div style="margin:5px 0;display:flex;align-items:center;'
+                'font-size:13px;color:#333;">'
+                '<span style="display:inline-block;width:14px;height:14px;'
+                'border:2px solid #aaa;border-radius:50%;margin-right:8px;'
+                'flex:0 0 14px;"></span>'
+                f'{escape(o.title)}</div>'
+                for o in c.option_ids.sorted('sequence')
+            )
+            return (
+                f'<div style="margin:8px 0;"><div style="font-size:11px;'
+                f'color:#555;margin-bottom:4px;">{label}{req}</div>{opts}</div>'
+            )
+        if t == 'CheckboxGroup':
+            opts = ''.join(
+                '<div style="margin:5px 0;display:flex;align-items:center;'
+                'font-size:13px;color:#333;">'
+                '<span style="display:inline-block;width:14px;height:14px;'
+                'border:2px solid #aaa;border-radius:3px;margin-right:8px;'
+                'flex:0 0 14px;"></span>'
+                f'{escape(o.title)}</div>'
+                for o in c.option_ids.sorted('sequence')
+            )
+            return (
+                f'<div style="margin:8px 0;"><div style="font-size:11px;'
+                f'color:#555;margin-bottom:4px;">{label}{req}</div>{opts}</div>'
+            )
+        if t == 'DatePicker':
+            return (
+                '<div style="margin:8px 0;">'
+                f'<div style="font-size:11px;color:#555;margin-bottom:2px;">'
+                f'{label}{req}</div>'
+                '<div style="border:1px solid #ccc;border-radius:6px;'
+                'padding:9px 10px;background:#fff;color:#aaa;font-size:13px;'
+                'display:flex;justify-content:space-between;align-items:center;">'
+                '<span>📅 Select date</span></div>'
+                '</div>'
+            )
+        if t == 'OptIn':
+            return (
+                '<div style="margin:8px 0;display:flex;align-items:flex-start;'
+                'font-size:12px;color:#333;">'
+                '<span style="display:inline-block;width:14px;height:14px;'
+                'border:2px solid #aaa;border-radius:3px;margin-right:8px;'
+                'margin-top:2px;flex:0 0 14px;"></span>'
+                f'<span>{label}</span></div>'
+            )
+        if t == 'PhotoPicker':
+            return (
+                '<div style="margin:8px 0;border:2px dashed #aaa;'
+                'border-radius:6px;padding:18px;text-align:center;'
+                'color:#888;font-size:12px;">'
+                f'📷 {label or "Take or upload photo"}</div>'
+            )
+        if t == 'DocumentPicker':
+            return (
+                '<div style="margin:8px 0;border:2px dashed #aaa;'
+                'border-radius:6px;padding:18px;text-align:center;'
+                'color:#888;font-size:12px;">'
+                f'📄 {label or "Upload document"}</div>'
+            )
+        if t == 'EmbeddedLink':
+            hint = ''
+            if c.action_type == 'navigate' and c.target_screen_id:
+                hint = (
+                    f' <span style="color:#888;">→ '
+                    f'{escape(c.target_screen_id.screen_id)}</span>'
+                )
+            return (
+                f'<div style="margin:8px 0;color:#0d6efd;'
+                f'text-decoration:underline;font-size:13px;">'
+                f'{label or "Link"}{hint}</div>'
+            )
+        if t == 'Footer':
+            hint = ''
+            if c.action_type == 'navigate' and c.target_screen_id:
+                hint = (
+                    '<div style="font-size:10px;color:#888;text-align:center;'
+                    'margin-top:6px;">→ '
+                    f'{escape(c.target_screen_id.screen_id)}</div>'
+                )
+            elif c.action_type == 'complete':
+                hint = (
+                    '<div style="font-size:10px;color:#28a745;'
+                    'text-align:center;margin-top:6px;">✓ completes flow</div>'
+                )
+            elif c.action_type == 'open_url':
+                hint = (
+                    '<div style="font-size:10px;color:#6c757d;'
+                    'text-align:center;margin-top:6px;">↗ external URL</div>'
+                )
+            return (
+                '<div style="margin:12px -14px -14px;padding:14px;'
+                'background:#fff;border-top:1px solid #ddd;">'
+                '<div style="width:100%;background:#25D366;color:#fff;'
+                'border:none;border-radius:24px;padding:12px;'
+                'text-align:center;font-weight:bold;font-size:14px;">'
+                f'{label or "Submit"}</div>'
+                f'{hint}</div>'
+            )
+        return (
+            f'<div style="margin:4px 0;color:#888;font-size:11px;">'
+            f'[{escape(t)}]</div>'
+        )
 
     # ── JSON generator ──────────────────────────────────────────────────
 

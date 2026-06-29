@@ -282,6 +282,21 @@
                         </div>
                         <field name="flow_map_svg" nolabel="1" readonly="1"
                                widget="html" sanitize="0"/>
+
+                        <h3 style="margin-top:32px;margin-bottom:12px;">Screen Properties</h3>
+                        <div class="text-muted small mb-2">
+                            One card per screen — fields, types, and where each action leads.
+                        </div>
+                        <field name="flow_properties_html" nolabel="1" readonly="1"
+                               widget="html" sanitize="0"/>
+
+                        <h3 style="margin-top:32px;margin-bottom:12px;">Phone Preview</h3>
+                        <div class="text-muted small mb-2">
+                            Approximation of how each screen will look on a WhatsApp client.
+                            Scroll horizontally to see all screens.
+                        </div>
+                        <field name="flow_phone_preview_html" nolabel="1" readonly="1"
+                               widget="html" sanitize="0"/>
                     </sheet>
                 </form>
             </field>
