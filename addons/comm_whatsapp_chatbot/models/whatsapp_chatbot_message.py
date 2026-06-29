@@ -358,22 +358,31 @@ class WhatsAppChatbotMessage(models.Model):
             'coaching_notes': step.coaching_notes or '',
             'crm_action':     step.crm_action or '',
         }
-        if channel != 'whatsapp':
+        # Both WhatsApp and Voice support interactive_button + interactive_list
+        # (Voice uses them as agent quick-decisions + drilldown lists). SMS
+        # and USSD don't render any interactive UI so we leave the bubble bare.
+        if channel not in ('whatsapp', 'voice'):
             return bubble
-        header_type = step.header_type or None
         wa_type = step.wa_message_type or 'non_interactive'
         bubble.update({
-            'header_type': header_type,
-            'header_text': step.header_text if header_type == 'text' else '',
-            'footer': step.footer or '',
             'wa_message_type': wa_type,
         })
+        # Header / footer are WhatsApp-specific bubble decoration.
+        if channel == 'whatsapp':
+            header_type = step.header_type or None
+            bubble.update({
+                'header_type': header_type,
+                'header_text': step.header_text if header_type == 'text' else '',
+                'footer': step.footer or '',
+            })
+        # Interactive payload: buttons / list / flow CTA. Flow is WA-only
+        # (it's Meta Flows); buttons and lists are shared.
         if wa_type == 'interactive_button' and step.button_ids:
             bubble['buttons'] = [b.title for b in step.button_ids.sorted(key=lambda b: (b.sequence, b.id))]
         elif wa_type == 'interactive_list' and step.list_row_ids:
             bubble['list_button_text'] = step.list_button_text or 'See all options'
             bubble['list_rows'] = [r.title for r in step.list_row_ids.sorted(key=lambda r: (r.sequence, r.id))]
-        elif wa_type == 'interactive_flow':
+        elif wa_type == 'interactive_flow' and channel == 'whatsapp':
             bubble['flow_cta'] = step.flow_cta or 'Open'
             bubble['flow_name'] = step.flow_id.display_name if step.flow_id else ''
         return bubble

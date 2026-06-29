@@ -294,8 +294,8 @@
                                                     </button>
                                                 </t>
 
-                                                <!-- Reply buttons (WhatsApp) — clickable -->
-                                                <t t-if="b.channel === 'whatsapp' and b.buttons and b.buttons.length">
+                                                <!-- Reply buttons — clickable. Supported on WhatsApp + Voice. -->
+                                                <t t-if="(b.channel === 'whatsapp' or b.channel === 'voice') and b.buttons and b.buttons.length">
                                                     <div class="o_flow_ia_sep"/>
                                                     <t t-foreach="b.buttons" t-as="btn" t-key="btn_index">
                                                         <button class="o_flow_ia_btn o_flow_sim_clickable"
@@ -305,8 +305,8 @@
                                                     </t>
                                                 </t>
 
-                                                <!-- Interactive list (WhatsApp) — clickable rows -->
-                                                <t t-if="b.channel === 'whatsapp' and b.list_rows and b.list_rows.length">
+                                                <!-- Interactive list — clickable rows. Supported on WhatsApp + Voice. -->
+                                                <t t-if="(b.channel === 'whatsapp' or b.channel === 'voice') and b.list_rows and b.list_rows.length">
                                                     <div class="o_flow_ia_sep"/>
                                                     <div class="o_flow_ia_list_btn">
                                                         <i class="fa fa-list me-1"/>
