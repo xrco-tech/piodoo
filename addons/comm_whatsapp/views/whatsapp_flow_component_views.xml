@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_whatsapp_flow_component_form" model="ir.ui.view">
+            <field name="name">whatsapp.flow.component.form</field>
+            <field name="model">whatsapp.flow.component</field>
+            <field name="arch" type="xml">
+                <form string="Component">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="screen_id" invisible="1"/>
+                                <field name="flow_id" invisible="1"/>
+                                <field name="component_type"/>
+                                <field name="sequence"/>
+                                <field name="is_input" invisible="1"/>
+                                <field name="is_action" invisible="1"/>
+                                <field name="is_choice" invisible="1"/>
+                            </group>
+                            <group>
+                                <field name="name"
+                                       invisible="not is_input and not is_action"
+                                       placeholder="first_name"/>
+                                <field name="label"
+                                       invisible="component_type in ['Image']"
+                                       placeholder="What's your name?"/>
+                                <field name="required" invisible="not is_input"/>
+                                <field name="helper_text"
+                                       invisible="not is_input"
+                                       placeholder="Optional hint shown beneath the field"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+
+                            <!-- TEXT DISPLAY content -->
+                            <page string="Text" name="text"
+                                  invisible="component_type not in ['TextHeading','TextSubheading','TextBody','TextCaption','RichText']">
+                                <field name="text" widget="text" nolabel="1"
+                                       placeholder="Text shown on the screen. Supports {data.foo} and {form.field} substitution."/>
+                            </page>
+
+                            <!-- IMAGE -->
+                            <page string="Image" name="image"
+                                  invisible="component_type != 'Image'">
+                                <group>
+                                    <field name="image_src" placeholder="https://… or data:image/png;base64,…"/>
+                                    <field name="image_alt"/>
+                                    <field name="image_height"/>
+                                    <field name="image_scale"/>
+                                </group>
+                            </page>
+
+                            <!-- TEXT INPUT -->
+                            <page string="Input Settings" name="input"
+                                  invisible="component_type not in ['TextInput','TextArea']">
+                                <group>
+                                    <field name="input_type" invisible="component_type != 'TextInput'"/>
+                                    <field name="init_value"/>
+                                    <field name="min_chars" invisible="component_type != 'TextInput'"/>
+                                    <field name="max_chars"/>
+                                </group>
+                            </page>
+
+                            <!-- CHOICE OPTIONS (Dropdown / Radio / Checkbox) -->
+                            <page string="Options" name="options" invisible="not is_choice">
+                                <field name="option_ids">
+                                    <list editable="bottom" default_order="sequence asc">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="option_id" placeholder="small"/>
+                                        <field name="title" placeholder="Small"/>
+                                        <field name="description" optional="show"/>
+                                        <field name="enabled" widget="boolean_toggle"/>
+                                    </list>
+                                </field>
+                                <group invisible="component_type != 'CheckboxGroup'" string="Checkbox Limits">
+                                    <field name="min_selected"/>
+                                    <field name="max_selected"/>
+                                </group>
+                            </page>
+
+                            <!-- DATE PICKER -->
+                            <page string="Date Range" name="date"
+                                  invisible="component_type != 'DatePicker'">
+                                <group>
+                                    <field name="min_date" placeholder="2026-01-01"/>
+                                    <field name="max_date" placeholder="2026-12-31"/>
+                                </group>
+                            </page>
+
+                            <!-- ACTIONS (Footer / EmbeddedLink / OptIn) -->
+                            <page string="Action" name="action" invisible="not is_action">
+                                <group>
+                                    <field name="action_type"/>
+                                    <field name="target_screen_id"
+                                           invisible="action_type != 'navigate'"
+                                           options="{'no_create': True}"/>
+                                    <field name="open_url" invisible="action_type != 'open_url'"
+                                           placeholder="https://example.com/help"/>
+                                    <field name="payload_keys"
+                                           invisible="action_type not in ['navigate','complete','data_exchange']"
+                                           placeholder="Defaults to all form fields on this screen"/>
+                                </group>
+                                <div class="text-muted small">
+                                    <strong>Navigate</strong> moves to another screen.
+                                    <strong>Complete</strong> ends the flow (use on the terminal CTA).
+                                    <strong>Open URL</strong> launches a browser to a URL.
+                                    <strong>data_exchange</strong> calls your server endpoint to drive the next screen.
+                                </div>
+                            </page>
+
+                            <!-- MEDIA PICKERS -->
+                            <page string="Picker Settings" name="picker"
+                                  invisible="component_type not in ['PhotoPicker','DocumentPicker']">
+                                <group>
+                                    <field name="photo_source" invisible="component_type != 'PhotoPicker'"/>
+                                    <field name="min_uploaded"/>
+                                    <field name="max_uploaded"/>
+                                    <field name="max_file_size_kb"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

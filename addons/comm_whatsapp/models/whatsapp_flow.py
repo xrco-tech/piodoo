@@ -30,10 +30,52 @@ class WhatsAppFlow(models.Model):
     ], string='Status', readonly=True, default='DRAFT', index=True,
        help='Flow status: Draft (editing), Published (can be used), etc.')
     
-    # Flow JSON definition
-    flow_json = fields.Text(string='Flow JSON', required=True,
-                            help='Flow definition in JSON format (screens, components, etc.)')
+    # Authoring mode. When use_raw_json=False (default), users build the flow
+    # via the Screens / Components tabs and flow_json is generated for them.
+    # When True, users edit flow_json directly — escape hatch for advanced
+    # cases or imported flows.
+    use_raw_json = fields.Boolean(
+        string='Edit JSON directly',
+        help="By default, flows are built via the Screens tab and the JSON is "
+             "generated automatically. Tick this to edit the raw Flow JSON "
+             "directly (useful when adopting a flow authored elsewhere).",
+    )
+
+    # Schema version Meta expects. Update default when a new version ships.
+    flow_version = fields.Char(
+        string='Flow Version', default='7.0', required=True,
+        help="WhatsApp Flow JSON schema version. See Meta docs for current "
+             "supported versions.",
+    )
+
+    # Flow JSON definition. ALWAYS required at the DB level so Meta has
+    # something to upload. When use_raw_json=False, this is rebuilt on save
+    # from the structured records (screens/components/options).
+    flow_json = fields.Text(string='Flow JSON', required=True, default='{}',
+                            help='Flow definition in JSON format. Auto-generated '
+                                 'from screens/components unless raw mode is on.')
     flow_json_formatted = fields.Text(string='Flow JSON (Formatted)', compute='_compute_flow_json_formatted')
+
+    # Structured authoring relations
+    screen_ids = fields.One2many(
+        'whatsapp.flow.screen', 'flow_id', string='Screens',
+    )
+    screen_count = fields.Integer(
+        string='Screens', compute='_compute_screen_count', store=True,
+    )
+
+    # Validation feedback — shown on its own tab as a list of issues. Recomputed
+    # whenever screens / components / options change so authors get instant feedback.
+    validation_issues = fields.Text(
+        string='Validation Issues',
+        compute='_compute_validation_issues',
+        help="Issues that would prevent Meta from accepting the flow.",
+    )
+    validation_status = fields.Selection([
+        ('ok',       'OK'),
+        ('warning',  'Warnings'),
+        ('error',    'Errors'),
+    ], compute='_compute_validation_issues', store=False)
     
     # Flow metadata
     description = fields.Text(string='Description', help='Flow description for internal use')
@@ -71,6 +113,266 @@ class WhatsAppFlow(models.Model):
                     record.flow_json_formatted = ''
             except (json.JSONDecodeError, ValueError):
                 record.flow_json_formatted = record.flow_json or ''
+
+    @api.depends('screen_ids')
+    def _compute_screen_count(self):
+        for rec in self:
+            rec.screen_count = len(rec.screen_ids)
+
+    @api.depends(
+        'use_raw_json', 'flow_version',
+        'screen_ids', 'screen_ids.screen_id', 'screen_ids.title',
+        'screen_ids.terminal', 'screen_ids.success', 'screen_ids.data_schema',
+        'screen_ids.component_ids',
+        'screen_ids.component_ids.component_type',
+        'screen_ids.component_ids.name', 'screen_ids.component_ids.label',
+        'screen_ids.component_ids.text', 'screen_ids.component_ids.helper_text',
+        'screen_ids.component_ids.required',
+        'screen_ids.component_ids.input_type',
+        'screen_ids.component_ids.min_chars', 'screen_ids.component_ids.max_chars',
+        'screen_ids.component_ids.init_value',
+        'screen_ids.component_ids.min_selected', 'screen_ids.component_ids.max_selected',
+        'screen_ids.component_ids.min_date', 'screen_ids.component_ids.max_date',
+        'screen_ids.component_ids.image_src', 'screen_ids.component_ids.image_alt',
+        'screen_ids.component_ids.image_height', 'screen_ids.component_ids.image_scale',
+        'screen_ids.component_ids.photo_source',
+        'screen_ids.component_ids.min_uploaded', 'screen_ids.component_ids.max_uploaded',
+        'screen_ids.component_ids.max_file_size_kb',
+        'screen_ids.component_ids.action_type',
+        'screen_ids.component_ids.target_screen_id',
+        'screen_ids.component_ids.open_url',
+        'screen_ids.component_ids.payload_keys',
+        'screen_ids.component_ids.option_ids',
+        'screen_ids.component_ids.option_ids.option_id',
+        'screen_ids.component_ids.option_ids.title',
+        'screen_ids.component_ids.option_ids.description',
+        'screen_ids.component_ids.option_ids.enabled',
+        'screen_ids.component_ids.option_ids.sequence',
+    )
+    def _compute_validation_issues(self):
+        """Run the validator on every change. Stores nothing — just a
+        computed text + status flag so the form view shows live feedback."""
+        for rec in self:
+            if rec.use_raw_json:
+                # In raw mode, the validator can't introspect — assume OK
+                # unless the JSON itself is malformed.
+                try:
+                    if rec.flow_json:
+                        json.loads(rec.flow_json)
+                    rec.validation_issues = ''
+                    rec.validation_status = 'ok'
+                except (json.JSONDecodeError, ValueError) as e:
+                    rec.validation_issues = f"Raw JSON parse error: {e}"
+                    rec.validation_status = 'error'
+                continue
+            issues = rec._validate_structured()
+            errors = [i for i in issues if i['level'] == 'error']
+            warns  = [i for i in issues if i['level'] == 'warning']
+            if errors:
+                rec.validation_status = 'error'
+            elif warns:
+                rec.validation_status = 'warning'
+            else:
+                rec.validation_status = 'ok'
+            rec.validation_issues = '\n'.join(
+                f"[{i['level'].upper()}] {i['where']}: {i['message']}"
+                for i in issues
+            ) or 'No issues found.'
+
+    # ── JSON generator ──────────────────────────────────────────────────
+
+    def write(self, vals):
+        # When in structured mode, regenerate flow_json after any change.
+        res = super().write(vals)
+        for rec in self:
+            if not rec.use_raw_json:
+                generated = rec._generate_flow_json()
+                if generated != rec.flow_json:
+                    super(WhatsAppFlow, rec).write({'flow_json': generated})
+        return res
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if not rec.use_raw_json:
+                generated = rec._generate_flow_json()
+                if generated != rec.flow_json:
+                    super(WhatsAppFlow, rec).write({'flow_json': generated})
+        return records
+
+    def _generate_flow_json(self):
+        """Build canonical Flow JSON v7.x from the structured records.
+        Returns a JSON string ready to ship to Meta.
+        """
+        self.ensure_one()
+        if not self.screen_ids:
+            return json.dumps({"version": self.flow_version or "7.0", "screens": []}, indent=2)
+
+        # Build the routing model by scanning every Footer/EmbeddedLink's
+        # navigate action. Meta expects:
+        #   {"WELCOME": ["DETAILS"], "DETAILS": ["THANK_YOU"], "THANK_YOU": []}
+        routing = {}
+        screens_json = []
+        for screen in self.screen_ids.sorted(key=lambda s: (s.sequence, s.id)):
+            sid = (screen.screen_id or '').strip()
+            if not sid:
+                continue
+            targets = set()
+            children = []
+            for comp in screen.component_ids.sorted(key=lambda c: (c.sequence, c.id)):
+                rendered = comp._render_flow_json()
+                if rendered is None:
+                    continue
+                children.append(rendered)
+                if comp.component_type in ('Footer', 'EmbeddedLink') and \
+                        comp.action_type == 'navigate' and comp.target_screen_id:
+                    targets.add(comp.target_screen_id.screen_id)
+            routing[sid] = sorted(targets)
+
+            screen_node = {
+                "id": sid,
+                "title": screen.title or sid,
+                "layout": {
+                    "type": screen.layout_type or 'SingleColumnLayout',
+                    "children": children,
+                },
+            }
+            if screen.terminal:
+                screen_node["terminal"] = True
+            if screen.success:
+                screen_node["success"] = True
+            if screen.data_schema and screen.data_schema.strip():
+                try:
+                    screen_node["data"] = json.loads(screen.data_schema)
+                except (json.JSONDecodeError, ValueError):
+                    pass  # validator will flag it
+            screens_json.append(screen_node)
+
+        out = {
+            "version": self.flow_version or "7.0",
+            "screens": screens_json,
+        }
+        # routing_model is optional but recommended; only include when there's
+        # at least one navigation edge.
+        if any(targets for targets in routing.values()):
+            out["routing_model"] = routing
+        return json.dumps(out, indent=2)
+
+    # ── Validator ───────────────────────────────────────────────────────
+
+    def _validate_structured(self):
+        """Return a list of {level, where, message} dicts the form view
+        renders into the Validation tab."""
+        self.ensure_one()
+        issues = []
+
+        if not self.screen_ids:
+            issues.append({
+                'level': 'error', 'where': 'Flow',
+                'message': "A flow needs at least one screen.",
+            })
+            return issues
+
+        terminal_screens = self.screen_ids.filtered(lambda s: s.terminal)
+        if not terminal_screens:
+            issues.append({
+                'level': 'error', 'where': 'Flow',
+                'message': "At least one screen must be marked Terminal. "
+                           "Otherwise the user has no way to complete the flow.",
+            })
+        elif len(terminal_screens) > 1:
+            issues.append({
+                'level': 'warning', 'where': 'Flow',
+                'message': f"{len(terminal_screens)} screens are marked Terminal. "
+                           "Meta accepts multiple, but usually only one is needed.",
+            })
+
+        all_screen_ids = {s.screen_id for s in self.screen_ids if s.screen_id}
+
+        for screen in self.screen_ids:
+            where = f"Screen '{screen.screen_id or '?'}'"
+
+            # Component IDs unique within screen
+            input_names = {}
+            for comp in screen.component_ids:
+                if comp.is_input and comp.name:
+                    input_names.setdefault(comp.name, []).append(comp)
+            for name, comps in input_names.items():
+                if len(comps) > 1:
+                    issues.append({
+                        'level': 'error', 'where': where,
+                        'message': f"Multiple input components share the name '{name}'. "
+                                   "Each input on a screen needs a unique name.",
+                    })
+
+            for comp in screen.component_ids:
+                cwhere = f"{where} · {comp.component_type}"
+
+                # Inputs need a name + label
+                if comp.is_input:
+                    if not comp.name:
+                        issues.append({
+                            'level': 'error', 'where': cwhere,
+                            'message': "Input components need a Field Name.",
+                        })
+                    if not comp.label:
+                        issues.append({
+                            'level': 'warning', 'where': cwhere,
+                            'message': "Input components should have a Label "
+                                       "so the user knows what to enter.",
+                        })
+
+                # Choice components need options
+                if comp.is_choice and not comp.option_ids:
+                    issues.append({
+                        'level': 'error', 'where': cwhere,
+                        'message': "Choice components need at least one option.",
+                    })
+
+                # Footer / EmbeddedLink / OptIn need an action
+                if comp.is_action and not comp.action_type:
+                    issues.append({
+                        'level': 'error', 'where': cwhere,
+                        'message': "Action components need an Action Type.",
+                    })
+
+                # navigate action must point at an existing screen
+                if comp.action_type == 'navigate':
+                    if not comp.target_screen_id:
+                        issues.append({
+                            'level': 'error', 'where': cwhere,
+                            'message': "Navigate action is missing a target screen.",
+                        })
+                    elif comp.target_screen_id.screen_id not in all_screen_ids:
+                        issues.append({
+                            'level': 'error', 'where': cwhere,
+                            'message': f"Navigate target '{comp.target_screen_id.screen_id}' "
+                                       "doesn't exist on this flow.",
+                        })
+                if comp.action_type == 'open_url' and not comp.open_url:
+                    issues.append({
+                        'level': 'error', 'where': cwhere,
+                        'message': "Open URL action needs a URL.",
+                    })
+
+                # Image needs a source
+                if comp.component_type == 'Image' and not comp.image_src:
+                    issues.append({
+                        'level': 'error', 'where': cwhere,
+                        'message': "Image components need an Image Source.",
+                    })
+
+                # Text-display components need text
+                if comp.component_type in ('TextHeading', 'TextSubheading',
+                                            'TextBody', 'TextCaption', 'RichText'):
+                    if not (comp.text or comp.label):
+                        issues.append({
+                            'level': 'warning', 'where': cwhere,
+                            'message': "Text component has no content.",
+                        })
+
+        return issues
 
     def action_create_flow_meta(self):
         """

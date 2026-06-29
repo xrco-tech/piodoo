@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_whatsapp_flow_screen_form" model="ir.ui.view">
+            <field name="name">whatsapp.flow.screen.form</field>
+            <field name="model">whatsapp.flow.screen</field>
+            <field name="arch" type="xml">
+                <form string="Flow Screen">
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="title"/>
+                            <h1><field name="title" placeholder="Welcome"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="flow_id" invisible="1"/>
+                                <field name="screen_id" placeholder="WELCOME"/>
+                                <field name="layout_type"/>
+                                <field name="sequence"/>
+                            </group>
+                            <group>
+                                <field name="terminal"/>
+                                <field name="success"/>
+                                <field name="component_count" readonly="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Components" name="components">
+                                <field name="component_ids">
+                                    <list editable="bottom" default_order="sequence asc">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="component_type"/>
+                                        <field name="label"/>
+                                        <field name="name"/>
+                                        <field name="required" optional="show"/>
+                                        <field name="action_type" optional="show"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Data Schema" name="data_schema">
+                                <div class="text-muted small mb-2">
+                                    Optional JSON Schema describing dynamic data injected from your
+                                    data_exchange endpoint. Leave empty for static screens.
+                                </div>
+                                <field name="data_schema" widget="text" nolabel="1"
+                                       placeholder='{"type": "object", "properties": {...}}'/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_whatsapp_flow_screen_tree" model="ir.ui.view">
+            <field name="name">whatsapp.flow.screen.list</field>
+            <field name="model">whatsapp.flow.screen</field>
+            <field name="arch" type="xml">
+                <list string="Screens" default_order="sequence asc">
+                    <field name="sequence" widget="handle"/>
+                    <field name="screen_id"/>
+                    <field name="title"/>
+                    <field name="component_count"/>
+                    <field name="terminal" widget="boolean_toggle"/>
+                    <field name="success" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -93,15 +93,53 @@
                             </group>
                         </group>
                         <notebook>
-                            <page string="Flow Definition" name="definition">
+                            <page string="Description" name="description">
+                                <field name="description" widget="text" nolabel="1"
+                                       placeholder="What does this flow do? Who uses it?"/>
+                            </page>
+
+                            <page string="Screens" name="screens" invisible="use_raw_json">
+                                <div class="alert alert-info" role="alert">
+                                    <i class="fa fa-info-circle me-1"/>
+                                    Add screens, drag the handle to reorder, click a screen to add components.
+                                    Mark one screen as <strong>Terminal</strong> so the user can complete the flow.
+                                </div>
+                                <field name="screen_ids" mode="list">
+                                    <list editable="bottom" default_order="sequence asc">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="screen_id" placeholder="WELCOME"/>
+                                        <field name="title" placeholder="Welcome to our shop"/>
+                                        <field name="component_count" readonly="1"/>
+                                        <field name="terminal" widget="boolean_toggle"/>
+                                        <field name="success" widget="boolean_toggle"/>
+                                    </list>
+                                </field>
+                            </page>
+
+                            <page string="Validation" name="validation">
+                                <field name="validation_status" widget="badge"
+                                       decoration-success="validation_status == 'ok'"
+                                       decoration-warning="validation_status == 'warning'"
+                                       decoration-danger="validation_status == 'error'"/>
+                                <field name="validation_issues" widget="text" readonly="1" nolabel="1"/>
+                                <div class="text-muted small mt-2">
+                                    Issues are recomputed live as you edit. Errors block sending to Meta;
+                                    warnings are advisory.
+                                </div>
+                            </page>
+
+                            <page string="Flow JSON" name="json">
                                 <group>
-                                    <field name="description" widget="text" nolabel="1" placeholder="Flow description"/>
+                                    <field name="use_raw_json"/>
+                                    <field name="flow_version"/>
                                 </group>
-                                <group>
-                                    <field name="flow_json" widget="text" nolabel="1" required="1"
-                                           placeholder="Enter flow JSON definition here..."/>
-                                </group>
-                                <group string="Formatted JSON Preview" invisible="not flow_json_formatted">
+                                <div class="text-muted small mb-2" invisible="use_raw_json">
+                                    Auto-generated from the Screens tab. Tick <strong>Edit JSON directly</strong>
+                                    above to override.
+                                </div>
+                                <field name="flow_json" widget="text" nolabel="1"
+                                       readonly="not use_raw_json"/>
+                                <group string="Formatted (read-only)" invisible="not flow_json_formatted or use_raw_json">
                                     <field name="flow_json_formatted" widget="text" nolabel="1" readonly="1"/>
                                 </group>
                             </page>
