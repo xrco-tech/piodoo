@@ -352,6 +352,11 @@ class WhatsAppChatbotMessage(models.Model):
             'step_type': step.step_type,
             'step_id': step.id,
             'channel': channel,
+            # Live-agent assist fields — surfaced in the simulator (and the
+            # future Agent Workspace) so authors can preview them without
+            # building the workspace UI first.
+            'coaching_notes': step.coaching_notes or '',
+            'crm_action':     step.crm_action or '',
         }
         if channel != 'whatsapp':
             return bubble

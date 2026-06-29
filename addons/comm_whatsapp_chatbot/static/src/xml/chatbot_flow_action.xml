@@ -230,6 +230,22 @@
                                                     </div>
                                                 </t>
 
+                                                <!-- Live-agent assist call-outs (Voice and any flow used as a live script) -->
+                                                <t t-if="b.coaching_notes">
+                                                    <div class="o_flow_sim_coaching">
+                                                        <i class="fa fa-comments-o me-1"/>
+                                                        <strong>Coaching</strong>
+                                                        <div t-out="simEscape(b.coaching_notes)"/>
+                                                    </div>
+                                                </t>
+                                                <t t-if="b.crm_action">
+                                                    <div class="o_flow_sim_crm">
+                                                        <i class="fa fa-cogs me-1"/>
+                                                        <strong>CRM Action</strong>
+                                                        <div t-out="simEscape(b.crm_action)"/>
+                                                    </div>
+                                                </t>
+
                                                 <!-- Body with channel-appropriate formatting -->
                                                 <t t-if="b.body or b.text">
                                                     <div class="o_flow_bubble_body"

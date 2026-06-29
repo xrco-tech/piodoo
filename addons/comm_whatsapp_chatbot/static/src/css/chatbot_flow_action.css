@@ -384,6 +384,41 @@
     cursor: pointer;
 }
 
+/* Live-agent assist call-outs — shown inline above the body for any step
+   that has coaching_notes or crm_action set. Useful for previewing voice
+   agent scripts in the simulator before the dedicated Agent Workspace
+   ships. */
+.o_flow_sim_bubble .o_flow_sim_coaching,
+.o_flow_sim_bubble .o_flow_sim_crm {
+    margin: -2px -2px 6px -2px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.35;
+}
+.o_flow_sim_bubble .o_flow_sim_coaching {
+    background: #ede9fe;
+    color: #5b21b6;
+    border-left: 3px solid #7c3aed;
+}
+.o_flow_sim_bubble .o_flow_sim_crm {
+    background: #fff7ed;
+    color: #9a3412;
+    border-left: 3px solid #f97316;
+}
+.o_flow_sim_bubble .o_flow_sim_coaching strong,
+.o_flow_sim_bubble .o_flow_sim_crm strong {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 4px;
+}
+.o_flow_sim_bubble .o_flow_sim_coaching > div,
+.o_flow_sim_bubble .o_flow_sim_crm > div {
+    margin-top: 2px;
+    white-space: pre-wrap;
+}
+
 /* Media-question placeholders — small dashed bordered chip with an icon. */
 .o_flow_sim_media_prompt {
     margin-top: 6px;
