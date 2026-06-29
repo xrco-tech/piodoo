@@ -78,6 +78,13 @@
                         <field name="status" widget="statusbar" statusbar_visible="DRAFT,PUBLISHED,DEPRECATED"/>
                     </header>
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_open_flow_map" type="object"
+                                    class="oe_stat_button" icon="fa-sitemap"
+                                    invisible="use_raw_json or not screen_count">
+                                <field name="screen_count" widget="statinfo" string="Map"/>
+                            </button>
+                        </div>
                         <group>
                             <group>
                                 <field name="name" placeholder="flow_name_lowercase"/>
@@ -185,17 +192,6 @@
                                 </field>
                             </page>
 
-                            <page string="Map" name="map" invisible="use_raw_json">
-                                <div class="text-muted small mb-2">
-                                    Boxes are screens; blue arrows are <strong>navigate</strong>
-                                    actions (Footer / Embedded Link); green pills are
-                                    <strong>complete</strong> end-points; grey side cards are
-                                    <strong>open URL</strong> hops.
-                                </div>
-                                <field name="flow_map_svg" nolabel="1" readonly="1"
-                                       widget="html" sanitize="0"/>
-                            </page>
-
                             <page string="Validation" name="validation">
                                 <field name="validation_status" widget="badge"
                                        decoration-success="validation_status == 'ok'"
@@ -258,6 +254,45 @@
                     </sheet>
                 </form>
             </field>
+        </record>
+
+        <!-- Full-screen Map view -->
+        <record id="view_whatsapp_flow_map_form" model="ir.ui.view">
+            <field name="name">whatsapp.flow.map.form</field>
+            <field name="model">whatsapp.flow</field>
+            <field name="priority">99</field>
+            <field name="arch" type="xml">
+                <form string="Flow Map" create="false" edit="false" duplicate="false" delete="false">
+                    <header>
+                        <button name="action_back_to_flow_form" type="object"
+                                string="Back to Flow" class="btn-secondary"
+                                icon="fa-arrow-left"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="name" string="Flow"/>
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <div class="alert alert-info" role="alert">
+                            <i class="fa fa-info-circle me-1"/>
+                            Boxes are screens; blue arrows are <strong>navigate</strong> actions
+                            (Footer / Embedded Link); green pills are <strong>complete</strong>
+                            end-points; grey side cards are <strong>open URL</strong> hops.
+                            Edit screens or wiring from the main Flow form.
+                        </div>
+                        <field name="flow_map_svg" nolabel="1" readonly="1"
+                               widget="html" sanitize="0"/>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_whatsapp_flow_map" model="ir.actions.act_window">
+            <field name="name">Flow Map</field>
+            <field name="res_model">whatsapp.flow</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_whatsapp_flow_map_form"/>
+            <field name="target">current</field>
         </record>
 
         <!-- WhatsApp Flows Menu Item -->

@@ -188,6 +188,36 @@ class WhatsAppFlow(models.Model):
                 for i in issues
             ) or 'No issues found.'
 
+    # ── Flow map action handlers ────────────────────────────────────────
+
+    def action_open_flow_map(self):
+        """Open the dedicated full-screen Map view for this flow."""
+        self.ensure_one()
+        return {
+            'type':       'ir.actions.act_window',
+            'name':       f'Map — {self.name}',
+            'res_model':  'whatsapp.flow',
+            'res_id':     self.id,
+            'view_mode':  'form',
+            'view_id':    self.env.ref(
+                'comm_whatsapp.view_whatsapp_flow_map_form').id,
+            'target':     'current',
+        }
+
+    def action_back_to_flow_form(self):
+        """Return from the Map view to the regular flow form."""
+        self.ensure_one()
+        return {
+            'type':       'ir.actions.act_window',
+            'name':       self.name,
+            'res_model':  'whatsapp.flow',
+            'res_id':     self.id,
+            'view_mode':  'form',
+            'view_id':    self.env.ref(
+                'comm_whatsapp.view_whatsapp_flow_form').id,
+            'target':     'current',
+        }
+
     # ── Flow map (server-rendered SVG) ──────────────────────────────────
 
     @api.depends(
