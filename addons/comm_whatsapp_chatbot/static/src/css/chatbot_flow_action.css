@@ -174,14 +174,15 @@
     margin-bottom: 6px;
 }
 
-/* In-session editor — modal-ish overlay floating above the chat. */
+/* In-session editor — takes over the phone area when open. Editor and chat
+   are mutually exclusive (the OWL template hides the chat when this is
+   visible) so the editor can use the full panel height. */
 .o_flow_sim_editor {
     padding: 12px;
     background: #fff;
-    border-bottom: 1px solid #e5e7eb;
-    max-height: 60%;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    flex-shrink: 0;
 }
 .o_flow_sim_editor_title {
     font-weight: 700;

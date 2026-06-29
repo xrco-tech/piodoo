@@ -184,6 +184,7 @@
                                     </div>
                                 </t>
 
+                                <t t-if="!state.sim.editorOpen">
                                 <div class="o_flow_sim_chat">
                                     <t t-foreach="state.sim.bubbles" t-as="b" t-key="b_index">
 
@@ -348,6 +349,7 @@
                                             <i class="fa fa-paper-plane"/>
                                         </button>
                                     </div>
+                                </t>
                                 </t>
                             </div>
                         </div>
