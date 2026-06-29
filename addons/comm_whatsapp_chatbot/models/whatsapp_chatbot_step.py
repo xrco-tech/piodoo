@@ -161,6 +161,21 @@ class WhatsAppChatbotStep(models.Model):
 
     # Code execution
     code = fields.Text(string="Executable Code", help="Write Python code to be executed.")
+
+    # Live agent assist (primarily for Voice Call bots, but useful on any
+    # script-style flow). Authors add inline coaching micro-tips and
+    # explicit CRM actions; the simulator + future agent workspace renders
+    # them as styled call-outs next to the verbal ask.
+    coaching_notes = fields.Text(
+        string="Coaching Notes",
+        help="Behavioral micro-tips shown to the agent inline. "
+             "Example: 'Empathy Check: Lower tone if customer says broken.'",
+    )
+    crm_action = fields.Text(
+        string="CRM Action",
+        help="Explicit instructions: what to type, click, or look up in the "
+             "system at this exact moment. Example: '[Pull up order in OMS]'.",
+    )
     
     # Attachments
     attachment_id = fields.Many2one("ir.attachment", string="Attachment", tracking=True)
@@ -343,15 +358,18 @@ class WhatsAppChatbotStep(models.Model):
 
     @api.constrains('step_type', 'chatbot_id')
     def _check_ussd_step_types(self):
-        """USSD is text-only: media-question step types are not allowed."""
+        """USSD and Voice are text-only at the channel layer: media-question
+        step types are not allowed. (Voice agents read questions to the
+        customer; they can't receive a file via the script engine.)"""
         media_questions = {
             'question_document', 'question_image', 'question_video', 'question_audio',
         }
         for rec in self:
-            if rec.chatbot_id.channel == 'ussd' and rec.step_type in media_questions:
+            if rec.chatbot_id.channel in ('ussd', 'voice') and rec.step_type in media_questions:
+                ch = 'USSD' if rec.chatbot_id.channel == 'ussd' else 'Voice'
                 raise ValidationError(
-                    f"Step type '{rec.step_type}' is not supported on USSD chatbots — "
-                    "USSD is text-only. Use a question_text step instead."
+                    f"Step type '{rec.step_type}' is not supported on {ch} chatbots. "
+                    "Use a question_text step instead."
                 )
 
 

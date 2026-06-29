@@ -187,6 +187,25 @@
                                 </group>
                             </page>
                             
+                            <page string="Live Agent Assist" name="agent_assist">
+                                <group>
+                                    <group string="Coaching Notes">
+                                        <field name="coaching_notes" nolabel="1" widget="text"
+                                               placeholder="Behavioral tips shown to the agent. e.g. 'Empathy check: lower tone if customer says broken.'"/>
+                                    </group>
+                                    <group string="CRM Action">
+                                        <field name="crm_action" nolabel="1" widget="text"
+                                               placeholder="Explicit instructions. e.g. '[Pull up order in OMS, paste tracking number into chat]'"/>
+                                    </group>
+                                </group>
+                                <div class="text-muted small">
+                                    Both fields render as inline call-outs in the simulator (and the
+                                    future Agent Workspace for Voice Call bots) next to the step body.
+                                    Leave empty to hide. Useful on any channel — particularly handy
+                                    for live-script flows where the agent reads the body to a customer.
+                                </div>
+                            </page>
+
                             <page string="Child Steps" name="children">
                                 <field name="child_ids" nolabel="1">
                                     <list create="1" delete="1" edit="1" editable="bottom" default_order="sequence asc">

@@ -33,7 +33,8 @@
                     <field name="channel" widget="badge"
                         decoration-success="channel == 'whatsapp'"
                         decoration-info="channel == 'sms'"
-                        decoration-warning="channel == 'ussd'"/>
+                        decoration-warning="channel == 'ussd'"
+                        decoration-primary="channel == 'voice'"/>
                     <field name="whatsapp_account_id" optional="show"/>
                     <field name="sms_account_id" optional="show"/>
                     <field name="ussd_account_id" optional="hide"/>
@@ -71,8 +72,8 @@
                                 <div class="fw-bold">
                                     <field name="name"/>
                                 </div>
-                                <span t-attf-class="badge rounded-pill #{record.channel.raw_value == 'ussd' ? 'text-bg-warning' : (record.channel.raw_value == 'sms' ? 'text-bg-info' : 'text-bg-success')}">
-                                    <i t-attf-class="fa #{record.channel.raw_value == 'ussd' ? 'fa-hashtag' : (record.channel.raw_value == 'sms' ? 'fa-mobile' : 'fa-whatsapp')} me-1"/>
+                                <span t-attf-class="badge rounded-pill #{record.channel.raw_value == 'voice' ? 'text-bg-primary' : (record.channel.raw_value == 'ussd' ? 'text-bg-warning' : (record.channel.raw_value == 'sms' ? 'text-bg-info' : 'text-bg-success'))}">
+                                    <i t-attf-class="fa #{record.channel.raw_value == 'voice' ? 'fa-headphones' : (record.channel.raw_value == 'ussd' ? 'fa-hashtag' : (record.channel.raw_value == 'sms' ? 'fa-mobile' : 'fa-whatsapp'))} me-1"/>
                                     <t t-esc="record.channel.value"/>
                                 </span>
                             </div>

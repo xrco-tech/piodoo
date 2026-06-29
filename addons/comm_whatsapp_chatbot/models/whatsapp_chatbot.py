@@ -27,12 +27,15 @@ class WhatsAppChatbot(models.Model):
         ('whatsapp', 'WhatsApp'),
         ('sms', 'SMS'),
         ('ussd', 'USSD'),
+        ('voice', 'Voice Call'),
     ], string='Channel', default='whatsapp', required=True, tracking=True,
        help=(
            "The messaging channel this chatbot runs on. "
-           "SMS and USSD bots cannot use interactive WhatsApp step types; "
-           "USSD bots additionally cannot use media-question step types "
-           "(image/video/audio/document) since USSD is text-only."
+           "SMS, USSD and Voice bots cannot use interactive WhatsApp step "
+           "types; USSD and Voice additionally cannot use media-question "
+           "step types since neither delivers media files. Voice bots are "
+           "designed for live-agent assist scripts where the agent reads "
+           "step bodies to the customer on a phone call."
        ))
     # Per-channel account FKs — supersede the legacy single-line sender_address.
     # Only the field matching `channel` is meaningful on a given bot; the form

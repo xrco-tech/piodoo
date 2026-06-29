@@ -41,6 +41,18 @@ class WhatsAppChatbotVariable(models.Model):
     ], string="Type", required=True, default='text')
     chatbot_id = fields.Many2one("whatsapp.chatbot", string="Chatbot", required=True, tracking=True, ondelete='cascade')
 
+    # Slot-fill flavour used on live-agent assist scripts. The agent says
+    # this when the customer blurts the slot's value out-of-order while
+    # telling a long story. e.g. for an Order # slot:
+    #   "I caught that order number, let me pull that up while you tell me
+    #    what happened..."
+    pivot_text = fields.Char(
+        string="Pivot Acknowledgment",
+        help="What the agent says when the customer offers this slot's value "
+             "unprompted. Used by the live-agent assist UI for slot-fill-anytime "
+             "behaviour.",
+    )
+
 
 class WhatsAppChatbotVariableValue(models.Model):
     _name = 'whatsapp.chatbot.value'
@@ -150,6 +162,8 @@ class WhatsAppChatbotVariableTrigger(models.Model):
         ('does_not_contain', 'Does Not Contain'),
         ('less_than', 'Less Than'),
         ('greater_than', 'Greater Than'),
+        ('is_set', 'Is Set'),
+        ('is_not_set', 'Is Not Set'),
     ], string="Operator", required=True, default='is_equal_to')
 
     @api.depends('variable_id.name', 'operator', 'value')

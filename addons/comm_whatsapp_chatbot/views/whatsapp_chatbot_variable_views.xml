@@ -10,6 +10,7 @@
                     <field name="name"/>
                     <field name="chatbot_id"/>
                     <field name="data_type"/>
+                    <field name="pivot_text" optional="hide"/>
                 </list>
             </field>
         </record>
@@ -25,7 +26,14 @@
                             <field name="name"/>
                             <field name="chatbot_id"/>
                             <field name="data_type"/>
+                            <field name="pivot_text"
+                                   placeholder="e.g. 'I caught that order number, let me pull that up'"/>
                         </group>
+                        <div class="text-muted small">
+                            <strong>Pivot Acknowledgment</strong> is used by Voice Call agent scripts:
+                            it's what the agent says to acknowledge a slot whose value the customer
+                            blurted out unprompted while telling a long story. Leave empty if not used.
+                        </div>
                     </sheet>
                 </form>
             </field>

@@ -1534,6 +1534,14 @@ class WhatsAppChatbotMessage(models.Model):
         current = str(current_value or '')
         data_type = trigger.variable_data_type or 'text'
 
+        # Presence operators short-circuit BEFORE the case-insensitive
+        # normalisation so we don't accidentally treat an explicit empty
+        # string the same as a missing value.
+        if operator == 'is_set':
+            return bool(current_value) and str(current_value).strip() != ''
+        if operator == 'is_not_set':
+            return not current_value or str(current_value).strip() == ''
+
         if data_type == 'text':
             expected = expected.upper().strip()
             current = current.upper().strip()
