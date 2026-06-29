@@ -16,8 +16,50 @@
     background: #fff;
     border-bottom: 1px solid #e5e7eb;
 }
-.o_aw_topbar_left { font-size: 14px; color: #374151; }
+.o_aw_topbar_left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px; color: #374151;
+}
+.o_aw_topbar_right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 .o_aw_title { color: #6b7280; }
+
+/* Back button — same visual weight as the chevron in the flow toolbar */
+.o_aw_back {
+    color: #374151;
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+}
+.o_aw_back:hover { color: #111827; background: #f3f4f6; }
+
+/* Live badge + End call button — matched heights so the top-right cluster
+   reads as a single control bar (badge was sm-button-shorter before). */
+.o_aw_live_badge {
+    display: inline-flex;
+    align-items: center;
+    height: 31px;            /* same as .btn-sm computed height */
+    padding: 0 12px;
+    background: #16a34a;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    line-height: 1;
+}
+.o_aw_end_btn {
+    height: 31px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+}
 
 /* Pre-call form */
 .o_aw_precall {

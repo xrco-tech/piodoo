@@ -235,6 +235,23 @@ export class AgentWorkspace extends Component {
         }
     }
 
+    /* ── Navigation ─────────────────────────────────────────────────────── */
+    _goBack() {
+        // Pop the workspace off the action stack — Odoo's breadcrumbs take us
+        // back to whichever view launched it (typically the chatbot form).
+        // The session stays open server-side; the agent can resume it from
+        // Voice Call Sessions or just walk away. If we're still mid-session,
+        // surface a non-blocking hint so the agent knows the wrap-up is
+        // skipped.
+        if (this.state.started && !this.state.terminate) {
+            this.notification.add(
+                "Workspace closed. Session is still open — resume from Voice Call Sessions.",
+                { type: "info" }
+            );
+        }
+        this.action.doAction({ type: "ir.actions.act_window_close" });
+    }
+
     /* ── Wrap-up ────────────────────────────────────────────────────────── */
     _openWrap() { this.state.showWrap = true; }
     _closeWrap() { this.state.showWrap = false; }

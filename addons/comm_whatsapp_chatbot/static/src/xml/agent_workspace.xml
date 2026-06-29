@@ -7,16 +7,21 @@
             <!-- Top bar -->
             <div class="o_aw_topbar">
                 <div class="o_aw_topbar_left">
+                    <button class="btn btn-sm btn-light o_aw_back"
+                            t-on-click="() => this._goBack()"
+                            title="Back to chatbot">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
                     <i class="fa fa-headphones me-1"/>
                     <span class="o_aw_title">Agent Workspace —
                         <span class="fw-semibold" t-esc="chatbotName"/>
                     </span>
                 </div>
                 <div class="o_aw_topbar_right" t-if="state.started">
-                    <span class="badge text-bg-success me-2">
+                    <span class="o_aw_live_badge">
                         <i class="fa fa-circle me-1"/>Live
                     </span>
-                    <button class="btn btn-sm btn-outline-danger"
+                    <button class="btn btn-sm btn-outline-danger o_aw_end_btn"
                             t-on-click="() => this._openWrap()">
                         <i class="fa fa-stop-circle me-1"/>End call
                     </button>
