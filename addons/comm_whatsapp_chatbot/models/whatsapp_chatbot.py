@@ -210,6 +210,20 @@ class WhatsAppChatbot(models.Model):
             'domain': [('chatbot_id', '=', self.id), ('is_simulator', '=', False)],
         }
 
+    def action_open_agent_workspace(self):
+        """Launch the OWL Agent Workspace for live calls. Only meaningful on
+        voice channel — the smart button visibility enforces that."""
+        self.ensure_one()
+        return {
+            'type':   'ir.actions.client',
+            'tag':    'comm_whatsapp_chatbot.agent_workspace',
+            'name':   f'Workspace — {self.name}',
+            'params': {
+                'chatbot_id':   self.id,
+                'chatbot_name': self.name,
+            },
+        }
+
     def action_view_step_hierarchy(self):
         """Open the native OWL flow designer for this chatbot"""
         self.ensure_one()

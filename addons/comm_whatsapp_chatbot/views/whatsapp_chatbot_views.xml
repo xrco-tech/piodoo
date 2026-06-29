@@ -159,6 +159,16 @@
                                     icon="fa-code-fork">
                                 <field name="step_count" widget="statinfo" string="Flow"/>
                             </button>
+                            <button name="action_open_agent_workspace"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-headphones"
+                                    invisible="channel != 'voice'">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">Open</span>
+                                    <span class="o_stat_text">Workspace</span>
+                                </div>
+                            </button>
                         </div>
 
                         <group>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_voice_call_session_tree" model="ir.ui.view">
+            <field name="name">comm.voice.call.session.tree</field>
+            <field name="model">comm.voice.call.session</field>
+            <field name="arch" type="xml">
+                <list string="Voice Call Sessions" default_order="started_at desc">
+                    <field name="started_at"/>
+                    <field name="agent_id"/>
+                    <field name="chatbot_id"/>
+                    <field name="partner_id"/>
+                    <field name="duration_seconds" string="Duration (s)"/>
+                    <field name="outcome" widget="badge"
+                        decoration-success="outcome == 'resolved'"
+                        decoration-warning="outcome == 'escalated'"
+                        decoration-info="outcome == 'open'"
+                        decoration-danger="outcome in ['abandoned', 'error']"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_voice_call_session_form" model="ir.ui.view">
+            <field name="name">comm.voice.call.session.form</field>
+            <field name="model">comm.voice.call.session</field>
+            <field name="arch" type="xml">
+                <form string="Voice Call Session">
+                    <sheet>
+                        <h1><field name="name" readonly="1"/></h1>
+                        <group>
+                            <group>
+                                <field name="agent_id" readonly="1"/>
+                                <field name="chatbot_id" readonly="1"/>
+                                <field name="partner_id" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="started_at" readonly="1"/>
+                                <field name="ended_at" readonly="1"/>
+                                <field name="duration_seconds" readonly="1"/>
+                                <field name="outcome"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Wrap-up Notes" name="notes">
+                                <field name="notes" widget="text"/>
+                            </page>
+                            <page string="Session State" name="state">
+                                <field name="session_state" widget="json"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_voice_call_session" model="ir.actions.act_window">
+            <field name="name">Voice Call Sessions</field>
+            <field name="res_model">comm.voice.call.session</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+    </data>
+</odoo>

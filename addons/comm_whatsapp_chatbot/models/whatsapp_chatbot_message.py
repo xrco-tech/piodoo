@@ -314,6 +314,15 @@ class WhatsAppChatbotMessage(models.Model):
         if capture is not None:
             capture.append(self._sim_capture_bubble(step, chatbot, body))
             return {'success': True, 'message_id': 'sim', 'error': None}
+        # Voice: the agent is the user, there's no real transport. Any time
+        # the engine "sends" a bubble we capture it for the workspace to
+        # render and call it a successful send. If the workspace passed a
+        # capture list via env.context['voice_capture'], we append there too.
+        if chatbot.channel == 'voice':
+            v_capture = self.env.context.get('voice_capture')
+            if v_capture is not None:
+                v_capture.append(self._sim_capture_bubble(step, chatbot, body))
+            return {'success': True, 'message_id': 'voice', 'error': None}
         if chatbot.channel == 'sms':
             return self._send_via_sms(recipient_phone, body, account=chatbot.sms_account_id)
         return self._send_via_whatsapp(
@@ -579,6 +588,106 @@ class WhatsAppChatbotMessage(models.Model):
             "channel":        (contact.last_chatbot_id.channel if contact.last_chatbot_id else chatbot.channel),
             "wait_for_input": wait_for_input,
         }
+
+    # ── Agent Workspace (voice calls) ──────────────────────────────────────
+
+    @api.model
+    def agent_turn(self, call_session_id, user_input=None, initial_variables=None):
+        """Advance the engine one turn for a live agent call session.
+
+        Mirrors simulate_turn's response shape but:
+          - persists REAL records (is_simulator=False on contact / message)
+          - reads + writes session_state on the comm.voice.call.session
+          - uses env.context['voice_capture'] so outbound bubbles bypass any
+            transport and come back to the workspace for rendering.
+
+        Args:
+            call_session_id: int — id of the comm.voice.call.session
+            user_input:      str | None — what the agent clicked / typed
+                              (None on the first turn)
+            initial_variables: list | None — variable seeds applied on the
+                              first turn ONLY (slot pre-fill)
+        Returns: same shape as simulate_turn.
+        """
+        Session = self.env['comm.voice.call.session'].sudo()
+        call = Session.browse(call_session_id).exists()
+        if not call:
+            return self._sim_error("Call session not found.", channel='voice')
+        chatbot = call.chatbot_id
+        if not chatbot:
+            return self._sim_error("Call session has no script.", channel='voice')
+        contact = call.contact_id
+        if not contact:
+            return self._sim_error("Call session has no contact.", channel='voice')
+
+        state = dict(call.session_state or {})
+        is_first_turn = not state.get('current_step_id') and not user_input
+
+        if is_first_turn and initial_variables:
+            self._sim_seed_variables(contact, initial_variables)
+
+        bubbles = []
+        env_w = self.env(context=dict(
+            self.env.context,
+            voice_capture=bubbles,
+            sim_contact_id=contact.id,
+        ))
+        Wk = env_w['whatsapp.chatbot.message'].sudo()
+
+        try:
+            if is_first_turn:
+                trigger_text = self._sim_pick_trigger(chatbot)
+                Wk._sim_drive_inbound(chatbot, contact, trigger_text or '',
+                                       from_trigger=True)
+            else:
+                Wk._sim_drive_inbound(chatbot, contact, user_input or '',
+                                       from_trigger=False)
+        except Exception as e:
+            _logger.error("Agent turn engine error: %s", e, exc_info=True)
+            return self._sim_error(f"Engine error: {e}", channel='voice')
+
+        contact.invalidate_recordset(['last_step_id', 'last_chatbot_id', 'call_stack'])
+        new_state = {
+            'current_chatbot_id': contact.last_chatbot_id.id if contact.last_chatbot_id else chatbot.id,
+            'current_step_id':    contact.last_step_id.id if contact.last_step_id else None,
+            'call_stack':         contact.call_stack or [],
+        }
+        call.write({'session_state': new_state})
+
+        terminate = bool(
+            contact.last_step_id and contact.last_step_id.step_type == 'end_flow'
+        )
+        last_step = contact.last_step_id
+        wait_for_input = bool(
+            last_step and last_step.step_type
+            and last_step.step_type.startswith('question_')
+        )
+        if not bubbles:
+            bubbles.append({
+                'text': "[no response — does this script have a configured root step / trigger?]",
+                'step_type': 'sim_note', 'step_id': None,
+                'channel': 'voice',
+            })
+            terminate = True
+
+        return {
+            "session_state":  new_state,
+            "bubbles":        bubbles,
+            "terminate":      terminate,
+            "channel":        'voice',
+            "wait_for_input": wait_for_input,
+        }
+
+    @api.model
+    def agent_update_state(self, call_session_id, initial_variables=None):
+        """Apply slot edits to a running call session without advancing the
+        engine. Mirror of simulator_update_state for the workspace."""
+        call = self.env['comm.voice.call.session'].sudo().browse(call_session_id).exists()
+        if not call or not call.contact_id:
+            return {'ok': False}
+        if initial_variables:
+            self._sim_seed_variables(call.contact_id, initial_variables)
+        return {'ok': True}
 
     # ── Simulator support ──────────────────────────────────────────────────
 

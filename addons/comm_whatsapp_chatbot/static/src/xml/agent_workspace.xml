@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="comm_whatsapp_chatbot.AgentWorkspace">
+        <div class="o_aw">
+
+            <!-- Top bar -->
+            <div class="o_aw_topbar">
+                <div class="o_aw_topbar_left">
+                    <i class="fa fa-headphones me-1"/>
+                    <span class="o_aw_title">Agent Workspace —
+                        <span class="fw-semibold" t-esc="chatbotName"/>
+                    </span>
+                </div>
+                <div class="o_aw_topbar_right" t-if="state.started">
+                    <span class="badge text-bg-success me-2">
+                        <i class="fa fa-circle me-1"/>Live
+                    </span>
+                    <button class="btn btn-sm btn-outline-danger"
+                            t-on-click="() => this._openWrap()">
+                        <i class="fa fa-stop-circle me-1"/>End call
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pre-call form -->
+            <t t-if="!state.started">
+                <div class="o_aw_precall">
+                    <div class="o_aw_precall_inner">
+                        <h2>Start a new call</h2>
+                        <p class="text-muted">
+                            Enter the customer's name and mobile so the script
+                            can run against their record.
+                        </p>
+                        <label>Customer name</label>
+                        <input type="text" class="form-control mb-2"
+                               t-model="state.personaName" placeholder="e.g. Alice Test"/>
+                        <label>Mobile</label>
+                        <input type="tel" class="form-control mb-3"
+                               t-model="state.personaMobile" placeholder="+27600000001"/>
+                        <button class="btn btn-primary w-100"
+                                t-att-disabled="state.sending"
+                                t-on-click="() => this._startCall()">
+                            <i class="fa fa-play me-1"/>
+                            <t t-if="state.sending">Starting...</t>
+                            <t t-else="">Start call</t>
+                        </button>
+                    </div>
+                </div>
+            </t>
+
+            <!-- 3-pane layout -->
+            <t t-if="state.started and !state.showWrap">
+                <div class="o_aw_panes">
+
+                    <!-- Left: Customer context -->
+                    <div class="o_aw_pane o_aw_pane_left">
+                        <div class="o_aw_pane_header">Customer</div>
+                        <t t-if="state.partner">
+                            <div class="o_aw_customer_card">
+                                <div class="o_aw_customer_avatar">
+                                    <i class="fa fa-user"/>
+                                </div>
+                                <div class="o_aw_customer_name" t-esc="state.partner.name"/>
+                                <div class="o_aw_customer_meta">
+                                    <i class="fa fa-mobile me-1"/>
+                                    <t t-esc="state.partner.mobile"/>
+                                </div>
+                                <div t-if="state.partner.email" class="o_aw_customer_meta">
+                                    <i class="fa fa-envelope-o me-1"/>
+                                    <t t-esc="state.partner.email"/>
+                                </div>
+                            </div>
+                        </t>
+                        <div class="o_aw_pane_header mt-3">Notes (live)</div>
+                        <textarea class="o_aw_notes_input form-control"
+                                  t-model="state.notes"
+                                  placeholder="Type call notes as you go..."
+                                  rows="6"/>
+                    </div>
+
+                    <!-- Center: Script -->
+                    <div class="o_aw_pane o_aw_pane_center">
+                        <div class="o_aw_script">
+                            <t t-foreach="state.bubbles" t-as="b" t-key="b_index">
+
+                                <!-- Agent's last action — small grey marker -->
+                                <t t-if="b.dir === 'out'">
+                                    <div class="o_aw_user_marker"
+                                         t-out="escape('You: ' + b.text)"/>
+                                </t>
+
+                                <!-- Notes / errors -->
+                                <t t-elif="b.step_type === 'error' or b.step_type === 'sim_note'">
+                                    <div t-attf-class="o_aw_inline_note o_aw_inline_note_#{b.step_type}"
+                                         t-out="escape(b.text)"/>
+                                </t>
+
+                                <!-- Regular script step -->
+                                <t t-else="">
+                                    <div class="o_aw_step">
+
+                                        <!-- Coaching + CRM call-outs above the body -->
+                                        <t t-if="b.coaching_notes">
+                                            <div class="o_aw_callout o_aw_callout_coaching">
+                                                <i class="fa fa-comments-o me-1"/>
+                                                <strong>Coaching</strong>
+                                                <div t-out="escape(b.coaching_notes)"/>
+                                            </div>
+                                        </t>
+                                        <t t-if="b.crm_action">
+                                            <div class="o_aw_callout o_aw_callout_crm">
+                                                <i class="fa fa-cogs me-1"/>
+                                                <strong>CRM Action</strong>
+                                                <div t-out="escape(b.crm_action)"/>
+                                            </div>
+                                        </t>
+
+                                        <!-- Script body (what the agent reads) -->
+                                        <t t-if="b.body or b.text">
+                                            <div class="o_aw_step_body"
+                                                 t-out="formatBody(b.body or b.text)"/>
+                                        </t>
+
+                                        <!-- Quick-reply buttons -->
+                                        <t t-if="b.buttons and b.buttons.length">
+                                            <div class="o_aw_quick_replies">
+                                                <t t-foreach="b.buttons" t-as="btn" t-key="btn_index">
+                                                    <button class="btn btn-outline-primary o_aw_qr_btn"
+                                                            t-att-disabled="state.sending or state.terminate"
+                                                            t-on-click="() => this._sendQuickReply(btn)"
+                                                            t-esc="btn"/>
+                                                </t>
+                                            </div>
+                                        </t>
+
+                                        <!-- Drilldown list -->
+                                        <t t-if="b.list_rows and b.list_rows.length">
+                                            <div class="o_aw_list_header">
+                                                <i class="fa fa-list me-1"/>
+                                                <t t-esc="b.list_button_text or 'Pick one'"/>
+                                            </div>
+                                            <div class="o_aw_list_rows">
+                                                <t t-foreach="b.list_rows" t-as="row" t-key="row_index">
+                                                    <button class="btn btn-outline-secondary o_aw_list_row"
+                                                            t-att-disabled="state.sending or state.terminate"
+                                                            t-on-click="() => this._sendQuickReply(row)"
+                                                            t-esc="row"/>
+                                                </t>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                            </t>
+
+                            <t t-if="state.sending">
+                                <div class="o_aw_typing">
+                                    <span class="dot"/><span class="dot"/><span class="dot"/>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Free-text input -->
+                        <div class="o_aw_input_row" t-if="!state.terminate">
+                            <input type="text" class="form-control"
+                                   t-model="state.userInput"
+                                   t-on-keydown="(ev) => this._onInputKey(ev)"
+                                   placeholder="Type the customer's reply or any note..."
+                                   t-att-disabled="state.sending"/>
+                            <button class="btn btn-primary ms-2"
+                                    t-on-click="() => this._sendTyped()"
+                                    t-att-disabled="state.sending or !state.userInput.trim()">
+                                <i class="fa fa-arrow-right"/>
+                            </button>
+                        </div>
+                        <div class="o_aw_terminated" t-if="state.terminate">
+                            Script ended. Click <strong>End call</strong> to wrap up.
+                        </div>
+                    </div>
+
+                    <!-- Right: Slot dashboard -->
+                    <div class="o_aw_pane o_aw_pane_right">
+                        <div class="o_aw_pane_header">
+                            Slots
+                            <button class="btn btn-sm btn-light float-end"
+                                    t-on-click="() => this._applySlotEdits()"
+                                    t-att-disabled="state.sending"
+                                    title="Save slot edits to the engine">
+                                <i class="fa fa-save"/>
+                            </button>
+                        </div>
+                        <t t-foreach="state.setupBots" t-as="bot" t-key="bot.chatbot_id">
+                            <t t-if="bot.variables and bot.variables.length">
+                                <div class="o_aw_slot_group">
+                                    <div class="o_aw_slot_group_title">
+                                        <i class="fa fa-tag me-1"/>
+                                        <t t-esc="bot.chatbot_name"/>
+                                        <span t-if="!bot.is_root" class="text-muted small ms-1">(linked)</span>
+                                    </div>
+                                    <t t-foreach="bot.variables" t-as="v" t-key="v.id">
+                                        <div t-attf-class="o_aw_slot o_aw_slot_#{v.value ? 'filled' : 'empty'}">
+                                            <div class="o_aw_slot_label">
+                                                <i t-attf-class="fa #{v.value ? 'fa-check-circle' : 'fa-circle-o'} me-1"/>
+                                                <t t-esc="v.name"/>
+                                                <span class="text-muted small ms-1">(<t t-esc="v.data_type"/>)</span>
+                                            </div>
+                                            <input class="form-control form-control-sm"
+                                                   t-att-type="v.data_type === 'integer' || v.data_type === 'float' ? 'number' : (v.data_type === 'date' ? 'date' : 'text')"
+                                                   t-model="v.value"
+                                                   placeholder="—"/>
+                                            <div t-if="v.pivot_text" class="o_aw_slot_pivot">
+                                                <i class="fa fa-quote-left me-1"/>
+                                                <em t-esc="v.pivot_text"/>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
+                        </t>
+                    </div>
+                </div>
+            </t>
+
+            <!-- Wrap-up dialog -->
+            <t t-if="state.showWrap">
+                <div class="o_aw_wrap_overlay">
+                    <div class="o_aw_wrap_dialog">
+                        <h3>Wrap up the call</h3>
+                        <label>Outcome</label>
+                        <select class="form-select mb-3" t-model="state.outcome">
+                            <option value="resolved">Resolved</option>
+                            <option value="escalated">Escalated to supervisor</option>
+                            <option value="abandoned">Abandoned</option>
+                            <option value="error">Error / Issue</option>
+                        </select>
+                        <label>Notes</label>
+                        <textarea class="form-control mb-3" rows="4"
+                                  t-model="state.notes"
+                                  placeholder="What did you decide / promise the customer?"/>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button class="btn btn-light" t-on-click="() => this._closeWrap()"
+                                    t-att-disabled="state.saving">
+                                Back to call
+                            </button>
+                            <button class="btn btn-primary"
+                                    t-att-disabled="state.saving"
+                                    t-on-click="() => this._endCall()">
+                                <i class="fa fa-check me-1"/>
+                                <t t-if="state.saving">Saving...</t>
+                                <t t-else="">Close call</t>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+        </div>
+    </t>
+
+</templates>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Light Chatbot',
-    'version': '18.0.1.0.8',
+    'version': '18.0.1.0.9',
     'category': 'Tools',
     'summary': 'Chatbot functionality for WhatsApp Light',
     'description': """
@@ -18,6 +18,7 @@ and automate WhatsApp messaging.
     'data': [
         'security/ir.model.access.csv',
         'views/whatsapp_chatbot_ussd_account_views.xml',
+        'views/voice_call_session_views.xml',
         'views/whatsapp_chatbot_views.xml',
         'views/whatsapp_chatbot_step_views.xml',
         'views/whatsapp_chatbot_contact_views.xml',
@@ -34,6 +35,9 @@ and automate WhatsApp messaging.
             'comm_whatsapp_chatbot/static/src/xml/chatbot_flow_action.xml',
             'comm_whatsapp_chatbot/static/src/css/chatbot_flow_action.css',
             'comm_whatsapp_chatbot/static/src/js/chatbot_flow_widget.js',
+            'comm_whatsapp_chatbot/static/src/xml/agent_workspace.xml',
+            'comm_whatsapp_chatbot/static/src/css/agent_workspace.css',
+            'comm_whatsapp_chatbot/static/src/js/agent_workspace.js',
         ],
     },
     'installable': True,
