@@ -185,6 +185,17 @@
                                 </field>
                             </page>
 
+                            <page string="Map" name="map" invisible="use_raw_json">
+                                <div class="text-muted small mb-2">
+                                    Boxes are screens; blue arrows are <strong>navigate</strong>
+                                    actions (Footer / Embedded Link); green pills are
+                                    <strong>complete</strong> end-points; grey side cards are
+                                    <strong>open URL</strong> hops.
+                                </div>
+                                <field name="flow_map_svg" nolabel="1" readonly="1"
+                                       widget="html" sanitize="0"/>
+                            </page>
+
                             <page string="Validation" name="validation">
                                 <field name="validation_status" widget="badge"
                                        decoration-success="validation_status == 'ok'"

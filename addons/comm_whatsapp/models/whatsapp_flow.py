@@ -3,6 +3,7 @@
 import logging
 import requests
 import json
+from markupsafe import Markup, escape
 from odoo import models, fields, api
 
 _logger = logging.getLogger(__name__)
@@ -76,6 +77,14 @@ class WhatsAppFlow(models.Model):
         ('warning',  'Warnings'),
         ('error',    'Errors'),
     ], compute='_compute_validation_issues', store=False)
+
+    # Flow map — server-rendered SVG showing screens as boxes and navigate
+    # actions as arrows. Recomputed live so authors can see the structure
+    # update as they wire screens together.
+    flow_map_svg = fields.Html(
+        string='Flow Map', compute='_compute_flow_map_svg', sanitize=False,
+        help="Visual overview of how screens connect via navigate actions.",
+    )
     
     # Flow metadata
     description = fields.Text(string='Description', help='Flow description for internal use')
@@ -178,6 +187,262 @@ class WhatsAppFlow(models.Model):
                 f"[{i['level'].upper()}] {i['where']}: {i['message']}"
                 for i in issues
             ) or 'No issues found.'
+
+    # ── Flow map (server-rendered SVG) ──────────────────────────────────
+
+    @api.depends(
+        'use_raw_json',
+        'screen_ids', 'screen_ids.screen_id', 'screen_ids.title',
+        'screen_ids.sequence', 'screen_ids.terminal', 'screen_ids.success',
+        'screen_ids.component_count',
+        'screen_ids.component_ids',
+        'screen_ids.component_ids.action_type',
+        'screen_ids.component_ids.target_screen_id',
+        'screen_ids.component_ids.label',
+        'screen_ids.component_ids.open_url',
+    )
+    def _compute_flow_map_svg(self):
+        for rec in self:
+            if rec.use_raw_json:
+                rec.flow_map_svg = Markup(
+                    '<div class="text-muted small">'
+                    'Flow map is only available in structured mode. '
+                    'Untick <strong>Edit JSON directly</strong> to use it.'
+                    '</div>'
+                )
+                continue
+            if not rec.screen_ids:
+                rec.flow_map_svg = Markup(
+                    '<div class="text-muted small">'
+                    'Add at least one screen to see the flow map.'
+                    '</div>'
+                )
+                continue
+            rec.flow_map_svg = Markup(rec._build_map_svg())
+
+    def _build_map_svg(self):
+        """Layered top-down SVG: screens as boxes, navigate actions as arrows."""
+        self.ensure_one()
+        screens = self.screen_ids.sorted('sequence')
+        by_id = {s.screen_id: s for s in screens}
+
+        # Adjacency: screen_id -> list of {to, label, kind}
+        edges = {s.screen_id: [] for s in screens}
+        external = []   # open_url targets — drawn as little side nodes
+        completes = []  # screens whose action is "complete" — drawn as end pill
+        for s in screens:
+            for c in s.component_ids.sorted('sequence'):
+                if c.action_type == 'navigate' and c.target_screen_id \
+                   and c.target_screen_id.screen_id in by_id:
+                    edges[s.screen_id].append({
+                        'to': c.target_screen_id.screen_id,
+                        'label': (c.label or 'navigate')[:18],
+                        'kind': 'navigate',
+                    })
+                elif c.action_type == 'complete':
+                    completes.append((s.screen_id, (c.label or 'complete')[:18]))
+                elif c.action_type == 'open_url' and c.open_url:
+                    external.append((s.screen_id, c.open_url[:32],
+                                     (c.label or 'open URL')[:18]))
+
+        # BFS levels from the first screen (by sequence).
+        first = screens[0].screen_id
+        levels = {first: 0}
+        queue = [first]
+        while queue:
+            cur = queue.pop(0)
+            for e in edges.get(cur, []):
+                t = e['to']
+                nxt = levels[cur] + 1
+                if t not in levels:
+                    levels[t] = nxt
+                    queue.append(t)
+                elif levels[t] < nxt:
+                    # Push existing node deeper so arrows go downward.
+                    levels[t] = nxt
+                    queue.append(t)
+        # Orphans (no inbound or outbound edge from entry) — append at the bottom.
+        max_level = max(levels.values()) if levels else 0
+        for s in screens:
+            if s.screen_id not in levels:
+                max_level += 1
+                levels[s.screen_id] = max_level
+
+        by_level = {}
+        for sid, lvl in levels.items():
+            by_level.setdefault(lvl, []).append(sid)
+        # Stable order inside a level: by sequence.
+        for lvl in by_level:
+            by_level[lvl].sort(key=lambda sid: by_id[sid].sequence)
+
+        BOX_W, BOX_H = 210, 92
+        HGAP, VGAP = 50, 90
+        PAD = 30
+        max_per_row = max(len(r) for r in by_level.values())
+        svg_w = PAD * 2 + max_per_row * BOX_W + (max_per_row - 1) * HGAP
+        svg_h = PAD * 2 + (max(by_level) + 1) * (BOX_H + VGAP)
+
+        coords = {}
+        for lvl in sorted(by_level):
+            row = by_level[lvl]
+            row_total = len(row) * BOX_W + (len(row) - 1) * HGAP
+            x_start = (svg_w - row_total) // 2
+            for i, sid in enumerate(row):
+                x = x_start + i * (BOX_W + HGAP)
+                y = PAD + lvl * (BOX_H + VGAP)
+                coords[sid] = (x, y)
+
+        parts = [
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{svg_w}" '
+            f'height="{svg_h}" style="background:#f8f9fa;border-radius:6px;">',
+            '<defs>',
+            '<marker id="wa_arrow_nav" viewBox="0 0 10 10" refX="9" refY="5" '
+            'markerWidth="7" markerHeight="7" orient="auto">'
+            '<path d="M 0 0 L 10 5 L 0 10 z" fill="#4a6cf7"/></marker>',
+            '<marker id="wa_arrow_end" viewBox="0 0 10 10" refX="9" refY="5" '
+            'markerWidth="7" markerHeight="7" orient="auto">'
+            '<path d="M 0 0 L 10 5 L 0 10 z" fill="#28a745"/></marker>',
+            '<marker id="wa_arrow_url" viewBox="0 0 10 10" refX="9" refY="5" '
+            'markerWidth="7" markerHeight="7" orient="auto">'
+            '<path d="M 0 0 L 10 5 L 0 10 z" fill="#6c757d"/></marker>',
+            '</defs>',
+        ]
+
+        # Edges first so nodes sit on top.
+        for src, es in edges.items():
+            if src not in coords:
+                continue
+            sx, sy = coords[src]
+            for e in es:
+                if e['to'] not in coords:
+                    continue
+                tx, ty = coords[e['to']]
+                x1, y1 = sx + BOX_W // 2, sy + BOX_H
+                x2, y2 = tx + BOX_W // 2, ty
+                parts.append(
+                    f'<path d="M {x1} {y1} C {x1} {y1+40}, {x2} {y2-40}, '
+                    f'{x2} {y2}" stroke="#4a6cf7" fill="none" '
+                    f'stroke-width="1.5" marker-end="url(#wa_arrow_nav)"/>'
+                )
+                mid_x, mid_y = (x1 + x2) // 2, (y1 + y2) // 2
+                label = escape(e['label'])
+                parts.append(
+                    f'<rect x="{mid_x - 50}" y="{mid_y - 10}" width="100" '
+                    f'height="20" fill="#ffffff" stroke="#4a6cf7" '
+                    f'stroke-width="1" rx="10"/>'
+                )
+                parts.append(
+                    f'<text x="{mid_x}" y="{mid_y + 4}" font-size="11" '
+                    f'text-anchor="middle" fill="#4a6cf7" '
+                    f'font-family="sans-serif">{label}</text>'
+                )
+
+        # "Complete" end-pills hanging off the bottom of the source screen.
+        end_offsets = {}
+        for src, label in completes:
+            if src not in coords:
+                continue
+            sx, sy = coords[src]
+            idx = end_offsets.get(src, 0)
+            end_offsets[src] = idx + 1
+            ex = sx + BOX_W + 10 + idx * 110
+            ey = sy + BOX_H + 30
+            parts.append(
+                f'<path d="M {sx + BOX_W} {sy + BOX_H // 2} '
+                f'L {ex} {ey + 14}" stroke="#28a745" fill="none" '
+                f'stroke-width="1.5" stroke-dasharray="4,3" '
+                f'marker-end="url(#wa_arrow_end)"/>'
+            )
+            parts.append(
+                f'<rect x="{ex}" y="{ey}" width="100" height="28" rx="14" '
+                f'fill="#d4edda" stroke="#28a745"/>'
+            )
+            parts.append(
+                f'<text x="{ex + 50}" y="{ey + 18}" font-size="11" '
+                f'text-anchor="middle" fill="#155724" '
+                f'font-family="sans-serif">✓ {escape(label)}</text>'
+            )
+
+        # External URL hops as muted pills.
+        url_offsets = {}
+        for src, url, label in external:
+            if src not in coords:
+                continue
+            sx, sy = coords[src]
+            idx = url_offsets.get(src, 0)
+            url_offsets[src] = idx + 1
+            ex = sx - 130 - idx * 140
+            ey = sy + BOX_H // 2 - 14
+            parts.append(
+                f'<path d="M {sx} {sy + BOX_H // 2} L {ex + 120} {ey + 14}" '
+                f'stroke="#6c757d" fill="none" stroke-width="1.5" '
+                f'stroke-dasharray="4,3" marker-end="url(#wa_arrow_url)"/>'
+            )
+            parts.append(
+                f'<rect x="{ex}" y="{ey}" width="120" height="28" rx="6" '
+                f'fill="#e9ecef" stroke="#6c757d"/>'
+            )
+            parts.append(
+                f'<text x="{ex + 60}" y="{ey + 13}" font-size="10" '
+                f'text-anchor="middle" fill="#495057" '
+                f'font-family="sans-serif">↗ {escape(label)}</text>'
+            )
+            parts.append(
+                f'<text x="{ex + 60}" y="{ey + 24}" font-size="9" '
+                f'text-anchor="middle" fill="#6c757d" '
+                f'font-family="monospace">{escape(url)}</text>'
+            )
+
+        # Nodes.
+        for sid, (x, y) in coords.items():
+            s = by_id[sid]
+            if s.success:
+                fill, stroke, badge_fill = '#d4edda', '#28a745', '#28a745'
+                badge_text = '✓ success'
+            elif s.terminal:
+                fill, stroke, badge_fill = '#fff3cd', '#ffc107', '#ff8800'
+                badge_text = 'terminal'
+            elif sid == first:
+                fill, stroke, badge_fill = '#cce5ff', '#0d6efd', '#0d6efd'
+                badge_text = 'entry'
+            else:
+                fill, stroke, badge_fill = '#ffffff', '#adb5bd', '#6c757d'
+                badge_text = ''
+
+            parts.append(
+                f'<rect x="{x}" y="{y}" width="{BOX_W}" height="{BOX_H}" '
+                f'rx="8" fill="{fill}" stroke="{stroke}" stroke-width="2"/>'
+            )
+            parts.append(
+                f'<text x="{x + 12}" y="{y + 22}" font-size="12" '
+                f'font-weight="bold" fill="#212529" '
+                f'font-family="monospace">{escape(sid)}</text>'
+            )
+            parts.append(
+                f'<text x="{x + 12}" y="{y + 42}" font-size="12" '
+                f'fill="#495057" font-family="sans-serif">'
+                f'{escape((s.title or "")[:30])}</text>'
+            )
+            parts.append(
+                f'<text x="{x + 12}" y="{y + 78}" font-size="10" '
+                f'fill="#6c757d" font-family="sans-serif">'
+                f'{s.component_count} component'
+                f'{"s" if s.component_count != 1 else ""}</text>'
+            )
+            if badge_text:
+                bw = 8 * len(badge_text) + 16
+                parts.append(
+                    f'<rect x="{x + BOX_W - bw - 8}" y="{y + 8}" '
+                    f'width="{bw}" height="18" rx="9" fill="{badge_fill}"/>'
+                )
+                parts.append(
+                    f'<text x="{x + BOX_W - bw // 2 - 8}" y="{y + 21}" '
+                    f'font-size="10" text-anchor="middle" fill="#ffffff" '
+                    f'font-family="sans-serif">{badge_text}</text>'
+                )
+
+        parts.append('</svg>')
+        return ''.join(parts)
 
     # ── JSON generator ──────────────────────────────────────────────────
 
