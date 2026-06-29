@@ -308,23 +308,31 @@ class WhatsAppFlow(models.Model):
         BOX_W, BOX_H = 210, 92
         HGAP, VGAP = 50, 90
         PAD = 30
+        # Extra side gutters so off-box pills (open URL on the left, complete
+        # under the source box) don't get clipped by the SVG canvas.
+        EXTRA_LEFT = 170 if external else 0
+        EXTRA_BOTTOM = 60 if completes else 0
         max_per_row = max(len(r) for r in by_level.values())
-        svg_w = PAD * 2 + max_per_row * BOX_W + (max_per_row - 1) * HGAP
-        svg_h = PAD * 2 + (max(by_level) + 1) * (BOX_H + VGAP)
+        screen_area_w = max_per_row * BOX_W + (max_per_row - 1) * HGAP
+        svg_w = PAD * 2 + EXTRA_LEFT + screen_area_w
+        svg_h = PAD * 2 + (max(by_level) + 1) * (BOX_H + VGAP) + EXTRA_BOTTOM
 
         coords = {}
         for lvl in sorted(by_level):
             row = by_level[lvl]
             row_total = len(row) * BOX_W + (len(row) - 1) * HGAP
-            x_start = (svg_w - row_total) // 2
+            # Center row inside the screen-column area, after the open-URL gutter.
+            x_start = PAD + EXTRA_LEFT + (screen_area_w - row_total) // 2
             for i, sid in enumerate(row):
                 x = x_start + i * (BOX_W + HGAP)
                 y = PAD + lvl * (BOX_H + VGAP)
                 coords[sid] = (x, y)
 
         parts = [
+            '<div style="overflow:auto;max-width:100%;">',
             f'<svg xmlns="http://www.w3.org/2000/svg" width="{svg_w}" '
-            f'height="{svg_h}" style="background:#f8f9fa;border-radius:6px;">',
+            f'height="{svg_h}" viewBox="0 0 {svg_w} {svg_h}" '
+            f'style="background:#f8f9fa;border-radius:6px;display:block;">',
             '<defs>',
             '<marker id="wa_arrow_nav" viewBox="0 0 10 10" refX="9" refY="5" '
             'markerWidth="7" markerHeight="7" orient="auto">'
@@ -367,7 +375,8 @@ class WhatsAppFlow(models.Model):
                     f'font-family="sans-serif">{label}</text>'
                 )
 
-        # "Complete" end-pills hanging off the bottom of the source screen.
+        # "Complete" end-pills hanging directly below the source screen so
+        # they stay inside the column and don't overflow the canvas.
         end_offsets = {}
         for src, label in completes:
             if src not in coords:
@@ -375,25 +384,27 @@ class WhatsAppFlow(models.Model):
             sx, sy = coords[src]
             idx = end_offsets.get(src, 0)
             end_offsets[src] = idx + 1
-            ex = sx + BOX_W + 10 + idx * 110
-            ey = sy + BOX_H + 30
+            pill_w = 110
+            ex = sx + (BOX_W - pill_w) // 2 + idx * (pill_w + 8)
+            ey = sy + BOX_H + 24
+            mid_x = sx + BOX_W // 2
             parts.append(
-                f'<path d="M {sx + BOX_W} {sy + BOX_H // 2} '
-                f'L {ex} {ey + 14}" stroke="#28a745" fill="none" '
+                f'<path d="M {mid_x} {sy + BOX_H} '
+                f'L {mid_x} {ey}" stroke="#28a745" fill="none" '
                 f'stroke-width="1.5" stroke-dasharray="4,3" '
                 f'marker-end="url(#wa_arrow_end)"/>'
             )
             parts.append(
-                f'<rect x="{ex}" y="{ey}" width="100" height="28" rx="14" '
-                f'fill="#d4edda" stroke="#28a745"/>'
+                f'<rect x="{ex}" y="{ey}" width="{pill_w}" height="28" '
+                f'rx="14" fill="#d4edda" stroke="#28a745"/>'
             )
             parts.append(
-                f'<text x="{ex + 50}" y="{ey + 18}" font-size="11" '
+                f'<text x="{ex + pill_w // 2}" y="{ey + 18}" font-size="11" '
                 f'text-anchor="middle" fill="#155724" '
                 f'font-family="sans-serif">✓ {escape(label)}</text>'
             )
 
-        # External URL hops as muted pills.
+        # External URL hops as muted cards in the left gutter.
         url_offsets = {}
         for src, url, label in external:
             if src not in coords:
@@ -401,24 +412,26 @@ class WhatsAppFlow(models.Model):
             sx, sy = coords[src]
             idx = url_offsets.get(src, 0)
             url_offsets[src] = idx + 1
-            ex = sx - 130 - idx * 140
-            ey = sy + BOX_H // 2 - 14
+            card_w = 150
+            ex = PAD + idx * 12   # tucked into the left gutter
+            ey = sy + BOX_H // 2 - 17 + idx * 8
             parts.append(
-                f'<path d="M {sx} {sy + BOX_H // 2} L {ex + 120} {ey + 14}" '
-                f'stroke="#6c757d" fill="none" stroke-width="1.5" '
-                f'stroke-dasharray="4,3" marker-end="url(#wa_arrow_url)"/>'
+                f'<path d="M {ex + card_w} {ey + 17} L {sx} '
+                f'{sy + BOX_H // 2}" stroke="#6c757d" fill="none" '
+                f'stroke-width="1.5" stroke-dasharray="4,3" '
+                f'marker-end="url(#wa_arrow_url)"/>'
             )
             parts.append(
-                f'<rect x="{ex}" y="{ey}" width="120" height="28" rx="6" '
+                f'<rect x="{ex}" y="{ey}" width="{card_w}" height="34" rx="6" '
                 f'fill="#e9ecef" stroke="#6c757d"/>'
             )
             parts.append(
-                f'<text x="{ex + 60}" y="{ey + 13}" font-size="10" '
+                f'<text x="{ex + card_w // 2}" y="{ey + 14}" font-size="10" '
                 f'text-anchor="middle" fill="#495057" '
                 f'font-family="sans-serif">↗ {escape(label)}</text>'
             )
             parts.append(
-                f'<text x="{ex + 60}" y="{ey + 24}" font-size="9" '
+                f'<text x="{ex + card_w // 2}" y="{ey + 27}" font-size="9" '
                 f'text-anchor="middle" fill="#6c757d" '
                 f'font-family="monospace">{escape(url)}</text>'
             )
@@ -472,6 +485,7 @@ class WhatsAppFlow(models.Model):
                 )
 
         parts.append('</svg>')
+        parts.append('</div>')
         return ''.join(parts)
 
     # ── JSON generator ──────────────────────────────────────────────────
