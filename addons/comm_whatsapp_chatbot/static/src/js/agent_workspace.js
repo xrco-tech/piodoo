@@ -236,20 +236,30 @@ export class AgentWorkspace extends Component {
     }
 
     /* ── Navigation ─────────────────────────────────────────────────────── */
+    _navigateToChatbotForm() {
+        // act_window_close is for modal dialogs — it doesn't pop a client
+        // action off the stack. Explicit doAction → chatbot form view works
+        // reliably regardless of how the workspace was opened.
+        this.action.doAction({
+            type:      "ir.actions.act_window",
+            res_model: "whatsapp.chatbot",
+            res_id:    this.chatbotId,
+            views:     [[false, "form"]],
+            target:    "current",
+        });
+    }
+
     _goBack() {
-        // Pop the workspace off the action stack — Odoo's breadcrumbs take us
-        // back to whichever view launched it (typically the chatbot form).
-        // The session stays open server-side; the agent can resume it from
-        // Voice Call Sessions or just walk away. If we're still mid-session,
-        // surface a non-blocking hint so the agent knows the wrap-up is
-        // skipped.
+        // Workspace closes; the session stays open server-side. Agents
+        // can resume it from Voice Call Sessions or just walk away. Hint
+        // appears only if the session is still in flight.
         if (this.state.started && !this.state.terminate) {
             this.notification.add(
                 "Workspace closed. Session is still open — resume from Voice Call Sessions.",
                 { type: "info" }
             );
         }
-        this.action.doAction({ type: "ir.actions.act_window_close" });
+        this._navigateToChatbotForm();
     }
 
     /* ── Wrap-up ────────────────────────────────────────────────────────── */
@@ -266,7 +276,11 @@ export class AgentWorkspace extends Component {
                 notes: this.state.notes,
             });
             this.notification.add("Call closed.", { type: "success" });
-            this.action.doAction({ type: "ir.actions.act_window_close" });
+            // Close the wrap-up overlay AND navigate back. Setting showWrap
+            // false first means even if navigation is slow the user doesn't
+            // see the dialog hanging around.
+            this.state.showWrap = false;
+            this._navigateToChatbotForm();
         } catch (e) {
             this.notification.add("Could not close the call.", { type: "danger" });
         } finally {
