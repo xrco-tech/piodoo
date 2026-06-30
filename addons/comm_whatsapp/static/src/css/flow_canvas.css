@@ -1,0 +1,503 @@
+/* ── Shell ──────────────────────────────────────────────────────────── */
+.o_flow_canvas_action {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #f3f4f6;
+}
+
+/* ── Toolbar ────────────────────────────────────────────────────────── */
+.o_flow_canvas_toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 54px;
+    flex-shrink: 0;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    z-index: 10;
+}
+.o_flow_canvas_toolbar_left  { display: flex; align-items: center; gap: 12px; }
+.o_flow_canvas_toolbar_right { display: flex; align-items: center; gap: 6px; }
+.o_flow_canvas_title { font-size: 16px; font-weight: 500; color: #212529; }
+.o_flow_back_btn { color: #374151; padding: 0 6px; font-size: 15px; font-weight: 700; border: none; background: none; }
+.o_flow_back_btn:hover { color: #111827; }
+.o_flow_zoom_btn   { min-width: 28px; padding: 0 6px; font-size: 16px; }
+.o_flow_zoom_label { min-width: 44px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; }
+
+/* ── Body ───────────────────────────────────────────────────────────── */
+.o_flow_canvas_body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+}
+.o_flow_canvas_wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.o_flow_canvas_loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Canvas ─────────────────────────────────────────────────────────── */
+.o_flow_canvas {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background-color: #f3f4f6;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+.o_flow_grid {
+    position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0 auto;
+}
+.o_flow_svg {
+    position: absolute;
+    left: 0; top: 0;
+    pointer-events: none;
+}
+.o_flow_connector { fill: none; stroke: #818cf8; stroke-width: 1.8; }
+.o_flow_lbl_bg    { fill: #eef2ff; stroke: #818cf8; stroke-width: 1.2; }
+.o_flow_lbl_txt {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    fill: #4338ca;
+}
+
+/* ── Card ───────────────────────────────────────────────────────────── */
+.o_flow_card {
+    background: #eef2ff;
+    border: 1px solid #a5b4fc;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    overflow: visible;
+    position: relative;
+    z-index: 1;
+    transition: box-shadow .18s, transform .15s, border-color .15s;
+    cursor: pointer;
+}
+.o_flow_card:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,.1);
+    transform: translateY(-2px);
+}
+.o_flow_card.o_flow_card_selected {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.35), 0 4px 18px rgba(59,130,246,.15) !important;
+    transform: translateY(-2px);
+}
+.o_flow_card_head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 11px 12px 4px;
+}
+.o_flow_card_type_icon { font-size: 16px; line-height: 1; flex-shrink: 0; }
+.o_flow_card_name {
+    flex: 1;
+    min-width: 0;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_flow_card_badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    color: #fff;
+    flex-shrink: 0;
+}
+.o_flow_card_subtitle {
+    font-size: 12px;
+    color: #4b5563;
+    padding: 0 12px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_flow_card_content {
+    margin: 0 10px 10px;
+    background: #fff;
+    border-radius: 9px;
+    padding: 8px 10px;
+    border: 1px solid rgba(0,0,0,0.04);
+    min-height: 60px;
+}
+.o_flow_pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.o_flow_pill {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 12px;
+    border: 1px solid;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.o_flow_pill_more {
+    background: #f3f4f6 !important;
+    border-color: #e5e7eb !important;
+    color: #6b7280 !important;
+}
+.o_flow_card_empty {
+    color: #9ca3af;
+    font-size: 11.5px;
+    text-align: center;
+    padding: 12px 0;
+}
+.o_flow_card_foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 12px;
+    font-size: 10.5px;
+    color: #6b7280;
+    flex-wrap: wrap;
+}
+.o_flow_card_stat { flex: 0 0 auto; }
+.o_flow_card_stat strong { color: #111827; font-size: 11.5px; }
+.o_flow_card_end {
+    color: #16a34a;
+    background: #d1fae5;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 10px;
+}
+.o_flow_card_url {
+    color: #4b5563;
+    background: #e5e7eb;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 10px;
+}
+
+/* ── Empty canvas ───────────────────────────────────────────────────── */
+.o_flow_empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    text-align: center;
+    padding: 40px;
+}
+
+/* ── Right panel ────────────────────────────────────────────────────── */
+.o_flow_canvas_props {
+    width: 360px;
+    flex-shrink: 0;
+    background: #fff;
+    border-left: 1px solid #dee2e6;
+    overflow-y: auto;
+    padding: 14px 14px 32px;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.25s ease, padding 0.25s ease;
+}
+.o_flow_canvas_props_collapsed {
+    width: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    border-left: none;
+    overflow: hidden;
+}
+
+/* Tabs */
+.o_flow_panel_tabs {
+    display: flex;
+    gap: 4px;
+    margin: -8px -4px 14px -4px;
+    padding: 4px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.o_flow_panel_tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 6px 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.o_flow_panel_tab:hover { color: #111827; }
+.o_flow_panel_tab.active {
+    background: #fff;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Properties */
+.o_flow_props_empty {
+    color: #9ca3af;
+    text-align: center;
+    padding: 40px 12px;
+}
+.o_flow_props_empty_small {
+    color: #9ca3af;
+    font-size: 12px;
+    text-align: center;
+    padding: 12px 0;
+}
+.o_flow_props_header {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 12px;
+}
+.o_flow_props_screen_id {
+    font-family: monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+}
+.o_flow_props_screen_title {
+    font-size: 13px;
+    color: #4b5563;
+    margin-top: 2px;
+}
+.o_flow_props_badges {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+.o_flow_props_badge {
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.o_flow_props_section_title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #6b7280;
+    letter-spacing: 0.5px;
+    margin: 16px 0 8px;
+}
+
+.o_flow_props_comp_row {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background: #fff;
+}
+.o_flow_props_comp_head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.o_flow_props_comp_icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+.o_flow_props_comp_type {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1f2937;
+}
+.o_flow_props_required { color: #dc3545; font-weight: 700; font-size: 13px; }
+.o_flow_props_comp_label {
+    font-size: 12px;
+    color: #374151;
+    margin-top: 4px;
+}
+.o_flow_props_comp_name {
+    font-family: monospace;
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+.o_flow_props_comp_hint {
+    margin-top: 6px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+}
+.o_flow_props_hint_nav { background: #eef2ff; color: #4338ca; }
+.o_flow_props_hint_end { background: #d1fae5; color: #065f46; }
+.o_flow_props_hint_url { background: #f3f4f6; color: #4b5563; word-break: break-all; }
+.o_flow_props_comp_options {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.o_flow_props_option {
+    background: #f3f4f6;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: #4b5563;
+}
+
+/* ── Phone preview (right panel) ────────────────────────────────────── */
+.o_flow_preview_phone {
+    border: 12px solid #1f2937;
+    border-radius: 32px;
+    width: 280px;
+    margin: 0 auto;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.o_flow_preview_status {
+    background: #075E54;
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.o_flow_preview_back { font-weight: 700; }
+.o_flow_preview_title { font-weight: 700; }
+.o_flow_preview_body {
+    background: #ECE5DD;
+    padding: 14px;
+    font-size: 13px;
+    max-height: 520px;
+    overflow-y: auto;
+}
+.o_flow_preview_empty {
+    color: #9ca3af;
+    font-size: 12px;
+    text-align: center;
+    padding: 20px;
+}
+.o_flow_preview_heading { font-size: 18px; font-weight: 700; color: #111; margin: 4px 0 10px; }
+.o_flow_preview_subheading { font-size: 15px; font-weight: 600; color: #222; margin: 8px 0 4px; }
+.o_flow_preview_body_text { font-size: 13px; color: #333; margin: 4px 0; line-height: 1.4; }
+.o_flow_preview_caption  { font-size: 11px; color: #666; margin: 4px 0; }
+.o_flow_preview_image { max-width: 100%; height: auto; border-radius: 6px; margin: 6px 0; }
+.o_flow_preview_image_placeholder {
+    background: #ddd; height: 110px; border-radius: 6px; margin: 6px 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #888; font-size: 13px;
+}
+
+.o_flow_preview_field { margin: 8px 0; }
+.o_flow_preview_label { font-size: 11px; color: #555; margin-bottom: 2px; }
+.o_flow_preview_req   { color: #dc3545; }
+.o_flow_preview_input,
+.o_flow_preview_textarea,
+.o_flow_preview_dropdown {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 9px 10px;
+    background: #fff;
+    color: #777;
+    font-size: 13px;
+}
+.o_flow_preview_textarea { min-height: 60px; }
+.o_flow_preview_dropdown {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #333;
+}
+.o_flow_preview_caret { color: #888; }
+.o_flow_preview_choice {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+    font-size: 13px;
+    color: #333;
+}
+.o_flow_preview_radio,
+.o_flow_preview_check {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid #aaa;
+    margin-right: 8px;
+    flex: 0 0 14px;
+}
+.o_flow_preview_radio { border-radius: 50%; }
+.o_flow_preview_check { border-radius: 3px; }
+.o_flow_preview_upload {
+    margin: 8px 0;
+    border: 2px dashed #aaa;
+    border-radius: 6px;
+    padding: 18px;
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+}
+.o_flow_preview_link {
+    margin: 8px 0;
+    color: #0d6efd;
+    text-decoration: underline;
+    font-size: 13px;
+}
+.o_flow_preview_link_target { color: #888; text-decoration: none; }
+.o_flow_preview_footer {
+    margin: 14px -14px -14px;
+    padding: 14px;
+    background: #fff;
+    border-top: 1px solid #ddd;
+}
+.o_flow_preview_button {
+    width: 100%;
+    background: #25D366;
+    color: #fff;
+    border-radius: 24px;
+    padding: 12px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 14px;
+}
+.o_flow_preview_footer_hint {
+    text-align: center;
+    margin-top: 6px;
+    font-size: 10px;
+}
+.o_flow_preview_hint_nav { color: #4338ca; }
+.o_flow_preview_hint_end { color: #16a34a; }
+.o_flow_preview_hint_url { color: #6b7280; }

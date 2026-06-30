@@ -256,60 +256,6 @@
             </field>
         </record>
 
-        <!-- Full-screen Map view -->
-        <record id="view_whatsapp_flow_map_form" model="ir.ui.view">
-            <field name="name">whatsapp.flow.map.form</field>
-            <field name="model">whatsapp.flow</field>
-            <field name="priority">99</field>
-            <field name="arch" type="xml">
-                <form string="Flow Map" create="false" edit="false" duplicate="false" delete="false">
-                    <header>
-                        <button name="action_back_to_flow_form" type="object"
-                                string="Back to Flow" class="btn-secondary"
-                                icon="fa-arrow-left"/>
-                    </header>
-                    <sheet>
-                        <div class="oe_title">
-                            <label for="name" string="Flow"/>
-                            <h1><field name="name" readonly="1"/></h1>
-                        </div>
-                        <div class="alert alert-info" role="alert">
-                            <i class="fa fa-info-circle me-1"/>
-                            Boxes are screens; blue arrows are <strong>navigate</strong> actions
-                            (Footer / Embedded Link); green pills are <strong>complete</strong>
-                            end-points; grey side cards are <strong>open URL</strong> hops.
-                            Edit screens or wiring from the main Flow form.
-                        </div>
-                        <field name="flow_map_svg" nolabel="1" readonly="1"
-                               widget="html" sanitize="0"/>
-
-                        <h3 style="margin-top:32px;margin-bottom:12px;">Screen Properties</h3>
-                        <div class="text-muted small mb-2">
-                            One card per screen — fields, types, and where each action leads.
-                        </div>
-                        <field name="flow_properties_html" nolabel="1" readonly="1"
-                               widget="html" sanitize="0"/>
-
-                        <h3 style="margin-top:32px;margin-bottom:12px;">Phone Preview</h3>
-                        <div class="text-muted small mb-2">
-                            Approximation of how each screen will look on a WhatsApp client.
-                            Scroll horizontally to see all screens.
-                        </div>
-                        <field name="flow_phone_preview_html" nolabel="1" readonly="1"
-                               widget="html" sanitize="0"/>
-                    </sheet>
-                </form>
-            </field>
-        </record>
-
-        <record id="action_whatsapp_flow_map" model="ir.actions.act_window">
-            <field name="name">Flow Map</field>
-            <field name="res_model">whatsapp.flow</field>
-            <field name="view_mode">form</field>
-            <field name="view_id" ref="view_whatsapp_flow_map_form"/>
-            <field name="target">current</field>
-        </record>
-
         <!-- WhatsApp Flows Menu Item -->
         <menuitem id="menu_whatsapp_flows"
                   name="Flows"

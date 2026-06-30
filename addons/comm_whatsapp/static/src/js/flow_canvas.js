@@ -1,0 +1,468 @@
+/** @odoo-module **/
+
+import { Component, onMounted, onPatched, onWillUnmount, useRef, useState } from "@odoo/owl";
+import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
+
+const TYPE_CFG = {
+    TextHeading:        { icon: "🅰️", label: "Heading",  color: "#1f2937", bg: "#f3f4f6", border: "#d1d5db" },
+    TextSubheading:     { icon: "🔠", label: "Subheading", color: "#374151", bg: "#f3f4f6", border: "#d1d5db" },
+    TextBody:           { icon: "📝", label: "Body Text",  color: "#374151", bg: "#f9fafb", border: "#e5e7eb" },
+    TextCaption:        { icon: "🏷️", label: "Caption",    color: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" },
+    RichText:           { icon: "📄", label: "Rich Text",  color: "#374151", bg: "#f9fafb", border: "#e5e7eb" },
+    Image:              { icon: "🖼️", label: "Image",      color: "#b45309", bg: "#fffbeb", border: "#fcd34d" },
+    TextInput:          { icon: "✏️", label: "Input",       color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd" },
+    TextArea:           { icon: "📔", label: "Text Area",   color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd" },
+    Dropdown:           { icon: "📜", label: "Dropdown",    color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
+    RadioButtonsGroup:  { icon: "🔘", label: "Radio",       color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
+    CheckboxGroup:      { icon: "☑️", label: "Checkboxes",  color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
+    DatePicker:         { icon: "📅", label: "Date Picker", color: "#be185d", bg: "#fdf2f8", border: "#f9a8d4" },
+    OptIn:              { icon: "✔️", label: "Opt-In",      color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
+    PhotoPicker:        { icon: "📷", label: "Photo",       color: "#b45309", bg: "#fffbeb", border: "#fcd34d" },
+    DocumentPicker:     { icon: "📁", label: "Document",    color: "#475569", bg: "#f8fafc", border: "#cbd5e1" },
+    EmbeddedLink:       { icon: "🔗", label: "Link",        color: "#1a73e8", bg: "#e8f0fe", border: "#93c5fd" },
+    Footer:             { icon: "🟢", label: "Footer CTA",  color: "#16a34a", bg: "#f0fdf4", border: "#86efac" },
+};
+const SCREEN_CFG_DEFAULT  = { color: "#4338ca", bg: "#eef2ff", border: "#a5b4fc" };
+const SCREEN_CFG_ENTRY    = { color: "#1d4ed8", bg: "#dbeafe", border: "#60a5fa" };
+const SCREEN_CFG_TERMINAL = { color: "#92400e", bg: "#fef3c7", border: "#fcd34d" };
+const SCREEN_CFG_SUCCESS  = { color: "#065f46", bg: "#d1fae5", border: "#6ee7b7" };
+
+function esc(s) {
+    return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// ── Reingold-Tilford column layout for a navigate-DAG.
+// Multiple parents → first navigate-in wins (we treat it as a tree).
+let _colCtr = 0;
+function assignColsTree(nodes) {
+    for (const n of nodes) {
+        const kids = n.children || [];
+        if (!kids.length) { n._col = _colCtr++; }
+        else {
+            const start = _colCtr;
+            assignColsTree(kids);
+            n._col = (start + _colCtr - 1) / 2;
+        }
+    }
+}
+function flattenTree(nodes, level = 0, parent = null, out = []) {
+    for (const n of nodes) {
+        out.push({ ...n, level, parent });
+        flattenTree(n.children || [], level + 1, n.id, out);
+    }
+    return out;
+}
+
+export class FlowCanvasAction extends Component {
+    static template = "comm_whatsapp.FlowCanvasAction";
+    static props = ["action", "actionId?"];
+
+    setup() {
+        this.orm     = useService("orm");
+        this.action  = useService("action");
+        this.notif   = useService("notification");
+        this.flowId  = this.props.action.params?.flow_id;
+        this.canvasRef = useRef("canvas");
+
+        this.state = useState({
+            loading:      true,
+            flowName:     this.props.action.params?.flow_name || "",
+            screens:      [],   // [{id, screen_id, title, terminal, success, sequence, components:[...], navTargets:[id,...]}]
+            screensById:  {},
+            entryScreenId: null,
+            selectedScreenId: null,
+            panelVisible: true,
+            panelMode:    "props",  // "props" | "preview"
+            zoom:         1,
+        });
+
+        this._drawLinesFn = null;
+        this._onResize    = () => this._drawLinesFn?.();
+        this._canvasClickFn = (ev) => {
+            if (ev.target.closest(".o_flow_card")) return;
+            this.state.selectedScreenId = null;
+        };
+
+        onMounted(async () => {
+            await this._loadData();
+            window.addEventListener("resize", this._onResize, { passive: true });
+        });
+        onPatched(() => {
+            if (!this.state.loading && this.canvasRef.el) {
+                this._renderCanvas();
+            }
+        });
+        onWillUnmount(() => window.removeEventListener("resize", this._onResize));
+    }
+
+    // ── Data ────────────────────────────────────────────────────────────
+
+    async _loadData() {
+        this.state.loading = true;
+
+        // Pull flow name in case it wasn't in the params.
+        if (!this.state.flowName) {
+            const flow = await this.orm.read("whatsapp.flow", [this.flowId], ["name"]);
+            this.state.flowName = flow[0]?.name || "";
+        }
+
+        const screens = await this.orm.searchRead(
+            "whatsapp.flow.screen",
+            [["flow_id", "=", this.flowId]],
+            ["id", "screen_id", "title", "terminal", "success", "sequence", "component_ids"],
+            { order: "sequence, id" }
+        );
+
+        const compIds = screens.flatMap(s => s.component_ids);
+        const comps = compIds.length ? await this.orm.read(
+            "whatsapp.flow.component", compIds,
+            ["id", "screen_id", "component_type", "name", "label", "text",
+             "required", "sequence", "action_type", "target_screen_id",
+             "open_url", "input_type", "init_value", "image_src", "option_ids"]
+        ) : [];
+
+        const optIds = comps.flatMap(c => c.option_ids);
+        const opts = optIds.length ? await this.orm.read(
+            "whatsapp.flow.component.option", optIds,
+            ["id", "title", "sequence"]
+        ) : [];
+        const optById = Object.fromEntries(opts.map(o => [o.id, o]));
+
+        const compById = Object.fromEntries(comps.map(c => {
+            c.options = c.option_ids.map(id => optById[id]).filter(Boolean)
+                .sort((a, b) => a.sequence - b.sequence);
+            return [c.id, c];
+        }));
+
+        const screensById = {};
+        const screensList = screens.map(s => {
+            const sc = {
+                id:        s.id,
+                screen_id: s.screen_id,
+                title:     s.title,
+                terminal:  s.terminal,
+                success:   s.success,
+                sequence:  s.sequence,
+                components: s.component_ids
+                    .map(id => compById[id])
+                    .filter(Boolean)
+                    .sort((a, b) => a.sequence - b.sequence),
+            };
+            sc.navTargets = sc.components
+                .filter(c => c.action_type === "navigate" && Array.isArray(c.target_screen_id))
+                .map(c => ({ id: c.target_screen_id[0], label: c.label || "navigate" }));
+            sc.completes = sc.components
+                .filter(c => c.action_type === "complete")
+                .map(c => c.label || "complete");
+            sc.openUrls  = sc.components
+                .filter(c => c.action_type === "open_url" && c.open_url)
+                .map(c => ({ url: c.open_url, label: c.label || "open URL" }));
+            screensById[s.id] = sc;
+            return sc;
+        });
+
+        this.state.screens     = screensList;
+        this.state.screensById = screensById;
+        this.state.entryScreenId = screensList[0]?.id || null;
+        if (!this.state.selectedScreenId && screensList.length) {
+            this.state.selectedScreenId = screensList[0].id;
+        }
+        this.state.loading = false;
+    }
+
+    get selectedScreen() {
+        return this.state.screensById[this.state.selectedScreenId] || null;
+    }
+    get zoomLabel() {
+        return Math.round(this.state.zoom * 100) + "%";
+    }
+
+    // ── Toolbar actions ─────────────────────────────────────────────────
+
+    _setZoom(z) {
+        this.state.zoom = Math.min(2, Math.max(0.5, +z.toFixed(2)));
+    }
+    _togglePanel() {
+        this.state.panelVisible = !this.state.panelVisible;
+        // Resize the canvas after the transition finishes so connector lines reflow.
+        setTimeout(() => this._drawLinesFn?.(), 280);
+    }
+    _setPanelMode(mode) {
+        this.state.panelMode = mode;
+    }
+    async _goBack() {
+        await this.action.doAction({
+            type:      "ir.actions.act_window",
+            res_model: "whatsapp.flow",
+            res_id:    this.flowId,
+            views:     [[false, "form"]],
+            target:    "current",
+        });
+    }
+    async _editFlow() {
+        await this.action.doAction({
+            type:      "ir.actions.act_window",
+            res_model: "whatsapp.flow",
+            res_id:    this.flowId,
+            views:     [[false, "form"]],
+            target:    "current",
+        });
+    }
+    async _editScreen(screenId) {
+        await this.action.doAction({
+            type:      "ir.actions.act_window",
+            res_model: "whatsapp.flow.screen",
+            res_id:    screenId,
+            views:     [[false, "form"]],
+            target:    "new",
+        });
+        await this._loadData();
+    }
+    _selectScreen(screenId) {
+        this.state.selectedScreenId = screenId;
+        if (window.innerWidth < 900) this.state.panelVisible = true;
+    }
+
+    // ── Canvas rendering ────────────────────────────────────────────────
+
+    _buildTree() {
+        // Build a DAG → tree by following navigate edges from entry. Each
+        // screen appears once. Orphans are appended as roots.
+        const visited = new Set();
+        const childrenOf = (id) => {
+            const sc = this.state.screensById[id];
+            if (!sc) return [];
+            return sc.navTargets
+                .map(t => t.id)
+                .filter(tid => !visited.has(tid) && this.state.screensById[tid]);
+        };
+        const make = (id) => {
+            if (visited.has(id)) return null;
+            visited.add(id);
+            const sc = this.state.screensById[id];
+            return {
+                id, screen: sc,
+                children: childrenOf(id).map(make).filter(Boolean),
+            };
+        };
+        const roots = [];
+        const entry = this.state.entryScreenId;
+        if (entry && this.state.screensById[entry]) {
+            const node = make(entry);
+            if (node) roots.push(node);
+        }
+        for (const sc of this.state.screens) {
+            if (!visited.has(sc.id)) {
+                const node = make(sc.id);
+                if (node) roots.push(node);
+            }
+        }
+        return roots;
+    }
+
+    _renderCanvas() {
+        const canvas = this.canvasRef.el;
+        if (!canvas) return;
+
+        canvas.querySelectorAll(".o_flow_grid, .o_flow_empty").forEach(n => n.remove());
+        canvas.removeEventListener("click", this._canvasClickFn);
+        this._drawLinesFn = null;
+
+        const tree = this._buildTree();
+        if (!tree.length) {
+            const empty = document.createElement("div");
+            empty.className = "o_flow_empty";
+            empty.innerHTML = `
+                <div class="o_view_nocontent_smiling_face"></div>
+                <p class="fw-bold">No screens yet</p>
+                <p class="text-muted">Add screens from the flow form (or pick a template).</p>`;
+            canvas.appendChild(empty);
+            return;
+        }
+
+        _colCtr = 0;
+        assignColsTree(tree);
+        const flat = flattenTree(tree);
+
+        const CARD_W = 280, GAP = 50, ROW_H = 240, PX = 80, PY = 60;
+        const totalCols = _colCtr || 1;
+        const totalRows = flat.reduce((m, n) => Math.max(m, n.level), 0) + 1;
+
+        const grid = document.createElement("div");
+        grid.className = "o_flow_grid";
+        grid.style.transform       = `scale(${this.state.zoom})`;
+        grid.style.transformOrigin = "top center";
+        grid.style.width  = Math.max(totalCols * (CARD_W + GAP) + PX * 2, 800) + "px";
+        grid.style.height = (totalRows * ROW_H + PY * 2 + 80) + "px";
+
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "o_flow_svg");
+        grid.appendChild(svg);
+
+        for (const node of flat) {
+            const card = this._buildCard(node.screen, node.id === this.state.entryScreenId);
+            card.style.position = "absolute";
+            card.style.left = Math.round(node._col * (CARD_W + GAP) + PX) + "px";
+            card.style.top  = Math.round(node.level * ROW_H + PY) + "px";
+            card.style.width = CARD_W + "px";
+            card.dataset.id     = node.id;
+            card.dataset.parent = node.parent || "";
+            grid.appendChild(card);
+        }
+
+        canvas.appendChild(grid);
+        canvas.addEventListener("click", this._canvasClickFn);
+
+        const drawLines = () => {
+            const w = grid.scrollWidth, h = grid.scrollHeight;
+            svg.setAttribute("width", w); svg.setAttribute("height", h);
+            svg.style.width = w + "px"; svg.style.height = h + "px";
+            svg.innerHTML = "";
+
+            const NS = "http://www.w3.org/2000/svg";
+            const cards = [...grid.querySelectorAll(".o_flow_card")];
+            const byScreenId = Object.fromEntries(cards.map(c => [c.dataset.id, c]));
+
+            // Primary navigate edges (each screen → each navigate target).
+            for (const sc of this.state.screens) {
+                const src = byScreenId[sc.id]; if (!src) continue;
+                for (const t of sc.navTargets) {
+                    const tgt = byScreenId[t.id]; if (!tgt) continue;
+                    const x1 = src.offsetLeft + src.offsetWidth / 2;
+                    const y1 = src.offsetTop  + src.offsetHeight;
+                    const x2 = tgt.offsetLeft + tgt.offsetWidth / 2;
+                    const y2 = tgt.offsetTop;
+                    const my = (y1 + y2) / 2;
+                    const path = document.createElementNS(NS, "path");
+                    path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`);
+                    path.setAttribute("class", "o_flow_connector");
+                    svg.appendChild(path);
+
+                    const dot = document.createElementNS(NS, "circle");
+                    dot.setAttribute("cx", x2); dot.setAttribute("cy", y2);
+                    dot.setAttribute("r", "4"); dot.setAttribute("fill", "#818cf8");
+                    svg.appendChild(dot);
+
+                    const lx = (x1 + x2) / 2, ly = (y1 + y2) / 2;
+                    let txt = (t.label || "navigate").slice(0, 24);
+                    const aw = Math.min(txt.length * 6.4 + 18, 220);
+                    const bg = document.createElementNS(NS, "rect");
+                    bg.setAttribute("x", lx - aw/2); bg.setAttribute("y", ly - 10);
+                    bg.setAttribute("width", aw); bg.setAttribute("height", 20);
+                    bg.setAttribute("rx", "10"); bg.setAttribute("class", "o_flow_lbl_bg");
+                    svg.appendChild(bg);
+                    const lbl = document.createElementNS(NS, "text");
+                    lbl.setAttribute("x", lx); lbl.setAttribute("y", ly + 1);
+                    lbl.setAttribute("text-anchor", "middle");
+                    lbl.setAttribute("dominant-baseline", "middle");
+                    lbl.setAttribute("class", "o_flow_lbl_txt");
+                    lbl.textContent = txt;
+                    svg.appendChild(lbl);
+                }
+            }
+        };
+
+        this._drawLinesFn = drawLines;
+        setTimeout(() => { drawLines(); setTimeout(drawLines, 150); }, 60);
+    }
+
+    _buildCard(sc, isEntry) {
+        const card = document.createElement("div");
+        card.className = "o_flow_card";
+        if (sc.id === this.state.selectedScreenId) {
+            card.classList.add("o_flow_card_selected");
+        }
+        const cfg = sc.success ? SCREEN_CFG_SUCCESS
+                  : sc.terminal ? SCREEN_CFG_TERMINAL
+                  : isEntry ? SCREEN_CFG_ENTRY
+                  : SCREEN_CFG_DEFAULT;
+        card.style.background  = cfg.bg;
+        card.style.borderColor = cfg.border;
+
+        const badgeText = sc.success ? "success"
+                       : sc.terminal ? "terminal"
+                       : isEntry ? "entry"
+                       : "";
+
+        // Head: id + title + badge
+        const head = document.createElement("div");
+        head.className = "o_flow_card_head";
+        head.innerHTML = `
+            <span class="o_flow_card_type_icon">🪟</span>
+            <span class="o_flow_card_name" title="${esc(sc.title)}">${esc(sc.screen_id)}</span>
+            ${badgeText ? `<span class="o_flow_card_badge" style="background:${cfg.color};">${badgeText}</span>` : ""}
+        `;
+        card.appendChild(head);
+
+        // Subtitle: title (if any)
+        if (sc.title) {
+            const sub = document.createElement("div");
+            sub.className = "o_flow_card_subtitle";
+            sub.textContent = sc.title;
+            card.appendChild(sub);
+        }
+
+        // Content: top 5 component types as pills
+        const content = document.createElement("div");
+        content.className = "o_flow_card_content";
+        const pills = sc.components.slice(0, 6).map(c => {
+            const cc = TYPE_CFG[c.component_type] || { icon: "•", color: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" };
+            const lbl = esc((c.label || c.text || c.name || "").slice(0, 18));
+            return `<span class="o_flow_pill" style="background:${cc.bg};border-color:${cc.border};color:${cc.color};" title="${esc(c.component_type)}: ${esc(c.label || c.text || c.name || "")}">${cc.icon} ${lbl}</span>`;
+        }).join("");
+        const remaining = sc.components.length - 6;
+        const more = remaining > 0
+            ? `<span class="o_flow_pill o_flow_pill_more">+${remaining} more</span>`
+            : "";
+        content.innerHTML = sc.components.length
+            ? `<div class="o_flow_pills">${pills}${more}</div>`
+            : `<div class="o_flow_card_empty">No components yet</div>`;
+        card.appendChild(content);
+
+        // Foot: component count + complete/url badges
+        const foot = document.createElement("div");
+        foot.className = "o_flow_card_foot";
+        const compCount = sc.components.length;
+        foot.innerHTML = `
+            <span class="o_flow_card_stat"><strong>${compCount}</strong> component${compCount === 1 ? "" : "s"}</span>
+            ${sc.completes.length ? `<span class="o_flow_card_end" title="Completes the flow">✓ ends flow</span>` : ""}
+            ${sc.openUrls.length ? `<span class="o_flow_card_url" title="Opens an external URL">↗ external link</span>` : ""}
+        `;
+        card.appendChild(foot);
+
+        card.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            this._selectScreen(sc.id);
+        });
+        return card;
+    }
+
+    // ── Right panel: properties helpers ─────────────────────────────────
+
+    componentIcon(t) {
+        return (TYPE_CFG[t] && TYPE_CFG[t].icon) || "•";
+    }
+    componentLabel(t) {
+        return (TYPE_CFG[t] && TYPE_CFG[t].label) || t;
+    }
+    componentColor(t) {
+        return (TYPE_CFG[t] && TYPE_CFG[t].color) || "#6b7280";
+    }
+    componentBg(t) {
+        return (TYPE_CFG[t] && TYPE_CFG[t].bg) || "#f9fafb";
+    }
+    actionHint(c) {
+        if (c.action_type === "navigate" && Array.isArray(c.target_screen_id)) {
+            return { kind: "nav", text: c.target_screen_id[1] || "screen" };
+        }
+        if (c.action_type === "complete") return { kind: "end", text: "completes flow" };
+        if (c.action_type === "open_url")  return { kind: "url", text: c.open_url || "" };
+        return null;
+    }
+    targetScreenName(c) {
+        return Array.isArray(c.target_screen_id) ? c.target_screen_id[1] : "";
+    }
+}
+
+registry.category("actions").add("comm_whatsapp.flow_canvas", FlowCanvasAction);
