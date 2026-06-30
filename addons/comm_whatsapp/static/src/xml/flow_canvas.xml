@@ -156,152 +156,232 @@
                         </t>
                     </t>
 
-                    <!-- PREVIEW TAB -->
-                    <t t-if="selectedScreen and state.panelMode === 'preview'">
-                        <div class="o_flow_preview_phone">
-                            <div class="o_flow_preview_status">
-                                <span class="o_flow_preview_back">←</span>
-                                <span class="o_flow_preview_title" t-esc="selectedScreen.title or selectedScreen.screen_id"/>
-                            </div>
-                            <div class="o_flow_preview_body">
-                                <t t-if="!selectedScreen.components.length">
-                                    <div class="o_flow_preview_empty">No components on this screen yet.</div>
-                                </t>
-                                <t t-foreach="selectedScreen.components" t-as="c" t-key="c.id">
-                                    <!-- Display text -->
-                                    <t t-if="c.component_type === 'TextHeading'">
-                                        <div class="o_flow_preview_heading" t-esc="c.text or c.label"/>
-                                    </t>
-                                    <t t-elif="c.component_type === 'TextSubheading'">
-                                        <div class="o_flow_preview_subheading" t-esc="c.text or c.label"/>
-                                    </t>
-                                    <t t-elif="c.component_type === 'TextBody'">
-                                        <div class="o_flow_preview_body_text" t-esc="c.text or c.label"/>
-                                    </t>
-                                    <t t-elif="c.component_type === 'TextCaption'">
-                                        <div class="o_flow_preview_caption" t-esc="c.text or c.label"/>
-                                    </t>
-                                    <t t-elif="c.component_type === 'RichText'">
-                                        <div class="o_flow_preview_body_text" t-esc="c.text or c.label"/>
-                                    </t>
-                                    <t t-elif="c.component_type === 'Image'">
-                                        <div t-if="c.image_src and (c.image_src.startsWith('http') or c.image_src.startsWith('data:'))">
-                                            <img class="o_flow_preview_image" t-att-src="c.image_src" alt=""/>
-                                        </div>
-                                        <div t-else="" class="o_flow_preview_image_placeholder">🖼 Image</div>
-                                    </t>
-                                    <!-- Inputs -->
-                                    <t t-elif="c.component_type === 'TextInput'">
-                                        <div class="o_flow_preview_field">
-                                            <div class="o_flow_preview_label">
-                                                <t t-esc="c.label"/>
-                                                <span t-if="c.required" class="o_flow_preview_req">*</span>
-                                            </div>
-                                            <div class="o_flow_preview_input"
-                                                 t-esc="c.init_value or ('Enter ' + ((c.label or 'value').toLowerCase()))"/>
-                                        </div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'TextArea'">
-                                        <div class="o_flow_preview_field">
-                                            <div class="o_flow_preview_label">
-                                                <t t-esc="c.label"/>
-                                                <span t-if="c.required" class="o_flow_preview_req">*</span>
-                                            </div>
-                                            <div class="o_flow_preview_textarea"
-                                                 t-esc="c.init_value or 'Type your reply…'"/>
-                                        </div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'Dropdown'">
-                                        <div class="o_flow_preview_field">
-                                            <div class="o_flow_preview_label">
-                                                <t t-esc="c.label"/>
-                                                <span t-if="c.required" class="o_flow_preview_req">*</span>
-                                            </div>
-                                            <div class="o_flow_preview_dropdown">
-                                                <span t-esc="c.options and c.options[0] ? c.options[0].title : 'Select…'"/>
-                                                <span class="o_flow_preview_caret">▾</span>
-                                            </div>
-                                        </div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'RadioButtonsGroup'">
-                                        <div class="o_flow_preview_field">
-                                            <div class="o_flow_preview_label">
-                                                <t t-esc="c.label"/>
-                                                <span t-if="c.required" class="o_flow_preview_req">*</span>
-                                            </div>
-                                            <t t-foreach="c.options" t-as="o" t-key="o.id">
-                                                <div class="o_flow_preview_choice">
-                                                    <span class="o_flow_preview_radio"/>
-                                                    <span t-esc="o.title"/>
-                                                </div>
-                                            </t>
-                                        </div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'CheckboxGroup'">
-                                        <div class="o_flow_preview_field">
-                                            <div class="o_flow_preview_label">
-                                                <t t-esc="c.label"/>
-                                                <span t-if="c.required" class="o_flow_preview_req">*</span>
-                                            </div>
-                                            <t t-foreach="c.options" t-as="o" t-key="o.id">
-                                                <div class="o_flow_preview_choice">
-                                                    <span class="o_flow_preview_check"/>
-                                                    <span t-esc="o.title"/>
-                                                </div>
-                                            </t>
-                                        </div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'DatePicker'">
-                                        <div class="o_flow_preview_field">
-                                            <div class="o_flow_preview_label">
-                                                <t t-esc="c.label"/>
-                                                <span t-if="c.required" class="o_flow_preview_req">*</span>
-                                            </div>
-                                            <div class="o_flow_preview_dropdown">
-                                                <span>📅 Select date</span>
-                                            </div>
-                                        </div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'OptIn'">
-                                        <div class="o_flow_preview_choice">
-                                            <span class="o_flow_preview_check"/>
-                                            <span t-esc="c.label"/>
-                                        </div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'PhotoPicker'">
-                                        <div class="o_flow_preview_upload">📷 <t t-esc="c.label or 'Take or upload photo'"/></div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'DocumentPicker'">
-                                        <div class="o_flow_preview_upload">📄 <t t-esc="c.label or 'Upload document'"/></div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'EmbeddedLink'">
-                                        <div class="o_flow_preview_link">
-                                            <t t-esc="c.label or 'Link'"/>
-                                            <t t-if="c.action_type === 'navigate' and c.target_screen_id">
-                                                <span class="o_flow_preview_link_target"> → <t t-esc="targetScreenName(c)"/></span>
-                                            </t>
-                                        </div>
-                                    </t>
-                                    <t t-elif="c.component_type === 'Footer'">
-                                        <div class="o_flow_preview_footer">
-                                            <div class="o_flow_preview_button" t-esc="c.label or 'Submit'"/>
-                                            <div t-if="c.action_type === 'navigate' and c.target_screen_id"
-                                                 class="o_flow_preview_footer_hint o_flow_preview_hint_nav">
-                                                → <t t-esc="targetScreenName(c)"/>
-                                            </div>
-                                            <div t-if="c.action_type === 'complete'"
-                                                 class="o_flow_preview_footer_hint o_flow_preview_hint_end">
-                                                ✓ completes flow
-                                            </div>
-                                            <div t-if="c.action_type === 'open_url'"
-                                                 class="o_flow_preview_footer_hint o_flow_preview_hint_url">
-                                                ↗ external URL
-                                            </div>
-                                        </div>
-                                    </t>
-                                </t>
-                            </div>
+                    <!-- PREVIEW TAB — interactive walkthrough -->
+                    <t t-if="state.panelMode === 'preview'">
+                        <div class="o_flow_preview_toolbar">
+                            <button class="btn btn-sm btn-light"
+                                    t-on-click="() => this._previewBack()"
+                                    t-att-disabled="!state.preview.history.length and !state.preview.ended">
+                                <i class="fa fa-arrow-left me-1"/>Back
+                            </button>
+                            <button class="btn btn-sm btn-light"
+                                    t-on-click="() => this._previewReset()">
+                                <i class="fa fa-refresh me-1"/>Restart
+                            </button>
                         </div>
+
+                        <t t-if="!previewScreen">
+                            <div class="o_flow_preview_empty_outer">
+                                Add at least one screen, then come back to walk through the flow.
+                            </div>
+                        </t>
+
+                        <t t-if="previewScreen">
+                            <div class="o_flow_preview_phone">
+                                <div class="o_flow_preview_status">
+                                    <span class="o_flow_preview_back"
+                                          t-on-click="() => this._previewBack()"
+                                          style="cursor:pointer;">←</span>
+                                    <span class="o_flow_preview_title"
+                                          t-esc="previewScreen.title or previewScreen.screen_id"/>
+                                </div>
+                                <div class="o_flow_preview_body">
+
+                                    <t t-if="state.preview.ended">
+                                        <div t-att-class="'o_flow_preview_end o_flow_preview_end_' + state.preview.endKind">
+                                            <div class="o_flow_preview_end_icon">
+                                                <i t-if="state.preview.endKind === 'complete'" class="fa fa-check-circle"/>
+                                                <i t-elif="state.preview.endKind === 'open_url'" class="fa fa-external-link"/>
+                                                <i t-else="" class="fa fa-flag-checkered"/>
+                                            </div>
+                                            <div class="o_flow_preview_end_text" t-esc="state.preview.endMessage"/>
+                                            <button class="btn btn-sm btn-primary mt-3"
+                                                    t-on-click="() => this._previewReset()">
+                                                Restart
+                                            </button>
+                                        </div>
+                                    </t>
+
+                                    <t t-if="!state.preview.ended">
+                                        <t t-if="!previewScreen.components.length">
+                                            <div class="o_flow_preview_empty">
+                                                No components on this screen yet.
+                                            </div>
+                                        </t>
+                                        <t t-foreach="previewScreen.components" t-as="c" t-key="c.id">
+                                            <!-- Display text -->
+                                            <t t-if="c.component_type === 'TextHeading'">
+                                                <div class="o_flow_preview_heading" t-esc="c.text or c.label"/>
+                                            </t>
+                                            <t t-elif="c.component_type === 'TextSubheading'">
+                                                <div class="o_flow_preview_subheading" t-esc="c.text or c.label"/>
+                                            </t>
+                                            <t t-elif="c.component_type === 'TextBody'">
+                                                <div class="o_flow_preview_body_text" t-esc="c.text or c.label"/>
+                                            </t>
+                                            <t t-elif="c.component_type === 'TextCaption'">
+                                                <div class="o_flow_preview_caption" t-esc="c.text or c.label"/>
+                                            </t>
+                                            <t t-elif="c.component_type === 'RichText'">
+                                                <div class="o_flow_preview_body_text" t-esc="c.text or c.label"/>
+                                            </t>
+                                            <t t-elif="c.component_type === 'Image'">
+                                                <div t-if="c.image_src and (c.image_src.startsWith('http') or c.image_src.startsWith('data:'))">
+                                                    <img class="o_flow_preview_image" t-att-src="c.image_src" alt=""/>
+                                                </div>
+                                                <div t-else="" class="o_flow_preview_image_placeholder">🖼 Image</div>
+                                            </t>
+                                            <!-- Inputs (interactive) -->
+                                            <t t-elif="c.component_type === 'TextInput'">
+                                                <div class="o_flow_preview_field">
+                                                    <div class="o_flow_preview_label">
+                                                        <t t-esc="c.label"/>
+                                                        <span t-if="c.required" class="o_flow_preview_req">*</span>
+                                                    </div>
+                                                    <input type="text" class="o_flow_preview_input_live"
+                                                           t-att-placeholder="'Enter ' + ((c.label or 'value').toLowerCase())"
+                                                           t-att-value="state.preview.values[c.name] || c.init_value || ''"
+                                                           t-on-input="(ev) => this._previewSetValue(c.name, ev.target.value)"/>
+                                                </div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'TextArea'">
+                                                <div class="o_flow_preview_field">
+                                                    <div class="o_flow_preview_label">
+                                                        <t t-esc="c.label"/>
+                                                        <span t-if="c.required" class="o_flow_preview_req">*</span>
+                                                    </div>
+                                                    <textarea class="o_flow_preview_input_live o_flow_preview_textarea_live"
+                                                              t-att-placeholder="'Type your reply…'"
+                                                              t-on-input="(ev) => this._previewSetValue(c.name, ev.target.value)"
+                                                              t-esc="state.preview.values[c.name] || c.init_value || ''"/>
+                                                </div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'Dropdown'">
+                                                <div class="o_flow_preview_field">
+                                                    <div class="o_flow_preview_label">
+                                                        <t t-esc="c.label"/>
+                                                        <span t-if="c.required" class="o_flow_preview_req">*</span>
+                                                    </div>
+                                                    <select class="o_flow_preview_input_live"
+                                                            t-on-change="(ev) => this._previewSetValue(c.name, ev.target.value)">
+                                                        <option value="">Select…</option>
+                                                        <t t-foreach="c.options" t-as="o" t-key="o.id">
+                                                            <option t-att-value="o.id"
+                                                                    t-att-selected="state.preview.values[c.name] === o.id"
+                                                                    t-esc="o.title"/>
+                                                        </t>
+                                                    </select>
+                                                </div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'RadioButtonsGroup'">
+                                                <div class="o_flow_preview_field">
+                                                    <div class="o_flow_preview_label">
+                                                        <t t-esc="c.label"/>
+                                                        <span t-if="c.required" class="o_flow_preview_req">*</span>
+                                                    </div>
+                                                    <t t-foreach="c.options" t-as="o" t-key="o.id">
+                                                        <label class="o_flow_preview_choice">
+                                                            <input type="radio"
+                                                                   t-att-name="'pv_' + c.id"
+                                                                   t-att-value="o.id"
+                                                                   t-att-checked="state.preview.values[c.name] === o.id"
+                                                                   t-on-change="() => this._previewSetValue(c.name, o.id)"/>
+                                                            <span t-esc="o.title"/>
+                                                        </label>
+                                                    </t>
+                                                </div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'CheckboxGroup'">
+                                                <div class="o_flow_preview_field">
+                                                    <div class="o_flow_preview_label">
+                                                        <t t-esc="c.label"/>
+                                                        <span t-if="c.required" class="o_flow_preview_req">*</span>
+                                                    </div>
+                                                    <t t-foreach="c.options" t-as="o" t-key="o.id">
+                                                        <label class="o_flow_preview_choice">
+                                                            <input type="checkbox"
+                                                                   t-att-checked="_previewChecked(c.name, o.id)"
+                                                                   t-on-change="() => this._previewToggleCheck(c.name, o.id)"/>
+                                                            <span t-esc="o.title"/>
+                                                        </label>
+                                                    </t>
+                                                </div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'DatePicker'">
+                                                <div class="o_flow_preview_field">
+                                                    <div class="o_flow_preview_label">
+                                                        <t t-esc="c.label"/>
+                                                        <span t-if="c.required" class="o_flow_preview_req">*</span>
+                                                    </div>
+                                                    <input type="date" class="o_flow_preview_input_live"
+                                                           t-att-value="state.preview.values[c.name] || ''"
+                                                           t-on-change="(ev) => this._previewSetValue(c.name, ev.target.value)"/>
+                                                </div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'OptIn'">
+                                                <label class="o_flow_preview_choice">
+                                                    <input type="checkbox"
+                                                           t-att-checked="state.preview.values[c.name] === true"
+                                                           t-on-change="(ev) => this._previewSetValue(c.name, ev.target.checked)"/>
+                                                    <span t-esc="c.label"/>
+                                                </label>
+                                            </t>
+                                            <t t-elif="c.component_type === 'PhotoPicker'">
+                                                <div class="o_flow_preview_upload">📷 <t t-esc="c.label or 'Take or upload photo'"/></div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'DocumentPicker'">
+                                                <div class="o_flow_preview_upload">📄 <t t-esc="c.label or 'Upload document'"/></div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'EmbeddedLink'">
+                                                <div class="o_flow_preview_link"
+                                                     style="cursor:pointer;"
+                                                     t-on-click="() => this._previewActOnFooter(c)">
+                                                    <t t-esc="c.label or 'Link'"/>
+                                                    <t t-if="c.action_type === 'navigate' and c.target_screen_id">
+                                                        <span class="o_flow_preview_link_target"> → <t t-esc="targetScreenName(c)"/></span>
+                                                    </t>
+                                                </div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'Footer'">
+                                                <div class="o_flow_preview_footer">
+                                                    <button class="o_flow_preview_button o_flow_preview_button_live"
+                                                            t-on-click="() => this._previewActOnFooter(c)"
+                                                            t-esc="c.label or 'Submit'"/>
+                                                    <div t-if="c.action_type === 'navigate' and c.target_screen_id"
+                                                         class="o_flow_preview_footer_hint o_flow_preview_hint_nav">
+                                                        → <t t-esc="targetScreenName(c)"/>
+                                                    </div>
+                                                    <div t-if="c.action_type === 'complete'"
+                                                         class="o_flow_preview_footer_hint o_flow_preview_hint_end">
+                                                        ✓ completes flow
+                                                    </div>
+                                                    <div t-if="c.action_type === 'open_url'"
+                                                         class="o_flow_preview_footer_hint o_flow_preview_hint_url">
+                                                        ↗ external URL
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </t>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <div class="o_flow_preview_values" t-if="!state.preview.ended">
+                                <div class="o_flow_preview_values_title">
+                                    <i class="fa fa-database me-1"/>Captured values
+                                </div>
+                                <t t-if="!Object.keys(state.preview.values).length">
+                                    <div class="text-muted small">No inputs filled yet.</div>
+                                </t>
+                                <t t-foreach="Object.keys(state.preview.values)" t-as="k" t-key="k">
+                                    <div class="o_flow_preview_value_row">
+                                        <code t-esc="k"/>
+                                        <span class="o_flow_preview_value_arrow">→</span>
+                                        <span t-esc="JSON.stringify(state.preview.values[k])"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
                     </t>
                 </div>
             </div>

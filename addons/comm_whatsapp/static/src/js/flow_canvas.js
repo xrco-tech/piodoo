@@ -78,6 +78,17 @@ export class FlowCanvasAction extends Component {
             panelVisible: true,
             panelMode:    "props",  // "props" | "preview"
             zoom:         1,
+            // Interactive preview session — per-screen form values keyed by
+            // component name. Resets when the preview restarts. The walker
+            // tracks where we are; complete/open_url surface as overlays.
+            preview: {
+                currentScreenId: null,
+                values:          {},     // { "first_name": "...", ... }
+                history:         [],     // stack of visited screen ids
+                ended:           false,
+                endKind:         null,   // "complete" | "open_url" | "terminal"
+                endMessage:      "",
+            },
         });
 
         this._drawLinesFn = null;
@@ -193,6 +204,86 @@ export class FlowCanvasAction extends Component {
     }
     _setPanelMode(mode) {
         this.state.panelMode = mode;
+        // First time the user opens Preview, anchor it at the entry screen.
+        if (mode === "preview" && !this.state.preview.currentScreenId) {
+            this._previewReset();
+        }
+    }
+
+    // ── Interactive preview ─────────────────────────────────────────────
+
+    get previewScreen() {
+        return this.state.screensById[this.state.preview.currentScreenId] || null;
+    }
+    _previewReset() {
+        this.state.preview.currentScreenId = this.state.entryScreenId;
+        this.state.preview.values  = {};
+        this.state.preview.history = [];
+        this.state.preview.ended      = false;
+        this.state.preview.endKind    = null;
+        this.state.preview.endMessage = "";
+    }
+    _previewSetValue(name, value) {
+        if (!name) return;
+        this.state.preview.values[name] = value;
+    }
+    _previewToggleCheck(name, optionId) {
+        if (!name) return;
+        const cur = Array.isArray(this.state.preview.values[name])
+            ? [...this.state.preview.values[name]] : [];
+        const ix = cur.indexOf(optionId);
+        if (ix >= 0) cur.splice(ix, 1);
+        else cur.push(optionId);
+        this.state.preview.values[name] = cur;
+    }
+    _previewChecked(name, optionId) {
+        const cur = this.state.preview.values[name];
+        return Array.isArray(cur) && cur.includes(optionId);
+    }
+    _previewActOnFooter(c) {
+        // Capture-and-route: persist the form values, then act on the Footer.
+        if (c.action_type === "navigate" && Array.isArray(c.target_screen_id)) {
+            const tgt = c.target_screen_id[0];
+            if (!this.state.screensById[tgt]) {
+                this.notif.add("Navigate target is missing from this flow.",
+                               { type: "danger" });
+                return;
+            }
+            this.state.preview.history.push(this.state.preview.currentScreenId);
+            this.state.preview.currentScreenId = tgt;
+            // Auto-focus on the new screen on the canvas so the two views stay in sync.
+            this.state.selectedScreenId = tgt;
+            return;
+        }
+        if (c.action_type === "complete") {
+            this.state.preview.ended = true;
+            this.state.preview.endKind = "complete";
+            this.state.preview.endMessage = "Flow completed — values would be sent back to the business.";
+            return;
+        }
+        if (c.action_type === "open_url") {
+            this.state.preview.ended = true;
+            this.state.preview.endKind = "open_url";
+            this.state.preview.endMessage = `Would open URL: ${c.open_url || "(not set)"}`;
+            return;
+        }
+        // No action set: terminate the walk.
+        this.state.preview.ended = true;
+        this.state.preview.endKind = "terminal";
+        this.state.preview.endMessage = "Footer has no action configured.";
+    }
+    _previewBack() {
+        if (this.state.preview.ended) {
+            this.state.preview.ended = false;
+            this.state.preview.endKind = null;
+            this.state.preview.endMessage = "";
+            return;
+        }
+        const prev = this.state.preview.history.pop();
+        if (prev) {
+            this.state.preview.currentScreenId = prev;
+            this.state.selectedScreenId = prev;
+        }
     }
     async _goBack() {
         await this.action.doAction({
