@@ -12,6 +12,11 @@
                             title="Back to flow form">
                         <i class="fa fa-chevron-left"/>
                     </button>
+                    <button class="btn btn-sm btn-primary o_flow_add_screen_btn"
+                            t-on-click="() => this._addScreen()"
+                            title="Add a new screen to this flow">
+                        <i class="fa fa-plus me-1"/>Add Screen
+                    </button>
                     <span class="o_flow_canvas_title" t-esc="state.flowName"/>
                 </div>
                 <div class="o_flow_canvas_toolbar_right">
@@ -75,14 +80,27 @@
                                       class="o_flow_props_badge"
                                       style="background:#16a34a;">✓ success</span>
                             </div>
-                            <button class="btn btn-sm btn-light w-100 mt-2"
-                                    t-on-click="() => this._editScreen(selectedScreen.id)">
-                                <i class="fa fa-pencil me-1"/>Edit screen
-                            </button>
+                            <div class="o_flow_props_header_actions">
+                                <button class="btn btn-sm btn-light"
+                                        t-on-click="() => this._editScreen(selectedScreen.id)"
+                                        title="Edit all screen fields">
+                                    <i class="fa fa-pencil me-1"/>Edit
+                                </button>
+                                <button class="btn btn-sm btn-light text-danger"
+                                        t-on-click="() => this._confirmDeleteScreen(selectedScreen.id)"
+                                        title="Delete this screen">
+                                    <i class="fa fa-trash me-1"/>Delete
+                                </button>
+                            </div>
                         </div>
 
                         <div class="o_flow_props_section_title">
                             Components <span class="text-muted">(<t t-esc="selectedScreen.components.length"/>)</span>
+                            <button class="btn btn-sm btn-success o_flow_props_add_btn ms-auto"
+                                    t-on-click="() => this._addComponent(selectedScreen.id)"
+                                    title="Add a component to this screen">
+                                <i class="fa fa-plus"/>
+                            </button>
                         </div>
 
                         <t t-if="!selectedScreen.components.length">
@@ -100,6 +118,18 @@
                                     </span>
                                     <span class="o_flow_props_comp_type" t-esc="componentLabel(c.component_type)"/>
                                     <span t-if="c.required" class="o_flow_props_required" title="Required">*</span>
+                                    <div class="o_flow_props_comp_actions">
+                                        <button class="btn btn-sm btn-link p-0"
+                                                t-on-click="() => this._editComponent(c.id)"
+                                                title="Edit component">
+                                            <i class="fa fa-pencil"/>
+                                        </button>
+                                        <button class="btn btn-sm btn-link p-0 text-danger"
+                                                t-on-click="() => this._confirmDeleteComponent(c.id, c.label or c.text or componentLabel(c.component_type))"
+                                                title="Delete component">
+                                            <i class="fa fa-trash"/>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div t-if="c.label or c.text" class="o_flow_props_comp_label" t-esc="c.label or c.text"/>
                                 <div t-if="c.name" class="o_flow_props_comp_name" t-esc="c.name"/>

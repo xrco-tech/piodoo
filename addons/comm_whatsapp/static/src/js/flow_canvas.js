@@ -3,6 +3,8 @@
 import { Component, onMounted, onPatched, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
+import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 
 const TYPE_CFG = {
     TextHeading:        { icon: "🅰️", label: "Heading",  color: "#1f2937", bg: "#f3f4f6", border: "#d1d5db" },
@@ -62,6 +64,7 @@ export class FlowCanvasAction extends Component {
         this.orm     = useService("orm");
         this.action  = useService("action");
         this.notif   = useService("notification");
+        this.dialog  = useService("dialog");
         this.flowId  = this.props.action.params?.flow_id;
         this.canvasRef = useRef("canvas");
 
@@ -210,14 +213,75 @@ export class FlowCanvasAction extends Component {
         });
     }
     async _editScreen(screenId) {
-        await this.action.doAction({
-            type:      "ir.actions.act_window",
-            res_model: "whatsapp.flow.screen",
-            res_id:    screenId,
-            views:     [[false, "form"]],
-            target:    "new",
+        this.dialog.add(FormViewDialog, {
+            resModel: "whatsapp.flow.screen",
+            resId:    screenId,
+            title:    "Edit Screen",
+            onRecordSaved: async () => { await this._loadData(); },
         });
-        await this._loadData();
+    }
+    async _addScreen() {
+        this.dialog.add(FormViewDialog, {
+            resModel: "whatsapp.flow.screen",
+            context:  { default_flow_id: this.flowId },
+            title:    "Add Screen",
+            onRecordSaved: async (rec) => {
+                await this._loadData();
+                if (rec?.resId) this.state.selectedScreenId = rec.resId;
+            },
+        });
+    }
+    async _addComponent(screenId) {
+        this.dialog.add(FormViewDialog, {
+            resModel: "whatsapp.flow.component",
+            context:  { default_screen_id: screenId },
+            title:    "Add Component",
+            onRecordSaved: async () => { await this._loadData(); },
+        });
+    }
+    async _editComponent(componentId) {
+        this.dialog.add(FormViewDialog, {
+            resModel: "whatsapp.flow.component",
+            resId:    componentId,
+            title:    "Edit Component",
+            onRecordSaved: async () => { await this._loadData(); },
+        });
+    }
+    _confirmDeleteScreen(screenId) {
+        const sc = this.state.screensById[screenId];
+        if (!sc) return;
+        this.dialog.add(ConfirmationDialog, {
+            title: "Delete screen",
+            body:  `Permanently delete screen "${sc.screen_id}" and its ${sc.components.length} component(s)?`,
+            confirmLabel: "Delete",
+            confirmClass: "btn-danger",
+            confirm: async () => {
+                await this.orm.unlink("whatsapp.flow.screen", [screenId]);
+                this.state.selectedScreenId = null;
+                await this._loadData();
+                this.notif.add(`Deleted ${sc.screen_id}`, { type: "success" });
+            },
+            cancel: () => {},
+        });
+    }
+    _confirmDeleteComponent(componentId, label) {
+        this.dialog.add(ConfirmationDialog, {
+            title: "Delete component",
+            body:  `Delete this component${label ? ` (${label})` : ""}?`,
+            confirmLabel: "Delete",
+            confirmClass: "btn-danger",
+            confirm: async () => {
+                await this.orm.unlink("whatsapp.flow.component", [componentId]);
+                await this._loadData();
+            },
+            cancel: () => {},
+        });
+    }
+    async _renameScreenTitle(screenId, newTitle) {
+        const sc = this.state.screensById[screenId];
+        if (!sc || (sc.title || "") === newTitle) return;
+        await this.orm.write("whatsapp.flow.screen", [screenId], { title: newTitle });
+        sc.title = newTitle;
     }
     _selectScreen(screenId) {
         this.state.selectedScreenId = screenId;
@@ -395,13 +459,35 @@ export class FlowCanvasAction extends Component {
         `;
         card.appendChild(head);
 
-        // Subtitle: title (if any)
-        if (sc.title) {
-            const sub = document.createElement("div");
-            sub.className = "o_flow_card_subtitle";
-            sub.textContent = sc.title;
-            card.appendChild(sub);
-        }
+        // Subtitle: title (inline-editable like the chatbot card name).
+        const sub = document.createElement("div");
+        sub.className = "o_flow_card_subtitle";
+        sub.setAttribute("contenteditable", "true");
+        sub.setAttribute("spellcheck", "false");
+        sub.textContent = sc.title || "(click to add a title)";
+        if (!sc.title) sub.classList.add("o_flow_card_subtitle_placeholder");
+        sub.addEventListener("click", (ev) => ev.stopPropagation());
+        sub.addEventListener("focus", () => {
+            if (!sc.title) sub.textContent = "";
+            sub.classList.remove("o_flow_card_subtitle_placeholder");
+        });
+        sub.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") { ev.preventDefault(); sub.blur(); }
+            if (ev.key === "Escape") {
+                sub.textContent = sc.title || "(click to add a title)";
+                if (!sc.title) sub.classList.add("o_flow_card_subtitle_placeholder");
+                sub.blur();
+            }
+        });
+        sub.addEventListener("blur", async () => {
+            const next = sub.textContent.trim();
+            await this._renameScreenTitle(sc.id, next);
+            if (!next) {
+                sub.textContent = "(click to add a title)";
+                sub.classList.add("o_flow_card_subtitle_placeholder");
+            }
+        });
+        card.appendChild(sub);
 
         // Content: top 5 component types as pills
         const content = document.createElement("div");
@@ -430,6 +516,17 @@ export class FlowCanvasAction extends Component {
             ${sc.openUrls.length ? `<span class="o_flow_card_url" title="Opens an external URL">↗ external link</span>` : ""}
         `;
         card.appendChild(foot);
+
+        // Hover-revealed Add Component pill at the bottom of the card.
+        const addBtn = document.createElement("button");
+        addBtn.className = "o_flow_card_add_comp";
+        addBtn.title = "Add component to this screen";
+        addBtn.innerHTML = '<i class="fa fa-plus"/> Component';
+        addBtn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            this._addComponent(sc.id);
+        });
+        card.appendChild(addBtn);
 
         card.addEventListener("click", (ev) => {
             ev.stopPropagation();

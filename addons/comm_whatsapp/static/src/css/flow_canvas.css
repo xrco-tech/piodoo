@@ -134,7 +134,46 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    outline: none;
+    border-radius: 4px;
+    cursor: text;
 }
+.o_flow_card_subtitle:focus {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    background: rgba(255,255,255,.95);
+    box-shadow: 0 0 0 2px #93c5fd;
+}
+.o_flow_card_subtitle_placeholder {
+    color: #9ca3af;
+    font-style: italic;
+}
+.o_flow_card_add_comp {
+    position: absolute;
+    bottom: -14px;
+    left: 50%;
+    transform: translateX(-50%) scale(0.9);
+    background: #16a34a;
+    color: #fff;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(22,163,74,.35);
+    opacity: 0;
+    transition: opacity .18s ease, transform .18s ease;
+    cursor: pointer;
+    z-index: 3;
+}
+.o_flow_card:hover .o_flow_card_add_comp,
+.o_flow_card_selected .o_flow_card_add_comp {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+.o_flow_card_add_comp:hover { background: #15803d; }
+.o_flow_card_add_comp .fa { margin-right: 4px; }
 .o_flow_card_content {
     margin: 0 10px 10px;
     background: #fff;
@@ -310,7 +349,35 @@
     color: #6b7280;
     letter-spacing: 0.5px;
     margin: 16px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
+.o_flow_props_section_title .text-muted { font-weight: 500; }
+.o_flow_props_add_btn {
+    border-radius: 999px;
+    padding: 0 8px;
+    font-size: 11px;
+    line-height: 22px;
+    height: 22px;
+}
+.o_flow_props_header_actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+}
+.o_flow_props_comp_actions {
+    margin-left: auto;
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity .12s ease;
+}
+.o_flow_props_comp_row:hover .o_flow_props_comp_actions { opacity: 1; }
+.o_flow_props_comp_actions .btn { color: #6b7280; }
+.o_flow_props_comp_actions .btn:hover { color: #111827; }
+.o_flow_props_comp_actions .btn.text-danger:hover { color: #dc2626; }
+.o_flow_add_screen_btn { font-weight: 600; }
 
 .o_flow_props_comp_row {
     border: 1px solid #e5e7eb;
