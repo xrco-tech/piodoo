@@ -75,6 +75,10 @@
                                 invisible="status != 'DRAFT' or not flow_id_meta"/>
                         <button name="action_fetch_from_meta" string="Sync from Meta" type="object"
                                 class="btn-secondary" icon="fa-refresh"/>
+                        <button name="action_import_from_json" string="Rebuild from JSON" type="object"
+                                class="btn-secondary" icon="fa-magic"
+                                invisible="not flow_json or flow_json == '{}'"
+                                confirm="Rebuild the structured Screens / Components from the current Flow JSON? Any existing structured records on this flow will be replaced."/>
                         <field name="status" widget="statusbar" statusbar_visible="DRAFT,PUBLISHED,DEPRECATED"/>
                     </header>
                     <sheet>

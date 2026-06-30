@@ -195,6 +195,113 @@ class TestFlowValidator(common.TransactionCase):
 
 
 @tagged('whatsapp', 'flow_builder', 'post_install', '-at_install')
+class TestFlowJsonImporter(common.TransactionCase):
+    """Reverse of the generator: flow_json → structured records."""
+
+    def test_roundtrip_lead_capture(self):
+        """Build a flow from the Lead Capture template, dump its JSON, drop
+        the structured records, and re-import. The result should produce
+        the same JSON shape."""
+        Flow = self.env['whatsapp.flow']
+        f = Flow.create({'name': 'roundtrip_lc'})
+        f.action_template_lead_capture()
+        f.invalidate_recordset(['flow_json'])
+        original_json = json.loads(f.flow_json)
+
+        # Run the importer in place. It wipes screen_ids and rebuilds them.
+        result = f._import_from_flow_json(replace_existing=True)
+        self.assertEqual(result['created_screens'], 2)
+        self.assertGreater(result['created_components'], 0)
+        self.assertEqual(result['warnings'], [])
+
+        # Re-read flow_json and check key structural properties match.
+        f.invalidate_recordset(['flow_json'])
+        rebuilt = json.loads(f.flow_json)
+        self.assertEqual(
+            sorted(s['id'] for s in rebuilt['screens']),
+            sorted(s['id'] for s in original_json['screens']),
+        )
+        # Routing model preserved (both screens linked the same way).
+        self.assertEqual(rebuilt.get('routing_model'),
+                         original_json.get('routing_model'))
+        # Same component count per screen.
+        for orig, new in zip(original_json['screens'], rebuilt['screens']):
+            self.assertEqual(
+                len(orig['layout']['children']),
+                len(new['layout']['children']),
+                f"Component count mismatch on {orig['id']}",
+            )
+
+    def test_import_external_json(self):
+        """Drop a hand-rolled JSON into an empty flow and import it."""
+        Flow = self.env['whatsapp.flow']
+        f = Flow.create({
+            'name': 'imported_flow',
+            'use_raw_json': True,
+            'flow_json': json.dumps({
+                'version': '7.0',
+                'screens': [
+                    {
+                        'id': 'ASK', 'title': 'Ask',
+                        'layout': {
+                            'type': 'SingleColumnLayout',
+                            'children': [
+                                {'type': 'TextHeading', 'text': 'Hi'},
+                                {'type': 'TextInput', 'name': 'q',
+                                 'label': 'Your question', 'required': True},
+                                {'type': 'Footer', 'label': 'Send',
+                                 'on-click-action': {
+                                     'name': 'navigate',
+                                     'next': {'name': 'DONE', 'type': 'screen'},
+                                     'payload': {},
+                                 }},
+                            ],
+                        },
+                    },
+                    {
+                        'id': 'DONE', 'title': 'Done', 'terminal': True,
+                        'layout': {'type': 'SingleColumnLayout', 'children': [
+                            {'type': 'TextBody', 'text': 'Thanks!'},
+                            {'type': 'Footer', 'label': 'OK',
+                             'on-click-action': {'name': 'complete', 'payload': {}}},
+                        ]},
+                    },
+                ],
+            }),
+        })
+
+        result = f._import_from_flow_json(replace_existing=True)
+        self.assertEqual(result['created_screens'], 2)
+        self.assertEqual(result['created_components'], 5)
+        self.assertEqual(result['warnings'], [])
+        # Navigate target resolved correctly across the two screens.
+        ask = self.env['whatsapp.flow.screen'].search([
+            ('flow_id', '=', f.id), ('screen_id', '=', 'ASK')], limit=1)
+        footer = ask.component_ids.filtered(lambda c: c.component_type == 'Footer')
+        self.assertEqual(footer.action_type, 'navigate')
+        self.assertEqual(footer.target_screen_id.screen_id, 'DONE')
+
+    def test_import_warns_on_unknown_component(self):
+        f = self.env['whatsapp.flow'].create({
+            'name': 'with_unknown',
+            'use_raw_json': True,
+            'flow_json': json.dumps({
+                'version': '7.0',
+                'screens': [{
+                    'id': 'X', 'title': 'X', 'terminal': True,
+                    'layout': {'type': 'SingleColumnLayout', 'children': [
+                        {'type': 'Calendar', 'name': 'whatever'},
+                        {'type': 'TextBody', 'text': 'hi'},
+                    ]},
+                }],
+            }),
+        })
+        result = f._import_from_flow_json(replace_existing=True)
+        self.assertEqual(result['created_components'], 1)
+        self.assertTrue(any('Calendar' in w for w in result['warnings']))
+
+
+@tagged('whatsapp', 'flow_builder', 'post_install', '-at_install')
 class TestScreenConstraints(common.TransactionCase):
 
     def test_screen_id_must_be_uppercase_snake(self):

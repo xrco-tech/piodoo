@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import re
 import requests
 import json
 from markupsafe import Markup, escape
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -922,6 +924,228 @@ class WhatsAppFlow(models.Model):
 
     # ── Validator ───────────────────────────────────────────────────────
 
+    # ── JSON → structured importer ──────────────────────────────────────
+    # Reverse of _generate_flow_json. Takes the current flow_json string and
+    # rebuilds whatsapp.flow.screen / whatsapp.flow.component / option records.
+    # Used after sync-from-Meta and as a standalone "Rebuild from JSON" button
+    # for users who started in raw mode.
+
+    _KNOWN_COMPONENT_TYPES = {
+        'TextHeading', 'TextSubheading', 'TextBody', 'TextCaption', 'RichText',
+        'Image', 'TextInput', 'TextArea', 'Dropdown', 'RadioButtonsGroup',
+        'CheckboxGroup', 'DatePicker', 'OptIn', 'PhotoPicker', 'DocumentPicker',
+        'EmbeddedLink', 'Footer',
+    }
+
+    def action_import_from_json(self):
+        """User-triggered: rebuild structured records from the current
+        flow_json. Wipes existing screens if any."""
+        self.ensure_one()
+        result = self._import_from_flow_json(replace_existing=True)
+        warnings = result.get('warnings') or []
+        msg = (f"Imported {result.get('created_screens', 0)} screen(s) "
+               f"and {result.get('created_components', 0)} component(s).")
+        if warnings:
+            msg += f"\n\n{len(warnings)} warning(s):\n" + "\n".join(warnings[:6])
+            if len(warnings) > 6:
+                msg += f"\n…and {len(warnings) - 6} more."
+        # Make sure raw-mode toggle is off so the structured editor takes over.
+        if self.use_raw_json:
+            self.use_raw_json = False
+        return {
+            'type': 'ir.actions.client',
+            'tag':  'display_notification',
+            'params': {
+                'title':   'Import complete',
+                'message': msg,
+                'sticky':  bool(warnings),
+                'type':    'warning' if warnings else 'success',
+            },
+        }
+
+    def _import_from_flow_json(self, replace_existing=True):
+        """Parse self.flow_json and rebuild structured records. Returns
+        {'created_screens': N, 'created_components': N, 'warnings': [...]}.
+        """
+        self.ensure_one()
+        try:
+            data = json.loads(self.flow_json or '{}')
+        except (ValueError, TypeError) as e:
+            raise UserError(f"Flow JSON is not parseable: {e}")
+
+        screens_json = data.get('screens') or []
+        warnings = []
+        if not screens_json:
+            return {'created_screens': 0, 'created_components': 0,
+                    'warnings': ['No screens in flow JSON']}
+
+        if replace_existing and self.screen_ids:
+            self.screen_ids.unlink()
+            self.env.cr.flush()
+
+        Screen = self.env['whatsapp.flow.screen']
+        Comp   = self.env['whatsapp.flow.component']
+        Opt    = self.env['whatsapp.flow.component.option']
+
+        # Pass 1: create screens so we can resolve navigate targets by id.
+        screen_by_sid = {}
+        for ix, s_json in enumerate(screens_json):
+            sid = s_json.get('id')
+            if not sid:
+                warnings.append(f"Screen at index {ix} has no id — skipped.")
+                continue
+            if not re.match(r'^[A-Z][A-Z0-9_]*$', sid):
+                warnings.append(
+                    f"Screen '{sid}' does not match UPPER_SNAKE_CASE — skipped.")
+                continue
+            vals = {
+                'flow_id':   self.id,
+                'screen_id': sid,
+                'title':     s_json.get('title') or sid,
+                'terminal':  bool(s_json.get('terminal')),
+                'success':   bool(s_json.get('success')),
+                'sequence':  (ix + 1) * 10,
+                'layout_type': (s_json.get('layout') or {}).get('type')
+                               or 'SingleColumnLayout',
+            }
+            schema = s_json.get('data')
+            if schema:
+                try:
+                    vals['data_schema'] = json.dumps(schema, indent=2)
+                except (TypeError, ValueError):
+                    pass
+            screen_by_sid[sid] = Screen.create(vals)
+
+        # Pass 2: components + options.
+        created_components = 0
+        for s_json in screens_json:
+            sid = s_json.get('id')
+            screen_rec = screen_by_sid.get(sid)
+            if not screen_rec:
+                continue
+            children = (s_json.get('layout') or {}).get('children') or []
+            for cix, c_json in enumerate(children):
+                ctype = c_json.get('type')
+                if not ctype:
+                    warnings.append(f"{sid} child {cix}: missing type — skipped.")
+                    continue
+                if ctype not in self._KNOWN_COMPONENT_TYPES:
+                    warnings.append(
+                        f"{sid}: unsupported component '{ctype}' — skipped.")
+                    continue
+
+                vals, options_raw = self._component_vals_from_json(
+                    c_json, screen_by_sid, sid, warnings)
+                if vals is None:
+                    continue
+                vals['screen_id'] = screen_rec.id
+                vals['sequence']  = (cix + 1) * 10
+                comp_rec = Comp.create(vals)
+                created_components += 1
+
+                for oix, o in enumerate(options_raw or []):
+                    if not isinstance(o, dict) or not o.get('id'):
+                        continue
+                    Opt.create({
+                        'component_id': comp_rec.id,
+                        'option_id':    o['id'],
+                        'title':        o.get('title') or o['id'],
+                        'description':  o.get('description') or False,
+                        'enabled':      bool(o.get('enabled', True))
+                                        if 'enabled' in o else True,
+                        'sequence':     (oix + 1) * 10,
+                    })
+
+        return {
+            'created_screens':    len(screen_by_sid),
+            'created_components': created_components,
+            'warnings':           warnings,
+        }
+
+    def _component_vals_from_json(self, c_json, screen_by_sid, sid, warnings):
+        """Map one component-JSON node to component create vals.
+        Returns (vals_dict, options_list). vals_dict may be None to skip."""
+        ctype = c_json.get('type')
+        vals  = {'component_type': ctype}
+        options_raw = None
+
+        # Universal fields.
+        if 'name'        in c_json: vals['name']        = c_json['name']
+        if 'label'       in c_json: vals['label']       = c_json['label']
+        if 'helper-text' in c_json: vals['helper_text'] = c_json['helper-text']
+        if 'required'    in c_json: vals['required']    = bool(c_json['required'])
+
+        if ctype in ('TextHeading', 'TextSubheading', 'TextBody',
+                     'TextCaption', 'RichText'):
+            text = c_json.get('text', '')
+            if isinstance(text, list):
+                text = '\n'.join(str(x) for x in text)
+            vals['text'] = text
+
+        elif ctype == 'Image':
+            if 'src'        in c_json: vals['image_src']    = c_json['src']
+            if 'alt-text'   in c_json: vals['image_alt']    = c_json['alt-text']
+            if 'height'     in c_json: vals['image_height'] = c_json['height']
+            if 'scale-type' in c_json: vals['image_scale']  = c_json['scale-type']
+
+        elif ctype in ('TextInput', 'TextArea'):
+            if 'input-type' in c_json: vals['input_type'] = c_json['input-type']
+            if 'min-chars'  in c_json: vals['min_chars']  = c_json['min-chars']
+            if 'max-chars'  in c_json: vals['max_chars']  = c_json['max-chars']
+            if 'init-value' in c_json: vals['init_value'] = c_json['init-value']
+
+        elif ctype in ('Dropdown', 'RadioButtonsGroup', 'CheckboxGroup'):
+            if 'init-value'         in c_json:
+                iv = c_json['init-value']
+                vals['init_value'] = (json.dumps(iv) if isinstance(iv, list)
+                                      else str(iv))
+            if 'min-selected-items' in c_json:
+                vals['min_selected'] = c_json['min-selected-items']
+            if 'max-selected-items' in c_json:
+                vals['max_selected'] = c_json['max-selected-items']
+            options_raw = c_json.get('data-source') or []
+
+        elif ctype == 'DatePicker':
+            if 'min-date'   in c_json: vals['min_date']   = c_json['min-date']
+            if 'max-date'   in c_json: vals['max_date']   = c_json['max-date']
+            if 'init-value' in c_json: vals['init_value'] = c_json['init-value']
+
+        elif ctype in ('PhotoPicker', 'DocumentPicker'):
+            if 'photo-source'           in c_json:
+                vals['photo_source'] = c_json['photo-source']
+            for k in ('min-uploaded-photos', 'min-uploaded-documents'):
+                if k in c_json:
+                    vals['min_uploaded'] = c_json[k]
+            for k in ('max-uploaded-photos', 'max-uploaded-documents'):
+                if k in c_json:
+                    vals['max_uploaded'] = c_json[k]
+            if 'max-file-size-kb' in c_json:
+                vals['max_file_size_kb'] = c_json['max-file-size-kb']
+
+        # Action-bearing types: extract on-click-action.
+        if ctype in ('Footer', 'EmbeddedLink', 'OptIn'):
+            action = c_json.get('on-click-action') or {}
+            aname = action.get('name')
+            if aname in ('navigate', 'complete', 'open_url', 'data_exchange'):
+                vals['action_type'] = aname
+                if aname == 'navigate':
+                    nxt = action.get('next') or {}
+                    tgt_name = (nxt.get('name') if isinstance(nxt, dict)
+                                else nxt)
+                    tgt_rec = screen_by_sid.get(tgt_name)
+                    if tgt_rec:
+                        vals['target_screen_id'] = tgt_rec.id
+                    else:
+                        warnings.append(
+                            f"{sid}: navigate target '{tgt_name}' not found.")
+                elif aname == 'open_url':
+                    vals['open_url'] = action.get('url') or ''
+            elif aname:
+                warnings.append(
+                    f"{sid}: unsupported action '{aname}' on {ctype}.")
+
+        return vals, options_raw
+
     def _validate_structured(self):
         """Return a list of {level, where, message} dicts the form view
         renders into the Validation tab."""
@@ -1779,9 +2003,21 @@ class WhatsAppFlow(models.Model):
                             if not name:
                                 name = flow_id  # Fallback name
                             vals['name'] = name
-                            self.create(vals)
+                            flow = self.create(vals)
                             created_count += 1
                             _logger.info(f"Created flow {flow_id}: {name}")
+
+                        # Rebuild structured records from the synced JSON so
+                        # the visual builder, canvas, and validator stay in
+                        # step with Meta's source of truth.
+                        if flow and flow_json:
+                            try:
+                                flow._import_from_flow_json(replace_existing=True)
+                            except Exception as imp_err:
+                                _logger.warning(
+                                    f"Could not rebuild structured records "
+                                    f"for synced flow {flow_id}: {imp_err}"
+                                )
                     
                     except Exception as e:
                         error_count += 1
