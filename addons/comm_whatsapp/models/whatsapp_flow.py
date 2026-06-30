@@ -101,6 +101,16 @@ class WhatsAppFlow(models.Model):
         sanitize=False,
     )
     
+    # WABA account this flow lives on. When unset, all Meta calls fall back
+    # to the legacy ir.config_parameter creds so existing single-WABA setups
+    # keep working unchanged.
+    account_id = fields.Many2one(
+        'comm.whatsapp.account', string='WhatsApp Account',
+        ondelete='restrict',
+        help="Pick the WABA account that owns this flow. If left empty, the "
+             "legacy comm_whatsapp.* system parameters are used.",
+    )
+
     # Flow metadata
     description = fields.Text(string='Description', help='Flow description for internal use')
     category = fields.Char(string='Category', help='Flow category (e.g., lead_generation, booking)')
@@ -1463,20 +1473,39 @@ class WhatsAppFlow(models.Model):
         self.category = self.category or 'APPOINTMENT_BOOKING'
         return self._reload_self()
 
+    # ── Meta credentials resolver ───────────────────────────────────────
+    # Prefer the per-flow account_id; fall back to the legacy system
+    # parameters so single-WABA setups keep working unchanged.
+
+    def _resolve_meta_creds(self):
+        """Return (access_token, business_account_id, source_label)."""
+        self.ensure_one()
+        if self.account_id:
+            return (
+                self.account_id.access_token or '',
+                self.account_id.business_account_id or '',
+                f"account '{self.account_id.name}'",
+            )
+        # Fallback: system parameters
+        icp = self.env['ir.config_parameter'].sudo()
+        return (
+            icp.get_param('comm_whatsapp.access_token')
+            or icp.get_param('comm_whatsapp.long_lived_token')
+            or '',
+            icp.get_param('comm_whatsapp.business_account_id') or '',
+            'system parameters',
+        )
+
     def action_create_flow_meta(self):
         """
         Create flow in Meta WhatsApp Business API.
-        
+
         Based on: https://developers.facebook.com/docs/whatsapp/flows/gettingstarted
         """
         self.ensure_one()
-        
+
         try:
-            # Get access token and business account ID
-            IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                          IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('comm_whatsapp.business_account_id')
+            access_token, business_account_id, _src = self._resolve_meta_creds()
             
             if not access_token:
                 return {
@@ -1837,33 +1866,27 @@ class WhatsAppFlow(models.Model):
         """
         Get flow details from Meta API.
         """
-        IrConfigParameter = self.env['ir.config_parameter'].sudo()
-        access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                      IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
-        
+        access_token, _baid, _src = self._resolve_meta_creds()
         if not access_token:
             raise ValueError('Access token not configured')
-        
+
         url = f"https://graph.facebook.com/v18.0/{flow_id}?fields=id,name,categories,preview,status,validation_errors,json_version,data_api_version,endpoint_uri"
         headers = {
             'Authorization': f'Bearer {access_token}',
         }
-        
+
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
         return response.json()
-    
+
     def _get_flow_assets(self, flow_id):
         """
         Get flow assets from Meta API.
         """
-        IrConfigParameter = self.env['ir.config_parameter'].sudo()
-        access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                      IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
-        
+        access_token, _baid, _src = self._resolve_meta_creds()
         if not access_token:
             raise ValueError('Access token not configured')
-        
+
         url = f"https://graph.facebook.com/v18.0/{flow_id}/assets"
         headers = {
             'Authorization': f'Bearer {access_token}',
@@ -1891,23 +1914,24 @@ class WhatsAppFlow(models.Model):
         This method fetches the flow JSON from Meta's assets API.
         """
         try:
-            IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                          IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('comm_whatsapp.business_account_id')
-            
+            access_token, business_account_id, cred_src = self._resolve_meta_creds()
+
             if not access_token or not business_account_id:
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Error',
-                        'message': 'Access token or Business Account ID not configured.',
+                        'message': (
+                            f"Access token or Business Account ID missing from "
+                            f"{cred_src}. Pick an Account on this flow or "
+                            f"populate the WhatsApp system parameters."
+                        ),
                         'type': 'danger',
                         'sticky': True,
                     }
                 }
-            
+
             # Fetch flows from Meta
             url = f"https://graph.facebook.com/v18.0/{business_account_id}/flows"
             headers = {
@@ -2003,6 +2027,12 @@ class WhatsAppFlow(models.Model):
                             if not name:
                                 name = flow_id  # Fallback name
                             vals['name'] = name
+                            # Tag the new flow with the account whose creds
+                            # were used to sync it, so future calls route
+                            # through the same WABA. Only when sync was
+                            # invoked from a flow already bound to an account.
+                            if self and self[:1].account_id:
+                                vals['account_id'] = self[:1].account_id.id
                             flow = self.create(vals)
                             created_count += 1
                             _logger.info(f"Created flow {flow_id}: {name}")

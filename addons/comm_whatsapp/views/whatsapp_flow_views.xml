@@ -48,6 +48,7 @@
                       decoration-success="status == 'PUBLISHED'"
                       decoration-muted="status == 'DEPRECATED'">
                     <field name="name"/>
+                    <field name="account_id" optional="show"/>
                     <field name="category"/>
                     <field name="status" widget="badge"
                            decoration-info="status == 'DRAFT'"
@@ -93,6 +94,8 @@
                             <group>
                                 <field name="name" placeholder="flow_name_lowercase"/>
                                 <field name="category"/>
+                                <field name="account_id"
+                                       options="{'no_create': True, 'no_quick_create': True}"/>
                                 <field name="flow_id_meta" readonly="1"/>
                                 <field name="first_page_id" readonly="1"/>
                             </group>
