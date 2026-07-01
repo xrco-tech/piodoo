@@ -569,6 +569,35 @@
 .o_flow_preview_hint_end { color: #16a34a; }
 .o_flow_preview_hint_url { color: #6b7280; }
 
+/* Boolean switch (Meta v7 Switch component) */
+.o_flow_preview_switch_row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 10px 0; font-size: 13px; color: #333;
+}
+.o_flow_preview_switch_label { flex: 1; padding-right: 10px; }
+.o_flow_preview_switch {
+    position: relative; display: inline-block;
+    width: 40px; height: 22px; flex: 0 0 40px;
+}
+.o_flow_preview_switch input { opacity: 0; width: 0; height: 0; }
+.o_flow_preview_switch_slider {
+    position: absolute; inset: 0;
+    background: #ccc; border-radius: 22px;
+    transition: background .18s ease; cursor: pointer;
+}
+.o_flow_preview_switch_slider::before {
+    content: ""; position: absolute;
+    height: 16px; width: 16px; left: 3px; top: 3px;
+    background: #fff; border-radius: 50%;
+    transition: transform .18s ease;
+}
+.o_flow_preview_switch input:checked + .o_flow_preview_switch_slider {
+    background: #25D366;
+}
+.o_flow_preview_switch input:checked + .o_flow_preview_switch_slider::before {
+    transform: translateX(18px);
+}
+
 /* ── Interactive preview controls ───────────────────────────────────── */
 .o_flow_preview_toolbar {
     display: flex;

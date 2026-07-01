@@ -953,8 +953,8 @@ class WhatsAppFlow(models.Model):
     _KNOWN_COMPONENT_TYPES = {
         'TextHeading', 'TextSubheading', 'TextBody', 'TextCaption', 'RichText',
         'Image', 'TextInput', 'TextArea', 'Dropdown', 'RadioButtonsGroup',
-        'CheckboxGroup', 'DatePicker', 'OptIn', 'PhotoPicker', 'DocumentPicker',
-        'EmbeddedLink', 'Footer',
+        'CheckboxGroup', 'DatePicker', 'OptIn', 'Switch', 'PhotoPicker',
+        'DocumentPicker', 'EmbeddedLink', 'Footer',
     }
 
     def _flatten_form_wrappers(self, children):
@@ -1150,6 +1150,12 @@ class WhatsAppFlow(models.Model):
             if 'min-date'   in c_json: vals['min_date']   = c_json['min-date']
             if 'max-date'   in c_json: vals['max_date']   = c_json['max-date']
             if 'init-value' in c_json: vals['init_value'] = c_json['init-value']
+
+        elif ctype == 'Switch':
+            # Boolean toggle. init-value is a Meta boolean; we store the
+            # string "true"/"false" so it round-trips through init_value Char.
+            if 'init-value' in c_json:
+                vals['init_value'] = 'true' if c_json['init-value'] else 'false'
 
         elif ctype in ('PhotoPicker', 'DocumentPicker'):
             if 'photo-source'           in c_json:
@@ -2138,10 +2144,29 @@ class WhatsAppFlow(models.Model):
                                 )
                     
                     except Exception as e:
-                        error_count += 1
-                        error_msg = f"Error syncing flow {flow_data.get('id', 'unknown')}: {str(e)}"
-                        error_messages.append(error_msg)
-                        _logger.error(error_msg, exc_info=True)
+                        # 401/403 usually means the flow lives under a
+                        # different Facebook app or was moved out of this
+                        # WABA's access. Not really our sync's fault — treat
+                        # it as a warning so a single unreachable flow
+                        # doesn't turn a big sync red.
+                        status_code = getattr(
+                            getattr(e, 'response', None), 'status_code', None)
+                        fid = flow_data.get('id', 'unknown')
+                        fname = flow_data.get('name') or fid
+                        if status_code in (401, 403):
+                            warnings.append(
+                                f"'{fname}': skipped — Meta returned "
+                                f"{status_code} (no access to this flow)."
+                            )
+                            _logger.warning(
+                                f"Skipping {fid}: Meta {status_code} — "
+                                f"likely owned by a different app / WABA."
+                            )
+                        else:
+                            error_count += 1
+                            error_msg = f"Error syncing flow {fid}: {str(e)}"
+                            error_messages.append(error_msg)
+                            _logger.error(error_msg, exc_info=True)
                 
                 # Build success message
                 message = f'Synced flows: {created_count} created, {updated_count} updated.'

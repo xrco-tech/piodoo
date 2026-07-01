@@ -326,6 +326,17 @@
                                                     <span t-esc="c.label"/>
                                                 </label>
                                             </t>
+                                            <t t-elif="c.component_type === 'Switch'">
+                                                <div class="o_flow_preview_switch_row">
+                                                    <span class="o_flow_preview_switch_label" t-esc="c.label"/>
+                                                    <label class="o_flow_preview_switch">
+                                                        <input type="checkbox"
+                                                               t-att-checked="state.preview.values[c.name] === true"
+                                                               t-on-change="(ev) => this._previewSetValue(c.name, ev.target.checked)"/>
+                                                        <span class="o_flow_preview_switch_slider"/>
+                                                    </label>
+                                                </div>
+                                            </t>
                                             <t t-elif="c.component_type === 'PhotoPicker'">
                                                 <div class="o_flow_preview_upload">📷 <t t-esc="c.label or 'Take or upload photo'"/></div>
                                             </t>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp CE (Community Edition)',
-    'version': '18.0.1.0.52',
+    'version': '18.0.1.0.53',
     'category': 'Tools',
     'summary': 'WhatsApp Community Edition Integration Module',
     'description': """

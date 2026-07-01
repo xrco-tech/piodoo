@@ -21,7 +21,7 @@ NAME_RE = re.compile(r'^[a-z][a-z0-9_]*$')
 # Set of component types that are user-input-bearing (need a name + label).
 INPUT_TYPES = {
     'TextInput', 'TextArea', 'Dropdown', 'RadioButtonsGroup', 'CheckboxGroup',
-    'DatePicker', 'OptIn', 'PhotoPicker', 'DocumentPicker',
+    'DatePicker', 'OptIn', 'Switch', 'PhotoPicker', 'DocumentPicker',
 }
 
 # Set of component types that carry an on-click-action (navigate/complete/etc).
@@ -61,6 +61,7 @@ class WhatsAppFlowComponent(models.Model):
         ('CheckboxGroup',     'Checkboxes'),
         ('DatePicker',        'Date Picker'),
         ('OptIn',             'Opt-In Checkbox'),
+        ('Switch',            'Switch (Boolean Toggle)'),
         ('PhotoPicker',       'Photo Picker'),
         ('DocumentPicker',    'Document Picker'),
         # Navigation / containers
@@ -277,6 +278,11 @@ class WhatsAppFlowComponent(models.Model):
 
         if t == 'OptIn':
             node["on-click-action"] = self._render_action()
+            return node
+
+        if t == 'Switch':
+            # Switch is a boolean toggle. init-value is already picked up
+            # above; nothing extra to serialise unless a future spec adds it.
             return node
 
         if t == 'PhotoPicker':
