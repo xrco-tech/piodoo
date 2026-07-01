@@ -379,8 +379,22 @@ export class FlowCanvasAction extends Component {
             const kidIds = sc.navTargets
                 .map(t => t.id)
                 .filter(tid => !visited.has(tid) && this.state.screensById[tid]);
-            const spineIds  = kidIds.slice(0, 1);
-            const branchIds = kidIds.slice(1);
+
+            // Pick the spine: prefer the first target that does NOT loop
+            // straight back to this node. That's the "hub" pattern used by
+            // Meta's dispatcher screens (WORK_EXPERIENCE_SUMMARY etc.),
+            // where four of five targets are "add another" variants that
+            // navigate back to the hub and only one continues down the
+            // main flow. Falls back to the first target if every option
+            // loops back.
+            let spineIx = 0;
+            for (let i = 0; i < kidIds.length; i++) {
+                const tsc = this.state.screensById[kidIds[i]];
+                const loopsBack = tsc.navTargets.some(t => t.id === id);
+                if (!loopsBack) { spineIx = i; break; }
+            }
+            const spineIds  = kidIds.length ? [kidIds[spineIx]] : [];
+            const branchIds = kidIds.filter((_, i) => i !== spineIx);
             return {
                 id, screen: sc,
                 spine:    spineIds.map(make).filter(Boolean),
@@ -447,21 +461,29 @@ export class FlowCanvasAction extends Component {
     _layoutSubtree(node, col, level) {
         node._col   = col;
         node._level = level;
-        let minCol = col, maxCol = col, maxLevel = level;
-        for (const s of node.spine || []) {
-            const r = this._layoutSubtree(s, col, level + 1);
-            minCol   = Math.min(minCol,   r.minCol);
-            maxCol   = Math.max(maxCol,   r.maxCol);
-            maxLevel = Math.max(maxLevel, r.maxLevel);
-        }
-        let branchStartCol = maxCol + 1;
+        let maxCol = col, maxLevel = level;
+
+        // Branches first — arrayed immediately to the right of the node so
+        // peer alternatives stay tight to their parent instead of being
+        // shoved past the entire spine subtree.
+        let branchStartCol = col + 1;
         for (const b of node.branches || []) {
             const r = this._layoutSubtree(b, branchStartCol, level);
             branchStartCol = r.maxCol + 1;
             maxCol   = Math.max(maxCol,   r.maxCol);
             maxLevel = Math.max(maxLevel, r.maxLevel);
         }
-        return { minCol, maxCol, maxLevel };
+
+        // Spine continues at the parent's column, one row deeper. Its own
+        // subtree extends further right / deeper; we track those so
+        // subsequent sibling branches don't collide.
+        for (const s of node.spine || []) {
+            const r = this._layoutSubtree(s, col, level + 1);
+            maxCol   = Math.max(maxCol,   r.maxCol);
+            maxLevel = Math.max(maxLevel, r.maxLevel);
+        }
+
+        return { minCol: col, maxCol, maxLevel };
     }
 
     _flattenLayout(node, parent, out) {
