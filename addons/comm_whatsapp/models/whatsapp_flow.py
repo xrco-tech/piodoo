@@ -1478,15 +1478,25 @@ class WhatsAppFlow(models.Model):
     # parameters so single-WABA setups keep working unchanged.
 
     def _resolve_meta_creds(self):
-        """Return (access_token, business_account_id, source_label)."""
-        self.ensure_one()
-        if self.account_id:
+        """Return (access_token, business_account_id, source_label).
+        Priority: context['force_account_id'] → self.account_id → the
+        legacy system parameters."""
+        forced = self.env.context.get('force_account_id')
+        if forced:
+            acc = self.env['comm.whatsapp.account'].sudo().browse(forced)
+            if acc.exists():
+                return (
+                    acc.access_token or '',
+                    acc.business_account_id or '',
+                    f"account '{acc.name}'",
+                )
+        if self and self[:1].account_id:
+            acc = self[:1].account_id
             return (
-                self.account_id.access_token or '',
-                self.account_id.business_account_id or '',
-                f"account '{self.account_id.name}'",
+                acc.access_token or '',
+                acc.business_account_id or '',
+                f"account '{acc.name}'",
             )
-        # Fallback: system parameters
         icp = self.env['ir.config_parameter'].sudo()
         return (
             icp.get_param('comm_whatsapp.access_token')

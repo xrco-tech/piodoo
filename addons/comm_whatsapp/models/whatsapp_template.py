@@ -203,20 +203,39 @@ class WhatsAppTemplate(models.Model):
                 _logger.warning(f"Error rendering template preview: {e}", exc_info=True)
                 record.template_preview_html = f'<div style="color: red;">Error rendering preview: {str(e)}</div>'
 
+    def _resolve_meta_creds(self):
+        """Return (access_token, business_account_id, source_label). Honours
+        context['force_account_id'] when a sync is triggered from an Account
+        form; otherwise falls back to the legacy system parameters so
+        existing single-WABA setups keep working unchanged."""
+        forced = self.env.context.get('force_account_id')
+        if forced:
+            acc = self.env['comm.whatsapp.account'].sudo().browse(forced)
+            if acc.exists():
+                return (
+                    acc.access_token or '',
+                    acc.business_account_id or '',
+                    f"account '{acc.name}'",
+                )
+        icp = self.env['ir.config_parameter'].sudo()
+        return (
+            icp.get_param('comm_whatsapp.access_token')
+            or icp.get_param('comm_whatsapp.long_lived_token')
+            or '',
+            icp.get_param('comm_whatsapp.business_account_id') or '',
+            'system parameters',
+        )
+
     def action_submit_to_meta(self):
         """
         Submit template to Meta WhatsApp Business API for approval.
-        
+
         Based on: https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/overview
         """
         self.ensure_one()
-        
+
         try:
-            # Get access token and business account ID
-            IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                          IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('comm_whatsapp.business_account_id')
+            access_token, business_account_id, _src = self._resolve_meta_creds()
             
             if not access_token:
                 return {
@@ -433,18 +452,18 @@ class WhatsAppTemplate(models.Model):
         Fetch templates from Meta API and sync with local records.
         """
         try:
-            IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                          IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('comm_whatsapp.business_account_id')
-            
+            access_token, business_account_id, cred_src = self._resolve_meta_creds()
+
             if not access_token or not business_account_id:
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Error',
-                        'message': 'Access token or Business Account ID not configured.',
+                        'message': (
+                            f"Access token or Business Account ID missing from "
+                            f"{cred_src}."
+                        ),
                         'type': 'danger',
                         'sticky': True,
                     }

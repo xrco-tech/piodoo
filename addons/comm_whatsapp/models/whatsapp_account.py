@@ -65,11 +65,75 @@ class WhatsAppAccount(models.Model):
         help="If multiple accounts can match an inbound, the default wins.",
     )
 
+    # Smart-button counts.
+    flow_count = fields.Integer(compute='_compute_flow_count')
+    template_count = fields.Integer(compute='_compute_template_count')
+
     _sql_constraints = [
         ('phone_number_id_unique',
          'UNIQUE(phone_number_id)',
          "A WhatsApp account with this phone_number_id already exists."),
     ]
+
+    def _compute_flow_count(self):
+        Flow = self.env['whatsapp.flow']
+        for rec in self:
+            rec.flow_count = Flow.search_count([('account_id', '=', rec.id)])
+
+    def _compute_template_count(self):
+        # whatsapp.template does not (yet) have an account_id link;
+        # surface the total on the WABA so the smart button is still
+        # useful for orientation.
+        Template = self.env['whatsapp.template']
+        for rec in self:
+            rec.template_count = Template.search_count([])
+
+    # ── Sync actions (invoked from the account form header) ───────────
+    # Each pushes force_account_id into context so the target model's
+    # _resolve_meta_creds() picks up this account's WABA credentials.
+
+    def _require_creds(self):
+        self.ensure_one()
+        if not self.access_token or not self.business_account_id:
+            from odoo.exceptions import UserError
+            raise UserError(
+                "This account is missing an Access Token or Business "
+                "Account ID — set them on the Credentials tab first."
+            )
+
+    def action_sync_flows(self):
+        self._require_creds()
+        return self.env['whatsapp.flow'].with_context(
+            force_account_id=self.id
+        ).action_fetch_from_meta()
+
+    def action_view_flows(self):
+        """Open the Flows list filtered to this account."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': f"Flows — {self.name}",
+            'res_model': 'whatsapp.flow',
+            'view_mode': 'list,form',
+            'domain': [('account_id', '=', self.id)],
+            'context': {'default_account_id': self.id},
+        }
+
+    def action_sync_templates(self):
+        self._require_creds()
+        return self.env['whatsapp.template'].with_context(
+            force_account_id=self.id
+        ).action_fetch_from_meta()
+
+    def action_view_templates(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': f"Templates — {self.name}",
+            'res_model': 'whatsapp.template',
+            'view_mode': 'list,form',
+            'domain': [],
+        }
 
     @api.model
     def find_for_phone_number_id(self, phone_number_id):

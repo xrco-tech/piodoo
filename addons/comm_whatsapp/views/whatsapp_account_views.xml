@@ -23,8 +23,28 @@
             <field name="model">comm.whatsapp.account</field>
             <field name="arch" type="xml">
                 <form string="WhatsApp Account">
+                    <header>
+                        <button name="action_sync_flows" type="object"
+                                string="Sync Flows" icon="fa-download"
+                                class="btn-primary"
+                                help="Pull all Flows from Meta for this WABA and rebuild the structured records."/>
+                        <button name="action_sync_templates" type="object"
+                                string="Sync Templates" icon="fa-download"
+                                class="btn-primary"
+                                help="Pull all message templates from Meta for this WABA."/>
+                    </header>
                     <sheet>
                         <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_flows" type="object"
+                                    class="oe_stat_button" icon="fa-code-fork">
+                                <field name="flow_count" widget="statinfo" string="Flows"/>
+                            </button>
+                            <button name="action_view_templates" type="object"
+                                    class="oe_stat_button" icon="fa-file-text-o">
+                                <field name="template_count" widget="statinfo" string="Templates"/>
+                            </button>
+                        </div>
                         <div class="oe_title">
                             <label for="name"/>
                             <h1><field name="name" placeholder="e.g. Support Line"/></h1>
