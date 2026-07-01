@@ -34,27 +34,6 @@ function esc(s) {
     return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// ── Reingold-Tilford column layout for a navigate-DAG.
-// Multiple parents → first navigate-in wins (we treat it as a tree).
-let _colCtr = 0;
-function assignColsTree(nodes) {
-    for (const n of nodes) {
-        const kids = n.children || [];
-        if (!kids.length) { n._col = _colCtr++; }
-        else {
-            const start = _colCtr;
-            assignColsTree(kids);
-            n._col = (start + _colCtr - 1) / 2;
-        }
-    }
-}
-function flattenTree(nodes, level = 0, parent = null, out = []) {
-    for (const n of nodes) {
-        out.push({ ...n, level, parent });
-        flattenTree(n.children || [], level + 1, n.id, out);
-    }
-    return out;
-}
 
 export class FlowCanvasAction extends Component {
     static template = "comm_whatsapp.FlowCanvasAction";
@@ -387,22 +366,25 @@ export class FlowCanvasAction extends Component {
 
     _buildTree() {
         // Build a DAG → tree by following navigate edges from entry. Each
-        // screen appears once. Orphans are appended as roots.
+        // screen appears once. Orphans are appended as roots. The first
+        // navigate target of each screen becomes the "spine" child (placed
+        // below the parent). All other navigate targets become "branches"
+        // (placed to the right of the parent at the same y level).
         const visited = new Set();
-        const childrenOf = (id) => {
-            const sc = this.state.screensById[id];
-            if (!sc) return [];
-            return sc.navTargets
-                .map(t => t.id)
-                .filter(tid => !visited.has(tid) && this.state.screensById[tid]);
-        };
         const make = (id) => {
             if (visited.has(id)) return null;
             visited.add(id);
             const sc = this.state.screensById[id];
+            if (!sc) return null;
+            const kidIds = sc.navTargets
+                .map(t => t.id)
+                .filter(tid => !visited.has(tid) && this.state.screensById[tid]);
+            const spineIds  = kidIds.slice(0, 1);
+            const branchIds = kidIds.slice(1);
             return {
                 id, screen: sc,
-                children: childrenOf(id).map(make).filter(Boolean),
+                spine:    spineIds.map(make).filter(Boolean),
+                branches: branchIds.map(make).filter(Boolean),
             };
         };
         const roots = [];
@@ -418,6 +400,44 @@ export class FlowCanvasAction extends Component {
             }
         }
         return roots;
+    }
+
+    // Assigns (col, level) to every node in the spine-plus-branches tree.
+    // Spine children stay in the parent's column, one level deeper. Each
+    // branch spawns its own column-cluster to the right of the parent at
+    // the parent's level; the branch's own spine goes further down.
+    // Returns { minCol, maxCol, maxLevel } for the visited subtree.
+    _layoutSubtree(node, col, level) {
+        node._col   = col;
+        node._level = level;
+        let minCol = col, maxCol = col, maxLevel = level;
+        for (const s of node.spine || []) {
+            const r = this._layoutSubtree(s, col, level + 1);
+            minCol   = Math.min(minCol,   r.minCol);
+            maxCol   = Math.max(maxCol,   r.maxCol);
+            maxLevel = Math.max(maxLevel, r.maxLevel);
+        }
+        let branchStartCol = maxCol + 1;
+        for (const b of node.branches || []) {
+            const r = this._layoutSubtree(b, branchStartCol, level);
+            branchStartCol = r.maxCol + 1;
+            maxCol   = Math.max(maxCol,   r.maxCol);
+            maxLevel = Math.max(maxLevel, r.maxLevel);
+        }
+        return { minCol, maxCol, maxLevel };
+    }
+
+    _flattenLayout(node, parent, out) {
+        out.push({
+            id:     node.id,
+            screen: node.screen,
+            _col:   node._col,
+            level:  node._level,
+            parent,
+        });
+        for (const s of node.spine    || []) this._flattenLayout(s, node.id, out);
+        for (const b of node.branches || []) this._flattenLayout(b, node.id, out);
+        return out;
     }
 
     _renderCanvas() {
@@ -440,15 +460,21 @@ export class FlowCanvasAction extends Component {
             return;
         }
 
-        _colCtr = 0;
-        assignColsTree(tree);
-        const flat = flattenTree(tree);
+        // Spine + branch layout. Roots are laid out side-by-side (each in
+        // its own column-cluster). Every node ends up with a _col + level.
+        let rootStartCol = 0;
+        const flat = [];
+        for (const root of tree) {
+            const r = this._layoutSubtree(root, rootStartCol, 0);
+            this._flattenLayout(root, null, flat);
+            rootStartCol = r.maxCol + 1;
+        }
 
         const CARD_W = 280, GAP = 50, VGAP = 70, PX = 80, PY = 60;
         // Fallback row height in case a browser reports zero on measure
         // (extremely rare); real spacing is computed after mount below.
         const ROW_H_FALLBACK = 260;
-        const totalCols = _colCtr || 1;
+        const totalCols = (flat.reduce((m, n) => Math.max(m, n._col), 0) + 1) || 1;
         const totalRows = flat.reduce((m, n) => Math.max(m, n.level), 0) + 1;
 
         const grid = document.createElement("div");
@@ -514,17 +540,51 @@ export class FlowCanvasAction extends Component {
             const byScreenId = Object.fromEntries(cards.map(c => [c.dataset.id, c]));
 
             // Primary navigate edges (each screen → each navigate target).
+            // Branches (target is roughly at the parent's y-level) get a
+            // side-to-side S-curve; spine children keep the top-to-bottom
+            // bezier.
+            const OVERLAP_TOL = 40;   // px — considered "same row"
             for (const sc of this.state.screens) {
                 const src = byScreenId[sc.id]; if (!src) continue;
+                const srcTop  = src.offsetTop;
+                const srcBot  = src.offsetTop + src.offsetHeight;
                 for (const t of sc.navTargets) {
                     const tgt = byScreenId[t.id]; if (!tgt) continue;
-                    const x1 = src.offsetLeft + src.offsetWidth / 2;
-                    const y1 = src.offsetTop  + src.offsetHeight;
-                    const x2 = tgt.offsetLeft + tgt.offsetWidth / 2;
-                    const y2 = tgt.offsetTop;
-                    const my = (y1 + y2) / 2;
+                    const tgtTop = tgt.offsetTop;
+                    const tgtBot = tgt.offsetTop + tgt.offsetHeight;
+
+                    const isSideBranch = (
+                        tgt.offsetLeft > src.offsetLeft + src.offsetWidth - 10
+                        && tgtBot > srcTop - OVERLAP_TOL
+                        && tgtTop < srcBot + OVERLAP_TOL
+                    );
+
+                    let x1, y1, x2, y2, cp1x, cp1y, cp2x, cp2y;
+                    if (isSideBranch) {
+                        // Right side of source → left side of target.
+                        x1 = src.offsetLeft + src.offsetWidth;
+                        y1 = src.offsetTop + src.offsetHeight / 2;
+                        x2 = tgt.offsetLeft;
+                        y2 = tgt.offsetTop + tgt.offsetHeight / 2;
+                        const mx = (x1 + x2) / 2;
+                        cp1x = mx; cp1y = y1;
+                        cp2x = mx; cp2y = y2;
+                    } else {
+                        // Bottom of source → top of target (spine).
+                        x1 = src.offsetLeft + src.offsetWidth / 2;
+                        y1 = srcBot;
+                        x2 = tgt.offsetLeft + tgt.offsetWidth / 2;
+                        y2 = tgtTop;
+                        const my = (y1 + y2) / 2;
+                        cp1x = x1; cp1y = my;
+                        cp2x = x2; cp2y = my;
+                    }
+
                     const path = document.createElementNS(NS, "path");
-                    path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`);
+                    path.setAttribute(
+                        "d",
+                        `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`
+                    );
                     path.setAttribute("class", "o_flow_connector");
                     svg.appendChild(path);
 
