@@ -856,7 +856,15 @@ class WhatsAppFlow(models.Model):
 
     def write(self, vals):
         # When in structured mode, regenerate flow_json after any change.
+        # Callers that already know the correct flow_json (e.g. the Meta
+        # syncer writing the JSON it just downloaded) can pass the
+        # skip_flow_json_regen context flag to bypass this — otherwise
+        # the generator would overwrite the freshly-fetched JSON with the
+        # (still-empty) structured records, and the auto-importer would
+        # then find no screens to import.
         res = super().write(vals)
+        if self.env.context.get('skip_flow_json_regen'):
+            return res
         for rec in self:
             if not rec.use_raw_json:
                 generated = rec._generate_flow_json()
@@ -867,6 +875,8 @@ class WhatsAppFlow(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
+        if self.env.context.get('skip_flow_json_regen'):
+            return records
         for rec in records:
             if not rec.use_raw_json:
                 generated = rec._generate_flow_json()
@@ -2096,9 +2106,14 @@ class WhatsAppFlow(models.Model):
                         if forced_account_id:
                             vals['account_id'] = forced_account_id
 
+                        # Preserve the JSON we just downloaded — the write()
+                        # override would otherwise regenerate it from the
+                        # (still-empty) structured records before the
+                        # auto-importer below has a chance to build them.
+                        preserving = self.with_context(skip_flow_json_regen=True)
                         if flow:
                             # Update existing flow
-                            flow.write(vals)
+                            flow.with_context(skip_flow_json_regen=True).write(vals)
                             updated_count += 1
                             _logger.info(f"Updated flow {flow_id}: {name}")
                         else:
@@ -2106,7 +2121,7 @@ class WhatsAppFlow(models.Model):
                             if not name:
                                 name = flow_id  # Fallback name
                             vals['name'] = name
-                            flow = self.create(vals)
+                            flow = preserving.create(vals)
                             created_count += 1
                             _logger.info(f"Created flow {flow_id}: {name}")
 
