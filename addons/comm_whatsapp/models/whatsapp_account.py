@@ -81,12 +81,11 @@ class WhatsAppAccount(models.Model):
             rec.flow_count = Flow.search_count([('account_id', '=', rec.id)])
 
     def _compute_template_count(self):
-        # whatsapp.template does not (yet) have an account_id link;
-        # surface the total on the WABA so the smart button is still
-        # useful for orientation.
         Template = self.env['whatsapp.template']
         for rec in self:
-            rec.template_count = Template.search_count([])
+            rec.template_count = Template.search_count(
+                [('account_id', '=', rec.id)]
+            )
 
     # ── Sync actions (invoked from the account form header) ───────────
     # Each pushes force_account_id into context so the target model's
@@ -132,7 +131,8 @@ class WhatsAppAccount(models.Model):
             'name': f"Templates — {self.name}",
             'res_model': 'whatsapp.template',
             'view_mode': 'list,form',
-            'domain': [],
+            'domain': [('account_id', '=', self.id)],
+            'context': {'default_account_id': self.id},
         }
 
     @api.model

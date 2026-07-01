@@ -29,6 +29,17 @@ class WhatsAppTemplate(models.Model):
        help='Template category: Authentication, Utility, or Marketing')
     
     display_name = fields.Char(string='Display Name', compute='_compute_display_name', store=True)
+
+    # WABA account this template lives on. Left empty for pre-account
+    # installs; syncing from an account form auto-tags imports with the
+    # originating account so per-WABA counts / filters work.
+    account_id = fields.Many2one(
+        'comm.whatsapp.account', string='WhatsApp Account',
+        ondelete='restrict',
+        help="Pick the WABA account that owns this template. When left empty, "
+             "the legacy comm_whatsapp.* system parameters are used for Meta "
+             "operations.",
+    )
     
     # Template components
     header_type = fields.Selection([
@@ -93,7 +104,12 @@ class WhatsAppTemplate(models.Model):
     template_preview_html = fields.Html(string='Template Preview', compute='_compute_template_preview_html', sanitize=False)
     
     _sql_constraints = [
-        ('name_language_unique', 'unique(name, language)', 'Template name and language combination must be unique!')
+        # A template's natural key is (WABA, name, language). Two WABAs can
+        # legitimately host their own "welcome/en" template. Legacy rows
+        # without an account (NULL) coexist with newly-tagged ones.
+        ('name_language_account_unique',
+         'unique(account_id, name, language)',
+         'Template name and language must be unique per WhatsApp account!'),
     ]
 
     @api.depends('name', 'language')
@@ -204,10 +220,9 @@ class WhatsAppTemplate(models.Model):
                 record.template_preview_html = f'<div style="color: red;">Error rendering preview: {str(e)}</div>'
 
     def _resolve_meta_creds(self):
-        """Return (access_token, business_account_id, source_label). Honours
-        context['force_account_id'] when a sync is triggered from an Account
-        form; otherwise falls back to the legacy system parameters so
-        existing single-WABA setups keep working unchanged."""
+        """Return (access_token, business_account_id, source_label).
+        Priority: context['force_account_id'] → self.account_id → the
+        legacy system parameters."""
         forced = self.env.context.get('force_account_id')
         if forced:
             acc = self.env['comm.whatsapp.account'].sudo().browse(forced)
@@ -217,6 +232,13 @@ class WhatsAppTemplate(models.Model):
                     acc.business_account_id or '',
                     f"account '{acc.name}'",
                 )
+        if self and self[:1].account_id:
+            acc = self[:1].account_id
+            return (
+                acc.access_token or '',
+                acc.business_account_id or '',
+                f"account '{acc.name}'",
+            )
         icp = self.env['ir.config_parameter'].sudo()
         return (
             icp.get_param('comm_whatsapp.access_token')
@@ -491,18 +513,26 @@ class WhatsAppTemplate(models.Model):
                     status = template_data.get('status')
                     quality = template_data.get('quality')
                     
-                    # Find or create template
-                    template = self.search([
+                    # Find or create template. Scope the lookup to the
+                    # forced account (if any) so two WABAs can host their
+                    # own copy of the same template name/language pair.
+                    forced_account_id = self.env.context.get('force_account_id')
+                    search_domain = [
                         ('name', '=', name),
-                        ('language', '=', language)
-                    ], limit=1)
-                    
+                        ('language', '=', language),
+                    ]
+                    if forced_account_id:
+                        search_domain.append(('account_id', '=', forced_account_id))
+                    template = self.search(search_domain, limit=1)
+
                     vals = {
                         'template_id_meta': template_data.get('id'),
                         'status': status,
                         'quality_score': quality,
                         'category': template_data.get('category', 'UTILITY'),
                     }
+                    if forced_account_id:
+                        vals['account_id'] = forced_account_id
                     
                     # Extract components (for both new and existing templates)
                     components = template_data.get('components', [])

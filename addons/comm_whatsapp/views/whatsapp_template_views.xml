@@ -90,6 +90,7 @@
             <field name="arch" type="xml">
                 <search string="Search WhatsApp Templates">
                     <field name="name" string="Template Name"/>
+                    <field name="account_id"/>
                     <field name="language"/>
                     <field name="body" string="Body"/>
                     <separator/>
@@ -106,6 +107,7 @@
                     <filter string="Medium Quality" name="yellow" domain="[('quality_score', '=', 'YELLOW')]"/>
                     <filter string="Low Quality" name="red" domain="[('quality_score', '=', 'RED')]"/>
                     <group expand="0" string="Group By">
+                        <filter string="Account" name="group_account" context="{'group_by': 'account_id'}"/>
                         <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
                         <filter string="Category" name="group_category" context="{'group_by': 'category'}"/>
                         <filter string="Language" name="group_language" context="{'group_by': 'language'}"/>
@@ -158,6 +160,7 @@
                       decoration-warning="status == 'PAUSED'"
                       decoration-danger="status == 'REJECTED'">
                     <field name="name"/>
+                    <field name="account_id" optional="show"/>
                     <field name="language"/>
                     <field name="category"/>
                     <field name="template_preview_html" widget="html" optional="show" string="Preview"/>
@@ -200,6 +203,8 @@
                                 <field name="name" placeholder="template_name_lowercase"/>
                                 <field name="language"/>
                                 <field name="category"/>
+                                <field name="account_id"
+                                       options="{'no_create': True, 'no_quick_create': True}"/>
                                 <field name="template_id_meta" readonly="1"/>
                             </group>
                             <group>
