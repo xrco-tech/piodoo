@@ -810,6 +810,16 @@ export class FlowCanvasAction extends Component {
     targetScreenName(c) {
         return Array.isArray(c.target_screen_id) ? c.target_screen_id[1] : "";
     }
+    // Template helper: OWL's t-esc scope doesn't expose the global JSON
+    // object, so we wrap the stringify call in a component method.
+    formatPreviewValue(v) {
+        if (v === undefined) return "";
+        try { return JSON.stringify(v); }
+        catch (e) { return String(v); }
+    }
+    previewValueKeys() {
+        return Object.keys(this.state.preview.values || {});
+    }
 }
 
 registry.category("actions").add("comm_whatsapp.flow_canvas", FlowCanvasAction);

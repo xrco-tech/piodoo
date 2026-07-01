@@ -370,14 +370,14 @@
                                 <div class="o_flow_preview_values_title">
                                     <i class="fa fa-database me-1"/>Captured values
                                 </div>
-                                <t t-if="!Object.keys(state.preview.values).length">
+                                <t t-if="!previewValueKeys().length">
                                     <div class="text-muted small">No inputs filled yet.</div>
                                 </t>
-                                <t t-foreach="Object.keys(state.preview.values)" t-as="k" t-key="k">
+                                <t t-foreach="previewValueKeys()" t-as="k" t-key="k">
                                     <div class="o_flow_preview_value_row">
                                         <code t-esc="k"/>
                                         <span class="o_flow_preview_value_arrow">→</span>
-                                        <span t-esc="JSON.stringify(state.preview.values[k])"/>
+                                        <span t-esc="formatPreviewValue(state.preview.values[k])"/>
                                     </div>
                                 </t>
                             </div>
