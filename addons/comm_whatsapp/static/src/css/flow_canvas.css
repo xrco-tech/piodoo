@@ -261,7 +261,15 @@
     padding: 14px 14px 32px;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     transition: width 0.25s ease, padding 0.25s ease;
+}
+/* Preview mode needs more horizontal space for the phone frame and a
+   non-scrolling outer container so the phone body handles its own scroll. */
+.o_flow_canvas_props:has(.o_flow_preview_pane) {
+    width: 380px;
+    overflow-y: hidden;
+    padding-bottom: 14px;
 }
 .o_flow_canvas_props_collapsed {
     width: 0 !important;
@@ -444,16 +452,31 @@
 }
 
 /* ── Phone preview (right panel) ────────────────────────────────────── */
+/* Wrapper that turns the preview tab into a full-height flex column so the
+   phone frame can grow to fill whatever height the props panel gives it,
+   mirroring the chatbot simulator. */
+.o_flow_preview_pane {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    /* Cancel the props panel's default padding-right so the phone can
+       centre inside the available width. */
+}
 .o_flow_preview_phone {
     border: 12px solid #1f2937;
     border-radius: 32px;
-    width: 280px;
+    width: 300px;
     margin: 0 auto;
     background: #fff;
     box-shadow: 0 8px 24px rgba(0,0,0,0.15);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* Fill whatever the parent gives us. */
+    flex: 1;
+    min-height: 0;
+    max-height: 100%;
 }
 .o_flow_preview_status {
     background: #075E54;
@@ -463,6 +486,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
 }
 .o_flow_preview_back { font-weight: 700; }
 .o_flow_preview_title { font-weight: 700; }
@@ -470,7 +494,8 @@
     background: #ECE5DD;
     padding: 14px;
     font-size: 13px;
-    max-height: 520px;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
 }
 .o_flow_preview_empty {
@@ -603,6 +628,7 @@
     display: flex;
     gap: 6px;
     margin-bottom: 10px;
+    flex-shrink: 0;
 }
 .o_flow_preview_toolbar .btn { flex: 1; }
 .o_flow_preview_empty_outer {
@@ -675,6 +701,9 @@
     background: #fafafa;
     padding: 10px 12px;
     font-size: 12px;
+    flex-shrink: 0;
+    max-height: 160px;
+    overflow-y: auto;
 }
 .o_flow_preview_values_title {
     font-weight: 700;

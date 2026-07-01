@@ -156,8 +156,11 @@
                         </t>
                     </t>
 
-                    <!-- PREVIEW TAB — interactive walkthrough -->
+                    <!-- PREVIEW TAB — interactive walkthrough. Wrapped in a
+                         flex column so the phone can stretch to the panel's
+                         full height (mirrors the chatbot simulator). -->
                     <t t-if="state.panelMode === 'preview'">
+                     <div class="o_flow_preview_pane">
                         <div class="o_flow_preview_toolbar">
                             <button class="btn btn-sm btn-light"
                                     t-on-click="() => this._previewBack()"
@@ -382,6 +385,7 @@
                                 </t>
                             </div>
                         </t>
+                     </div>
                     </t>
                 </div>
             </div>
