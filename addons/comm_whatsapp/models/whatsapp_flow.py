@@ -947,6 +947,26 @@ class WhatsAppFlow(models.Model):
         'EmbeddedLink', 'Footer',
     }
 
+    def _flatten_form_wrappers(self, children):
+        """Meta authoring tools frequently wrap a screen's inputs inside a
+        `Form` container so a single Footer inside the Form can gather all
+        of them into an on-click payload. Our structured model represents
+        the same wiring by giving every Footer its own auto-derived payload,
+        so we unwrap `Form` nodes at import time and treat their children
+        as first-class siblings.
+
+        Meta doesn't nest Forms in practice, but we recurse defensively
+        for safety."""
+        out = []
+        for c in children or []:
+            if isinstance(c, dict) and c.get('type') == 'Form':
+                out.extend(
+                    self._flatten_form_wrappers(c.get('children') or [])
+                )
+            else:
+                out.append(c)
+        return out
+
     def action_import_from_json(self):
         """User-triggered: rebuild structured records from the current
         flow_json. Wipes existing screens if any."""
@@ -1034,6 +1054,7 @@ class WhatsAppFlow(models.Model):
             if not screen_rec:
                 continue
             children = (s_json.get('layout') or {}).get('children') or []
+            children = self._flatten_form_wrappers(children)
             for cix, c_json in enumerate(children):
                 ctype = c_json.get('type')
                 if not ctype:

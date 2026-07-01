@@ -281,6 +281,48 @@ class TestFlowJsonImporter(common.TransactionCase):
         self.assertEqual(footer.action_type, 'navigate')
         self.assertEqual(footer.target_screen_id.screen_id, 'DONE')
 
+    def test_form_wrapper_is_flattened(self):
+        """Meta wraps inputs in a `Form` container. The importer should
+        treat those children as siblings of the Form (not skip the Form
+        and lose the children with it)."""
+        f = self.env['whatsapp.flow'].create({
+            'name': 'form_wrap',
+            'use_raw_json': True,
+            'flow_json': json.dumps({
+                'version': '7.0',
+                'screens': [{
+                    'id': 'DETAILS', 'title': 'Your details', 'terminal': True,
+                    'layout': {
+                        'type': 'SingleColumnLayout',
+                        'children': [
+                            {'type': 'TextHeading', 'text': 'Tell us'},
+                            {
+                                'type': 'Form',
+                                'name': 'signup',
+                                'children': [
+                                    {'type': 'TextInput', 'name': 'email',
+                                     'label': 'Email', 'required': True,
+                                     'input-type': 'email'},
+                                    {'type': 'Footer', 'label': 'Submit',
+                                     'on-click-action': {
+                                         'name': 'complete', 'payload': {}}},
+                                ],
+                            },
+                        ],
+                    },
+                }],
+            }),
+        })
+        result = f._import_from_flow_json(replace_existing=True)
+        self.assertEqual(result['created_screens'], 1)
+        self.assertEqual(result['created_components'], 3)
+        self.assertEqual(result['warnings'], [])
+        details = self.env['whatsapp.flow.screen'].search([
+            ('flow_id', '=', f.id), ('screen_id', '=', 'DETAILS')], limit=1)
+        types = details.component_ids.mapped('component_type')
+        self.assertIn('TextInput', types)
+        self.assertIn('Footer', types)
+
     def test_import_warns_on_unknown_component(self):
         f = self.env['whatsapp.flow'].create({
             'name': 'with_unknown',
