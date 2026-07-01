@@ -1986,8 +1986,20 @@ class WhatsAppFlow(models.Model):
                         name = flow_data.get('name')
                         status = flow_data.get('status')
                         
-                        # Find or create flow
-                        flow = self.search([('flow_id_meta', '=', flow_id)], limit=1)
+                        # Resolve which WABA this sync belongs to (used to
+                        # tag new rows and to scope the "find existing" search).
+                        forced_account_id = self.env.context.get('force_account_id')
+                        if not forced_account_id and self and self[:1].account_id:
+                            forced_account_id = self[:1].account_id.id
+
+                        # Find or create flow. When we know the target account,
+                        # scope by it so two WABAs can host the same Meta flow
+                        # id without clobbering each other.
+                        search_domain = [('flow_id_meta', '=', flow_id)]
+                        if forced_account_id:
+                            search_domain.append(
+                                ('account_id', '=', forced_account_id))
+                        flow = self.search(search_domain, limit=1)
                         
                         # Get flow details (includes json_version, preview, etc.)
                         flow_details = self._get_flow_details(flow_id)
@@ -2048,6 +2060,12 @@ class WhatsAppFlow(models.Model):
                                 except Exception as e:
                                     _logger.warning(f"Could not parse expiry date {expires_at}: {e}")
                         
+                        # Stamp the WABA whose creds were used, so every
+                        # subsequent Meta call on the record routes back
+                        # through the correct account.
+                        if forced_account_id:
+                            vals['account_id'] = forced_account_id
+
                         if flow:
                             # Update existing flow
                             flow.write(vals)
@@ -2058,12 +2076,6 @@ class WhatsAppFlow(models.Model):
                             if not name:
                                 name = flow_id  # Fallback name
                             vals['name'] = name
-                            # Tag the new flow with the account whose creds
-                            # were used to sync it, so future calls route
-                            # through the same WABA. Only when sync was
-                            # invoked from a flow already bound to an account.
-                            if self and self[:1].account_id:
-                                vals['account_id'] = self[:1].account_id.id
                             flow = self.create(vals)
                             created_count += 1
                             _logger.info(f"Created flow {flow_id}: {name}")
