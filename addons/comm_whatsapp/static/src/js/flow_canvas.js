@@ -92,7 +92,11 @@ export class FlowCanvasAction extends Component {
         });
 
         this._drawLinesFn = null;
-        this._onResize    = () => this._drawLinesFn?.();
+        this._relayoutRowsFn = null;
+        this._onResize    = () => {
+            this._relayoutRowsFn?.();
+            this._drawLinesFn?.();
+        };
         this._canvasClickFn = (ev) => {
             if (ev.target.closest(".o_flow_card")) return;
             this.state.selectedScreenId = null;
@@ -440,7 +444,10 @@ export class FlowCanvasAction extends Component {
         assignColsTree(tree);
         const flat = flattenTree(tree);
 
-        const CARD_W = 280, GAP = 50, ROW_H = 240, PX = 80, PY = 60;
+        const CARD_W = 280, GAP = 50, VGAP = 70, PX = 80, PY = 60;
+        // Fallback row height in case a browser reports zero on measure
+        // (extremely rare); real spacing is computed after mount below.
+        const ROW_H_FALLBACK = 260;
         const totalCols = _colCtr || 1;
         const totalRows = flat.reduce((m, n) => Math.max(m, n.level), 0) + 1;
 
@@ -449,25 +456,52 @@ export class FlowCanvasAction extends Component {
         grid.style.transform       = `scale(${this.state.zoom})`;
         grid.style.transformOrigin = "top center";
         grid.style.width  = Math.max(totalCols * (CARD_W + GAP) + PX * 2, 800) + "px";
-        grid.style.height = (totalRows * ROW_H + PY * 2 + 80) + "px";
+        grid.style.height = (totalRows * (ROW_H_FALLBACK + VGAP) + PY * 2) + "px";
 
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("class", "o_flow_svg");
         grid.appendChild(svg);
 
+        // Initial placement — vertical positions will be corrected after
+        // cards mount and we can measure their real heights per row.
         for (const node of flat) {
             const card = this._buildCard(node.screen, node.id === this.state.entryScreenId);
             card.style.position = "absolute";
             card.style.left = Math.round(node._col * (CARD_W + GAP) + PX) + "px";
-            card.style.top  = Math.round(node.level * ROW_H + PY) + "px";
+            card.style.top  = Math.round(node.level * (ROW_H_FALLBACK + VGAP) + PY) + "px";
             card.style.width = CARD_W + "px";
             card.dataset.id     = node.id;
             card.dataset.parent = node.parent || "";
+            card.dataset.level  = String(node.level);
             grid.appendChild(card);
         }
 
         canvas.appendChild(grid);
         canvas.addEventListener("click", this._canvasClickFn);
+
+        // Row-relayout: after cards paint, measure each row's tallest card
+        // and reflow so nothing overlaps regardless of pill-wrap count.
+        const relayoutRows = () => {
+            const cards = [...grid.querySelectorAll(".o_flow_card")];
+            const byLevel = new Map();
+            for (const c of cards) {
+                const lvl = +c.dataset.level;
+                if (!byLevel.has(lvl)) byLevel.set(lvl, []);
+                byLevel.get(lvl).push(c);
+            }
+            const levels = [...byLevel.keys()].sort((a, b) => a - b);
+            let y = PY;
+            for (const lvl of levels) {
+                const row = byLevel.get(lvl);
+                const maxH = Math.max(...row.map(c => c.offsetHeight || ROW_H_FALLBACK));
+                for (const c of row) {
+                    c.style.top = Math.round(y) + "px";
+                }
+                y += maxH + VGAP;
+            }
+            grid.style.height = Math.round(y + PY) + "px";
+        };
+        this._relayoutRowsFn = relayoutRows;
 
         const drawLines = () => {
             const w = grid.scrollWidth, h = grid.scrollHeight;
@@ -519,7 +553,13 @@ export class FlowCanvasAction extends Component {
         };
 
         this._drawLinesFn = drawLines;
-        setTimeout(() => { drawLines(); setTimeout(drawLines, 150); }, 60);
+        // Layout + wire pass: reflow rows first (needs card heights), then
+        // draw connectors that depend on the settled Y coordinates.
+        setTimeout(() => {
+            relayoutRows();
+            drawLines();
+            setTimeout(() => { relayoutRows(); drawLines(); }, 150);
+        }, 60);
     }
 
     _buildCard(sc, isEntry) {
