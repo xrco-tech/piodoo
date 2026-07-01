@@ -953,26 +953,45 @@ class WhatsAppFlow(models.Model):
     _KNOWN_COMPONENT_TYPES = {
         'TextHeading', 'TextSubheading', 'TextBody', 'TextCaption', 'RichText',
         'Image', 'TextInput', 'TextArea', 'Dropdown', 'RadioButtonsGroup',
-        'CheckboxGroup', 'DatePicker', 'OptIn', 'Switch', 'PhotoPicker',
+        'CheckboxGroup', 'DatePicker', 'OptIn', 'PhotoPicker',
         'DocumentPicker', 'EmbeddedLink', 'Footer',
     }
 
     def _flatten_form_wrappers(self, children):
         """Meta authoring tools frequently wrap a screen's inputs inside a
         `Form` container so a single Footer inside the Form can gather all
-        of them into an on-click payload. Our structured model represents
-        the same wiring by giving every Footer its own auto-derived payload,
-        so we unwrap `Form` nodes at import time and treat their children
-        as first-class siblings.
+        of them into an on-click payload. Similarly, `Switch` is an inline
+        conditional container that renders one of its `cases` at runtime.
+        Our structured model handles neither natively, so at import time we
+        unwrap both — every child gets promoted to a first-class sibling
+        so the editor and the canvas see them.
 
-        Meta doesn't nest Forms in practice, but we recurse defensively
-        for safety."""
+        For Switch, all cases are flattened together (the editor shows the
+        full set of possible components regardless of which case would
+        actually render). Each flattened child gets a helper_text noting
+        which case it came from so authors don't lose the wiring intent.
+        """
         out = []
         for c in children or []:
-            if isinstance(c, dict) and c.get('type') == 'Form':
+            if not isinstance(c, dict):
+                out.append(c)
+                continue
+            ctype = c.get('type')
+            if ctype == 'Form':
                 out.extend(
                     self._flatten_form_wrappers(c.get('children') or [])
                 )
+            elif ctype == 'Switch':
+                cases = c.get('cases') or {}
+                for case_name, case_children in cases.items():
+                    for child in self._flatten_form_wrappers(case_children or []):
+                        if isinstance(child, dict):
+                            hint = f"[Switch case: {case_name}]"
+                            existing = child.get('helper-text') or ''
+                            child['helper-text'] = (
+                                f"{hint} {existing}".strip() if existing else hint
+                            )
+                        out.append(child)
             else:
                 out.append(c)
         return out
@@ -1150,12 +1169,6 @@ class WhatsAppFlow(models.Model):
             if 'min-date'   in c_json: vals['min_date']   = c_json['min-date']
             if 'max-date'   in c_json: vals['max_date']   = c_json['max-date']
             if 'init-value' in c_json: vals['init_value'] = c_json['init-value']
-
-        elif ctype == 'Switch':
-            # Boolean toggle. init-value is a Meta boolean; we store the
-            # string "true"/"false" so it round-trips through init_value Char.
-            if 'init-value' in c_json:
-                vals['init_value'] = 'true' if c_json['init-value'] else 'false'
 
         elif ctype in ('PhotoPicker', 'DocumentPicker'):
             if 'photo-source'           in c_json:
