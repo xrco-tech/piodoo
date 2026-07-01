@@ -394,6 +394,43 @@ export class FlowCanvasAction extends Component {
             const node = make(entry);
             if (node) roots.push(node);
         }
+
+        // Peer-alternative absorption: real Meta flows (e.g. Resume Helper's
+        // repeated WORK_EXPERIENCE_TWO/THREE/FOUR/FIVE) use dynamic routing
+        // — the "extra" screens are orphans that all share the same next
+        // navigation target as a spine node. Attach each orphan as a right
+        // branch of the node whose spine child matches its target, so peer
+        // alternatives sit next to the primary instead of floating up as
+        // top-row roots with long down-curving arrows.
+        const collect = (n, out) => {
+            out.set(n.id, n);
+            for (const s of n.spine    || []) collect(s, out);
+            for (const b of n.branches || []) collect(b, out);
+        };
+        const nodesById = new Map();
+        for (const r of roots) collect(r, nodesById);
+
+        for (const sc of this.state.screens) {
+            if (visited.has(sc.id)) continue;
+            if (sc.navTargets.length !== 1) continue;
+            const targetId = sc.navTargets[0].id;
+            let siblingNode = null;
+            for (const [, node] of nodesById) {
+                if ((node.spine || []).some(s => s.id === targetId)) {
+                    siblingNode = node;
+                    break;
+                }
+            }
+            if (siblingNode) {
+                const orphanNode = make(sc.id);
+                if (orphanNode) {
+                    siblingNode.branches.push(orphanNode);
+                    collect(orphanNode, nodesById);
+                }
+            }
+        }
+
+        // Anything still unvisited becomes an extra top-row root.
         for (const sc of this.state.screens) {
             if (!visited.has(sc.id)) {
                 const node = make(sc.id);
