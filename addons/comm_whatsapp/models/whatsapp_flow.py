@@ -1929,14 +1929,22 @@ class WhatsAppFlow(models.Model):
     
     def _get_flow_json(self, download_url):
         """
-        Download flow JSON from the provided URL.
+        Download flow JSON from the pre-signed asset URL Meta returned.
+        Sends the bearer token as a defensive measure — Meta says it isn't
+        required but some environments 401 without it.
         """
+        access_token, _baid, _src = self._resolve_meta_creds()
+        headers = {'Authorization': f'Bearer {access_token}'} if access_token else {}
         try:
-            response = requests.get(download_url, timeout=30)
+            response = requests.get(download_url, headers=headers, timeout=30)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            _logger.error(f"Error fetching flow JSON from {download_url}: {e}")
+            _logger.error(
+                "Error fetching flow JSON from %s: %s | response body: %s",
+                download_url, e,
+                getattr(e.response, 'text', '')[:500] if getattr(e, 'response', None) else ''
+            )
             raise
     
     def action_fetch_from_meta(self):
@@ -1979,6 +1987,7 @@ class WhatsAppFlow(models.Model):
                 updated_count = 0
                 error_count = 0
                 error_messages = []
+                warnings = []
                 
                 for flow_data in flows:
                     try:
@@ -2008,21 +2017,42 @@ class WhatsAppFlow(models.Model):
                         # Get flow assets to find the JSON download URL
                         flow_assets = self._get_flow_assets(flow_id)
                         _logger.info(f"Flow assets for {flow_id}: {flow_assets}")
-                        
-                        # Find the FLOW_JSON asset
+
+                        # Find the FLOW_JSON asset. Meta returns a list; we
+                        # want the one with asset_type=FLOW_JSON.
                         json_asset = None
-                        if flow_assets.get('data'):
-                            json_assets = [asset for asset in flow_assets['data'] if asset.get('asset_type') == 'FLOW_JSON']
-                            if json_assets:
-                                json_asset = json_assets[0]
-                        
+                        assets_list = flow_assets.get('data') or []
+                        json_assets = [
+                            a for a in assets_list
+                            if a.get('asset_type') == 'FLOW_JSON'
+                        ]
+                        if json_assets:
+                            json_asset = json_assets[0]
+
                         # Download the flow JSON
                         flow_json = None
                         if json_asset and json_asset.get('download_url'):
-                            flow_json = self._get_flow_json(json_asset['download_url'])
-                            _logger.info(f"Downloaded flow JSON for {flow_id}")
+                            try:
+                                flow_json = self._get_flow_json(
+                                    json_asset['download_url'])
+                                _logger.info(f"Downloaded flow JSON for {flow_id}")
+                            except Exception as dl_err:
+                                # Surface as a per-flow warning; don't abort
+                                # the whole sync — other flows may still work.
+                                warnings.append(
+                                    f"'{name or flow_id}': FLOW_JSON download "
+                                    f"failed ({dl_err})."
+                                )
                         else:
-                            _logger.warning(f"No FLOW_JSON asset found for flow {flow_id}")
+                            _logger.warning(
+                                f"No FLOW_JSON asset found for flow {flow_id} "
+                                f"(assets: {[a.get('asset_type') for a in assets_list]})"
+                            )
+                            warnings.append(
+                                f"'{name or flow_id}': no FLOW_JSON asset on "
+                                f"Meta (status={status}). Flow record synced "
+                                f"but its JSON is empty."
+                            )
                         
                         # Prepare values
                         vals = {
@@ -2103,16 +2133,22 @@ class WhatsAppFlow(models.Model):
                 if error_count > 0:
                     message += f' {error_count} errors occurred.'
                     if error_messages:
-                        message += '\n\nErrors:\n' + '\n'.join(error_messages[:5])  # Show first 5 errors
+                        message += '\n\nErrors:\n' + '\n'.join(error_messages[:5])
+                if warnings:
+                    message += f'\n\nWarnings ({len(warnings)}):\n' + '\n'.join(warnings[:8])
+                    if len(warnings) > 8:
+                        message += f'\n…and {len(warnings) - 8} more.'
                 
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
-                        'title': 'Success' if error_count == 0 else 'Partial Success',
+                        'title': ('Success' if error_count == 0 and not warnings
+                                  else 'Partial Success'),
                         'message': message,
-                        'type': 'success' if error_count == 0 else 'warning',
-                        'sticky': error_count > 0,
+                        'type': ('success' if error_count == 0 and not warnings
+                                 else 'warning'),
+                        'sticky': bool(error_count or warnings),
                     }
                 }
             else:
