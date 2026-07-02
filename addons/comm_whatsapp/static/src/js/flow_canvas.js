@@ -79,16 +79,30 @@ export class FlowCanvasAction extends Component {
         this._canvasClickFn = (ev) => {
             if (ev.target.closest(".o_flow_card")) return;
             this.state.selectedScreenId = null;
+            // Same visual-swap trick as _selectScreen — avoid a full re-render.
+            const grid = this.canvasRef.el?.querySelector(".o_flow_grid");
+            grid?.querySelectorAll(".o_flow_card.o_flow_card_selected")
+                .forEach(c => c.classList.remove("o_flow_card_selected"));
         };
+
+        // Canvas re-renders are expensive (rip out every card, rebuild the
+        // DOM, redraw the SVG). Keeping the render tied to onPatched meant
+        // every unrelated state change — most notably a user typing into a
+        // preview input — nuked and rebuilt the whole canvas each keystroke.
+        // Version-guard it: bump _canvasDataVersion when flow structure
+        // changes; only re-render when the rendered version is stale.
+        this._canvasDataVersion = 0;
+        this._renderedCanvasVersion = -1;
 
         onMounted(async () => {
             await this._loadData();
             window.addEventListener("resize", this._onResize, { passive: true });
         });
         onPatched(() => {
-            if (!this.state.loading && this.canvasRef.el) {
-                this._renderCanvas();
-            }
+            if (this.state.loading || !this.canvasRef.el) return;
+            if (this._renderedCanvasVersion === this._canvasDataVersion) return;
+            this._renderedCanvasVersion = this._canvasDataVersion;
+            this._renderCanvas();
         });
         onWillUnmount(() => window.removeEventListener("resize", this._onResize));
     }
@@ -166,6 +180,7 @@ export class FlowCanvasAction extends Component {
             this.state.selectedScreenId = screensList[0].id;
         }
         this.state.loading = false;
+        this._canvasDataVersion++;
     }
 
     get selectedScreen() {
@@ -360,6 +375,15 @@ export class FlowCanvasAction extends Component {
     _selectScreen(screenId) {
         this.state.selectedScreenId = screenId;
         if (window.innerWidth < 900) this.state.panelVisible = true;
+        // Selection is a visual-only change; swap the class in place so we
+        // don't have to re-render the whole canvas.
+        const grid = this.canvasRef.el?.querySelector(".o_flow_grid");
+        if (!grid) return;
+        for (const c of grid.querySelectorAll(".o_flow_card")) {
+            c.classList.toggle(
+                "o_flow_card_selected", +c.dataset.id === screenId,
+            );
+        }
     }
 
     // ── Canvas rendering ────────────────────────────────────────────────

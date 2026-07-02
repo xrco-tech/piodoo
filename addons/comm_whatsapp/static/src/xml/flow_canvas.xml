@@ -55,9 +55,13 @@
                                 t-on-click="() => this._setPanelMode('preview')">
                             <i class="fa fa-mobile me-1"/>Preview
                         </button>
+                        <button t-att-class="'o_flow_panel_tab' + (state.panelMode === 'values' ? ' active' : '')"
+                                t-on-click="() => this._setPanelMode('values')">
+                            <i class="fa fa-database me-1"/>Values
+                        </button>
                     </div>
 
-                    <t t-if="!selectedScreen">
+                    <t t-if="state.panelMode !== 'values' and !selectedScreen">
                         <div class="o_flow_props_empty">
                             <i class="fa fa-hand-pointer-o fa-2x mb-2"/>
                             <div>Click a screen on the canvas to see its details.</div>
@@ -369,13 +373,31 @@
                                 </div>
                             </div>
 
-                            <div class="o_flow_preview_values" t-if="!state.preview.ended">
-                                <div class="o_flow_preview_values_title">
-                                    <i class="fa fa-database me-1"/>Captured values
+                        </t>
+                     </div>
+                    </t>
+
+                    <!-- VALUES TAB — dedicated view of what the preview walker
+                         has captured so far, moved out of the Preview tab so
+                         the phone can use its full height. -->
+                    <t t-if="state.panelMode === 'values'">
+                        <div class="o_flow_values_pane">
+                            <div class="o_flow_values_title">
+                                <i class="fa fa-database me-1"/>Captured values
+                                <button class="btn btn-sm btn-light ms-auto"
+                                        t-on-click="() => this._previewReset()"
+                                        title="Reset the walker and wipe captured values">
+                                    <i class="fa fa-refresh me-1"/>Reset
+                                </button>
+                            </div>
+                            <t t-if="!previewValueKeys().length">
+                                <div class="text-muted small mt-2">
+                                    No inputs filled yet. Switch to the
+                                    <strong>Preview</strong> tab and walk
+                                    through the flow.
                                 </div>
-                                <t t-if="!previewValueKeys().length">
-                                    <div class="text-muted small">No inputs filled yet.</div>
-                                </t>
+                            </t>
+                            <div class="o_flow_values_list">
                                 <t t-foreach="previewValueKeys()" t-as="k" t-key="k">
                                     <div class="o_flow_preview_value_row">
                                         <code t-esc="k"/>
@@ -384,8 +406,7 @@
                                     </div>
                                 </t>
                             </div>
-                        </t>
-                     </div>
+                        </div>
                     </t>
                 </div>
             </div>

@@ -694,16 +694,31 @@
     line-height: 1.45;
 }
 
-.o_flow_preview_values {
-    margin-top: 14px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: #fafafa;
-    padding: 10px 12px;
+/* Dedicated Values tab — pane + title + scrollable rows. */
+.o_flow_values_pane {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+.o_flow_values_title {
+    display: flex;
+    align-items: center;
+    font-weight: 700;
     font-size: 12px;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 8px;
     flex-shrink: 0;
-    max-height: 160px;
+}
+.o_flow_values_list {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    padding-right: 4px;
 }
 .o_flow_preview_values_title {
     font-weight: 700;
