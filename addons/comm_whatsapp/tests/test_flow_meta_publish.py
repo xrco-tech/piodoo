@@ -221,20 +221,47 @@ class TestMetaPublishFlow(common.TransactionCase):
                 "publish used the wrong token — the resolver was bypassed",
             )
 
-    def test_publish_refuses_non_draft(self):
-        """When Meta reports the flow is already PUBLISHED, we surface
-        an error notification without hitting /publish."""
+    def test_publish_update_on_already_published_flow(self):
+        """Meta accepts JSON updates on already-published flows (they
+        create a new preview version). Our publish action must send
+        json_flow without status=PUBLISHED, so Meta doesn't reject the
+        redundant status transition, and must NOT clobber the local
+        status field."""
         self._seed()
         f = _build_lead_capture_flow(self.env)
         f.flow_id_meta = 'FLOW_PUB'
+        f.status = 'PUBLISHED'  # already published locally too
 
         with patch('odoo.addons.comm_whatsapp.models.whatsapp_flow.requests') as mock_requests:
             mock_requests.get.return_value = _fake_response(
                 200, {'id': 'FLOW_PUB', 'status': 'PUBLISHED'})
+            mock_requests.post.return_value = _fake_response(
+                200, {'success': True})
             action = f.action_publish_flow()
-            # No POST should have gone out.
+
+        # POST must have fired (update path); status key must be absent.
+        self.assertEqual(mock_requests.post.call_count, 1)
+        body = mock_requests.post.call_args.kwargs.get('json') or {}
+        self.assertIn('json_flow', body)
+        self.assertNotIn('status', body,
+            "update path must not send status=PUBLISHED (already published)")
+        # Success surfaces as a non-sticky "Update pushed" notification.
+        self.assertEqual(action['params']['type'], 'success')
+        # Local status stays as it was.
+        self.assertEqual(f.status, 'PUBLISHED')
+
+    def test_publish_refuses_deprecated(self):
+        """DEPRECATED / BLOCKED / THROTTLED are still refused with a
+        danger notification and never POSTed."""
+        self._seed()
+        f = _build_lead_capture_flow(self.env)
+        f.flow_id_meta = 'FLOW_DEP'
+
+        with patch('odoo.addons.comm_whatsapp.models.whatsapp_flow.requests') as mock_requests:
+            mock_requests.get.return_value = _fake_response(
+                200, {'id': 'FLOW_DEP', 'status': 'DEPRECATED'})
+            action = f.action_publish_flow()
             self.assertEqual(mock_requests.post.call_count, 0)
-        self.assertEqual(action.get('tag'), 'display_notification')
         self.assertEqual(action['params']['type'], 'danger')
 
 

@@ -1843,59 +1843,76 @@ class WhatsAppFlow(models.Model):
                     }
                 }
             
-            # Check current flow status from Meta before attempting to publish
-            # This helps identify if the flow is in the correct state
+            # Check current flow status from Meta. Determines the write
+            # semantics: DRAFT → publish; PUBLISHED → update JSON only
+            # (Meta creates a new preview version that ships); DEPRECATED /
+            # BLOCKED / THROTTLED → refuse until the operator fixes it in
+            # Meta Manager.
             check_url = f"https://graph.facebook.com/v18.0/{self.flow_id_meta}?fields=id,name,status,version"
             headers = {
                 'Authorization': f'Bearer {access_token}',
             }
-            
+
             _logger.info(f"Checking flow {self.flow_id_meta} status before publishing")
             check_response = requests.get(check_url, headers=headers, timeout=30)
-            
+
+            current_status = 'UNKNOWN'
             if check_response.status_code == 200:
-                flow_info = check_response.json()
-                current_status = flow_info.get('status', 'UNKNOWN')
-                _logger.info(f"Flow current status: {current_status}")
-                
-                if current_status not in ('DRAFT', 'UNKNOWN'):
-                    return {
-                        'type': 'ir.actions.client',
-                        'tag': 'display_notification',
-                        'params': {
-                            'title': 'Error',
-                            'message': f'Flow is in {current_status} status. Only DRAFT flows can be published. Please create a new version or reset the flow to DRAFT status.',
-                            'type': 'danger',
-                            'sticky': True,
-                        }
-                    }
+                current_status = (check_response.json() or {}).get(
+                    'status', 'UNKNOWN')
+                _logger.info(f"Flow current status on Meta: {current_status}")
             else:
-                _logger.warning(f"Could not check flow status: {check_response.status_code}")
-            
+                _logger.warning(
+                    f"Could not check flow status: {check_response.status_code}")
+
+            # Terminal / broken states → refuse.
+            if current_status in ('DEPRECATED', 'BLOCKED', 'THROTTLED'):
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Cannot publish',
+                        'message': (
+                            f"Meta reports the flow is {current_status}. "
+                            "Reset it to DRAFT in Meta Manager (or create a "
+                            "new version) before publishing again."
+                        ),
+                        'type': 'danger',
+                        'sticky': True,
+                    }
+                }
+
             # Prepare headers for API calls
             headers = {
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/json',
             }
             flow_url = f"https://graph.facebook.com/v18.0/{self.flow_id_meta}"
-            
-            # Filter flow_data to only include fields allowed in json_flow
-            # According to Meta API, json_flow should only contain version and screens
-            # Remove routing_model, data_api_version, and other metadata fields
+
+            # Filter flow_data to only include fields allowed in json_flow.
+            # Meta accepts version + screens; everything else is metadata
+            # that lives at the flow record level, not inside json_flow.
             filtered_flow_data = {
                 'version': flow_data.get('version'),
                 'screens': flow_data.get('screens', []),
             }
-            
-            # Update and publish in one request
-            # According to Meta docs, we can include both json_flow and status in the same request
-            _logger.info(f"Updating and publishing flow {self.flow_id_meta}")
-            
-            publish_payload = {
-                'json_flow': filtered_flow_data,
-                'status': 'PUBLISHED',
-            }
-            
+
+            # Build payload.
+            # - DRAFT (first publish): include status=PUBLISHED so Meta
+            #   updates the JSON *and* promotes it in one call.
+            # - PUBLISHED (update in place): send only json_flow. Meta
+            #   accepts updates on published flows by creating a new
+            #   preview version that ships on next customer session.
+            is_update = current_status == 'PUBLISHED'
+            _logger.info(
+                "%s flow %s",
+                "Updating already-published" if is_update else "Publishing",
+                self.flow_id_meta,
+            )
+            publish_payload = {'json_flow': filtered_flow_data}
+            if not is_update:
+                publish_payload['status'] = 'PUBLISHED'
+
             # Add name and category if specified
             if self.name:
                 publish_payload['name'] = self.name
@@ -1910,15 +1927,26 @@ class WhatsAppFlow(models.Model):
             
             if response.status_code == 200:
                 response_data = response.json()
-                self.write({'status': 'PUBLISHED'})
-                _logger.info(f"Flow published successfully. Response: {response_data}")
-                
+                # Update Odoo's cached status only when transitioning.
+                if not is_update:
+                    self.write({'status': 'PUBLISHED'})
+                _logger.info(
+                    "Flow %s successfully. Response: %s",
+                    "updated" if is_update else "published",
+                    response_data,
+                )
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
-                        'title': 'Success',
-                        'message': 'Flow published successfully! It can now be used in approved templates.',
+                        'title': 'Update pushed' if is_update else 'Success',
+                        'message': (
+                            "Changes uploaded to Meta. The new version will "
+                            "ship to users on their next session."
+                            if is_update else
+                            "Flow published successfully! It can now be used "
+                            "in approved templates."
+                        ),
                         'type': 'success',
                         'sticky': False,
                     }

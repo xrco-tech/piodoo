@@ -74,6 +74,10 @@
                         <button name="action_publish_flow" string="Publish Flow" type="object"
                                 class="oe_highlight" icon="fa-check"
                                 invisible="status != 'DRAFT' or not flow_id_meta"/>
+                        <button name="action_publish_flow" string="Publish Update" type="object"
+                                class="oe_highlight" icon="fa-cloud-upload"
+                                invisible="status != 'PUBLISHED' or not flow_id_meta"
+                                confirm="Push the current Odoo-side changes to the already-published flow on Meta? The new version will roll out to users on their next session."/>
                         <button name="action_fetch_from_meta" string="Sync from Meta" type="object"
                                 class="btn-secondary" icon="fa-refresh"/>
                         <button name="action_import_from_json" string="Rebuild from JSON" type="object"
