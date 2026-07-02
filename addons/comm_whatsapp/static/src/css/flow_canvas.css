@@ -479,25 +479,55 @@
     max-height: 100%;
 }
 .o_flow_preview_status {
-    background: #075E54;
-    color: #fff;
-    padding: 10px 14px;
-    font-size: 13px;
+    background: #fff;
+    color: #111;
+    padding: 12px 14px;
+    font-size: 15px;
     display: flex;
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
+    border-bottom: 1px solid #e5e7eb;
+    justify-content: space-between;
 }
-.o_flow_preview_back { font-weight: 700; }
-.o_flow_preview_title { font-weight: 700; }
+.o_flow_preview_close, .o_flow_preview_kebab {
+    font-size: 18px; font-weight: 500; color: #111;
+    cursor: pointer; user-select: none; padding: 0 4px;
+    width: 20px; text-align: center;
+}
+.o_flow_preview_title {
+    font-weight: 700;
+    flex: 1;
+    text-align: center;
+    font-size: 15px;
+    color: #111;
+}
 .o_flow_preview_body {
-    background: #ECE5DD;
-    padding: 14px;
-    font-size: 13px;
+    background: #fff;
+    padding: 16px;
+    font-size: 14px;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    color: #111;
 }
+/* Sticky footer bar with the CTA + "Managed by the business" line. */
+.o_flow_preview_footer_bar {
+    flex-shrink: 0;
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+    padding: 12px 14px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+.o_flow_preview_managed {
+    text-align: center;
+    color: #6b7280;
+    font-size: 11px;
+}
+.o_flow_preview_learn_more { color: #16a34a; font-weight: 600; }
 .o_flow_preview_empty {
     color: #9ca3af;
     font-size: 12px;
@@ -515,44 +545,82 @@
     color: #888; font-size: 13px;
 }
 
-.o_flow_preview_field { margin: 8px 0; }
-.o_flow_preview_label { font-size: 11px; color: #555; margin-bottom: 2px; }
-.o_flow_preview_req   { color: #dc3545; }
+/* Meta-style fields — the label is used as the placeholder inside the
+   input (Material-outline pattern). We keep the visible label for choice
+   groups since Meta shows the group question above the options. */
+.o_flow_preview_field { margin: 14px 0; }
+.o_flow_preview_label {
+    font-weight: 700;
+    font-size: 15px;
+    color: #111;
+    margin: 4px 0 10px;
+}
+.o_flow_preview_req   { color: #dc3545; margin-left: 2px; }
 .o_flow_preview_input,
 .o_flow_preview_textarea,
 .o_flow_preview_dropdown {
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    padding: 9px 10px;
+    border: 1px solid #cfd4dc;
+    border-radius: 8px;
+    padding: 14px 12px;
     background: #fff;
-    color: #777;
-    font-size: 13px;
+    color: #6b7280;
+    font-size: 14px;
 }
-.o_flow_preview_textarea { min-height: 60px; }
+.o_flow_preview_textarea { min-height: 70px; }
 .o_flow_preview_dropdown {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: #333;
+    color: #111;
 }
 .o_flow_preview_caret { color: #888; }
+
+/* Radio & checkbox rows: full-width, label on the left, marker on the
+   right — matches Meta's official rendering (see reference screenshots). */
 .o_flow_preview_choice {
     display: flex;
     align-items: center;
-    margin: 5px 0;
-    font-size: 13px;
-    color: #333;
+    justify-content: space-between;
+    padding: 14px 4px;
+    font-size: 15px;
+    color: #111;
+    cursor: pointer;
+    border-bottom: 0;
+    margin: 0;
+    gap: 12px;
+}
+.o_flow_preview_choice > span:not(.o_flow_preview_radio):not(.o_flow_preview_check) {
+    flex: 1;
+    order: 0;
 }
 .o_flow_preview_radio,
 .o_flow_preview_check {
     display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid #aaa;
-    margin-right: 8px;
-    flex: 0 0 14px;
+    width: 20px; height: 20px;
+    border: 2px solid #9ca3af;
+    background: #fff;
+    flex: 0 0 20px;
+    order: 1;
+    margin-right: 0;
+    margin-left: 8px;
+    position: relative;
 }
 .o_flow_preview_radio { border-radius: 50%; }
 .o_flow_preview_check { border-radius: 3px; }
+/* Live inputs (real form controls) — order the radio on the right too. */
+.o_flow_preview_choice input[type="radio"],
+.o_flow_preview_choice input[type="checkbox"] {
+    order: 1;
+    margin: 0 0 0 8px;
+    width: 20px; height: 20px;
+    accent-color: #16a34a;
+    flex: 0 0 20px;
+}
+.o_flow_preview_choice input[type="radio"] + span,
+.o_flow_preview_choice input[type="checkbox"] + span {
+    order: 0;
+    flex: 1;
+}
 .o_flow_preview_upload {
     margin: 8px 0;
     border: 2px dashed #aaa;
@@ -569,30 +637,21 @@
     font-size: 13px;
 }
 .o_flow_preview_link_target { color: #888; text-decoration: none; }
-.o_flow_preview_footer {
-    margin: 14px -14px -14px;
-    padding: 14px;
-    background: #fff;
-    border-top: 1px solid #ddd;
-}
 .o_flow_preview_button {
     width: 100%;
-    background: #25D366;
+    background: #66BB6A;
     color: #fff;
-    border-radius: 24px;
-    padding: 12px;
+    border: none;
+    border-radius: 999px;
+    padding: 14px;
     text-align: center;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background .12s ease, transform .08s ease;
 }
-.o_flow_preview_footer_hint {
-    text-align: center;
-    margin-top: 6px;
-    font-size: 10px;
-}
-.o_flow_preview_hint_nav { color: #4338ca; }
-.o_flow_preview_hint_end { color: #16a34a; }
-.o_flow_preview_hint_url { color: #6b7280; }
+.o_flow_preview_button:hover { background: #57a95c; }
+.o_flow_preview_button:active { transform: scale(0.99); }
 
 /* Boolean switch (Meta v7 Switch component) */
 .o_flow_preview_switch_row {
@@ -640,42 +699,47 @@
 .o_flow_preview_input_live,
 .o_flow_preview_textarea_live {
     width: 100%;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    padding: 9px 10px;
+    border: 1px solid #cfd4dc;
+    border-radius: 8px;
+    padding: 14px 12px;
     background: #fff;
-    color: #1f2937;
-    font-size: 13px;
+    color: #111;
+    font-size: 14px;
     outline: none;
     box-sizing: border-box;
     font-family: inherit;
+    transition: border-color .12s ease;
 }
-.o_flow_preview_input_live:focus { border-color: #4a6cf7; }
-.o_flow_preview_textarea_live { min-height: 64px; resize: vertical; }
-.o_flow_preview_choice input[type="radio"],
-.o_flow_preview_choice input[type="checkbox"] {
-    margin-right: 8px;
-    flex: 0 0 auto;
-    cursor: pointer;
+.o_flow_preview_input_live:focus,
+.o_flow_preview_textarea_live:focus {
+    border-color: #16a34a;
+    border-width: 2px;
+    padding: 13px 11px;
 }
-.o_flow_preview_choice {
-    cursor: pointer;
+.o_flow_preview_textarea_live { min-height: 80px; resize: vertical; }
+/* Style for select dropdowns to match the outline look */
+select.o_flow_preview_input_live {
+    appearance: none;
+    -webkit-appearance: none;
+    background: #fff url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7280' d='M6 8L0 0h12z'/%3E%3C/svg%3E")
+                no-repeat right 14px center;
+    padding-right: 36px;
 }
 .o_flow_preview_button_live {
     width: 100%;
-    background: #25D366;
+    background: #66BB6A;
     color: #fff;
     border: none;
-    border-radius: 24px;
-    padding: 12px;
+    border-radius: 999px;
+    padding: 14px;
     text-align: center;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 16px;
     cursor: pointer;
     transition: background .12s ease, transform .08s ease;
 }
-.o_flow_preview_button_live:hover { background: #1ebe5b; }
-.o_flow_preview_button_live:active { transform: scale(0.98); }
+.o_flow_preview_button_live:hover { background: #57a95c; }
+.o_flow_preview_button_live:active { transform: scale(0.99); }
 
 .o_flow_preview_end {
     text-align: center;

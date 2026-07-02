@@ -844,6 +844,18 @@ export class FlowCanvasAction extends Component {
     previewValueKeys() {
         return Object.keys(this.state.preview.values || {});
     }
+    // Split components into body / footer so the Footer button can be
+    // anchored at the bottom of the phone chrome while the body scrolls.
+    previewBodyComponents() {
+        const sc = this.previewScreen;
+        if (!sc) return [];
+        return sc.components.filter(c => c.component_type !== "Footer");
+    }
+    previewFooter() {
+        const sc = this.previewScreen;
+        if (!sc) return null;
+        return sc.components.find(c => c.component_type === "Footer") || null;
+    }
 }
 
 registry.category("actions").add("comm_whatsapp.flow_canvas", FlowCanvasAction);

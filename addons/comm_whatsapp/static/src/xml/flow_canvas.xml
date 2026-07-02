@@ -186,11 +186,12 @@
                         <t t-if="previewScreen">
                             <div class="o_flow_preview_phone">
                                 <div class="o_flow_preview_status">
-                                    <span class="o_flow_preview_back"
+                                    <span class="o_flow_preview_close"
                                           t-on-click="() => this._previewBack()"
-                                          style="cursor:pointer;">←</span>
+                                          title="Close">✕</span>
                                     <span class="o_flow_preview_title"
                                           t-esc="previewScreen.title or previewScreen.screen_id"/>
+                                    <span class="o_flow_preview_kebab" title="Menu">⋮</span>
                                 </div>
                                 <div class="o_flow_preview_body">
 
@@ -202,10 +203,6 @@
                                                 <i t-else="" class="fa fa-flag-checkered"/>
                                             </div>
                                             <div class="o_flow_preview_end_text" t-esc="state.preview.endMessage"/>
-                                            <button class="btn btn-sm btn-primary mt-3"
-                                                    t-on-click="() => this._previewReset()">
-                                                Restart
-                                            </button>
                                         </div>
                                     </t>
 
@@ -215,7 +212,7 @@
                                                 No components on this screen yet.
                                             </div>
                                         </t>
-                                        <t t-foreach="previewScreen.components" t-as="c" t-key="c.id">
+                                        <t t-foreach="previewBodyComponents()" t-as="c" t-key="c.id">
                                             <!-- Display text -->
                                             <t t-if="c.component_type === 'TextHeading'">
                                                 <div class="o_flow_preview_heading" t-esc="c.text or c.label"/>
@@ -349,18 +346,34 @@
                                                     </t>
                                                 </div>
                                             </t>
-                                            <t t-elif="c.component_type === 'Footer'">
-                                                <div class="o_flow_preview_footer">
-                                                    <button class="o_flow_preview_button o_flow_preview_button_live"
-                                                            t-on-click="() => this._previewActOnFooter(c)"
-                                                            t-esc="c.label or 'Submit'"/>
-                                                </div>
-                                            </t>
                                         </t>
                                     </t>
                                 </div>
-                            </div>
 
+                                <!-- Meta-style sticky footer: the CTA button
+                                     and the "Managed by the business" line
+                                     always sit at the bottom of the phone,
+                                     regardless of how tall the body scrolls. -->
+                                <t t-set="footer" t-value="previewFooter()"/>
+                                <div t-if="footer or state.preview.ended"
+                                     class="o_flow_preview_footer_bar">
+                                    <t t-if="footer and !state.preview.ended">
+                                        <button class="o_flow_preview_button o_flow_preview_button_live"
+                                                t-on-click="() => this._previewActOnFooter(footer)"
+                                                t-esc="footer.label or 'Done'"/>
+                                    </t>
+                                    <t t-if="state.preview.ended">
+                                        <button class="o_flow_preview_button o_flow_preview_button_live"
+                                                t-on-click="() => this._previewReset()">
+                                            Restart
+                                        </button>
+                                    </t>
+                                    <div class="o_flow_preview_managed">
+                                        Managed by the business.
+                                        <span class="o_flow_preview_learn_more">Learn more</span>
+                                    </div>
+                                </div>
+                            </div>
                         </t>
                      </div>
                     </t>
