@@ -167,6 +167,7 @@ class WhatsAppFlow(models.Model):
         'screen_ids.component_ids.init_value',
         'screen_ids.component_ids.min_selected', 'screen_ids.component_ids.max_selected',
         'screen_ids.component_ids.min_date', 'screen_ids.component_ids.max_date',
+        'screen_ids.component_ids.calendar_mode',
         'screen_ids.component_ids.image_src', 'screen_ids.component_ids.image_alt',
         'screen_ids.component_ids.image_height', 'screen_ids.component_ids.image_scale',
         'screen_ids.component_ids.photo_source',
@@ -953,8 +954,8 @@ class WhatsAppFlow(models.Model):
     _KNOWN_COMPONENT_TYPES = {
         'TextHeading', 'TextSubheading', 'TextBody', 'TextCaption', 'RichText',
         'Image', 'TextInput', 'TextArea', 'Dropdown', 'RadioButtonsGroup',
-        'CheckboxGroup', 'DatePicker', 'OptIn', 'PhotoPicker',
-        'DocumentPicker', 'EmbeddedLink', 'Footer',
+        'CheckboxGroup', 'DatePicker', 'CalendarPicker', 'OptIn',
+        'PhotoPicker', 'DocumentPicker', 'EmbeddedLink', 'Footer',
     }
 
     def _flatten_form_wrappers(self, children):
@@ -1192,6 +1193,21 @@ class WhatsAppFlow(models.Model):
             if 'min-date'   in c_json: vals['min_date']   = c_json['min-date']
             if 'max-date'   in c_json: vals['max_date']   = c_json['max-date']
             if 'init-value' in c_json: vals['init_value'] = c_json['init-value']
+
+        elif ctype == 'CalendarPicker':
+            if 'min-date'   in c_json: vals['min_date']   = c_json['min-date']
+            if 'max-date'   in c_json: vals['max_date']   = c_json['max-date']
+            if 'init-value' in c_json:
+                iv = c_json['init-value']
+                # Range mode: Meta ships init-value as a list [start, end];
+                # we store it as JSON so it survives our Char field.
+                vals['init_value'] = (
+                    json.dumps(iv) if isinstance(iv, list) else str(iv)
+                )
+            if 'mode' in c_json:
+                mode = c_json['mode']
+                if mode in ('single', 'range'):
+                    vals['calendar_mode'] = mode
 
         elif ctype in ('PhotoPicker', 'DocumentPicker'):
             if 'photo-source'           in c_json:

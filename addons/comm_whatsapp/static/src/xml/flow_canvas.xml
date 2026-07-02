@@ -311,7 +311,7 @@
                                                     </t>
                                                 </div>
                                             </t>
-                                            <t t-elif="c.component_type === 'DatePicker'">
+                                            <t t-elif="c.component_type === 'DatePicker' or c.component_type === 'CalendarPicker'">
                                                 <div class="o_flow_preview_field">
                                                     <div class="o_flow_preview_label">
                                                         <t t-esc="c.label"/>

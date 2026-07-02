@@ -80,12 +80,14 @@
                                 </group>
                             </page>
 
-                            <!-- DATE PICKER -->
+                            <!-- DATE PICKER / CALENDAR PICKER -->
                             <page string="Date Range" name="date"
-                                  invisible="component_type != 'DatePicker'">
+                                  invisible="component_type not in ['DatePicker','CalendarPicker']">
                                 <group>
                                     <field name="min_date" placeholder="2026-01-01"/>
                                     <field name="max_date" placeholder="2026-12-31"/>
+                                    <field name="calendar_mode"
+                                           invisible="component_type != 'CalendarPicker'"/>
                                 </group>
                             </page>
 

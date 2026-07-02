@@ -25,7 +25,7 @@ NAME_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 # Set of component types that are user-input-bearing (need a name + label).
 INPUT_TYPES = {
     'TextInput', 'TextArea', 'Dropdown', 'RadioButtonsGroup', 'CheckboxGroup',
-    'DatePicker', 'OptIn', 'PhotoPicker', 'DocumentPicker',
+    'DatePicker', 'CalendarPicker', 'OptIn', 'PhotoPicker', 'DocumentPicker',
 }
 
 # Set of component types that carry an on-click-action (navigate/complete/etc).
@@ -64,6 +64,7 @@ class WhatsAppFlowComponent(models.Model):
         ('RadioButtonsGroup', 'Radio Buttons'),
         ('CheckboxGroup',     'Checkboxes'),
         ('DatePicker',        'Date Picker'),
+        ('CalendarPicker',    'Calendar Picker (inline)'),
         ('OptIn',             'Opt-In Checkbox'),
         ('PhotoPicker',       'Photo Picker'),
         ('DocumentPicker',    'Document Picker'),
@@ -132,6 +133,12 @@ class WhatsAppFlowComponent(models.Model):
         string='Max Date',
         help="Latest selectable date in YYYY-MM-DD format. Optional.",
     )
+    # CalendarPicker-specific — single vs. range mode. Meta accepts
+    # single | range; default matches Meta's default (single).
+    calendar_mode = fields.Selection([
+        ('single', 'Single date'),
+        ('range',  'Date range'),
+    ], string='Calendar Mode', default='single')
 
     # ── Image-specific ──────────────────────────────────────────────────
     image_src = fields.Char(
@@ -277,6 +284,15 @@ class WhatsAppFlowComponent(models.Model):
                 node["min-date"] = self.min_date
             if self.max_date:
                 node["max-date"] = self.max_date
+            return node
+
+        if t == 'CalendarPicker':
+            if self.min_date:
+                node["min-date"] = self.min_date
+            if self.max_date:
+                node["max-date"] = self.max_date
+            if self.calendar_mode and self.calendar_mode != 'single':
+                node["mode"] = self.calendar_mode
             return node
 
         if t == 'OptIn':

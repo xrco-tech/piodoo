@@ -19,6 +19,7 @@ const TYPE_CFG = {
     RadioButtonsGroup:  { icon: "🔘", label: "Radio",       color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
     CheckboxGroup:      { icon: "☑️", label: "Checkboxes",  color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
     DatePicker:         { icon: "📅", label: "Date Picker", color: "#be185d", bg: "#fdf2f8", border: "#f9a8d4" },
+    CalendarPicker:     { icon: "🗓️", label: "Calendar",    color: "#be185d", bg: "#fdf2f8", border: "#f9a8d4" },
     OptIn:              { icon: "✔️", label: "Opt-In",      color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
     PhotoPicker:        { icon: "📷", label: "Photo",       color: "#b45309", bg: "#fffbeb", border: "#fcd34d" },
     DocumentPicker:     { icon: "📁", label: "Document",    color: "#475569", bg: "#f8fafc", border: "#cbd5e1" },
