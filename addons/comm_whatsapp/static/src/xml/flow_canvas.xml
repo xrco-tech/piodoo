@@ -354,18 +354,6 @@
                                                     <button class="o_flow_preview_button o_flow_preview_button_live"
                                                             t-on-click="() => this._previewActOnFooter(c)"
                                                             t-esc="c.label or 'Submit'"/>
-                                                    <div t-if="c.action_type === 'navigate' and c.target_screen_id"
-                                                         class="o_flow_preview_footer_hint o_flow_preview_hint_nav">
-                                                        → <t t-esc="targetScreenName(c)"/>
-                                                    </div>
-                                                    <div t-if="c.action_type === 'complete'"
-                                                         class="o_flow_preview_footer_hint o_flow_preview_hint_end">
-                                                        ✓ completes flow
-                                                    </div>
-                                                    <div t-if="c.action_type === 'open_url'"
-                                                         class="o_flow_preview_footer_hint o_flow_preview_hint_url">
-                                                        ↗ external URL
-                                                    </div>
                                                 </div>
                                             </t>
                                         </t>
