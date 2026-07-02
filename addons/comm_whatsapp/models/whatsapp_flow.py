@@ -1100,21 +1100,44 @@ class WhatsAppFlow(models.Model):
                     continue
                 vals['screen_id'] = screen_rec.id
                 vals['sequence']  = (cix + 1) * 10
-                comp_rec = Comp.create(vals)
+                # Isolate each component's create in its own savepoint so
+                # one validation failure doesn't unwind the whole flow's
+                # import. Failures get logged as a warning; the rest of the
+                # screen's components still land.
+                try:
+                    with self.env.cr.savepoint():
+                        comp_rec = Comp.create(vals)
+                except Exception as e:
+                    warnings.append(
+                        f"{sid}: component '{ctype}' skipped — {str(e)[:120]}"
+                    )
+                    _logger.warning(
+                        "Skipping %s.%s during import: %s", sid, ctype, e)
+                    continue
                 created_components += 1
 
                 for oix, o in enumerate(options_raw or []):
                     if not isinstance(o, dict) or not o.get('id'):
                         continue
-                    Opt.create({
-                        'component_id': comp_rec.id,
-                        'option_id':    o['id'],
-                        'title':        o.get('title') or o['id'],
-                        'description':  o.get('description') or False,
-                        'enabled':      bool(o.get('enabled', True))
-                                        if 'enabled' in o else True,
-                        'sequence':     (oix + 1) * 10,
-                    })
+                    try:
+                        with self.env.cr.savepoint():
+                            Opt.create({
+                                'component_id': comp_rec.id,
+                                'option_id':    o['id'],
+                                'title':        o.get('title') or o['id'],
+                                'description':  o.get('description') or False,
+                                'enabled':      bool(o.get('enabled', True))
+                                                if 'enabled' in o else True,
+                                'sequence':     (oix + 1) * 10,
+                            })
+                    except Exception as e:
+                        warnings.append(
+                            f"{sid}: option '{o.get('id')}' on {ctype} "
+                            f"skipped — {str(e)[:120]}"
+                        )
+                        _logger.warning(
+                            "Skipping option %s on %s.%s: %s",
+                            o.get('id'), sid, ctype, e)
 
         return {
             'created_screens':    len(screen_by_sid),

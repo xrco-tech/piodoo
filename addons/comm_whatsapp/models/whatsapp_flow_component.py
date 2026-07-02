@@ -16,7 +16,11 @@ from odoo.exceptions import ValidationError
 
 # Components carrying user input have a 'name' attribute that becomes a form
 # field at runtime ({form.<name>} in Flow JSON). Must be lowercase snake_case.
-NAME_RE = re.compile(r'^[a-z][a-z0-9_]*$')
+# Meta's Flow JSON spec accepts any letter, digit, or underscore in a
+# component's `name`, and does not require snake_case — real Meta-authored
+# flows commonly ship names like `Name`, `Order_number`, or `Choose_a_topic`.
+# We accept the same set so Sync from Meta doesn't reject valid remote flows.
+NAME_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 # Set of component types that are user-input-bearing (need a name + label).
 INPUT_TYPES = {
@@ -356,8 +360,9 @@ class WhatsAppFlowComponent(models.Model):
                     continue  # the validator method will surface the error in the UI
                 if not NAME_RE.match(rec.name):
                     raise ValidationError(
-                        f"Component name '{rec.name}' must be lowercase snake_case "
-                        "(letters, digits and underscores, starting with a letter)."
+                        f"Component name '{rec.name}' must contain only "
+                        "letters, digits and underscores, and must not start "
+                        "with a digit."
                     )
 
 
