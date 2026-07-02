@@ -83,6 +83,35 @@ class WhatsAppFlowScreen(models.Model):
          "Each screen ID must be unique within a flow."),
     ]
 
+    # ── flow_json cascade ────────────────────────────────────────────
+    # flow_json on whatsapp.flow is regenerated inside its own write()
+    # override. Child records don't naturally trigger that, so a Screen
+    # add/edit/delete would leave flow_json out of sync with the
+    # structured records. Nudge the parent flow after every mutation.
+
+    def _touch_flows(self):
+        flows = self.mapped('flow_id')
+        if flows:
+            flows.write({})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._touch_flows()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        self._touch_flows()
+        return res
+
+    def unlink(self):
+        flows = self.mapped('flow_id')
+        res = super().unlink()
+        if flows:
+            flows.write({})
+        return res
+
     @api.constrains('screen_id')
     def _check_screen_id_format(self):
         for rec in self:

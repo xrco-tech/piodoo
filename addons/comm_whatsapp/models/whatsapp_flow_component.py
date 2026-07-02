@@ -419,6 +419,31 @@ class WhatsAppFlowComponent(models.Model):
             input_names = [k.strip() for k in keys.split(',') if k.strip()]
         return {k: "${form." + k + "}" for k in input_names}
 
+    # Cascade to the parent flow's write() so flow_json regenerates when
+    # a component is added / edited / deleted.
+    def _touch_flows(self):
+        flows = self.mapped('flow_id')
+        if flows:
+            flows.write({})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._touch_flows()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        self._touch_flows()
+        return res
+
+    def unlink(self):
+        flows = self.mapped('flow_id')
+        res = super().unlink()
+        if flows:
+            flows.write({})
+        return res
+
     @api.constrains('name', 'component_type')
     def _check_name(self):
         for rec in self:
@@ -464,6 +489,31 @@ class WhatsAppFlowComponentOption(models.Model):
          'UNIQUE(component_id, option_id)',
          "Option values must be unique within a component."),
     ]
+
+    # Cascade to parent component → parent flow so flow_json regenerates
+    # whenever an option is added / edited / removed.
+    def _touch_flows(self):
+        flows = self.mapped('component_id.flow_id')
+        if flows:
+            flows.write({})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._touch_flows()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        self._touch_flows()
+        return res
+
+    def unlink(self):
+        flows = self.mapped('component_id.flow_id')
+        res = super().unlink()
+        if flows:
+            flows.write({})
+        return res
 
     def _render_option(self):
         """Serialise into the data-source dict the Flow JSON expects."""

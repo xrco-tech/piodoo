@@ -66,7 +66,7 @@ class TestMetaCreateFlow(common.TransactionCase):
 
     def test_create_flow_posts_payload_with_categories_and_json(self):
         """The POST body must have name, categories, and the generated
-        flow JSON as a string in `flow_json`."""
+        flow definition inline in `json_flow` (Meta's key name)."""
         self._seed_system_creds()
         f = _build_lead_capture_flow(self.env)
 
@@ -81,14 +81,16 @@ class TestMetaCreateFlow(common.TransactionCase):
         self.assertIn('WABA_TEST_ID/flows', call.args[0])
         headers = call.kwargs['headers']
         self.assertEqual(headers['Authorization'], 'Bearer TEST_TOKEN')
-        # Payload
+        # Payload — Meta's create endpoint expects json_flow (dict).
         body = call.kwargs.get('json') or {}
         self.assertEqual(body.get('name'), 'lead_capture_test')
         self.assertEqual(body.get('categories'), ['LEAD_GENERATION'])
-        # Meta expects flow_json as a string, not an inline object.
-        self.assertIn('flow_json', body)
-        parsed = json.loads(body['flow_json']) if isinstance(
-            body['flow_json'], str) else body['flow_json']
+        self.assertIn('json_flow', body)
+        parsed = body['json_flow']
+        # Accept either an inline dict or a JSON string — Meta accepts
+        # both variants; we currently emit a dict.
+        if isinstance(parsed, str):
+            parsed = json.loads(parsed)
         self.assertEqual(parsed['version'], '7.0')
         self.assertEqual(
             sorted(s['id'] for s in parsed['screens']),
@@ -147,37 +149,42 @@ class TestMetaPublishFlow(common.TransactionCase):
         icp.set_param('comm_whatsapp.access_token', 'TEST_TOKEN')
         icp.set_param('comm_whatsapp.business_account_id', 'WABA_TEST_ID')
 
-    def test_publish_updates_json_then_posts_publish(self):
-        """Publish first pushes the current JSON to Meta's flow endpoint
-        (via a POST that carries the flow_json body), then POSTs to
-        /publish. Both calls must carry the correct Bearer token."""
+    def test_publish_status_check_then_publish_post(self):
+        """Publish first GETs the current status, then POSTs to the flow's
+        Graph URL with json_flow + status=PUBLISHED in one call."""
         self._seed()
         f = _build_lead_capture_flow(self.env)
         f.flow_id_meta = 'FLOW_ABC'
 
         with patch('odoo.addons.comm_whatsapp.models.whatsapp_flow.requests') as mock_requests:
-            # 1st: pre-publish status check (GET).
-            # 2nd: JSON update (POST).
-            # 3rd: publish (POST).
             mock_requests.get.return_value = _fake_response(
                 200, {'id': 'FLOW_ABC', 'status': 'DRAFT'})
-            mock_requests.post.side_effect = [
-                _fake_response(200, {'success': True}),   # JSON update
-                _fake_response(200, {'success': True}),   # publish
-            ]
+            mock_requests.post.return_value = _fake_response(
+                200, {'success': True})
             f.action_publish_flow()
 
-        # Two POSTs total.
-        self.assertGreaterEqual(mock_requests.post.call_count, 1)
+        # One GET (status check) + one POST (update+publish).
+        self.assertEqual(mock_requests.get.call_count, 1)
+        self.assertEqual(mock_requests.post.call_count, 1)
         # Every call carried the bearer token.
         for c in list(mock_requests.post.call_args_list) + \
                  list(mock_requests.get.call_args_list):
             self.assertEqual(c.kwargs['headers']['Authorization'],
                              'Bearer TEST_TOKEN')
-        # At least one POST hit the /publish URL.
-        publish_calls = [c for c in mock_requests.post.call_args_list
-                         if '/publish' in c.args[0]]
-        self.assertEqual(len(publish_calls), 1)
+        # The POST must hit the flow's Graph URL, carry json_flow +
+        # status=PUBLISHED, and target the exact flow_id.
+        post_call = mock_requests.post.call_args
+        self.assertIn('FLOW_ABC', post_call.args[0])
+        body = post_call.kwargs.get('json') or {}
+        self.assertEqual(body.get('status'), 'PUBLISHED')
+        self.assertIn('json_flow', body)
+        # Should reflect our built flow.
+        parsed = body['json_flow']
+        if isinstance(parsed, str):
+            parsed = json.loads(parsed)
+        self.assertEqual(len(parsed.get('screens', [])), 2)
+        # Local status flipped to PUBLISHED.
+        self.assertEqual(f.status, 'PUBLISHED')
 
     def test_publish_refuses_non_draft(self):
         """When Meta reports the flow is already PUBLISHED, we surface
