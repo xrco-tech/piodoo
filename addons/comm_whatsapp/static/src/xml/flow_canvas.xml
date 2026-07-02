@@ -61,7 +61,7 @@
                         </button>
                     </div>
 
-                    <t t-if="state.panelMode !== 'values' and !selectedScreen">
+                    <t t-if="state.panelMode === 'props' and !selectedScreen">
                         <div class="o_flow_props_empty">
                             <i class="fa fa-hand-pointer-o fa-2x mb-2"/>
                             <div>Click a screen on the canvas to see its details.</div>
