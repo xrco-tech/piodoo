@@ -186,6 +186,41 @@ class TestMetaPublishFlow(common.TransactionCase):
         # Local status flipped to PUBLISHED.
         self.assertEqual(f.status, 'PUBLISHED')
 
+    def test_publish_uses_account_creds_not_system_params(self):
+        """Regression: earlier action_publish_flow read the access token
+        straight from ir.config_parameter, so a flow bound to an account
+        with a fresh token was still published with the (expired) system
+        param token. Ensure the resolver is used so account_id wins."""
+        # Legacy system params — they must be ignored when the flow has
+        # its own account.
+        self._seed()
+        acc = self.env['comm.whatsapp.account'].create({
+            'name': 'Fresh WABA', 'phone_number': '+27600000001',
+            'phone_number_id': 'PNID_FRESH',
+            'business_account_id': 'ACC_BIZ',
+            'access_token': 'FRESH_TOKEN',
+        })
+        f = _build_lead_capture_flow(self.env)
+        f.account_id = acc.id
+        f.flow_id_meta = 'FLOW_FRESH'
+
+        with patch('odoo.addons.comm_whatsapp.models.whatsapp_flow.requests') as mock_requests:
+            mock_requests.get.return_value = _fake_response(
+                200, {'id': 'FLOW_FRESH', 'status': 'DRAFT'})
+            mock_requests.post.return_value = _fake_response(
+                200, {'success': True})
+            f.action_publish_flow()
+
+        # Every request must carry the account's fresh token, NOT
+        # TEST_TOKEN from the system params.
+        for c in list(mock_requests.get.call_args_list) + \
+                 list(mock_requests.post.call_args_list):
+            self.assertEqual(
+                c.kwargs['headers']['Authorization'],
+                'Bearer FRESH_TOKEN',
+                "publish used the wrong token — the resolver was bypassed",
+            )
+
     def test_publish_refuses_non_draft(self):
         """When Meta reports the flow is already PUBLISHED, we surface
         an error notification without hitting /publish."""

@@ -1784,11 +1784,8 @@ class WhatsAppFlow(models.Model):
             }
         
         try:
-            IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                          IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
-            business_account_id = IrConfigParameter.get_param('comm_whatsapp.business_account_id')
-            
+            access_token, business_account_id, _src = self._resolve_meta_creds()
+
             if not access_token or not business_account_id:
                 return {
                     'type': 'ir.actions.client',
