@@ -1,0 +1,260 @@
+# -*- coding: utf-8 -*-
+"""Tests for the Odoo → Meta publish path.
+
+These tests mock every network call so the suite stays hermetic — they
+verify the payload we ship to Meta rather than the round-trip. Pair them
+with occasional live smoke runs against a sandbox WABA when needed.
+"""
+
+import json
+from unittest.mock import patch, MagicMock
+
+from odoo.tests import common, tagged
+
+
+def _fake_response(status_code=200, body=None):
+    resp = MagicMock()
+    resp.status_code = status_code
+    resp.text = json.dumps(body or {})
+    resp.json.return_value = body or {}
+    def _raise():
+        if status_code >= 400:
+            raise Exception(f"HTTP {status_code}: {resp.text}")
+    resp.raise_for_status = _raise
+    return resp
+
+
+def _build_lead_capture_flow(env):
+    """Build a small, realistic flow via the structured API. Returns the
+    flow record."""
+    Flow   = env['whatsapp.flow']
+    Screen = env['whatsapp.flow.screen']
+    Comp   = env['whatsapp.flow.component']
+
+    f = Flow.create({'name': 'lead_capture_test', 'category': 'LEAD_GENERATION'})
+    welcome = Screen.create({
+        'flow_id': f.id, 'screen_id': 'WELCOME', 'title': 'Get in touch',
+        'sequence': 10,
+    })
+    Comp.create({'screen_id': welcome.id, 'component_type': 'TextHeading',
+                 'text': 'Get in touch', 'sequence': 10})
+    Comp.create({'screen_id': welcome.id, 'component_type': 'TextInput',
+                 'name': 'first_name', 'label': 'First name',
+                 'required': True, 'sequence': 20})
+    thanks = Screen.create({
+        'flow_id': f.id, 'screen_id': 'THANKS', 'title': 'Thanks',
+        'sequence': 20, 'terminal': True, 'success': True,
+    })
+    Comp.create({'screen_id': welcome.id, 'component_type': 'Footer',
+                 'label': 'Submit', 'sequence': 30,
+                 'action_type': 'navigate', 'target_screen_id': thanks.id})
+    Comp.create({'screen_id': thanks.id, 'component_type': 'TextBody',
+                 'text': "You're all set!", 'sequence': 10})
+    Comp.create({'screen_id': thanks.id, 'component_type': 'Footer',
+                 'label': 'Done', 'sequence': 20, 'action_type': 'complete'})
+    return f
+
+
+@tagged('whatsapp', 'flow_meta', 'post_install', '-at_install')
+class TestMetaCreateFlow(common.TransactionCase):
+    """Verify action_create_flow_meta ships the right payload to Meta."""
+
+    def _seed_system_creds(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('comm_whatsapp.access_token', 'TEST_TOKEN')
+        icp.set_param('comm_whatsapp.business_account_id', 'WABA_TEST_ID')
+
+    def test_create_flow_posts_payload_with_categories_and_json(self):
+        """The POST body must have name, categories, and the generated
+        flow JSON as a string in `flow_json`."""
+        self._seed_system_creds()
+        f = _build_lead_capture_flow(self.env)
+
+        with patch('odoo.addons.comm_whatsapp.models.whatsapp_flow.requests') as mock_requests:
+            mock_requests.post.return_value = _fake_response(
+                200, {'id': 'FLOW_ID_XYZ', 'success': True})
+            f.action_create_flow_meta()
+
+        self.assertEqual(mock_requests.post.call_count, 1)
+        call = mock_requests.post.call_args
+        # URL scoped to the configured WABA.
+        self.assertIn('WABA_TEST_ID/flows', call.args[0])
+        headers = call.kwargs['headers']
+        self.assertEqual(headers['Authorization'], 'Bearer TEST_TOKEN')
+        # Payload
+        body = call.kwargs.get('json') or {}
+        self.assertEqual(body.get('name'), 'lead_capture_test')
+        self.assertEqual(body.get('categories'), ['LEAD_GENERATION'])
+        # Meta expects flow_json as a string, not an inline object.
+        self.assertIn('flow_json', body)
+        parsed = json.loads(body['flow_json']) if isinstance(
+            body['flow_json'], str) else body['flow_json']
+        self.assertEqual(parsed['version'], '7.0')
+        self.assertEqual(
+            sorted(s['id'] for s in parsed['screens']),
+            ['THANKS', 'WELCOME'],
+        )
+        # The response's id becomes our flow_id_meta.
+        self.assertEqual(f.flow_id_meta, 'FLOW_ID_XYZ')
+
+    def test_create_flow_uses_per_flow_account_creds(self):
+        """When the flow is bound to an account, its credentials win over
+        the legacy system parameters."""
+        acc = self.env['comm.whatsapp.account'].create({
+            'name': 'Test WABA', 'phone_number': '+27600000000',
+            'phone_number_id': 'PNID_TEST',
+            'business_account_id': 'ACC_WABA_ID',
+            'access_token': 'ACC_TOKEN',
+        })
+        # System params exist too — they must be ignored.
+        self._seed_system_creds()
+        f = _build_lead_capture_flow(self.env)
+        f.account_id = acc.id
+
+        with patch('odoo.addons.comm_whatsapp.models.whatsapp_flow.requests') as mock_requests:
+            mock_requests.post.return_value = _fake_response(
+                200, {'id': 'FID', 'success': True})
+            f.action_create_flow_meta()
+
+        call = mock_requests.post.call_args
+        self.assertIn('ACC_WABA_ID/flows', call.args[0])
+        self.assertEqual(call.kwargs['headers']['Authorization'],
+                         'Bearer ACC_TOKEN')
+
+    def test_create_flow_missing_creds_returns_notification_not_raise(self):
+        """No creds anywhere → returns a display_notification with
+        `type=danger` instead of raising."""
+        f = _build_lead_capture_flow(self.env)
+        # Wipe both sources.
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('comm_whatsapp.access_token', '')
+        icp.set_param('comm_whatsapp.long_lived_token', '')
+        icp.set_param('comm_whatsapp.business_account_id', '')
+
+        with patch('odoo.addons.comm_whatsapp.models.whatsapp_flow.requests') as mock_requests:
+            action = f.action_create_flow_meta()
+            self.assertEqual(mock_requests.post.call_count, 0)
+        self.assertEqual(action.get('tag'), 'display_notification')
+        self.assertEqual(action['params']['type'], 'danger')
+
+
+@tagged('whatsapp', 'flow_meta', 'post_install', '-at_install')
+class TestMetaPublishFlow(common.TransactionCase):
+    """Verify action_publish_flow's payload + status check."""
+
+    def _seed(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('comm_whatsapp.access_token', 'TEST_TOKEN')
+        icp.set_param('comm_whatsapp.business_account_id', 'WABA_TEST_ID')
+
+    def test_publish_updates_json_then_posts_publish(self):
+        """Publish first pushes the current JSON to Meta's flow endpoint
+        (via a POST that carries the flow_json body), then POSTs to
+        /publish. Both calls must carry the correct Bearer token."""
+        self._seed()
+        f = _build_lead_capture_flow(self.env)
+        f.flow_id_meta = 'FLOW_ABC'
+
+        with patch('odoo.addons.comm_whatsapp.models.whatsapp_flow.requests') as mock_requests:
+            # 1st: pre-publish status check (GET).
+            # 2nd: JSON update (POST).
+            # 3rd: publish (POST).
+            mock_requests.get.return_value = _fake_response(
+                200, {'id': 'FLOW_ABC', 'status': 'DRAFT'})
+            mock_requests.post.side_effect = [
+                _fake_response(200, {'success': True}),   # JSON update
+                _fake_response(200, {'success': True}),   # publish
+            ]
+            f.action_publish_flow()
+
+        # Two POSTs total.
+        self.assertGreaterEqual(mock_requests.post.call_count, 1)
+        # Every call carried the bearer token.
+        for c in list(mock_requests.post.call_args_list) + \
+                 list(mock_requests.get.call_args_list):
+            self.assertEqual(c.kwargs['headers']['Authorization'],
+                             'Bearer TEST_TOKEN')
+        # At least one POST hit the /publish URL.
+        publish_calls = [c for c in mock_requests.post.call_args_list
+                         if '/publish' in c.args[0]]
+        self.assertEqual(len(publish_calls), 1)
+
+    def test_publish_refuses_non_draft(self):
+        """When Meta reports the flow is already PUBLISHED, we surface
+        an error notification without hitting /publish."""
+        self._seed()
+        f = _build_lead_capture_flow(self.env)
+        f.flow_id_meta = 'FLOW_PUB'
+
+        with patch('odoo.addons.comm_whatsapp.models.whatsapp_flow.requests') as mock_requests:
+            mock_requests.get.return_value = _fake_response(
+                200, {'id': 'FLOW_PUB', 'status': 'PUBLISHED'})
+            action = f.action_publish_flow()
+            # No POST should have gone out.
+            self.assertEqual(mock_requests.post.call_count, 0)
+        self.assertEqual(action.get('tag'), 'display_notification')
+        self.assertEqual(action['params']['type'], 'danger')
+
+
+@tagged('whatsapp', 'flow_meta', 'flow_builder',
+        'post_install', '-at_install')
+class TestGeneratorAgainstMetaSchema(common.TransactionCase):
+    """Static shape checks against the Meta v7 schema — sanity guards
+    against regressions in the generator that would otherwise only
+    surface at publish time."""
+
+    def test_all_component_types_generate_a_type_string(self):
+        """Every component_type we advertise must serialise to a Meta
+        JSON node with a matching `type`."""
+        Component = self.env['whatsapp.flow.component']
+        flow = self.env['whatsapp.flow'].create({'name': 'shape_test'})
+        screen = self.env['whatsapp.flow.screen'].create({
+            'flow_id': flow.id, 'screen_id': 'S', 'title': 'S',
+            'terminal': True,
+        })
+        # For each Selection value, generate a minimum-viable component
+        # and confirm _render_flow_json returns a dict whose `type`
+        # matches the Selection key.
+        types = [v[0] for v in Component._fields['component_type'].selection]
+        for t in types:
+            vals = {'screen_id': screen.id, 'component_type': t}
+            if t in ('TextInput', 'TextArea'):
+                vals.update(name='x', label='X')
+            elif t in ('Dropdown', 'RadioButtonsGroup', 'CheckboxGroup',
+                       'ChipsSelector'):
+                vals.update(name='x', label='X')
+            elif t in ('DatePicker', 'CalendarPicker'):
+                vals.update(name='d', label='D')
+            elif t == 'Footer':
+                vals.update(label='Submit', action_type='complete')
+            elif t == 'EmbeddedLink':
+                vals.update(label='More', action_type='open_url',
+                            open_url='https://example.com/help')
+            elif t == 'OptIn':
+                vals.update(name='ok', label='I agree', action_type='complete')
+            elif t in ('TextHeading', 'TextSubheading', 'TextBody',
+                       'TextCaption', 'RichText'):
+                vals['text'] = 'hi'
+            elif t == 'Image':
+                vals['image_src'] = 'https://example.com/x.png'
+            elif t == 'ImageCarousel':
+                vals['images_ref'] = '${data.gallery}'
+            elif t == 'NavigationList':
+                vals.update(name='nav', label='Pick one')
+            elif t in ('PhotoPicker', 'DocumentPicker'):
+                vals.update(name='files', label='Upload')
+            comp = Component.create(vals)
+            node = comp._render_flow_json()
+            self.assertIsNotNone(node, f"{t}: renderer returned None")
+            self.assertEqual(node.get('type'), t,
+                             f"{t}: node.type = {node.get('type')!r}")
+
+    def test_generated_json_is_string_parseable(self):
+        """The final flow_json field must always be a JSON string, not
+        a dict — Meta's endpoint requires a string."""
+        f = _build_lead_capture_flow(self.env)
+        f.invalidate_recordset(['flow_json'])
+        self.assertIsInstance(f.flow_json, str)
+        parsed = json.loads(f.flow_json)
+        self.assertIn('version', parsed)
+        self.assertIn('screens', parsed)

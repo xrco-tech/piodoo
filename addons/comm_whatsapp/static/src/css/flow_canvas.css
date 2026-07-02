@@ -621,6 +621,50 @@
     order: 0;
     flex: 1;
 }
+.o_flow_preview_chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 6px 0;
+}
+.o_flow_preview_chip {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid #cfd4dc;
+    background: #fff;
+    font-size: 13px;
+    color: #111;
+    cursor: pointer;
+    user-select: none;
+    transition: background .12s, border-color .12s;
+}
+.o_flow_preview_chip:hover { border-color: #16a34a; }
+.o_flow_preview_chip_active {
+    background: #d1fae5;
+    border-color: #16a34a;
+    color: #065f46;
+    font-weight: 600;
+}
+.o_flow_preview_navlist {
+    margin: 8px 0;
+    border-top: 1px solid #e5e7eb;
+}
+.o_flow_preview_navlist_row {
+    display: flex;
+    flex-direction: column;
+    padding: 14px 4px;
+    border-bottom: 1px solid #e5e7eb;
+    position: relative;
+    cursor: pointer;
+}
+.o_flow_preview_navlist_row:hover { background: #f9fafb; }
+.o_flow_preview_navlist_title { font-size: 15px; color: #111; font-weight: 500; }
+.o_flow_preview_navlist_desc  { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.o_flow_preview_navlist_chev {
+    position: absolute; right: 6px; top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af; font-size: 22px;
+}
 .o_flow_preview_upload {
     margin: 8px 0;
     border: 2px dashed #aaa;

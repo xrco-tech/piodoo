@@ -52,6 +52,20 @@
                                 </group>
                             </page>
 
+                            <!-- IMAGE CAROUSEL -->
+                            <page string="Carousel" name="carousel"
+                                  invisible="component_type != 'ImageCarousel'">
+                                <group>
+                                    <field name="images_ref" placeholder="${data.gallery}"/>
+                                    <field name="image_scale"/>
+                                </group>
+                                <div class="text-muted small mb-1">
+                                    Or an inline JSON list of images:
+                                </div>
+                                <field name="images_json" widget="text" nolabel="1"
+                                       placeholder='[{"src":"data:…","alt-text":"Sample"}]'/>
+                            </page>
+
                             <!-- TEXT INPUT -->
                             <page string="Input Settings" name="input"
                                   invisible="component_type not in ['TextInput','TextArea']">

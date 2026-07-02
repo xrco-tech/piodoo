@@ -235,6 +235,9 @@
                                                 </div>
                                                 <div t-else="" class="o_flow_preview_image_placeholder">🖼 Image</div>
                                             </t>
+                                            <t t-elif="c.component_type === 'ImageCarousel'">
+                                                <div class="o_flow_preview_image_placeholder">🎠 Image Carousel</div>
+                                            </t>
                                             <!-- Inputs (interactive) -->
                                             <t t-elif="c.component_type === 'TextInput'">
                                                 <div class="o_flow_preview_field">
@@ -292,6 +295,32 @@
                                                                    t-on-change="() => this._previewSetValue(c.name, o.id)"/>
                                                             <span t-esc="o.title"/>
                                                         </label>
+                                                    </t>
+                                                </div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'ChipsSelector'">
+                                                <div class="o_flow_preview_field">
+                                                    <div class="o_flow_preview_label">
+                                                        <t t-esc="c.label"/>
+                                                        <span t-if="c.required" class="o_flow_preview_req">*</span>
+                                                    </div>
+                                                    <div class="o_flow_preview_chips">
+                                                        <t t-foreach="c.options" t-as="o" t-key="o.id">
+                                                            <span t-att-class="'o_flow_preview_chip' + (_previewChecked(c.name, o.id) ? ' o_flow_preview_chip_active' : '')"
+                                                                  t-on-click="() => this._previewToggleCheck(c.name, o.id)"
+                                                                  t-esc="o.title"/>
+                                                        </t>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                            <t t-elif="c.component_type === 'NavigationList'">
+                                                <div class="o_flow_preview_navlist">
+                                                    <t t-foreach="c.options" t-as="o" t-key="o.id">
+                                                        <div class="o_flow_preview_navlist_row">
+                                                            <div class="o_flow_preview_navlist_title" t-esc="o.title"/>
+                                                            <div t-if="o.description" class="o_flow_preview_navlist_desc" t-esc="o.description"/>
+                                                            <span class="o_flow_preview_navlist_chev">›</span>
+                                                        </div>
                                                     </t>
                                                 </div>
                                             </t>

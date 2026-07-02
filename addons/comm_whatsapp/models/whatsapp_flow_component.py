@@ -25,14 +25,18 @@ NAME_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 # Set of component types that are user-input-bearing (need a name + label).
 INPUT_TYPES = {
     'TextInput', 'TextArea', 'Dropdown', 'RadioButtonsGroup', 'CheckboxGroup',
-    'DatePicker', 'CalendarPicker', 'OptIn', 'PhotoPicker', 'DocumentPicker',
+    'ChipsSelector', 'DatePicker', 'CalendarPicker', 'OptIn',
+    'PhotoPicker', 'DocumentPicker',
 }
 
 # Set of component types that carry an on-click-action (navigate/complete/etc).
-ACTION_TYPES = {'Footer', 'EmbeddedLink', 'OptIn'}
+ACTION_TYPES = {'Footer', 'EmbeddedLink', 'OptIn', 'NavigationList'}
 
-# Set of component types that need an `options` list (Dropdown / Radio / Check).
-CHOICE_TYPES = {'Dropdown', 'RadioButtonsGroup', 'CheckboxGroup'}
+# Set of component types that need an `options` list.
+CHOICE_TYPES = {
+    'Dropdown', 'RadioButtonsGroup', 'CheckboxGroup', 'ChipsSelector',
+    'NavigationList',
+}
 
 
 class WhatsAppFlowComponent(models.Model):
@@ -57,18 +61,21 @@ class WhatsAppFlowComponent(models.Model):
         ('TextCaption',       'Text Caption'),
         ('RichText',          'Rich Text (Markdown)'),
         ('Image',             'Image'),
+        ('ImageCarousel',     'Image Carousel'),
         # Inputs
         ('TextInput',         'Text Input'),
         ('TextArea',          'Text Area'),
         ('Dropdown',          'Dropdown'),
         ('RadioButtonsGroup', 'Radio Buttons'),
         ('CheckboxGroup',     'Checkboxes'),
+        ('ChipsSelector',     'Chips Selector'),
         ('DatePicker',        'Date Picker'),
         ('CalendarPicker',    'Calendar Picker (inline)'),
         ('OptIn',             'Opt-In Checkbox'),
         ('PhotoPicker',       'Photo Picker'),
         ('DocumentPicker',    'Document Picker'),
         # Navigation / containers
+        ('NavigationList',    'Navigation List'),
         ('EmbeddedLink',      'Embedded Link'),
         ('Footer',            'Footer (CTA Button)'),
     ], string='Component Type', required=True, default='TextBody')
@@ -163,7 +170,22 @@ class WhatsAppFlowComponent(models.Model):
     max_file_size_kb = fields.Integer(string='Max File Size (KB)',
         help="Maximum size in kilobytes (e.g. 1024 for 1 MB). 0 = no limit.")
 
-    # ── Action fields (Footer, EmbeddedLink, OptIn) ─────────────────────
+    # ── ImageCarousel-specific ─────────────────────────────────────────
+    # Meta accepts either an inline `images` array or a `${...}` reference
+    # from the screen's data schema. We store JSON so range/scale info
+    # round-trips, following the same pattern used for choice options.
+    images_json = fields.Text(
+        string='Images JSON',
+        help="JSON list of {src, alt-text} objects for ImageCarousel. "
+             "Leave empty when the images come from a dynamic data ref.",
+    )
+    images_ref = fields.Char(
+        string='Images Data Ref',
+        help="Dynamic reference (e.g. ${data.gallery}) when images are "
+             "supplied by the screen's data schema.",
+    )
+
+    # ── Action fields (Footer, EmbeddedLink, OptIn, NavigationList) ────
     action_type = fields.Selection([
         ('navigate',      'Navigate to another screen'),
         ('complete',      'Complete the flow (terminal CTA)'),
@@ -266,13 +288,14 @@ class WhatsAppFlowComponent(models.Model):
                 node["max-length"] = self.max_chars
             return node
 
-        if t == 'Dropdown' or t == 'RadioButtonsGroup' or t == 'CheckboxGroup':
+        if t == 'Dropdown' or t == 'RadioButtonsGroup' or t == 'CheckboxGroup' \
+                or t == 'ChipsSelector':
             node["data-source"] = [
                 opt._render_option()
                 for opt in self.option_ids.sorted(key=lambda o: (o.sequence, o.id))
                 if opt.enabled
             ]
-            if t == 'CheckboxGroup':
+            if t in ('CheckboxGroup', 'ChipsSelector'):
                 if self.min_selected:
                     node["min-selected-items"] = self.min_selected
                 if self.max_selected:
@@ -316,6 +339,34 @@ class WhatsAppFlowComponent(models.Model):
                 node["max-uploaded-documents"] = self.max_uploaded
             if self.max_file_size_kb:
                 node["max-file-size-kb"] = self.max_file_size_kb
+            return node
+
+        if t == 'ImageCarousel':
+            # A dynamic data ref wins; otherwise fall back to the inline
+            # JSON list. Blank both = empty carousel (Meta accepts it).
+            if self.images_ref:
+                node["images"] = self.images_ref
+            elif self.images_json:
+                try:
+                    node["images"] = json.loads(self.images_json)
+                except (ValueError, TypeError):
+                    node["images"] = []
+            else:
+                node["images"] = []
+            if self.image_scale:
+                node["scale-type"] = self.image_scale
+            return node
+
+        if t == 'NavigationList':
+            # Each option becomes a NavigationItem row whose on-click-action
+            # navigates to a screen. We reuse the choice options and store
+            # the target screen id on the option via `description` when set;
+            # simple v1 keeps this optional and lets the JSON be edited raw.
+            node["list-items"] = [
+                opt._render_option()
+                for opt in self.option_ids.sorted(key=lambda o: (o.sequence, o.id))
+                if opt.enabled
+            ]
             return node
 
         return node

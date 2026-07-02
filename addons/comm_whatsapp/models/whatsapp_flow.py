@@ -953,9 +953,11 @@ class WhatsAppFlow(models.Model):
 
     _KNOWN_COMPONENT_TYPES = {
         'TextHeading', 'TextSubheading', 'TextBody', 'TextCaption', 'RichText',
-        'Image', 'TextInput', 'TextArea', 'Dropdown', 'RadioButtonsGroup',
-        'CheckboxGroup', 'DatePicker', 'CalendarPicker', 'OptIn',
-        'PhotoPicker', 'DocumentPicker', 'EmbeddedLink', 'Footer',
+        'Image', 'ImageCarousel',
+        'TextInput', 'TextArea', 'Dropdown', 'RadioButtonsGroup',
+        'CheckboxGroup', 'ChipsSelector', 'DatePicker', 'CalendarPicker',
+        'OptIn', 'PhotoPicker', 'DocumentPicker',
+        'NavigationList', 'EmbeddedLink', 'Footer',
     }
 
     def _flatten_form_wrappers(self, children):
@@ -988,6 +990,21 @@ class WhatsAppFlow(models.Model):
                     for child in self._flatten_form_wrappers(case_children or []):
                         if isinstance(child, dict):
                             hint = f"[Switch case: {case_name}]"
+                            existing = child.get('helper-text') or ''
+                            child['helper-text'] = (
+                                f"{hint} {existing}".strip() if existing else hint
+                            )
+                        out.append(child)
+            elif ctype == 'If':
+                # Meta v7 conditional. Flatten both `then` and `else` (if
+                # present) with an inline hint so authors don't lose either
+                # branch on import.
+                for branch, key in (('then', 'then'), ('else', 'else')):
+                    for child in self._flatten_form_wrappers(
+                        c.get(key) or []
+                    ):
+                        if isinstance(child, dict):
+                            hint = f"[If:{branch}]"
                             existing = child.get('helper-text') or ''
                             child['helper-text'] = (
                                 f"{hint} {existing}".strip() if existing else hint
@@ -1178,7 +1195,8 @@ class WhatsAppFlow(models.Model):
             if 'max-chars'  in c_json: vals['max_chars']  = c_json['max-chars']
             if 'init-value' in c_json: vals['init_value'] = c_json['init-value']
 
-        elif ctype in ('Dropdown', 'RadioButtonsGroup', 'CheckboxGroup'):
+        elif ctype in ('Dropdown', 'RadioButtonsGroup', 'CheckboxGroup',
+                       'ChipsSelector'):
             if 'init-value'         in c_json:
                 iv = c_json['init-value']
                 vals['init_value'] = (json.dumps(iv) if isinstance(iv, list)
@@ -1188,6 +1206,23 @@ class WhatsAppFlow(models.Model):
             if 'max-selected-items' in c_json:
                 vals['max_selected'] = c_json['max-selected-items']
             options_raw = c_json.get('data-source') or []
+
+        elif ctype == 'NavigationList':
+            # Rows come through as a `list-items` array (same shape as
+            # data-source), so treat them like choice options.
+            options_raw = c_json.get('list-items') or []
+
+        elif ctype == 'ImageCarousel':
+            imgs = c_json.get('images')
+            if isinstance(imgs, str):
+                vals['images_ref'] = imgs
+            elif isinstance(imgs, list):
+                try:
+                    vals['images_json'] = json.dumps(imgs, indent=2)
+                except (TypeError, ValueError):
+                    pass
+            if 'scale-type' in c_json:
+                vals['image_scale'] = c_json['scale-type']
 
         elif ctype == 'DatePicker':
             if 'min-date'   in c_json: vals['min_date']   = c_json['min-date']
