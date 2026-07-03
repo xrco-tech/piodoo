@@ -1,28 +1,66 @@
-/** Incoming WhatsApp call popup – listens to bus and shows Accept/Decline dialog */
+/**
+ * Incoming WhatsApp call popup + WebRTC pipeline.
+ *
+ * Listens on the Odoo bus for `whatsapp_incoming_call` events, shows a
+ * popup with Accept/Decline, and (on Accept) drives a real
+ * RTCPeerConnection so DTLS-SRTP actually establishes and audio flows.
+ *
+ * Flow when a call comes in:
+ *   1. Meta webhook stores the SDP offer on whatsapp.call.log.
+ *   2. Server pushes { call_log_id, sdp_offer, partner_name, ... }
+ *      over the whatsapp_incoming_call bus channel.
+ *   3. This module shows a popup.
+ *   4. User clicks Accept →
+ *        - getUserMedia({audio: true}) captures the microphone.
+ *        - Create RTCPeerConnection with STUN.
+ *        - setRemoteDescription(offer).
+ *        - createAnswer() → setLocalDescription(answer).
+ *        - Wait for ICE gathering to complete (short timeout).
+ *        - POST answer SDP to /whatsapp/call/answer/<id>.
+ *   5. Server forwards answer to Meta with action=accept.
+ *   6. Meta establishes DTLS-SRTP; remote audio arrives via pc.ontrack.
+ *   7. An <audio> element plays the remote stream.
+ *
+ * Hangup is exposed as a floating pill in the top-right corner while
+ * a call is active.
+ */
 
 (function () {
     "use strict";
 
-    var CHANNEL = "whatsapp_incoming_call";
     var POPUP_ID = "comm_whatsapp_calling_incoming_popup";
+    var HUD_ID   = "comm_whatsapp_calling_call_hud";
+    var AUDIO_ID = "comm_whatsapp_calling_remote_audio";
+    var LOG_TAG  = "[wa-call]";
 
-    function getBusService() {
-        if (typeof odoo === "undefined") return null;
-        try {
-            if (odoo.__WOWL_DEBUG__ && odoo.__WOWL_DEBUG__.services && odoo.__WOWL_DEBUG__.services.bus_service) {
-                return odoo.__WOWL_DEBUG__.services.bus_service;
-            }
-            if (odoo.env && odoo.env.services) {
-                return odoo.env.services.bus_service || (odoo.env.services.get && odoo.env.services.get("bus_service"));
-            }
-        } catch (e) {}
-        return null;
+    // STUN only for now — Meta's SDP typically carries its own TURN
+    // candidates. If you need TURN for restrictive NATs, deploy coturn
+    // and add its config to iceServers below.
+    var ICE_SERVERS = [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+    ];
+
+    // ── State ────────────────────────────────────────────────────────────
+    // One active call at a time. Key = call_log_id.
+    var activeCall = null;   // { id, pc, localStream, remoteStream, hangupSent }
+
+    function log() {
+        try { console.log.apply(console, [LOG_TAG].concat([].slice.call(arguments))); } catch (e) {}
+    }
+    function warn() {
+        try { console.warn.apply(console, [LOG_TAG].concat([].slice.call(arguments))); } catch (e) {}
     }
 
-    function hidePopup(callLogId) {
-        var el = document.getElementById(POPUP_ID);
-        if (el) el.remove();
-        if (callLogId && window._waCallPopups) delete window._waCallPopups[callLogId];
+    // ── Odoo bus + notification helpers ──────────────────────────────────
+    function notify(message, type) {
+        try {
+            if (odoo && odoo.env && odoo.env.services && odoo.env.services.notification) {
+                odoo.env.services.notification.add(message, { type: type || "info" });
+                return;
+            }
+        } catch (e) {}
+        log(message);
     }
 
     function callRpc(url, params) {
@@ -33,9 +71,7 @@
             params: params,
             id: Math.floor(Math.random() * 1e9),
         });
-        var csrfToken = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute("content");
         var headers = { "Content-Type": "application/json" };
-        if (csrfToken) headers["X-CSRF-TOKEN"] = csrfToken;
         return fetch(url, {
             method: "POST",
             credentials: "same-origin",
@@ -44,192 +80,308 @@
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                if (data.error) throw new Error(data.error.data && data.error.data.message || data.error.message || "RPC error");
+                if (data.error) {
+                    throw new Error((data.error.data && data.error.data.message) || data.error.message || "RPC error");
+                }
                 return data.result;
             });
     }
 
-    function acceptCall(callLogId, popupEl) {
-        if (!callLogId) return;
-        var btn = popupEl && popupEl.querySelector("[data-action=accept]");
-        if (btn) { btn.disabled = true; btn.textContent = "Accepting…"; }
-        callRpc("/whatsapp/call/answer/" + callLogId, {})
-            .then(function () {
-                hidePopup(callLogId);
-                if (typeof odoo !== "undefined" && odoo.env && odoo.env.services && odoo.env.services.notification) {
-                    odoo.env.services.notification.add("Call accepted.", { type: "success" });
-                }
-            })
-            .catch(function (err) {
-                if (btn) { btn.disabled = false; btn.textContent = "Accept"; }
-                if (typeof odoo !== "undefined" && odoo.env && odoo.env.services && odoo.env.services.notification) {
-                    odoo.env.services.notification.add("Accept failed: " + (err && err.message ? err.message : err), { type: "danger" });
-                }
-            });
+    // ── Popup UI ─────────────────────────────────────────────────────────
+    function ensureRemoteAudioEl() {
+        var el = document.getElementById(AUDIO_ID);
+        if (el) return el;
+        el = document.createElement("audio");
+        el.id = AUDIO_ID;
+        el.autoplay = true;
+        el.setAttribute("playsinline", "");
+        el.style.position = "fixed";
+        el.style.left = "-9999px";
+        document.body.appendChild(el);
+        return el;
     }
 
-    function declineCall(callLogId, popupEl) {
-        if (!callLogId) return;
-        var btn = popupEl && popupEl.querySelector("[data-action=decline]");
-        if (btn) { btn.disabled = true; btn.textContent = "Declining…"; }
-        callRpc("/whatsapp/call/decline/" + callLogId, {})
-            .then(function () {
-                hidePopup(callLogId);
-                if (typeof odoo !== "undefined" && odoo.env && odoo.env.services && odoo.env.services.notification) {
-                    odoo.env.services.notification.add("Call declined.", { type: "info" });
-                }
-            })
-            .catch(function (err) {
-                if (btn) { btn.disabled = false; btn.textContent = "Decline"; }
-                if (typeof odoo !== "undefined" && odoo.env && odoo.env.services && odoo.env.services.notification) {
-                    odoo.env.services.notification.add("Decline failed: " + (err && err.message ? err.message : err), { type: "danger" });
-                }
-            });
+    function hidePopup() {
+        var el = document.getElementById(POPUP_ID);
+        if (el) el.remove();
     }
 
     function showPopup(payload) {
-        var callLogId = payload.call_log_id;
-        if (!callLogId) return;
-        window._waCallPopups = window._waCallPopups || {};
-        if (window._waCallPopups[callLogId]) {
+        hidePopup();
+        var wrap = document.createElement("div");
+        wrap.id = POPUP_ID;
+        wrap.style.position = "fixed";
+        wrap.style.top = "20px";
+        wrap.style.right = "20px";
+        wrap.style.width = "340px";
+        wrap.style.background = "#111827";
+        wrap.style.color = "#fff";
+        wrap.style.borderRadius = "12px";
+        wrap.style.boxShadow = "0 10px 30px rgba(0,0,0,0.35)";
+        wrap.style.zIndex = "10000";
+        wrap.style.overflow = "hidden";
+        wrap.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+        var body = document.createElement("div");
+        body.style.padding = "14px 16px";
+        body.innerHTML =
+            '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:#25D366;font-weight:700;margin-bottom:6px;">' +
+            '📞 Incoming WhatsApp call</div>' +
+            '<div style="font-size:15px;font-weight:600;">' + escapeHtml(payload.partner_name || "Unknown") + '</div>' +
+            '<div style="font-size:12px;color:#9ca3af;margin-top:2px;">' + escapeHtml(payload.from_number || "") + '</div>';
+        wrap.appendChild(body);
+
+        var actions = document.createElement("div");
+        actions.style.display = "flex";
+        actions.style.gap = "8px";
+        actions.style.padding = "0 16px 14px";
+        actions.innerHTML =
+            '<button data-action="decline" style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Decline</button>' +
+            '<button data-action="accept" style="flex:1;background:#25D366;color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Accept</button>';
+        wrap.appendChild(actions);
+
+        actions.querySelector("[data-action=decline]").addEventListener("click", function () {
+            declineCall(payload.call_log_id);
+        });
+        actions.querySelector("[data-action=accept]").addEventListener("click", function () {
+            acceptCall(payload);
+        });
+
+        document.body.appendChild(wrap);
+    }
+
+    function showHud(payload) {
+        // Floating "in call" widget with a hangup button.
+        var hud = document.getElementById(HUD_ID);
+        if (hud) hud.remove();
+        hud = document.createElement("div");
+        hud.id = HUD_ID;
+        hud.style.position = "fixed";
+        hud.style.top = "20px";
+        hud.style.right = "20px";
+        hud.style.background = "#111827";
+        hud.style.color = "#fff";
+        hud.style.padding = "10px 14px";
+        hud.style.borderRadius = "999px";
+        hud.style.boxShadow = "0 6px 18px rgba(0,0,0,0.25)";
+        hud.style.display = "flex";
+        hud.style.alignItems = "center";
+        hud.style.gap = "10px";
+        hud.style.zIndex = "10000";
+        hud.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        hud.style.fontSize = "13px";
+        hud.style.fontWeight = "600";
+        hud.innerHTML =
+            '<span style="width:8px;height:8px;background:#25D366;border-radius:50%;box-shadow:0 0 0 0 rgba(37,211,102,0.7);animation:wa-pulse 1.4s infinite;"></span>' +
+            '<span>' + escapeHtml(payload.partner_name || "In call") + '</span>' +
+            '<button data-action="hangup" style="background:#dc2626;color:#fff;border:none;border-radius:999px;width:28px;height:28px;font-weight:700;cursor:pointer;">✕</button>';
+        var style = document.createElement("style");
+        style.textContent = "@keyframes wa-pulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,0.7);}70%{box-shadow:0 0 0 10px rgba(37,211,102,0);}100%{box-shadow:0 0 0 0 rgba(37,211,102,0);}}";
+        hud.appendChild(style);
+        hud.querySelector("[data-action=hangup]").addEventListener("click", function () {
+            hangupCall(payload.call_log_id);
+        });
+        document.body.appendChild(hud);
+    }
+
+    function hideHud() {
+        var hud = document.getElementById(HUD_ID);
+        if (hud) hud.remove();
+    }
+
+    function escapeHtml(s) {
+        return String(s || "")
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    // ── WebRTC pipeline ──────────────────────────────────────────────────
+    function acceptCall(payload) {
+        if (!payload || !payload.call_log_id || !payload.sdp_offer) {
+            notify("Cannot accept: missing SDP offer.", "danger");
             return;
         }
-        window._waCallPopups[callLogId] = true;
-
-        var fromLabel = payload.partner_name || payload.from_number || "Unknown";
-        var timeLabel = payload.call_timestamp ? new Date(payload.call_timestamp).toLocaleString() : "";
-
-        var popup = document.createElement("div");
-        popup.id = POPUP_ID;
-        popup.className = "o_comm_whatsapp_calling_popup";
-        popup.innerHTML =
-            '<div class="o_wa_popup_backdrop"></div>' +
-            '<div class="o_wa_popup_box">' +
-            '  <div class="o_wa_popup_header">' +
-            '    <span class="o_wa_popup_title">Incoming WhatsApp call</span>' +
-            '    <button type="button" class="o_wa_popup_close" aria-label="Close">&times;</button>' +
-            '  </div>' +
-            '  <div class="o_wa_popup_body">' +
-            '    <p class="o_wa_popup_from"><strong>From:</strong> ' + (fromLabel.replace(/</g, "&lt;").replace(/>/g, "&gt;")) + '</p>' +
-            (timeLabel ? '<p class="o_wa_popup_time"><strong>Time:</strong> ' + timeLabel + '</p>' : '') +
-            '  </div>' +
-            '  <div class="o_wa_popup_actions">' +
-            '    <button type="button" class="btn btn-primary o_wa_btn_accept" data-action="accept">Accept</button>' +
-            '    <button type="button" class="btn btn-secondary o_wa_btn_decline" data-action="decline">Decline</button>' +
-            '  </div>' +
-            '</div>';
-
-        var box = popup.querySelector(".o_wa_popup_box");
-        var closeBtn = popup.querySelector(".o_wa_popup_close");
-        var acceptBtn = popup.querySelector("[data-action=accept]");
-        var declineBtn = popup.querySelector("[data-action=decline]");
-        var backdrop = popup.querySelector(".o_wa_popup_backdrop");
-
-        function close() {
-            hidePopup(callLogId);
+        if (activeCall) {
+            notify("Another call is in progress.", "warning");
+            return;
         }
+        hidePopup();
+        notify("Connecting…", "info");
 
-        closeBtn.addEventListener("click", close);
-        backdrop.addEventListener("click", close);
-        acceptBtn.addEventListener("click", function () { acceptCall(callLogId, box); });
-        declineBtn.addEventListener("click", function () { declineCall(callLogId, box); });
+        var call = { id: payload.call_log_id, pc: null, localStream: null, remoteStream: null, hangupSent: false };
+        activeCall = call;
 
-        document.body.appendChild(popup);
+        // 1. Microphone.
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function (stream) {
+                call.localStream = stream;
+                // 2. Peer connection.
+                var pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+                call.pc = pc;
+
+                pc.onicecandidate = function (ev) {
+                    // Meta's Calling API is non-trickle — we hand over the
+                    // full SDP once ICE gathering completes. Nothing to do
+                    // per-candidate here.
+                    if (!ev.candidate) log("ICE gathering complete");
+                };
+                pc.onconnectionstatechange = function () {
+                    log("connection state:", pc.connectionState);
+                    if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+                        teardownCall(false);
+                    }
+                };
+                pc.oniceconnectionstatechange = function () {
+                    log("ICE state:", pc.iceConnectionState);
+                };
+                pc.ontrack = function (ev) {
+                    log("ontrack:", ev.streams && ev.streams[0]);
+                    var audio = ensureRemoteAudioEl();
+                    if (ev.streams && ev.streams[0]) {
+                        audio.srcObject = ev.streams[0];
+                        call.remoteStream = ev.streams[0];
+                    }
+                };
+
+                // 3. Local tracks → PC.
+                stream.getAudioTracks().forEach(function (t) { pc.addTrack(t, stream); });
+
+                // 4. Remote offer → local answer.
+                return pc.setRemoteDescription({ type: "offer", sdp: payload.sdp_offer })
+                    .then(function () { return pc.createAnswer(); })
+                    .then(function (answer) { return pc.setLocalDescription(answer); })
+                    .then(function () { return waitForIceGathering(pc, 4000); });
+            })
+            .then(function () {
+                // 5. Ship full SDP to server → Meta.
+                return callRpc("/whatsapp/call/answer/" + call.id, {
+                    sdp_answer: call.pc.localDescription.sdp,
+                });
+            })
+            .then(function (result) {
+                if (!result || !result.success) {
+                    throw new Error((result && result.error) || "Accept failed");
+                }
+                notify("Call connected.", "success");
+                showHud(payload);
+            })
+            .catch(function (err) {
+                warn("accept failed:", err);
+                notify("Accept failed: " + (err && err.message ? err.message : err), "danger");
+                teardownCall(false);
+            });
     }
 
-    function onNotification(notifications) {
-        if (!Array.isArray(notifications)) notifications = [notifications];
-        notifications.forEach(function (n) {
-            var type, payload;
-            if (Array.isArray(n)) {
-                type = n[1];
-                payload = n[2] || n[1];
-            } else {
-                type = n.type || n.channel;
-                payload = n.payload !== undefined ? n.payload : (n.message !== undefined ? n.message : (n.data || n));
+    function waitForIceGathering(pc, timeoutMs) {
+        if (pc.iceGatheringState === "complete") return Promise.resolve();
+        return new Promise(function (resolve) {
+            var done = false;
+            function check() {
+                if (done) return;
+                if (pc.iceGatheringState === "complete") {
+                    done = true;
+                    pc.removeEventListener("icegatheringstatechange", check);
+                    resolve();
+                }
             }
-            if (payload && payload.call_log_id && (type === CHANNEL || (payload.type === CHANNEL))) {
-                showPopup(payload);
-            }
+            pc.addEventListener("icegatheringstatechange", check);
+            setTimeout(function () {
+                if (!done) {
+                    done = true;
+                    pc.removeEventListener("icegatheringstatechange", check);
+                    resolve();
+                }
+            }, timeoutMs || 4000);
         });
     }
 
-    function getSessionInfo() {
-        var s = null;
+    function declineCall(callLogId) {
+        hidePopup();
+        callRpc("/whatsapp/call/decline/" + callLogId, {})
+            .then(function () { notify("Call declined.", "info"); })
+            .catch(function (err) {
+                notify("Decline failed: " + (err && err.message ? err.message : err), "danger");
+            });
+    }
+
+    function hangupCall(callLogId) {
+        // Server-side hangup lives on the same route pattern (may be
+        // added later). For now, tear down locally and let Meta detect
+        // the peer disappearance via ICE failure.
+        teardownCall(true);
+        // Best-effort declines-as-hangup — Meta accepts "reject" on an
+        // in-progress call to end it.
+        callRpc("/whatsapp/call/decline/" + callLogId, {})
+            .catch(function () {});
+    }
+
+    function teardownCall(userInitiated) {
+        if (!activeCall) return;
+        try { activeCall.pc && activeCall.pc.close(); } catch (e) {}
         try {
-            if (typeof odoo !== "undefined" && odoo.env && odoo.env.services) {
-                s = odoo.env.services.session || (odoo.env.services.get && odoo.env.services.get("session"));
-            }
-            if (!s && typeof odoo !== "undefined" && odoo.__WOWL_DEBUG__ && odoo.__WOWL_DEBUG__.services) {
-                s = odoo.__WOWL_DEBUG__.services.session;
-            }
-            if (s) {
-                var db = s.db || s.db_name;
-                var uid = s.uid !== undefined ? s.uid : (s.user_id !== undefined ? s.user_id : (s.user && s.user.user_id));
-                if (db && uid !== undefined) return { db: db, uid: uid };
-            }
+            (activeCall.localStream && activeCall.localStream.getTracks() || [])
+                .forEach(function (t) { t.stop(); });
         } catch (e) {}
-        return null;
+        var audio = document.getElementById(AUDIO_ID);
+        if (audio) audio.srcObject = null;
+        activeCall = null;
+        hideHud();
+        if (!userInitiated) notify("Call ended.", "info");
     }
 
-    /** @returns {Promise|undefined} */
-    function addOurChannel(bus) {
-        var session = getSessionInfo();
-        if (session) {
-            var channel = JSON.stringify([session.db, CHANNEL, session.uid]);
-            if (typeof bus.addChannel === "function") {
-                return bus.addChannel(channel);
-            }
-        }
-        return callRpc("/whatsapp/call/bus_channel", {}).then(function (r) {
-            if (r && r.db !== undefined && r.uid !== undefined && typeof bus.addChannel === "function") {
-                return bus.addChannel(JSON.stringify([r.db, CHANNEL, r.uid]));
-            }
+    // ── Bus subscription ─────────────────────────────────────────────────
+    function subscribeBus() {
+        callRpc("/whatsapp/call/bus_channel", {})
+            .then(function (info) {
+                if (!info || !info.uid) return;
+                // Odoo 18 bus service auto-adds channels by name for
+                // authenticated users. The channel format matches what
+                // whatsapp_webhook.py sends: (db, "whatsapp_incoming_call", uid).
+                waitFor(function () {
+                    return typeof odoo !== "undefined" && odoo.env
+                        && odoo.env.services && odoo.env.services.bus_service;
+                }, 8000).then(function (busService) {
+                    try {
+                        busService.subscribe("whatsapp_incoming_call", function (payload) {
+                            handleBusEvent(payload);
+                        });
+                        busService.start && busService.start();
+                        log("bus subscribed");
+                    } catch (e) {
+                        warn("bus subscribe failed:", e);
+                    }
+                }).catch(function () {
+                    warn("bus_service never appeared");
+                });
+            })
+            .catch(function (err) {
+                warn("bus_channel RPC failed:", err);
+            });
+    }
+
+    function waitFor(pred, timeoutMs) {
+        return new Promise(function (resolve, reject) {
+            var t0 = Date.now();
+            (function tick() {
+                var v = pred();
+                if (v) return resolve(v);
+                if (Date.now() - t0 > timeoutMs) return reject(new Error("timeout"));
+                setTimeout(tick, 200);
+            })();
         });
     }
 
-    function setupBusListener() {
-        var bus = getBusService();
-        if (!bus) return false;
-        /*
-         * Odoo 18+: worker delivers typed notifications via notificationBus; the main bus
-         * never emits "notification" (internal event). Use subscribe(type, cb) per bus_service.js.
-         */
-        if (typeof bus.subscribe === "function") {
-            bus.subscribe(CHANNEL, function (payload) {
-                if (payload && payload.call_log_id) {
-                    showPopup(payload);
-                }
-            });
-        } else if (typeof bus.addEventListener === "function") {
-            bus.addEventListener("notification", function (event) {
-                var detail = event.detail;
-                if (detail) onNotification(Array.isArray(detail) ? detail : [detail]);
-            });
-        } else {
-            return false;
+    function handleBusEvent(payload) {
+        if (!payload || !payload.type) return;
+        if (payload.type === "whatsapp_incoming_call") {
+            showPopup(payload);
         }
-        var p = addOurChannel(bus);
-        if (p && typeof p.then === "function") {
-            p.then(function () {
-                if (typeof bus.start === "function") {
-                    return bus.start();
-                }
-            }).catch(function () { /* channel rpc failed */ });
-        } else if (typeof bus.start === "function") {
-            bus.start();
-        }
-        return true;
     }
 
-    function trySetup() {
-        if (setupBusListener()) return;
-        setTimeout(trySetup, 500);
-    }
-
+    // Kick off on DOM ready.
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () { setTimeout(trySetup, 300); });
+        document.addEventListener("DOMContentLoaded", subscribeBus);
     } else {
-        setTimeout(trySetup, 300);
+        subscribeBus();
     }
 })();

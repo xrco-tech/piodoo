@@ -184,22 +184,34 @@ class WhatsappCallLog(models.Model):
             return None
 
     def action_pre_accept(self, sdp_answer=None):
-        """Generate SDP if needed and send pre_accept to Meta."""
+        """Send pre_accept to Meta. This tells Meta 'we are preparing to
+        accept'; no SDP answer required at this stage — the browser only
+        provides an SDP when it's ready to accept."""
         self.ensure_one()
-        if not sdp_answer and self.sdp_offer:
-            sdp_answer = self._generate_simple_sdp_answer(self.sdp_offer)
-            if sdp_answer:
-                self.write({"sdp_answer": sdp_answer})
-        return self._send_call_action_to_meta("pre_accept", sdp_answer=sdp_answer)
+        return self._send_call_action_to_meta("pre_accept")
 
     def action_accept(self, sdp_answer=None):
-        """Send accept to Meta (use stored or provided SDP answer)."""
+        """Send accept to Meta with the browser-generated SDP answer.
+
+        Refuses when no answer is provided — the old server-side fake
+        SDP generator produced a syntactically-valid but cryptographically
+        invalid answer that Meta accepted at the protocol layer but that
+        never established a DTLS-SRTP session, so no audio ever flowed.
+        Real audio requires a browser RTCPeerConnection to build the SDP.
+        """
         self.ensure_one()
         sdp = sdp_answer or self.sdp_answer
-        if not sdp and self.sdp_offer:
-            sdp = self._generate_simple_sdp_answer(self.sdp_offer)
-            if sdp:
-                self.write({"sdp_answer": sdp})
+        if not sdp:
+            _logger.warning(
+                "comm_whatsapp_calling: refusing to accept call %s — "
+                "no SDP answer from the browser. The popup should call "
+                "/whatsapp/call/answer with sdp_answer=<real SDP>.",
+                self.call_id,
+            )
+            return False
+        # Persist the browser's SDP so the log stays complete.
+        if sdp != self.sdp_answer:
+            self.write({"sdp_answer": sdp})
         res = self._send_call_action_to_meta("accept", sdp_answer=sdp)
         if res:
             self.write({"call_status": "answered"})

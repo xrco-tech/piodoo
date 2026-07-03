@@ -147,6 +147,10 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                     if call_log.call_timestamp
                     else None
                 ),
+                # Ship the raw SDP offer to the browser so the popup can
+                # build a real RTCPeerConnection the moment the user
+                # clicks Accept — no round-trip needed to fetch it.
+                "sdp_offer": call_log.sdp_offer or "",
             }
             users = request.env["res.users"].sudo().search([("active", "=", True)])
             bus = request.env["bus.bus"].sudo()
