@@ -148,24 +148,60 @@ class WhatsAppAuthController(http.Controller):
         """
         Verify webhook with Meta's verification challenge.
         Meta sends a GET request with hub.mode, hub.verify_token, and hub.challenge.
+
+        Accepts a match against EITHER the legacy comm_whatsapp.webhook_verify_token
+        system parameter OR any comm.whatsapp.account.webhook_verify_token. This
+        lets multi-WABA installs configure per-account tokens without touching
+        global config, and shields single-WABA installs where the system param
+        was cleared (verification would silently start failing and Meta would
+        eventually stop delivering webhooks).
         """
         try:
             hub_mode = request.httprequest.args.get('hub.mode')
             hub_verify_token = request.httprequest.args.get('hub.verify_token')
             hub_challenge = request.httprequest.args.get('hub.challenge')
 
-            _logger.info(f"Webhook verification request: mode={hub_mode}, token={hub_verify_token}")
+            _logger.info(
+                "Webhook verification request: mode=%s, token=%s",
+                hub_mode, hub_verify_token,
+            )
 
-            # Get configured verify token
-            IrConfigParameter = request.env['ir.config_parameter'].sudo()
-            verify_token = IrConfigParameter.get_param('comm_whatsapp.webhook_verify_token')
+            if hub_mode != 'subscribe' or not hub_verify_token:
+                return request.make_response(
+                    'Verification failed',
+                    [('Content-Type', 'text/plain')], status=403,
+                )
 
-            if hub_mode == 'subscribe' and hub_verify_token == verify_token:
+            # Collect every token this Odoo install would accept.
+            icp = request.env['ir.config_parameter'].sudo()
+            candidate_tokens = set(filter(None, [
+                icp.get_param('comm_whatsapp.webhook_verify_token'),
+            ]))
+            try:
+                accounts = request.env['comm.whatsapp.account'].sudo().search(
+                    [('active', '=', True), ('webhook_verify_token', '!=', False)]
+                )
+                for a in accounts:
+                    if a.webhook_verify_token:
+                        candidate_tokens.add(a.webhook_verify_token)
+            except Exception:
+                # Account model may not exist during initial install.
+                pass
+
+            if hub_verify_token in candidate_tokens:
                 _logger.info("Webhook verification successful")
-                return request.make_response(hub_challenge, [('Content-Type', 'text/plain')])
-            else:
-                _logger.warning(f"Webhook verification failed: mode={hub_mode}, token_match={hub_verify_token == verify_token}")
-                return request.make_response('Verification failed', [('Content-Type', 'text/plain')], status=403)
+                return request.make_response(
+                    hub_challenge, [('Content-Type', 'text/plain')]
+                )
+
+            _logger.warning(
+                "Webhook verification failed: mode=%s, tried %d candidate tokens",
+                hub_mode, len(candidate_tokens),
+            )
+            return request.make_response(
+                'Verification failed',
+                [('Content-Type', 'text/plain')], status=403,
+            )
 
         except Exception as e:
             _logger.error(f"Error in webhook verification: {e}", exc_info=True)
