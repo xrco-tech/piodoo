@@ -44,6 +44,10 @@
                                     class="oe_stat_button" icon="fa-file-text-o">
                                 <field name="template_count" widget="statinfo" string="Templates"/>
                             </button>
+                            <button name="action_view_messages" type="object"
+                                    class="oe_stat_button" icon="fa-comments">
+                                <field name="message_count" widget="statinfo" string="Messages"/>
+                            </button>
                         </div>
                         <div class="oe_title">
                             <label for="name"/>

@@ -47,11 +47,31 @@ class CommSmsAccount(models.Model):
         help="If multiple accounts can match an inbound, the default wins.",
     )
 
+    # Smart-button count of sms.sms records linked to this account.
+    sms_count = fields.Integer(compute='_compute_sms_count')
+
     _sql_constraints = [
         ('sender_id_unique_per_provider',
          'UNIQUE(provider, sender_id)',
          "An SMS account with this provider + sender ID already exists."),
     ]
+
+    def _compute_sms_count(self):
+        Sms = self.env['sms.sms']
+        for rec in self:
+            rec.sms_count = Sms.search_count([('account_id', '=', rec.id)])
+
+    def action_view_sms(self):
+        """Open the sms.sms list scoped to this account."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': f"SMS — {self.name}",
+            'res_model': 'sms.sms',
+            'view_mode': 'list,form',
+            'domain': [('account_id', '=', self.id)],
+            'context': {'default_account_id': self.id},
+        }
 
     @api.model
     def find_for_sender_id(self, sender_id):

@@ -1,6 +1,6 @@
 {
     'name': 'InfoBip SMS Integration',
-    'version': '1.0.1',
+    'version': '1.0.2',
     'category': 'Discuss',
     'summary': 'Add custom SMS functionality using InfoBip (SMS Service Provider) API',
     'description': """

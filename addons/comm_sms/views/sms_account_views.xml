@@ -24,6 +24,12 @@
                 <form string="SMS Account">
                     <sheet>
                         <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_sms" type="object"
+                                    class="oe_stat_button" icon="fa-comment-o">
+                                <field name="sms_count" widget="statinfo" string="SMS"/>
+                            </button>
+                        </div>
                         <div class="oe_title">
                             <label for="name"/>
                             <h1><field name="name" placeholder="e.g. Marketing Sender"/></h1>

@@ -68,6 +68,7 @@ class WhatsAppAccount(models.Model):
     # Smart-button counts.
     flow_count = fields.Integer(compute='_compute_flow_count')
     template_count = fields.Integer(compute='_compute_template_count')
+    message_count = fields.Integer(compute='_compute_message_count')
 
     _sql_constraints = [
         ('phone_number_id_unique',
@@ -84,6 +85,13 @@ class WhatsAppAccount(models.Model):
         Template = self.env['whatsapp.template']
         for rec in self:
             rec.template_count = Template.search_count(
+                [('account_id', '=', rec.id)]
+            )
+
+    def _compute_message_count(self):
+        Message = self.env['whatsapp.message']
+        for rec in self:
+            rec.message_count = Message.search_count(
                 [('account_id', '=', rec.id)]
             )
 
@@ -123,6 +131,16 @@ class WhatsAppAccount(models.Model):
         return self.env['whatsapp.template'].with_context(
             force_account_id=self.id
         ).action_fetch_from_meta()
+
+    def action_view_messages(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': f"Messages — {self.name}",
+            'res_model': 'whatsapp.message',
+            'view_mode': 'list,form',
+            'domain': [('account_id', '=', self.id)],
+        }
 
     def action_view_templates(self):
         self.ensure_one()

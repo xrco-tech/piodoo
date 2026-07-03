@@ -332,6 +332,27 @@ class WhatsAppMessage(models.Model):
     phone_number_id = fields.Char(string='Phone Number ID', readonly=True, help='Meta phone number ID')
     display_phone_number = fields.Char(string='Display Phone Number', readonly=True, help='Display phone number')
     business_account_id = fields.Char(string='Business Account ID', readonly=True, help='Meta business account ID')
+    # Link back to the WABA account this message belongs to. Populated
+    # automatically on inbound (via phone_number_id) and on outbound (from
+    # the sender). Backfills lazily so historic rows pick it up on next read.
+    account_id = fields.Many2one(
+        'comm.whatsapp.account', string='WhatsApp Account',
+        compute='_compute_account_id', store=True, index=True,
+        help="The WABA account this message belongs to.",
+    )
+
+    @api.depends('phone_number_id')
+    def _compute_account_id(self):
+        Account = self.env['comm.whatsapp.account'].sudo()
+        cache = {}
+        for rec in self:
+            pnid = rec.phone_number_id or False
+            if not pnid:
+                rec.account_id = False
+                continue
+            if pnid not in cache:
+                cache[pnid] = Account.find_for_phone_number_id(pnid)
+            rec.account_id = cache[pnid]
     
     # Status tracking
     status = fields.Selection([
