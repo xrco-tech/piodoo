@@ -122,6 +122,37 @@ class WhatsAppAccount(models.Model):
     # Each pushes force_account_id into context so the target model's
     # _resolve_meta_creds() picks up this account's WABA credentials.
 
+    def action_fix_base_url_to_https(self):
+        """One-click helper: rewrite web.base.url from http:// to https://
+        so nothing downstream generates non-Meta-compatible callback URLs
+        or plain-text notification links."""
+        icp = self.env['ir.config_parameter'].sudo()
+        base = icp.get_param('web.base.url', '')
+        if not base:
+            raise UserError("web.base.url is empty; nothing to fix.")
+        if not base.startswith('http://'):
+            return {
+                'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {
+                    'title':   'Already HTTPS',
+                    'message': f"web.base.url is already {base}.",
+                    'type':    'info', 'sticky': False,
+                },
+            }
+        new_url = 'https://' + base[len('http://'):]
+        icp.set_param('web.base.url', new_url)
+        # Freeze the base URL so no request re-derives it from the
+        # HTTP host header on the next inbound.
+        icp.set_param('web.base.url.freeze', 'True')
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'title':   'Base URL updated',
+                'message': f"web.base.url is now {new_url} and frozen.",
+                'type':    'success', 'sticky': False,
+            },
+        }
+
     def action_diagnose_calling(self):
         """Poke Meta to check every prereq for browser-based WhatsApp
         calls on this WABA. Returns a sticky notification with one line
@@ -154,7 +185,13 @@ class WhatsAppAccount(models.Model):
             checks.append(f"❌ Network error hitting Meta: {e}")
             return self._diag_notification(checks)
 
-        # 2. Webhook subscribed_apps must include the `calls` field.
+        # 2. WABA-level app subscription. GET /subscribed_apps returns
+        #    the apps subscribed to receive webhooks for this WABA;
+        #    per-field selection (messages / calls / etc.) lives on the
+        #    APP itself, not on the WABA, so we can't reliably enumerate
+        #    field names from this endpoint. Confirm here that AT LEAST
+        #    ONE app is subscribed, and remind the user to verify field
+        #    selection in the App Dashboard.
         try:
             r = requests.get(
                 f"https://graph.facebook.com/v18.0/"
@@ -164,24 +201,40 @@ class WhatsAppAccount(models.Model):
             if r.status_code == 200:
                 subs = (r.json() or {}).get('data') or []
                 fields_seen = set()
+                app_names = []
                 for sub in subs:
+                    app_data = sub.get('whatsapp_business_api_data') \
+                        or sub.get('app') or {}
+                    if app_data.get('name'):
+                        app_names.append(app_data['name'])
+                    # Some tokens return subscribed_fields inline; use it
+                    # opportunistically when present.
                     for f in (sub.get('subscribed_fields') or []):
-                        # Meta returns either a string or {name: 'calls'} —
-                        # normalise to lowercase strings.
                         fields_seen.add(
                             f.get('name') if isinstance(f, dict) else f
                         )
-                if 'calls' in fields_seen:
+                if not subs:
                     checks.append(
-                        f"✅ App is subscribed to the `calls` webhook field."
+                        "❌ No app is subscribed to this WABA. Go to Meta "
+                        "App Dashboard → WhatsApp → Configuration → "
+                        "Webhooks and click Subscribe."
+                    )
+                elif fields_seen and 'calls' not in fields_seen:
+                    # Only assert absence when Meta actually returned the
+                    # field list (older tokens) — otherwise we can't tell.
+                    checks.append(
+                        f"❌ Webhook subscription is missing the `calls` "
+                        f"field for app '{', '.join(app_names) or 'unknown'}'. "
+                        f"Currently subscribed: {sorted(fields_seen)}"
                     )
                 else:
                     checks.append(
-                        "❌ Webhook subscription is missing the `calls` "
-                        "field. Add it in Meta App Dashboard → Webhooks → "
-                        "WhatsApp Business Account → subscribed fields, "
-                        f"then re-run. (Currently subscribed: "
-                        f"{sorted(fields_seen) or 'none'})"
+                        f"✅ App{'s' if len(app_names) != 1 else ''} "
+                        f"subscribed to this WABA: "
+                        f"{', '.join(app_names) or '(unnamed)'}. "
+                        f"Per-field selection is only visible in the App "
+                        f"Dashboard — confirm `calls`, `messages`, and "
+                        f"`message_template_status_update` are ticked."
                     )
             else:
                 err = (r.json() or {}).get('error', {}).get(

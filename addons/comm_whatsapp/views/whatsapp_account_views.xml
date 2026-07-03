@@ -40,6 +40,10 @@
                                 string="Diagnose Calling" icon="fa-stethoscope"
                                 class="btn-secondary"
                                 help="Check whether Business Calling API and the calls webhook are set up correctly on Meta's side."/>
+                        <button name="action_fix_base_url_to_https" type="object"
+                                string="Force HTTPS Base URL" icon="fa-lock"
+                                class="btn-secondary"
+                                help="Rewrite web.base.url from http:// to https:// and freeze it, so Meta callbacks and email links stop leaking the plain-text host."/>
                     </header>
                     <sheet>
                         <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
