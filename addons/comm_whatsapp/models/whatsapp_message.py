@@ -340,6 +340,17 @@ class WhatsAppMessage(models.Model):
         compute='_compute_account_id', store=True, index=True,
         help="The WABA account this message belongs to.",
     )
+    # Human-readable "who owns this number" resolver. Prefers what the
+    # webhook told us (display_phone_number, populated on inbound) and
+    # falls back to whatever the linked account has on file. Lets authors
+    # scan the list without ever seeing the raw phone_number_id.
+    sender_phone_number = fields.Char(
+        string='Sender Phone', compute='_compute_sender_phone_number',
+        store=True,
+        help="Actual phone number of the WABA that sent/received this "
+             "message. Derived from display_phone_number on inbound, or "
+             "from the linked account's phone_number.",
+    )
 
     @api.depends('phone_number_id')
     def _compute_account_id(self):
@@ -353,6 +364,15 @@ class WhatsAppMessage(models.Model):
             if pnid not in cache:
                 cache[pnid] = Account.find_for_phone_number_id(pnid)
             rec.account_id = cache[pnid]
+
+    @api.depends('display_phone_number', 'account_id.phone_number')
+    def _compute_sender_phone_number(self):
+        for rec in self:
+            rec.sender_phone_number = (
+                rec.display_phone_number
+                or (rec.account_id.phone_number if rec.account_id else '')
+                or ''
+            )
     
     # Status tracking
     status = fields.Selection([

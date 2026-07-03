@@ -17,7 +17,13 @@ A migration in 18.0.1.0.32 promotes the existing global config keys into a
 intervention.
 """
 
+import logging
+import requests
+
 from odoo import api, fields, models
+from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class WhatsAppAccount(models.Model):
@@ -65,6 +71,23 @@ class WhatsAppAccount(models.Model):
         help="If multiple accounts can match an inbound, the default wins.",
     )
 
+    # Populated by action_refresh_from_meta — the display name Meta
+    # associates with this number (business name, e.g. "PIODOO Support").
+    verified_name = fields.Char(
+        string="Verified Name", readonly=True,
+        help="Business name registered with Meta for this number. Populated "
+             "by 'Refresh from Meta'.",
+    )
+    quality_rating = fields.Selection([
+        ('GREEN',  'High'),
+        ('YELLOW', 'Medium'),
+        ('RED',    'Low'),
+    ], string="Quality Rating", readonly=True)
+    last_verified_at = fields.Datetime(
+        string="Last Verified", readonly=True,
+        help="When the phone number was last refreshed from Meta.",
+    )
+
     # Smart-button counts.
     flow_count = fields.Integer(compute='_compute_flow_count')
     template_count = fields.Integer(compute='_compute_template_count')
@@ -98,6 +121,59 @@ class WhatsAppAccount(models.Model):
     # ── Sync actions (invoked from the account form header) ───────────
     # Each pushes force_account_id into context so the target model's
     # _resolve_meta_creds() picks up this account's WABA credentials.
+
+    def action_refresh_from_meta(self):
+        """Look up this account's phone_number_id on Meta's Graph API and
+        write back display_phone_number, verified_name, and quality_rating.
+        Also usable as a sanity check that the access token still works."""
+        self.ensure_one()
+        if not self.access_token or not self.phone_number_id:
+            raise UserError(
+                "This account needs both an access_token and a "
+                "phone_number_id before it can be refreshed from Meta."
+            )
+        url = (
+            f"https://graph.facebook.com/v18.0/{self.phone_number_id}"
+            "?fields=display_phone_number,verified_name,quality_rating"
+        )
+        headers = {'Authorization': f'Bearer {self.access_token}'}
+        try:
+            resp = requests.get(url, headers=headers, timeout=30)
+        except requests.exceptions.RequestException as e:
+            raise UserError(f"Network error talking to Meta: {e}")
+
+        if resp.status_code != 200:
+            err = (resp.json() or {}).get('error', {}) if resp.text else {}
+            msg = err.get('message') or resp.text or f"HTTP {resp.status_code}"
+            raise UserError(f"Meta rejected the lookup: {msg}")
+
+        data = resp.json() or {}
+        vals = {}
+        if data.get('display_phone_number'):
+            vals['phone_number'] = data['display_phone_number']
+        if data.get('verified_name'):
+            vals['verified_name'] = data['verified_name']
+        raw_rating = (data.get('quality_rating') or '').upper()
+        if raw_rating in ('GREEN', 'YELLOW', 'RED'):
+            vals['quality_rating'] = raw_rating
+        vals['last_verified_at'] = fields.Datetime.now()
+        self.write(vals)
+        _logger.info(
+            "Refreshed WABA account #%s from Meta: %s", self.id, vals)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag':  'display_notification',
+            'params': {
+                'title':   'Refreshed',
+                'message': (
+                    f"Phone: {vals.get('phone_number', self.phone_number)}\n"
+                    f"Name:  {vals.get('verified_name', self.verified_name or '(none)')}"
+                ),
+                'type':    'success',
+                'sticky':  False,
+            },
+        }
 
     def _require_creds(self):
         self.ensure_one()

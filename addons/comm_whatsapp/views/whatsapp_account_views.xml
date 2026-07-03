@@ -32,6 +32,10 @@
                                 string="Sync Templates" icon="fa-download"
                                 class="btn-primary"
                                 help="Pull all message templates from Meta for this WABA."/>
+                        <button name="action_refresh_from_meta" type="object"
+                                string="Refresh from Meta" icon="fa-refresh"
+                                class="btn-secondary"
+                                help="Look up the phone_number_id on Meta and update the display phone number + verified name."/>
                     </header>
                     <sheet>
                         <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
@@ -58,6 +62,13 @@
                                 <field name="phone_number" placeholder="+27693808740"/>
                                 <field name="phone_number_id" placeholder="447501465113088"/>
                                 <field name="business_account_id" placeholder="WABA ID (optional)"/>
+                                <field name="verified_name" readonly="1"/>
+                                <field name="quality_rating" readonly="1"
+                                       widget="badge"
+                                       decoration-success="quality_rating == 'GREEN'"
+                                       decoration-warning="quality_rating == 'YELLOW'"
+                                       decoration-danger="quality_rating == 'RED'"/>
+                                <field name="last_verified_at" readonly="1"/>
                             </group>
                             <group string="Routing">
                                 <field name="is_default"/>

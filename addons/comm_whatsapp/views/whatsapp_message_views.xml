@@ -236,6 +236,7 @@
                       decoration-danger="status == 'error'">
                     <field name="message_timestamp" widget="datetime"/>
                     <field name="account_id" optional="show"/>
+                    <field name="sender_phone_number" optional="show" string="From/To Number"/>
                     <field name="contact_name"/>
                     <field name="phone_number"/>
                     <field name="message_type" widget="badge"/>
@@ -409,6 +410,7 @@
                                 <group>
                                     <group string="Business Account">
                                         <field name="account_id"/>
+                                        <field name="sender_phone_number"/>
                                         <field name="business_account_id"/>
                                         <field name="phone_number_id"/>
                                         <field name="display_phone_number"/>
