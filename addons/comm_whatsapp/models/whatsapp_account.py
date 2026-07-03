@@ -161,6 +161,7 @@ class WhatsAppAccount(models.Model):
             'call_id':        f"simulated_{self.env.uid}_{fields.Datetime.now().isoformat()}",
             'call_direction': 'incoming',
             'from_number':    '+12345000000',
+            'to_number':      self.phone_number or self.phone_number_id or 'WABA',
             'sdp_offer':      sample_offer,
             'call_status':    'ringing',
             'meta_phone_number_id': self.phone_number_id or '',
