@@ -283,16 +283,23 @@ const waCallService = {
 
         // ── Bus wiring ────────────────────────────────────────────────
         try {
+            log("bus_service keys:", Object.keys(bus_service));
+            if (typeof bus_service.subscribe !== "function") {
+                warn("bus_service.subscribe is not a function — API changed?");
+                return {};
+            }
             bus_service.subscribe("whatsapp_incoming_call", (payload) => {
                 log("bus event received:", payload?.type, "id:", payload?.call_log_id);
                 if (payload?.type === "whatsapp_incoming_call") {
                     showPopup(payload);
                 }
             });
-            bus_service.start();
+            if (typeof bus_service.start === "function") {
+                bus_service.start();
+            }
             log("bus subscribed and started");
         } catch (e) {
-            warn("bus subscribe failed:", e);
+            warn("bus subscribe failed:", e && e.message ? e.message : e);
         }
 
         return {};

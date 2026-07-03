@@ -154,20 +154,22 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             }
             users = request.env["res.users"].sudo().search([("active", "=", True)])
             bus = request.env["bus.bus"].sudo()
-            # Channel must match frontend: JSON.stringify([db, "whatsapp_incoming_call", uid])
-            dbname = request.env.cr.dbname
+            # Target the user's partner record — Odoo 18 auto-subscribes
+            # each authenticated session to its partner channel, so this
+            # is the only reliably-delivered target for a per-user push.
             n_users = 0
             for u in users:
+                partner = u.partner_id
+                if not partner:
+                    continue
                 try:
-                    # Odoo 18+: _sendone(target, notification_type, message); message -> payload
                     bus._sendone(
-                        (dbname, "whatsapp_incoming_call", u.id),
-                        "whatsapp_incoming_call",
-                        payload,
+                        partner,                       # target = partner record
+                        "whatsapp_incoming_call",      # notification_type
+                        payload,                       # message
                     )
                     n_users += 1
                 except AttributeError:
-                    # Very old bus API (unlikely): skip per-user send
                     _logger.warning(
                         "comm_whatsapp_calling: bus.bus._sendone missing; cannot notify user %s",
                         u.id,

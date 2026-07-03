@@ -179,11 +179,16 @@ class WhatsAppAccount(models.Model):
                                if call_log.call_timestamp else None),
             'sdp_offer':     sample_offer,
         }
-        self.env['bus.bus'].sudo()._sendone(
-            (self.env.cr.dbname, 'whatsapp_incoming_call', self.env.uid),
-            'whatsapp_incoming_call',
-            payload,
-        )
+        # Target the current user's partner — Odoo 18 auto-subscribes
+        # each session to its partner channel, so this is the only
+        # reliably-delivered per-user push.
+        partner = self.env.user.partner_id
+        if partner:
+            self.env['bus.bus'].sudo()._sendone(
+                partner,
+                'whatsapp_incoming_call',
+                payload,
+            )
         return {
             'type': 'ir.actions.client', 'tag': 'display_notification',
             'params': {
