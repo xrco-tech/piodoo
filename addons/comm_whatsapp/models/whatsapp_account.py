@@ -122,6 +122,82 @@ class WhatsAppAccount(models.Model):
     # Each pushes force_account_id into context so the target model's
     # _resolve_meta_creds() picks up this account's WABA credentials.
 
+    def action_simulate_call_ringing(self):
+        """Fire the fake ringing bus event to the current user so we can
+        end-to-end test the popup + WebRTC pipeline without needing Meta
+        to deliver a real call event. Isolates the frontend path from
+        anything Meta might be doing wrong."""
+        # Sample minimum-viable SDP offer — parseable by browser but not
+        # routable to any real endpoint. Enough to prove the popup +
+        # RTCPeerConnection wiring runs to Accept.
+        sample_offer = (
+            "v=0\r\n"
+            "o=- 4611731400430051336 2 IN IP4 127.0.0.1\r\n"
+            "s=-\r\n"
+            "t=0 0\r\n"
+            "a=group:BUNDLE 0\r\n"
+            "a=msid-semantic: WMS *\r\n"
+            "m=audio 9 UDP/TLS/RTP/SAVPF 111\r\n"
+            "c=IN IP4 0.0.0.0\r\n"
+            "a=rtcp:9 IN IP4 0.0.0.0\r\n"
+            "a=ice-ufrag:test\r\n"
+            "a=ice-pwd:testpasswordtestpassword\r\n"
+            "a=fingerprint:sha-256 "
+            "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:"
+            "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99\r\n"
+            "a=setup:actpass\r\n"
+            "a=mid:0\r\n"
+            "a=recvonly\r\n"
+            "a=rtcp-mux\r\n"
+            "a=rtpmap:111 opus/48000/2\r\n"
+        )
+        CallLog = self.env.get('whatsapp.call.log')
+        if CallLog is None:
+            raise UserError(
+                "comm_whatsapp_calling isn't installed. Install it via "
+                "Apps → Update Apps List, then retry."
+            )
+        call_log = CallLog.sudo().create({
+            'call_id':        f"simulated_{self.env.uid}_{fields.Datetime.now().isoformat()}",
+            'call_direction': 'incoming',
+            'from_number':    '+12345000000',
+            'sdp_offer':      sample_offer,
+            'call_status':    'ringing',
+            'meta_phone_number_id': self.phone_number_id or '',
+        })
+
+        # Fire the bus event directly (targeting the current user only,
+        # not everyone, so we don't bother other logged-in users).
+        payload = {
+            'type':          'whatsapp_incoming_call',
+            'call_log_id':   call_log.id,
+            'partner_id':    False,
+            'partner_name':  '(simulated) Test Caller',
+            'from_number':   call_log.from_number,
+            'call_timestamp': (call_log.call_timestamp.isoformat()
+                               if call_log.call_timestamp else None),
+            'sdp_offer':     sample_offer,
+        }
+        self.env['bus.bus'].sudo()._sendone(
+            (self.env.cr.dbname, 'whatsapp_incoming_call', self.env.uid),
+            'whatsapp_incoming_call',
+            payload,
+        )
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'title':   'Simulated call fired',
+                'message': (
+                    f"Sent a fake ringing event to your user. If the popup "
+                    f"appears, the bus + browser path is fine and the issue "
+                    f"is upstream (Meta not delivering webhooks). If nothing "
+                    f"appears, check the browser console for [wa-call] logs."
+                ),
+                'type':    'success',
+                'sticky':  True,
+            },
+        }
+
     def action_fix_base_url_to_https(self):
         """One-click helper: rewrite web.base.url from http:// to https://
         so nothing downstream generates non-Meta-compatible callback URLs

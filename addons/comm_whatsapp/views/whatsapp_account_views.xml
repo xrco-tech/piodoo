@@ -40,6 +40,10 @@
                                 string="Diagnose Calling" icon="fa-stethoscope"
                                 class="btn-secondary"
                                 help="Check whether Business Calling API and the calls webhook are set up correctly on Meta's side."/>
+                        <button name="action_simulate_call_ringing" type="object"
+                                string="Simulate Incoming Call" icon="fa-phone"
+                                class="btn-secondary"
+                                help="Fire a fake ringing event via the bus so we can verify the popup + WebRTC pipeline without needing Meta to deliver a real call."/>
                         <button name="action_fix_base_url_to_https" type="object"
                                 string="Force HTTPS Base URL" icon="fa-lock"
                                 class="btn-secondary"

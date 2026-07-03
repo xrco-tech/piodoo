@@ -42,3 +42,4 @@ class WhatsappCallRoutes(http.Controller):
         if call_log.action_decline():
             return {"success": True}
         return {"success": False, "error": "Decline failed"}
+
