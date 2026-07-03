@@ -191,9 +191,11 @@ class WhatsAppAccount(models.Model):
             checks.append(f"❌ Network error on subscribed_apps: {e}")
 
         # 3. Business Calling API enrollment — POST to /{PNID}/calls with
-        #    a bogus payload. If we get 400 with a "missing field" / "invalid
-        #    action" error, calling is enabled. If we get 403 / 4200x it's
-        #    not enrolled.
+        #    a bogus payload. Meta returns three flavours of error:
+        #      * 4200x / "not authorized" → not enrolled.
+        #      * 100 / 131009 / 2494010 → endpoint accepted our schema, then
+        #        rejected our body. That means calling IS enrolled.
+        #      * anything else → inconclusive.
         try:
             r = requests.post(
                 f"https://graph.facebook.com/v18.0/{self.phone_number_id}/calls",
@@ -206,9 +208,13 @@ class WhatsAppAccount(models.Model):
             code = err.get('code')
             subcode = err.get('error_subcode')
             emsg = err.get('message', '')
-            if code == 100 and 'action' in emsg.lower():
-                # Meta accepted the endpoint and just complained about the
-                # missing field — calling IS enabled.
+            # Codes emitted when Meta's schema validator saw the request
+            # AND is willing to serve the endpoint (i.e. the API is on).
+            calling_enabled_codes = {100, 131009}
+            calling_enabled_subcodes = {2494010}
+            if code in calling_enabled_codes \
+                    or subcode in calling_enabled_subcodes \
+                    or (code == 100 and 'action' in emsg.lower()):
                 checks.append(
                     "✅ Business Calling API is enabled on this WABA."
                 )
@@ -228,21 +234,31 @@ class WhatsAppAccount(models.Model):
         except requests.exceptions.RequestException as e:
             checks.append(f"❌ Network error on calling probe: {e}")
 
-        # 4. Odoo-side webhook URL — sanity check the /whatsapp/webhook
-        #    route is reachable at the same base URL as the flow endpoint.
+        # 4. Odoo-side webhook URL — Meta rejects http:// webhooks; nudge
+        #    the user toward the https equivalent when web.base.url is
+        #    plain http.
         base = self.env['ir.config_parameter'].sudo().get_param(
             'web.base.url', ''
         )
-        if base:
-            checks.append(
-                f"ℹ️  Ensure Meta webhook is configured to POST to: "
-                f"{base}/whatsapp/webhook"
-            )
-        else:
+        if not base:
             checks.append(
                 "⚠️  web.base.url is not set; Meta cannot reach your "
                 "webhook until it is."
             )
+        else:
+            https_base = base.replace('http://', 'https://', 1) \
+                if base.startswith('http://') else base
+            checks.append(
+                f"ℹ️  Meta webhook must POST to: "
+                f"{https_base}/whatsapp/webhook"
+            )
+            if base.startswith('http://'):
+                checks.append(
+                    "⚠️  web.base.url is `http://`. Meta only accepts "
+                    "HTTPS webhook URLs — make sure the URL you paste "
+                    "into Meta App Dashboard starts with `https://` "
+                    "(your Cloudflare tunnel is already terminating TLS)."
+                )
 
         return self._diag_notification(checks)
 
