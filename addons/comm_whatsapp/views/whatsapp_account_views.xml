@@ -36,6 +36,10 @@
                                 string="Refresh from Meta" icon="fa-refresh"
                                 class="btn-secondary"
                                 help="Look up the phone_number_id on Meta and update the display phone number + verified name."/>
+                        <button name="action_diagnose_calling" type="object"
+                                string="Diagnose Calling" icon="fa-stethoscope"
+                                class="btn-secondary"
+                                help="Check whether Business Calling API and the calls webhook are set up correctly on Meta's side."/>
                     </header>
                     <sheet>
                         <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>

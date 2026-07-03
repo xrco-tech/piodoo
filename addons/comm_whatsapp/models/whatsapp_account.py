@@ -122,6 +122,144 @@ class WhatsAppAccount(models.Model):
     # Each pushes force_account_id into context so the target model's
     # _resolve_meta_creds() picks up this account's WABA credentials.
 
+    def action_diagnose_calling(self):
+        """Poke Meta to check every prereq for browser-based WhatsApp
+        calls on this WABA. Returns a sticky notification with one line
+        per check so the user knows exactly what to fix."""
+        self.ensure_one()
+        if not self.access_token or not self.phone_number_id \
+                or not self.business_account_id:
+            raise UserError(
+                "This account needs access_token, phone_number_id and "
+                "business_account_id populated before diagnostics can run."
+            )
+        headers = {'Authorization': f'Bearer {self.access_token}'}
+        checks = []
+
+        # 1. Token validity — sanity ping against the phone_number_id.
+        try:
+            r = requests.get(
+                f"https://graph.facebook.com/v18.0/{self.phone_number_id}"
+                "?fields=display_phone_number",
+                headers=headers, timeout=15,
+            )
+            if r.status_code == 200:
+                checks.append("✅ Access token is valid.")
+            else:
+                err = (r.json() or {}).get('error', {}).get(
+                    'message', r.text or f"HTTP {r.status_code}")
+                checks.append(f"❌ Access token failed: {err}")
+                return self._diag_notification(checks)
+        except requests.exceptions.RequestException as e:
+            checks.append(f"❌ Network error hitting Meta: {e}")
+            return self._diag_notification(checks)
+
+        # 2. Webhook subscribed_apps must include the `calls` field.
+        try:
+            r = requests.get(
+                f"https://graph.facebook.com/v18.0/"
+                f"{self.business_account_id}/subscribed_apps",
+                headers=headers, timeout=15,
+            )
+            if r.status_code == 200:
+                subs = (r.json() or {}).get('data') or []
+                fields_seen = set()
+                for sub in subs:
+                    for f in (sub.get('subscribed_fields') or []):
+                        # Meta returns either a string or {name: 'calls'} —
+                        # normalise to lowercase strings.
+                        fields_seen.add(
+                            f.get('name') if isinstance(f, dict) else f
+                        )
+                if 'calls' in fields_seen:
+                    checks.append(
+                        f"✅ App is subscribed to the `calls` webhook field."
+                    )
+                else:
+                    checks.append(
+                        "❌ Webhook subscription is missing the `calls` "
+                        "field. Add it in Meta App Dashboard → Webhooks → "
+                        "WhatsApp Business Account → subscribed fields, "
+                        f"then re-run. (Currently subscribed: "
+                        f"{sorted(fields_seen) or 'none'})"
+                    )
+            else:
+                err = (r.json() or {}).get('error', {}).get(
+                    'message', r.text or f"HTTP {r.status_code}")
+                checks.append(f"❌ Could not read subscribed_apps: {err}")
+        except requests.exceptions.RequestException as e:
+            checks.append(f"❌ Network error on subscribed_apps: {e}")
+
+        # 3. Business Calling API enrollment — POST to /{PNID}/calls with
+        #    a bogus payload. If we get 400 with a "missing field" / "invalid
+        #    action" error, calling is enabled. If we get 403 / 4200x it's
+        #    not enrolled.
+        try:
+            r = requests.post(
+                f"https://graph.facebook.com/v18.0/{self.phone_number_id}/calls",
+                headers={**headers, 'Content-Type': 'application/json'},
+                json={"messaging_product": "whatsapp"},  # missing "action"
+                timeout=15,
+            )
+            body = r.json() if r.text else {}
+            err = body.get('error', {})
+            code = err.get('code')
+            subcode = err.get('error_subcode')
+            emsg = err.get('message', '')
+            if code == 100 and 'action' in emsg.lower():
+                # Meta accepted the endpoint and just complained about the
+                # missing field — calling IS enabled.
+                checks.append(
+                    "✅ Business Calling API is enabled on this WABA."
+                )
+            elif r.status_code == 403 or code in (10, 200, 3) \
+                    or 'not authorized' in emsg.lower() \
+                    or 'permission' in emsg.lower():
+                checks.append(
+                    f"❌ Business Calling API is NOT enabled. Meta says: "
+                    f"'{emsg}'. Enroll via WhatsApp Manager → Calling."
+                )
+            else:
+                checks.append(
+                    f"⚠️  Business Calling API check inconclusive "
+                    f"(HTTP {r.status_code}, code {code}, subcode {subcode}"
+                    f"): {emsg or r.text[:200]}"
+                )
+        except requests.exceptions.RequestException as e:
+            checks.append(f"❌ Network error on calling probe: {e}")
+
+        # 4. Odoo-side webhook URL — sanity check the /whatsapp/webhook
+        #    route is reachable at the same base URL as the flow endpoint.
+        base = self.env['ir.config_parameter'].sudo().get_param(
+            'web.base.url', ''
+        )
+        if base:
+            checks.append(
+                f"ℹ️  Ensure Meta webhook is configured to POST to: "
+                f"{base}/whatsapp/webhook"
+            )
+        else:
+            checks.append(
+                "⚠️  web.base.url is not set; Meta cannot reach your "
+                "webhook until it is."
+            )
+
+        return self._diag_notification(checks)
+
+    def _diag_notification(self, lines):
+        return {
+            'type': 'ir.actions.client',
+            'tag':  'display_notification',
+            'params': {
+                'title':   'WhatsApp Calling diagnostics',
+                'message': '\n'.join(lines),
+                'type':    ('success'
+                            if all('✅' in l or 'ℹ️' in l for l in lines)
+                            else 'warning'),
+                'sticky':  True,
+            },
+        }
+
     def action_refresh_from_meta(self):
         """Look up this account's phone_number_id on Meta's Graph API and
         write back display_phone_number, verified_name, and quality_rating.
