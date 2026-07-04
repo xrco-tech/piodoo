@@ -89,10 +89,15 @@ class WhatsappCallRoutes(http.Controller):
         call_log = request.env["whatsapp.call.log"].sudo().browse(call_log_id)
         if not call_log.exists():
             return {"success": False, "error": "Call not found"}
-        # Route by current status: ringing → reject; answered → terminate.
-        # This matches Meta's action enum which forbids reject on
-        # already-answered calls and terminate on ringing ones.
-        if call_log.call_status == "answered":
+        # Route by direction + status:
+        #   inbound  + ringing  → reject   (turn down the incoming call)
+        #   inbound  + answered → terminate (hang up an active call)
+        #   outbound + anything → terminate (only valid outbound action)
+        # Meta rejects reject on outbound calls (131055 method not
+        # allowed) — that verb is reserved for turning down inbound.
+        if call_log.call_direction == "outgoing":
+            ok = call_log.action_hangup()
+        elif call_log.call_status == "answered":
             ok = call_log.action_hangup()
         else:
             ok = call_log.action_decline()

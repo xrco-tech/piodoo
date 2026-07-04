@@ -75,27 +75,30 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             return
 
         event = call_data.get("event")
+        meta_direction = call_data.get("direction")
         _logger.info(
             "comm_whatsapp_calling: call event id=%s event=%s "
             "direction=%s from=%s to=%s has_session=%s",
-            call_id, event, call_data.get("direction"),
+            call_id, event, meta_direction,
             call_data.get("from"), call_data.get("to"),
             bool((call_data.get("session") or {}).get("sdp")),
         )
+        # Meta's Business Calling event vocabulary is direction-sensitive.
+        # For an outbound call (BUSINESS_INITIATED) the recipient's
+        # ANSWER comes back on the same `connect` event that inbound
+        # calls use for their initial ring. Route by direction:
+        #   BUSINESS_INITIATED + connect  → outbound answered (has SDP)
+        #   USER_INITIATED     + connect  → inbound ringing (has SDP)
         status = None
-        # Meta's Business Calling events. We accept multiple variants
-        # defensively — the docs list some names but production has
-        # been observed to use synonyms.
-        if event in ("terminate", "reject", "hangup"):
+        is_outbound_meta = (meta_direction == "BUSINESS_INITIATED")
+        if event in ("terminate", "hangup"):
             status = "ended"
-        elif event in ("connect", "ringing"):
-            status = "ringing"
+        elif event == "reject":
+            status = "ended"
+        elif event == "connect":
+            status = "answered" if is_outbound_meta else "ringing"
         elif event in ("accept", "answered", "session_established",
                        "session_start"):
-            # Fires on outbound calls when the remote party picks up
-            # and Meta returns the answer SDP for our RTCPeerConnection.
-            # Also fires on inbound after we send action=accept — but
-            # the payload for that case has no new SDP.
             status = "answered"
 
         if not status:
