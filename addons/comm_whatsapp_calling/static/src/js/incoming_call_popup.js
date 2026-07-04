@@ -134,6 +134,7 @@ const waCallService = {
             hidePopup();
             const wrap = document.createElement("div");
             wrap.id = POPUP_ID;
+            wrap.dataset.callLogId = payload.call_log_id;
             Object.assign(wrap.style, {
                 position: "fixed", top: "20px", right: "20px",
                 width: "340px", background: "#111827", color: "#fff",
@@ -421,6 +422,22 @@ const waCallService = {
             bus_service.subscribe("whatsapp_outbound_answered", (payload) => {
                 log("outbound answered:", payload?.call_log_id);
                 handleOutboundAnswered(payload);
+            });
+            bus_service.subscribe("whatsapp_call_taken", (payload) => {
+                // Another agent accepted / declined this call, or the
+                // remote side hung up. Kill our popup if we still have
+                // one for that call log id. Never nuke a popup we've
+                // already accepted (taken_by_uid matches us).
+                if (!payload || !payload.call_log_id) return;
+                if (payload.taken_by_uid && env.services.user
+                    && payload.taken_by_uid === env.services.user.userId) {
+                    return;
+                }
+                const el = document.getElementById(POPUP_ID);
+                if (el && +el.dataset.callLogId === payload.call_log_id) {
+                    log("call taken elsewhere, hiding popup:", payload);
+                    el.remove();
+                }
             });
             if (typeof bus_service.start === "function") {
                 bus_service.start();

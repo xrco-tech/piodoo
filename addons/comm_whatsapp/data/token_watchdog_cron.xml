@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Daily probe of every active WhatsApp account's access token so we
+             catch silent expirations (the 60-day short-lived token pattern
+             lapses this quietly, which then breaks flow publish, template
+             sync, inbound / outbound calls — every Meta API call at once).
+             When an account transitions valid → expired, the cron pushes a
+             sticky bus notification to every ERP admin. -->
+        <record id="ir_cron_whatsapp_token_watchdog" model="ir.cron">
+            <field name="name">WhatsApp: probe account tokens</field>
+            <field name="model_id" ref="model_comm_whatsapp_account"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_probe_all_tokens()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

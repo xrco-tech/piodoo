@@ -216,6 +216,39 @@ class WhatsappCallLog(models.Model):
         self.ensure_one()
         return self._send_call_action_to_meta("pre_accept")
 
+    def _broadcast_call_taken(self, verb):
+        """Push a whatsapp_call_taken bus event to every user's partner
+        channel so any other agent who still has this call's popup
+        showing can remove it. verb is one of accepted / declined /
+        terminated so the notification can carry context if a future
+        UI wants to show 'answered by Alice' etc."""
+        try:
+            if "bus.bus" not in self.env:
+                return
+            payload = {
+                "type":         "whatsapp_call_taken",
+                "call_log_id":  self.id,
+                "verb":         verb,
+                # Include the taker's uid so the accepting session's own
+                # popup isn't nuked before it can complete accept.
+                "taken_by_uid": self.env.uid,
+            }
+            users = self.env["res.users"].sudo().search(
+                [("active", "=", True)]
+            )
+            bus = self.env["bus.bus"].sudo()
+            for u in users:
+                if u.partner_id:
+                    try:
+                        bus._sendone(u.partner_id,
+                                     "whatsapp_call_taken", payload)
+                    except AttributeError:
+                        break
+        except Exception as e:
+            _logger.warning(
+                "comm_whatsapp_calling: could not broadcast call taken: %s", e
+            )
+
     def action_accept(self, sdp_answer=None):
         """Send accept to Meta with the browser-generated SDP answer.
 
@@ -241,6 +274,7 @@ class WhatsappCallLog(models.Model):
         res = self._send_call_action_to_meta("accept", sdp_answer=sdp)
         if res:
             self.write({"call_status": "answered"})
+            self._broadcast_call_taken("accepted")
         return res
 
     def action_decline(self):
@@ -252,6 +286,7 @@ class WhatsappCallLog(models.Model):
         res = self._send_call_action_to_meta("reject")
         if res:
             self.write({"call_status": "declined"})
+            self._broadcast_call_taken("declined")
         return res
 
     def action_connect(self, sdp_offer, to_number):
@@ -330,4 +365,5 @@ class WhatsappCallLog(models.Model):
         res = self._send_call_action_to_meta("terminate")
         if res:
             self.write({"call_status": "ended"})
+            self._broadcast_call_taken("terminated")
         return res

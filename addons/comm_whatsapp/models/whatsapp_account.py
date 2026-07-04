@@ -88,6 +88,25 @@ class WhatsAppAccount(models.Model):
         help="When the phone number was last refreshed from Meta.",
     )
 
+    # Token health — populated by the daily cron and by any manual
+    # "Check Token" click. When the token silently expires Meta
+    # stops delivering webhooks; this catches that class of failure
+    # before real calls / sync attempts hit it.
+    token_status = fields.Selection([
+        ('unchecked',   'Not checked yet'),
+        ('valid',       'Valid'),
+        ('expired',     'Expired'),
+        ('unreachable', 'Unreachable'),
+    ], string="Token Status", default='unchecked', readonly=True,
+       tracking=True, index='btree')
+    token_last_checked = fields.Datetime(
+        string="Token Last Checked", readonly=True,
+    )
+    token_last_error = fields.Char(
+        string="Token Last Error", readonly=True,
+        help="Error message from the most recent token probe, if any.",
+    )
+
     # Smart-button counts.
     flow_count = fields.Integer(compute='_compute_flow_count')
     template_count = fields.Integer(compute='_compute_template_count')
@@ -410,6 +429,134 @@ class WhatsAppAccount(models.Model):
                 'sticky':  True,
             },
         }
+
+    # ── Token watchdog ────────────────────────────────────────────────
+
+    def _probe_token(self):
+        """Ping Meta with this account's token. Updates token_status,
+        token_last_checked, token_last_error. Returns the new status
+        so the cron can decide whether to notify."""
+        self.ensure_one()
+        if not self.access_token or not self.phone_number_id:
+            self.write({
+                'token_status':      'unchecked',
+                'token_last_checked': fields.Datetime.now(),
+                'token_last_error':  "access_token or phone_number_id missing",
+            })
+            return 'unchecked'
+
+        url = (
+            f"https://graph.facebook.com/v18.0/{self.phone_number_id}"
+            "?fields=display_phone_number"
+        )
+        headers = {'Authorization': f'Bearer {self.access_token}'}
+        try:
+            r = requests.get(url, headers=headers, timeout=15)
+        except requests.exceptions.RequestException as e:
+            self.write({
+                'token_status':       'unreachable',
+                'token_last_checked': fields.Datetime.now(),
+                'token_last_error':   f"Network: {e}"[:255],
+            })
+            return 'unreachable'
+
+        if r.status_code == 200:
+            self.write({
+                'token_status':       'valid',
+                'token_last_checked': fields.Datetime.now(),
+                'token_last_error':   False,
+            })
+            return 'valid'
+
+        # Meta returns 401 with code 190 for expired tokens.
+        err = {}
+        try:
+            err = (r.json() or {}).get('error', {})
+        except Exception:
+            pass
+        code = err.get('code')
+        msg = err.get('message') or r.text[:200] or f"HTTP {r.status_code}"
+        if r.status_code in (401, 403) or code in (190, 102, 200):
+            new_status = 'expired'
+        else:
+            new_status = 'unreachable'
+        self.write({
+            'token_status':       new_status,
+            'token_last_checked': fields.Datetime.now(),
+            'token_last_error':   msg[:255],
+        })
+        return new_status
+
+    def action_check_token(self):
+        """Manual 'Check Token' button — probes and returns a
+        display_notification summarising the outcome."""
+        self.ensure_one()
+        status = self._probe_token()
+        colours = {
+            'valid':       ('success', 'Token is valid.'),
+            'expired':     ('danger',  f"Token expired: {self.token_last_error}"),
+            'unreachable': ('warning', f"Could not reach Meta: {self.token_last_error}"),
+            'unchecked':   ('warning', self.token_last_error or 'Not checked.'),
+        }
+        typ, msg = colours.get(status, ('warning', status))
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'title':   f"Token check — {self.name}",
+                'message': msg,
+                'type':    typ,
+                'sticky':  status != 'valid',
+            },
+        }
+
+    @api.model
+    def cron_probe_all_tokens(self):
+        """Daily cron — probe every active account's token. When one
+        transitions valid → expired, bus-push a sticky notification to
+        every admin so someone gets alerted before real traffic hits it.
+        """
+        accounts = self.sudo().search([('active', '=', True)])
+        newly_expired = self.env['comm.whatsapp.account']
+        for acc in accounts:
+            was = acc.token_status
+            now = acc._probe_token()
+            if now == 'expired' and was != 'expired':
+                newly_expired |= acc
+
+        if not newly_expired:
+            return True
+
+        # Notify every user in the admin group (Settings).
+        admin_group = self.env.ref('base.group_erp_manager',
+                                   raise_if_not_found=False)
+        admins = admin_group.users if admin_group else self.env['res.users']
+        if not admins:
+            return True
+
+        payload = {
+            'type':     'whatsapp_token_expired',
+            'accounts': [{
+                'id':   a.id,
+                'name': a.name,
+                'error': a.token_last_error or '',
+            } for a in newly_expired],
+        }
+        bus = self.env['bus.bus'].sudo()
+        for u in admins:
+            if u.partner_id:
+                try:
+                    bus._sendone(
+                        u.partner_id,
+                        'whatsapp_token_expired',
+                        payload,
+                    )
+                except AttributeError:
+                    break
+        _logger.warning(
+            "WhatsApp account tokens expired: %s. %d admins notified.",
+            newly_expired.mapped('name'), len(admins),
+        )
+        return True
 
     def action_refresh_from_meta(self):
         """Look up this account's phone_number_id on Meta's Graph API and

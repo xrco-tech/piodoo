@@ -6,12 +6,20 @@
             <field name="name">comm.whatsapp.account.tree</field>
             <field name="model">comm.whatsapp.account</field>
             <field name="arch" type="xml">
-                <list string="WhatsApp Accounts" default_order="sequence, id">
+                <list string="WhatsApp Accounts" default_order="sequence, id"
+                      decoration-danger="token_status == 'expired'"
+                      decoration-warning="token_status == 'unreachable'">
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
                     <field name="phone_number"/>
                     <field name="phone_number_id"/>
                     <field name="business_account_id" optional="hide"/>
+                    <field name="token_status" widget="badge"
+                           decoration-success="token_status == 'valid'"
+                           decoration-danger="token_status == 'expired'"
+                           decoration-warning="token_status == 'unreachable'"
+                           decoration-muted="token_status == 'unchecked'"/>
+                    <field name="token_last_checked" optional="hide"/>
                     <field name="is_default" widget="boolean_toggle"/>
                     <field name="active" widget="boolean_toggle"/>
                 </list>
@@ -36,6 +44,10 @@
                                 string="Refresh from Meta" icon="fa-refresh"
                                 class="btn-secondary"
                                 help="Look up the phone_number_id on Meta and update the display phone number + verified name."/>
+                        <button name="action_check_token" type="object"
+                                string="Check Token" icon="fa-key"
+                                class="btn-secondary"
+                                help="Probe the access token against Meta and show the current status."/>
                         <button name="action_diagnose_calling" type="object"
                                 string="Diagnose Calling" icon="fa-stethoscope"
                                 class="btn-secondary"
@@ -81,6 +93,15 @@
                                        decoration-warning="quality_rating == 'YELLOW'"
                                        decoration-danger="quality_rating == 'RED'"/>
                                 <field name="last_verified_at" readonly="1"/>
+                                <field name="token_status" readonly="1"
+                                       widget="badge"
+                                       decoration-success="token_status == 'valid'"
+                                       decoration-danger="token_status == 'expired'"
+                                       decoration-warning="token_status == 'unreachable'"
+                                       decoration-muted="token_status == 'unchecked'"/>
+                                <field name="token_last_checked" readonly="1"/>
+                                <field name="token_last_error" readonly="1"
+                                       invisible="not token_last_error"/>
                             </group>
                             <group string="Routing">
                                 <field name="is_default"/>

@@ -284,6 +284,14 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 write_vals["duration"] = call_data.get("duration", 0)
         if write_vals:
             call_log.write(write_vals)
+        # Remote hangup / rejection — tell any browser still showing the
+        # popup that this call is gone so it disappears without waiting
+        # for a click.
+        if status == "ended":
+            try:
+                call_log._broadcast_call_taken("remote_ended")
+            except Exception:
+                pass
 
     def _find_or_create_partner(self, phone_number):
         if not phone_number:

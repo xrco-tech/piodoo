@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp CE (Community Edition)',
-    'version': '18.0.1.0.77',
+    'version': '18.0.1.0.78',
     'category': 'Tools',
     'summary': 'WhatsApp Community Edition Integration Module',
     'description': """
@@ -25,12 +25,14 @@ A lightweight WhatsApp integration module for Odoo Community Edition.
         'views/whatsapp_flow_screen_views.xml',
         'views/whatsapp_flow_component_views.xml',
         'views/whatsapp_flow_views.xml',
+        'data/token_watchdog_cron.xml',
     ],
     'assets': {
         'web.assets_backend': [
             'comm_whatsapp/static/src/xml/flow_canvas.xml',
             'comm_whatsapp/static/src/css/flow_canvas.css',
             'comm_whatsapp/static/src/js/flow_canvas.js',
+            'comm_whatsapp/static/src/js/token_watchdog_listener.js',
         ],
     },
     'installable': True,
