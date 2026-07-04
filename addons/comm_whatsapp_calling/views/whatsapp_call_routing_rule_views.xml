@@ -10,8 +10,7 @@
                     <field name="name"/>
                     <field name="account_id"/>
                     <field name="caller_pattern"/>
-                    <field name="agent_ids" widget="many2many_tags"/>
-                    <field name="agent_group_id"/>
+                    <field name="team_ids" widget="many2many_tags"/>
                     <field name="active" widget="boolean_toggle"/>
                 </list>
             </field>
@@ -39,20 +38,18 @@
                                 <field name="active" invisible="1"/>
                             </group>
                             <group string="Route to">
-                                <field name="agent_ids" widget="many2many_tags"
-                                       options="{'no_create': True}"/>
-                                <field name="agent_group_id"
+                                <field name="team_ids" widget="many2many_tags"
                                        options="{'no_create': True}"/>
                                 <field name="match_count" readonly="1"/>
                             </group>
                         </group>
                         <div class="alert alert-info" role="alert">
                             <i class="fa fa-info-circle me-1"/>
-                            The union of <strong>Target Agents</strong> and
-                            <strong>Target Group</strong>'s users is the
-                            candidate set. Only members currently marked
-                            <strong>Available</strong> in the systray get the
-                            ringing popup. Rules are evaluated in
+                            Every member of every attached
+                            <strong>Team</strong> is a candidate. Only
+                            members currently marked
+                            <strong>Available</strong> in the systray get
+                            the ringing popup. Rules are evaluated in
                             <strong>Sequence</strong> order — the first to
                             match wins. When no rule matches or nobody is
                             available in the matched set, we fall back to

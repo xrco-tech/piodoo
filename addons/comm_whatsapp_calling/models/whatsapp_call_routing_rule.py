@@ -42,15 +42,13 @@ class WhatsappCallRoutingRule(models.Model):
     )
 
     # ── Route target ──────────────────────────────────────────────
-    agent_ids = fields.Many2many(
-        "res.users", "wa_call_route_agent_rel",
-        "rule_id", "user_id",
-        string="Target Agents",
-        help="These users' browsers ring first. Union with agent_group.",
-    )
-    agent_group_id = fields.Many2one(
-        "res.groups", string="Target Group",
-        help="Every user in this group is a target. Union with agent_ids.",
+    team_ids = fields.Many2many(
+        "whatsapp.call.team", "wa_call_route_team_rel",
+        "rule_id", "team_id",
+        string="Teams",
+        help="Every member of these teams is a candidate. Only members "
+             "currently marked Available in the systray get the ringing "
+             "popup.",
     )
 
     match_count = fields.Integer(
@@ -97,12 +95,9 @@ class WhatsappCallRoutingRule(models.Model):
         return True
 
     def _resolve_users(self):
-        """Union of agent_ids and agent_group.users."""
+        """Union of every member of every attached team."""
         self.ensure_one()
-        users = self.agent_ids
-        if self.agent_group_id:
-            users |= self.agent_group_id.users
-        return users
+        return self.mapped("team_ids.member_ids")
 
     @api.model
     def resolve_target_users(self, account_id, from_number):

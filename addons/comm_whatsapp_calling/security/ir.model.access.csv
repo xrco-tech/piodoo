@@ -3,3 +3,5 @@ access_whatsapp_call_log_user,whatsapp.call.log.user,model_whatsapp_call_log,bas
 access_whatsapp_call_log_manager,whatsapp.call.log.manager,model_whatsapp_call_log,base.group_system,1,1,1,1
 access_whatsapp_call_routing_rule_user,whatsapp.call.routing.rule.user,model_whatsapp_call_routing_rule,base.group_user,1,0,0,0
 access_whatsapp_call_routing_rule_manager,whatsapp.call.routing.rule.manager,model_whatsapp_call_routing_rule,base.group_system,1,1,1,1
+access_whatsapp_call_team_user,whatsapp.call.team.user,model_whatsapp_call_team,base.group_user,1,0,0,0
+access_whatsapp_call_team_manager,whatsapp.call.team.manager,model_whatsapp_call_team,base.group_system,1,1,1,1

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Calling (comm_whatsapp)',
-    'version': '18.0.1.6.0',
+    'version': '18.0.1.7.0',
     'category': 'Communications',
     'summary': 'WhatsApp Cloud API Calling: make and receive calls with comm_whatsapp',
     'description': """
@@ -26,6 +26,7 @@ See WHATSAPP_CALLING_PLAN.md for Meta API details and WebRTC options.
     'data': [
         'security/ir.model.access.csv',
         'views/whatsapp_call_log_views.xml',
+        'views/whatsapp_call_team_views.xml',
         'views/whatsapp_call_routing_rule_views.xml',
         'views/res_partner_views.xml',
         'data/backfill_outbound_timestamps.xml',
