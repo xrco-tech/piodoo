@@ -254,6 +254,71 @@ class WhatsappCallLog(models.Model):
             self.write({"call_status": "declined"})
         return res
 
+    def action_connect(self, sdp_offer, to_number):
+        """Initiate an outbound WhatsApp call. The browser has already
+        created an RTCPeerConnection, captured the user's mic, and built
+        an SDP offer. We POST that offer to Meta's /{PNID}/calls with
+        action=connect. Meta places the call to `to_number`; when the
+        recipient picks up, Meta fires a webhook with the answer SDP.
+
+        Returns the Meta call_id when Meta accepted the offer, else None.
+        """
+        self.ensure_one()
+        if not sdp_offer:
+            _logger.warning(
+                "comm_whatsapp_calling: connect refused — missing sdp_offer"
+            )
+            return None
+        if not to_number:
+            _logger.warning(
+                "comm_whatsapp_calling: connect refused — missing to_number"
+            )
+            return None
+        token, phone_number_id = self._get_comm_whatsapp_config()
+        if not token or not phone_number_id:
+            _logger.warning(
+                "comm_whatsapp_calling: connect refused — missing "
+                "access_token or phone_number_id."
+            )
+            return None
+        url = f"https://graph.facebook.com/{META_GRAPH_VERSION}/{phone_number_id}/calls"
+        payload = {
+            "messaging_product": "whatsapp",
+            "to":     to_number,
+            "action": "connect",
+            "session": {"sdp_type": "offer", "sdp": sdp_offer},
+        }
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type":  "application/json",
+        }
+        try:
+            r = requests.post(url, json=payload, headers=headers, timeout=15)
+            if r.ok:
+                data = r.json() or {}
+                # Meta returns { messaging_product, calls: [{id: "wacid.…"}] }.
+                meta_call_id = None
+                calls = data.get("calls") or []
+                if calls:
+                    meta_call_id = calls[0].get("id")
+                _logger.info(
+                    "comm_whatsapp_calling: connect dispatched, meta_call_id=%s",
+                    meta_call_id,
+                )
+                update = {"sdp_offer": sdp_offer, "call_status": "ringing"}
+                if meta_call_id and not self.call_id.startswith("wacid."):
+                    update["call_id"] = meta_call_id
+                self.write(update)
+                return meta_call_id or True
+            _logger.error(
+                "comm_whatsapp_calling: connect failed (%s): %s",
+                r.status_code, r.text[:400],
+            )
+            return None
+        except Exception as e:
+            _logger.error("comm_whatsapp_calling: connect error: %s", e)
+            return None
+
     def action_hangup(self):
         """End an already-answered call. Meta uses `terminate` for this
         (not `reject`, which is only valid while ringing)."""

@@ -80,6 +80,10 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             status = "ended"
         elif event == "connect":
             status = "ringing"
+        elif event == "accept":
+            # Fires on outbound calls when the remote party picks up
+            # and Meta returns the answer SDP for our RTCPeerConnection.
+            status = "answered"
 
         CallLog = request.env["whatsapp.call.log"].sudo()
         existing = CallLog.search([("call_id", "=", call_id)], limit=1)
@@ -98,6 +102,17 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                     # server-side (the browser generates it on Accept);
                     # skip straight to the ringing bus push.
                     self._send_ringing_notification(existing)
+            # Outbound flow: the remote answered. Push the SDP answer
+            # to the browser so it can call setRemoteDescription and
+            # kick off DTLS-SRTP.
+            if status == "answered" and existing.call_direction == "outgoing":
+                answer_sdp = call_data.get("session", {}).get("sdp")
+                if answer_sdp:
+                    existing.write({
+                        "sdp_answer":  answer_sdp,
+                        "call_status": "answered",
+                    })
+                    self._send_outbound_answered_notification(existing, answer_sdp)
             return
 
         # Create new call log
@@ -188,6 +203,41 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
         except Exception as e:
             _logger.warning(
                 "comm_whatsapp_calling: could not send ringing notification: %s", e
+            )
+
+    def _send_outbound_answered_notification(self, call_log, answer_sdp):
+        """The remote party accepted an outbound call and Meta forwarded
+        us their SDP answer. Push it to every logged-in user's partner
+        channel so whoever initiated the call gets it in their browser
+        and can call setRemoteDescription on the RTCPeerConnection they
+        opened when they clicked Call.
+        """
+        try:
+            if "bus.bus" not in request.env:
+                return
+            payload = {
+                "type":         "whatsapp_outbound_answered",
+                "call_log_id":  call_log.id,
+                "sdp_answer":   answer_sdp,
+                "to_number":    call_log.to_number or "",
+            }
+            users = request.env["res.users"].sudo().search([("active", "=", True)])
+            bus = request.env["bus.bus"].sudo()
+            for u in users:
+                partner = u.partner_id
+                if not partner:
+                    continue
+                try:
+                    bus._sendone(partner, "whatsapp_outbound_answered", payload)
+                except AttributeError:
+                    break
+            _logger.info(
+                "comm_whatsapp_calling: pushed outbound-answered SDP for call %s",
+                call_log.call_id,
+            )
+        except Exception as e:
+            _logger.warning(
+                "comm_whatsapp_calling: could not push outbound-answered SDP: %s", e
             )
 
     def _update_call_log(self, call_log, call_data, status, extra_vals=None):

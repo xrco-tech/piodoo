@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add a WhatsApp Call button next to Phone/Mobile on the partner form.
+         The JS handler picks up the partner's mobile (fallback: phone) and
+         dials it through the OWL calling service. -->
+    <record id="view_partner_form_whatsapp_call" model="ir.ui.view">
+        <field name="name">res.partner.form.whatsapp.call</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button"
+                        icon="fa-phone"
+                        type="object"
+                        name="action_whatsapp_call"
+                        string="Call WhatsApp"
+                        invisible="not mobile and not phone"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

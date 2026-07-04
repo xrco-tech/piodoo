@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Calling (comm_whatsapp)',
-    'version': '18.0.1.1.4',
+    'version': '18.0.1.2.0',
     'category': 'Communications',
     'summary': 'WhatsApp Cloud API Calling: make and receive calls with comm_whatsapp',
     'description': """
@@ -26,14 +26,19 @@ See WHATSAPP_CALLING_PLAN.md for Meta API details and WebRTC options.
     'data': [
         'security/ir.model.access.csv',
         'views/whatsapp_call_log_views.xml',
+        'views/res_partner_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
             'comm_whatsapp_calling/static/src/css/incoming_call_popup.css',
             'comm_whatsapp_calling/static/src/css/systray_whatsapp_calls.css',
+            'comm_whatsapp_calling/static/src/css/systray_dialer.css',
             'comm_whatsapp_calling/static/src/xml/systray_whatsapp_calls.xml',
+            'comm_whatsapp_calling/static/src/xml/systray_dialer.xml',
             'comm_whatsapp_calling/static/src/js/incoming_call_popup.js',
             'comm_whatsapp_calling/static/src/js/systray_whatsapp_calls.js',
+            'comm_whatsapp_calling/static/src/js/systray_dialer.js',
+            'comm_whatsapp_calling/static/src/js/dial_action.js',
         ],
     },
     'installable': True,

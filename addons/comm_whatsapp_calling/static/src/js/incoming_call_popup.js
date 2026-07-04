@@ -281,18 +281,130 @@ const waCallService = {
             if (!userInitiated) notify("Call ended.", "info");
         }
 
+        // ── Outbound dial ─────────────────────────────────────────────
+        async function dialCall({ toNumber, accountId, partnerName, partnerId }) {
+            if (!toNumber) {
+                notify("Enter a phone number to dial.", "warning");
+                return;
+            }
+            if (activeCall) {
+                notify("Another call is in progress.", "warning");
+                return;
+            }
+            notify(`Dialling ${toNumber}…`, "info");
+
+            const call = {
+                id: null, pc: null, localStream: null,
+                remoteStream: null, direction: "outgoing",
+                partnerName: partnerName || toNumber,
+            };
+            activeCall = call;
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true, video: false,
+                });
+                call.localStream = stream;
+
+                const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+                call.pc = pc;
+
+                pc.onicecandidate = (ev) => {
+                    if (!ev.candidate) log("outbound ICE gathering complete");
+                };
+                pc.onconnectionstatechange = () => {
+                    log("outbound connection state:", pc.connectionState);
+                    if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+                        teardownCall(false);
+                    }
+                };
+                pc.oniceconnectionstatechange = () =>
+                    log("outbound ICE state:", pc.iceConnectionState);
+                pc.ontrack = (ev) => {
+                    log("outbound ontrack:", ev.streams?.[0]);
+                    const audio = ensureRemoteAudioEl();
+                    if (ev.streams?.[0]) {
+                        audio.srcObject = ev.streams[0];
+                        call.remoteStream = ev.streams[0];
+                    }
+                };
+
+                stream.getAudioTracks().forEach((t) => pc.addTrack(t, stream));
+
+                // Create and set offer, wait for ICE.
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                await waitForIceGathering(pc, 4000);
+
+                const result = await callRpc("/whatsapp/call/dial", {
+                    to_number:  toNumber,
+                    sdp_offer:  pc.localDescription.sdp,
+                    account_id: accountId || null,
+                    partner_id: partnerId || null,
+                });
+                if (!result?.success) {
+                    throw new Error(result?.error || "Dial failed");
+                }
+                call.id = result.call_log_id;
+                showHud({
+                    call_log_id:  call.id,
+                    partner_name: `Calling ${partnerName || toNumber}…`,
+                });
+                notify("Ringing…", "info");
+                // Now wait for the whatsapp_outbound_answered bus event
+                // to deliver the SDP answer.
+            } catch (err) {
+                warn("dial failed:", err);
+                notify("Dial failed: " + (err?.message || err), "danger");
+                teardownCall(false);
+            }
+        }
+
+        async function handleOutboundAnswered(payload) {
+            if (!activeCall || activeCall.direction !== "outgoing") {
+                warn("outbound answered but no active outbound call");
+                return;
+            }
+            if (activeCall.id && payload.call_log_id !== activeCall.id) {
+                warn("outbound answered for a different call_log_id");
+                return;
+            }
+            try {
+                await activeCall.pc.setRemoteDescription({
+                    type: "answer", sdp: payload.sdp_answer,
+                });
+                log("outbound remote description set — audio should establish");
+                notify("Connected.", "success");
+                showHud({
+                    call_log_id:  activeCall.id,
+                    partner_name: activeCall.partnerName || "In call",
+                });
+            } catch (err) {
+                warn("setRemoteDescription failed:", err);
+                notify("Media negotiation failed.", "danger");
+                teardownCall(false);
+            }
+        }
+
+        // Public API for other components (systray, res.partner button, etc.)
+        env.services.comm_whatsapp_calling = { dialCall };
+
         // ── Bus wiring ────────────────────────────────────────────────
         try {
             log("bus_service keys:", Object.keys(bus_service));
             if (typeof bus_service.subscribe !== "function") {
                 warn("bus_service.subscribe is not a function — API changed?");
-                return {};
+                return { dialCall };
             }
             bus_service.subscribe("whatsapp_incoming_call", (payload) => {
                 log("bus event received:", payload?.type, "id:", payload?.call_log_id);
                 if (payload?.type === "whatsapp_incoming_call") {
                     showPopup(payload);
                 }
+            });
+            bus_service.subscribe("whatsapp_outbound_answered", (payload) => {
+                log("outbound answered:", payload?.call_log_id);
+                handleOutboundAnswered(payload);
             });
             if (typeof bus_service.start === "function") {
                 bus_service.start();
@@ -302,7 +414,7 @@ const waCallService = {
             warn("bus subscribe failed:", e && e.message ? e.message : e);
         }
 
-        return {};
+        return { dialCall };
     },
 };
 
