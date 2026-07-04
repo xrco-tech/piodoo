@@ -10,7 +10,9 @@
 
 import { registry } from "@web/core/registry";
 
-async function dialFromAction({ env, action }) {
+// Odoo 18 client-action factories are called as fn(env, action) — two
+// positional arguments, not a destructured object.
+async function dialFromAction(env, action) {
     const params = (action && action.params) || {};
     const to = (params.to_number || "").trim();
     if (!to) {

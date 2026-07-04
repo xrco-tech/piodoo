@@ -309,6 +309,10 @@ class WhatsappCallLog(models.Model):
                 if meta_call_id and not self.call_id.startswith("wacid."):
                     update["call_id"] = meta_call_id
                 self.write(update)
+                # Commit immediately so the webhook (which can race the
+                # response back to the browser by milliseconds) can find
+                # the log by its Meta call_id.
+                self.env.cr.commit()
                 return meta_call_id or True
             _logger.error(
                 "comm_whatsapp_calling: connect failed (%s): %s",
