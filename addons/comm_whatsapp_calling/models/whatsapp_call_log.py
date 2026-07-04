@@ -116,6 +116,51 @@ class WhatsappCallLog(models.Model):
             else:
                 rec.contact_display = rec.from_number or "Unknown"
 
+    # ── Reporting aggregates ─────────────────────────────────────────
+    # Stored so pivot/graph views can group by them without a
+    # per-record Python compute at read time.
+    hour_of_day = fields.Integer(
+        string="Hour of Day", compute="_compute_time_buckets",
+        store=True, help="0–23 hour the call started (server time).",
+    )
+    weekday = fields.Selection([
+        ('0', 'Monday'),   ('1', 'Tuesday'),  ('2', 'Wednesday'),
+        ('3', 'Thursday'), ('4', 'Friday'),   ('5', 'Saturday'),
+        ('6', 'Sunday'),
+    ], string="Weekday", compute="_compute_time_buckets", store=True)
+    duration_minutes = fields.Float(
+        string="Duration (min)", compute="_compute_duration_minutes",
+        store=True, digits=(6, 2),
+        help="Duration in decimal minutes — used as a summable measure "
+             "in pivot / graph views.",
+    )
+    missed_count = fields.Integer(
+        string="Missed", compute="_compute_missed_count", store=True,
+        help="1 when this call was missed; 0 otherwise. Sum in pivot for a "
+             "missed-count measure.",
+    )
+
+    @api.depends("call_timestamp")
+    def _compute_time_buckets(self):
+        for rec in self:
+            ts = rec.call_timestamp
+            if ts:
+                rec.hour_of_day = ts.hour
+                rec.weekday = str(ts.weekday())
+            else:
+                rec.hour_of_day = 0
+                rec.weekday = False
+
+    @api.depends("duration")
+    def _compute_duration_minutes(self):
+        for rec in self:
+            rec.duration_minutes = round((rec.duration or 0) / 60.0, 2)
+
+    @api.depends("is_missed")
+    def _compute_missed_count(self):
+        for rec in self:
+            rec.missed_count = 1 if rec.is_missed else 0
+
     @api.model
     def _backfill_outbound_call_timestamps(self):
         """Data-load hook: any outbound call log with call_timestamp

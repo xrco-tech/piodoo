@@ -189,12 +189,54 @@
             </field>
         </record>
 
+        <!-- ── Graph ───────────────────────────────────────────────── -->
+        <record id="view_whatsapp_call_log_graph" model="ir.ui.view">
+            <field name="name">whatsapp.call.log.graph</field>
+            <field name="model">whatsapp.call.log</field>
+            <field name="arch" type="xml">
+                <graph string="WhatsApp Calls"
+                       type="bar" sample="1">
+                    <field name="call_timestamp" interval="day"/>
+                    <field name="call_direction"/>
+                    <field name="id" type="measure" string="Calls"/>
+                    <field name="duration_minutes" type="measure"
+                           operator="avg" string="Avg minutes"/>
+                    <field name="missed_count" type="measure" string="Missed"/>
+                </graph>
+            </field>
+        </record>
+
+        <!-- ── Pivot ───────────────────────────────────────────────── -->
+        <record id="view_whatsapp_call_log_pivot" model="ir.ui.view">
+            <field name="name">whatsapp.call.log.pivot</field>
+            <field name="model">whatsapp.call.log</field>
+            <field name="arch" type="xml">
+                <pivot string="WhatsApp Calls" sample="1">
+                    <field name="call_timestamp" interval="day" type="row"/>
+                    <field name="call_direction" type="col"/>
+                    <field name="id" type="measure" string="Calls"/>
+                    <field name="duration_minutes" type="measure"
+                           operator="avg" string="Avg minutes"/>
+                    <field name="missed_count" type="measure" string="Missed"/>
+                </pivot>
+            </field>
+        </record>
+
         <record id="action_whatsapp_call_log" model="ir.actions.act_window">
             <field name="name">WhatsApp Calls</field>
             <field name="res_model">whatsapp.call.log</field>
-            <field name="view_mode">list,kanban,form</field>
+            <field name="view_mode">list,kanban,graph,pivot,form</field>
             <field name="search_view_id" ref="view_whatsapp_call_log_search"/>
             <field name="context">{'search_default_this_week': 1}</field>
+        </record>
+
+        <!-- Dedicated Dashboard menu opening straight into the graph. -->
+        <record id="action_whatsapp_call_log_dashboard" model="ir.actions.act_window">
+            <field name="name">Calls Dashboard</field>
+            <field name="res_model">whatsapp.call.log</field>
+            <field name="view_mode">graph,pivot</field>
+            <field name="search_view_id" ref="view_whatsapp_call_log_search"/>
+            <field name="context">{}</field>
         </record>
 
         <menuitem id="menu_whatsapp_calls"
@@ -202,5 +244,10 @@
                   action="action_whatsapp_call_log"
                   parent="comm_whatsapp.menu_whatsapp_root"
                   sequence="20"/>
+        <menuitem id="menu_whatsapp_calls_dashboard"
+                  name="Calls Dashboard"
+                  action="action_whatsapp_call_log_dashboard"
+                  parent="comm_whatsapp.menu_whatsapp_root"
+                  sequence="21"/>
     </data>
 </odoo>

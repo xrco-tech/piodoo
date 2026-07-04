@@ -1,0 +1,18 @@
+.o_wa_presence {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 4px;
+}
+.o_wa_presence_btn {
+    background: transparent; border: none; color: #fff;
+    font-size: 12px; padding: 5px 10px; cursor: pointer;
+    border-radius: 6px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-weight: 500;
+}
+.o_wa_presence_btn:hover { background: rgba(255,255,255,0.12); }
+.o_wa_presence_btn .fa { font-size: 12px; }
+.o_wa_presence_label { line-height: 1; }
+@media (max-width: 900px) {
+    .o_wa_presence_label { display: none; }
+}

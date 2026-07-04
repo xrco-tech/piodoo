@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="comm_whatsapp_calling.SystrayPresence">
+        <div class="o_wa_presence" t-att-title="'Call presence: ' + cfg.label + ' (click to cycle)'">
+            <button class="o_wa_presence_btn" t-on-click="_cycle">
+                <i t-att-class="'fa ' + cfg.icon"
+                   t-att-style="'color: ' + cfg.color + ';'"/>
+                <span class="o_wa_presence_label" t-esc="cfg.label"/>
+            </button>
+        </div>
+    </t>
+</templates>
