@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from odoo import http
+from odoo import fields, http
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -55,6 +55,10 @@ class WhatsappCallRoutes(http.Controller):
             "call_status":          "ringing",
             "meta_phone_number_id": acc.phone_number_id,
             "partner_id":           partner_id or False,
+            # Stamp the dial time so outbound calls show up on the list
+            # + kanban immediately — Meta's connect webhook may arrive
+            # seconds later.
+            "call_timestamp":       fields.Datetime.now(),
         }
         # chatbot_id is only present when the glue module
         # comm_whatsapp_calling_chatbot is installed. Set it defensively.

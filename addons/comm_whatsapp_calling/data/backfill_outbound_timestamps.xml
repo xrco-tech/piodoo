@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- One-shot backfill: any outbound call log created before the
+             dial route stamped call_timestamp gets the create_date as a
+             best-effort dialled-at value so it stops disappearing from the
+             call list. noupdate=1 keeps this from firing again on upgrade. -->
+        <function model="whatsapp.call.log" name="_backfill_outbound_call_timestamps"/>
+    </data>
+</odoo>

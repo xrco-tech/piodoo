@@ -116,6 +116,18 @@ class WhatsappCallLog(models.Model):
             else:
                 rec.contact_display = rec.from_number or "Unknown"
 
+    @api.model
+    def _backfill_outbound_call_timestamps(self):
+        """Data-load hook: any outbound call log with call_timestamp
+        empty picks up create_date so it stops falling off the list
+        view / kanban / date-filtered searches."""
+        rows = self.sudo().search([
+            ("call_direction", "=", "outgoing"),
+            ("call_timestamp", "=", False),
+        ])
+        for r in rows:
+            r.call_timestamp = r.create_date
+
     def action_return_call(self):
         """Fire an outbound call to whichever party isn't us — for a
         missed inbound that's the caller's from_number, for an outbound
