@@ -54,6 +54,20 @@
     border: 1px solid transparent;
     line-height: 1;
 }
+.o_aw_wa_badge {
+    display: inline-flex;
+    align-items: center;
+    height: 31px;
+    padding: 0 12px;
+    background: #25D366;    /* WhatsApp green */
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    line-height: 1;
+    margin-left: 6px;
+}
 .o_aw_end_btn {
     height: 31px;
     line-height: 1;

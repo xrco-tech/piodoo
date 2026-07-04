@@ -386,15 +386,30 @@ const waCallService = {
             }
         }
 
-        // Public API for other components (systray, res.partner button, etc.)
-        env.services.comm_whatsapp_calling = { dialCall };
+        function hangupActive() {
+            if (!activeCall) return false;
+            const id = activeCall.id;
+            teardownCall(true);
+            if (id) {
+                callRpc(`/whatsapp/call/decline/${id}`, {}).catch(() => {});
+            }
+            return true;
+        }
+
+        function isActive() {
+            return !!activeCall;
+        }
+
+        // Public API for other components (systray, res.partner button,
+        // Agent Workspace, etc.).
+        env.services.comm_whatsapp_calling = { dialCall, hangupActive, isActive };
 
         // ── Bus wiring ────────────────────────────────────────────────
         try {
             log("bus_service keys:", Object.keys(bus_service));
             if (typeof bus_service.subscribe !== "function") {
                 warn("bus_service.subscribe is not a function — API changed?");
-                return { dialCall };
+                return { dialCall, hangupActive, isActive };
             }
             bus_service.subscribe("whatsapp_incoming_call", (payload) => {
                 log("bus event received:", payload?.type, "id:", payload?.call_log_id);
@@ -414,7 +429,7 @@ const waCallService = {
             warn("bus subscribe failed:", e && e.message ? e.message : e);
         }
 
-        return { dialCall };
+        return { dialCall, hangupActive, isActive };
     },
 };
 

@@ -21,6 +21,9 @@
                     <span class="o_aw_live_badge">
                         <i class="fa fa-circle me-1"/>Live
                     </span>
+                    <span t-if="state.waCallActive" class="o_aw_wa_badge">
+                        <i class="fa fa-phone me-1"/>WhatsApp
+                    </span>
                     <button class="btn btn-sm btn-outline-danger o_aw_end_btn"
                             t-on-click="() => this._openWrap()">
                         <i class="fa fa-stop-circle me-1"/>End call
@@ -43,6 +46,19 @@
                         <label>Mobile</label>
                         <input type="tel" class="form-control mb-3"
                                t-model="state.personaMobile" placeholder="+27600000001"/>
+
+                        <!-- Optional WhatsApp dial when the calling module is installed. -->
+                        <div t-if="state.waCallEnabled"
+                             class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox"
+                                   id="aw_wa_dial_toggle"
+                                   t-model="state.waCallDial"/>
+                            <label class="form-check-label" for="aw_wa_dial_toggle">
+                                <i class="fa fa-phone me-1"/>
+                                Dial customer via WhatsApp when the call starts
+                            </label>
+                        </div>
+
                         <button class="btn btn-primary w-100"
                                 t-att-disabled="state.sending"
                                 t-on-click="() => this._startCall()">

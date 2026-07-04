@@ -54,9 +54,20 @@ export class AgentWorkspace extends Component {
             outcome: "resolved",
             notes: "",
             saving: false,
+            // WhatsApp call integration — soft dependency on the
+            // comm_whatsapp_calling module.
+            waCallEnabled: !!(this.env.services && this.env.services.comm_whatsapp_calling),
+            waCallDial: true,      // pre-call toggle
+            waCallActive: false,   // set true once dial() has been fired
         });
 
         onMounted(() => this._loadSetup());
+    }
+
+    _wa() {
+        // Lazy access to the calling service so we don't blow up when the
+        // optional module isn't installed.
+        return this.env.services?.comm_whatsapp_calling || null;
     }
 
     /* ── Setup ──────────────────────────────────────────────────────────── */
@@ -97,6 +108,30 @@ export class AgentWorkspace extends Component {
             this.state.sessionId = data.session_id;
             this.state.partner = data.partner;
             this.state.started = true;
+
+            // Fire the real WhatsApp call in parallel when the toggle is
+            // on and the calling service is available. Any dial failure
+            // stays soft — the coaching session still runs.
+            if (this.state.waCallEnabled && this.state.waCallDial) {
+                const svc = this._wa();
+                if (svc) {
+                    try {
+                        this.state.waCallActive = true;
+                        svc.dialCall({
+                            toNumber:    mobile,
+                            partnerId:   data.partner?.id || null,
+                            partnerName: data.partner?.name || mobile,
+                        }).catch((err) => {
+                            this.state.waCallActive = false;
+                            this.notification.add(
+                                "WhatsApp dial failed: " + (err?.message || err),
+                                { type: "warning" });
+                        });
+                    } catch (err) {
+                        this.state.waCallActive = false;
+                    }
+                }
+            }
             // Re-load setup now that we have a contact (so saved values prefill).
             await this._loadSetupForContact(data.contact_id);
             // First engine turn — produces the welcome script.
@@ -269,6 +304,13 @@ export class AgentWorkspace extends Component {
     async _endCall() {
         if (!this.state.sessionId) return;
         this.state.saving = true;
+        // Hang up the live WhatsApp call first so the customer's phone
+        // stops ringing while the coaching session closes.
+        if (this.state.waCallActive) {
+            const svc = this._wa();
+            try { svc?.hangupActive?.(); } catch (e) { /* noop */ }
+            this.state.waCallActive = false;
+        }
         try {
             await rpc("/voice/end", {
                 session_id: this.state.sessionId,
