@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add a Calls smart button next to Open Workspace on the chatbot form.
+         Only meaningful for voice-channel chatbots, so the button hides on
+         other channels. -->
+    <record id="view_whatsapp_chatbot_form_call_logs" model="ir.ui.view">
+        <field name="name">whatsapp.chatbot.form.call.logs</field>
+        <field name="model">whatsapp.chatbot</field>
+        <field name="inherit_id" ref="comm_whatsapp_chatbot.view_whatsapp_chatbot_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_open_agent_workspace']" position="before">
+                <button name="action_view_call_logs"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-phone"
+                        invisible="channel != 'voice'">
+                    <field name="call_log_count" widget="statinfo" string="Calls"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

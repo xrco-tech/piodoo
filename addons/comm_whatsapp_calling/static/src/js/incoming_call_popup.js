@@ -282,7 +282,7 @@ const waCallService = {
         }
 
         // ── Outbound dial ─────────────────────────────────────────────
-        async function dialCall({ toNumber, accountId, partnerName, partnerId }) {
+        async function dialCall({ toNumber, accountId, partnerName, partnerId, chatbotId }) {
             if (!toNumber) {
                 notify("Enter a phone number to dial.", "warning");
                 return;
@@ -341,6 +341,7 @@ const waCallService = {
                     sdp_offer:  pc.localDescription.sdp,
                     account_id: accountId || null,
                     partner_id: partnerId || null,
+                    chatbot_id: chatbotId || null,
                 });
                 if (!result?.success) {
                     throw new Error(result?.error || "Dial failed");

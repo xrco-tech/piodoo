@@ -121,6 +121,7 @@ export class AgentWorkspace extends Component {
                             toNumber:    mobile,
                             partnerId:   data.partner?.id || null,
                             partnerName: data.partner?.name || mobile,
+                            chatbotId:   this.chatbotId || null,
                         }).catch((err) => {
                             this.state.waCallActive = false;
                             this.notification.add(

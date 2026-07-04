@@ -22,7 +22,8 @@ class WhatsappCallRoutes(http.Controller):
         methods=["POST"],
     )
     def dial_call(self, to_number=None, sdp_offer=None,
-                  account_id=None, partner_id=None, **kwargs):
+                  account_id=None, partner_id=None,
+                  chatbot_id=None, **kwargs):
         """Initiate an outbound call. The browser has already produced
         an SDP offer via RTCPeerConnection; we relay it to Meta.
 
@@ -46,7 +47,7 @@ class WhatsappCallRoutes(http.Controller):
 
         Log = request.env["whatsapp.call.log"].sudo()
         # Temporary call_id; the real one from Meta overwrites it on connect.
-        call_log = Log.create({
+        vals = {
             "call_id":              f"pending_{request.env.uid}_{to_number}",
             "call_direction":       "outgoing",
             "from_number":          acc.phone_number or acc.phone_number_id,
@@ -54,7 +55,12 @@ class WhatsappCallRoutes(http.Controller):
             "call_status":          "ringing",
             "meta_phone_number_id": acc.phone_number_id,
             "partner_id":           partner_id or False,
-        })
+        }
+        # chatbot_id is only present when the glue module
+        # comm_whatsapp_calling_chatbot is installed. Set it defensively.
+        if chatbot_id and "chatbot_id" in Log._fields:
+            vals["chatbot_id"] = chatbot_id
+        call_log = Log.create(vals)
         meta_call_id = call_log.action_connect(sdp_offer, to_number)
         if not meta_call_id:
             call_log.write({"call_status": "ended"})
