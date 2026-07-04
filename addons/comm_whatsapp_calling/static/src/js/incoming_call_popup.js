@@ -424,19 +424,40 @@ const waCallService = {
                 handleOutboundAnswered(payload);
             });
             bus_service.subscribe("whatsapp_call_taken", (payload) => {
-                // Another agent accepted / declined this call, or the
-                // remote side hung up. Kill our popup if we still have
-                // one for that call log id. Never nuke a popup we've
-                // already accepted (taken_by_uid matches us).
+                // Fired when: (a) another agent accepted / declined /
+                // hung up, or (b) the remote side ended the call
+                // (verb === "remote_ended"). We do THREE things here:
+                //  1. Kill our ringing popup if it's for this call.
+                //  2. If our active call matches this id, tear it down —
+                //     stops audio, closes the PC, removes the HUD.
+                //  3. Skip step 1 (but NOT step 2) for the session that
+                //     initiated the action so the accepting/hanging-up
+                //     agent's own UI isn't clobbered before their flow
+                //     completes.
                 if (!payload || !payload.call_log_id) return;
-                if (payload.taken_by_uid && env.services.user
-                    && payload.taken_by_uid === env.services.user.userId) {
-                    return;
+                const myUid = env.services.user && env.services.user.userId;
+                const isSelf = payload.taken_by_uid
+                    && myUid && payload.taken_by_uid === myUid;
+
+                // (1) popup dismissal — skip for the acting user.
+                if (!isSelf) {
+                    const el = document.getElementById(POPUP_ID);
+                    if (el && +el.dataset.callLogId === payload.call_log_id) {
+                        log("call taken elsewhere, hiding popup:", payload);
+                        el.remove();
+                    }
                 }
-                const el = document.getElementById(POPUP_ID);
-                if (el && +el.dataset.callLogId === payload.call_log_id) {
-                    log("call taken elsewhere, hiding popup:", payload);
-                    el.remove();
+
+                // (2) HUD + PC teardown when the remote hung up on us.
+                // This runs for the active session too — if the caller
+                // dropped, our audio needs to stop regardless of who
+                // triggered the event.
+                const isRemoteEnd = payload.verb === "remote_ended";
+                if (isRemoteEnd
+                        && activeCall
+                        && activeCall.id === payload.call_log_id) {
+                    log("remote party ended the call; tearing down");
+                    teardownCall(false);
                 }
             });
             if (typeof bus_service.start === "function") {
