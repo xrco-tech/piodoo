@@ -281,7 +281,14 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
 
             if status == "ended":
                 write_vals["end_timestamp"] = _convert_timestamp(call_data.get("timestamp"))
-                write_vals["duration"] = call_data.get("duration", 0)
+                # Prefer Meta's duration; otherwise derive from timestamps
+                # so the log is still complete for reporting.
+                meta_duration = call_data.get("duration")
+                if meta_duration:
+                    write_vals["duration"] = meta_duration
+                elif call_log.call_timestamp and write_vals.get("end_timestamp"):
+                    delta = write_vals["end_timestamp"] - call_log.call_timestamp
+                    write_vals["duration"] = max(int(delta.total_seconds()), 0)
         if write_vals:
             call_log.write(write_vals)
         # Remote hangup / rejection — tell any browser still showing the

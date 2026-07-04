@@ -1,0 +1,57 @@
+.o_wa_call_kanban .oe_kanban_card {
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.o_wa_call_kanban .o_wa_missed {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+.o_wa_kanban_head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.o_wa_call_direction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    flex: 0 0 32px;
+    font-size: 14px;
+    color: #fff;
+}
+.o_wa_call_in  { background: #16a34a; }
+.o_wa_call_out { background: #1a73e8; }
+.o_wa_missed .o_wa_call_in { background: #dc2626; }
+.o_wa_kanban_who { flex: 1; min-width: 0; }
+.o_wa_kanban_name {
+    font-weight: 700;
+    font-size: 13px;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_wa_kanban_dur {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4b5563;
+    background: #f3f4f6;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+.o_wa_kanban_foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+.o_wa_kanban_call {
+    padding: 3px 10px;
+    font-size: 12px;
+}

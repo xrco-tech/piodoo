@@ -1,54 +1,195 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- ── Search ──────────────────────────────────────────────── -->
+        <record id="view_whatsapp_call_log_search" model="ir.ui.view">
+            <field name="name">whatsapp.call.log.search</field>
+            <field name="model">whatsapp.call.log</field>
+            <field name="arch" type="xml">
+                <search string="Search Calls">
+                    <field name="partner_id"/>
+                    <field name="from_number"/>
+                    <field name="to_number"/>
+                    <field name="call_id"/>
+                    <separator/>
+                    <filter string="Incoming" name="incoming"
+                            domain="[('call_direction', '=', 'incoming')]"/>
+                    <filter string="Outgoing" name="outgoing"
+                            domain="[('call_direction', '=', 'outgoing')]"/>
+                    <separator/>
+                    <filter string="Answered" name="answered"
+                            domain="[('call_status', '=', 'answered')]"/>
+                    <filter string="Missed" name="missed"
+                            domain="[('is_missed', '=', True)]"/>
+                    <filter string="Declined" name="declined"
+                            domain="[('call_status', '=', 'declined')]"/>
+                    <filter string="Failed" name="failed"
+                            domain="[('call_status', '=', 'failed')]"/>
+                    <separator/>
+                    <filter string="Today" name="today"
+                            domain="[('call_timestamp', '&gt;=',
+                                      (context_today()).strftime('%Y-%m-%d 00:00:00'))]"/>
+                    <filter string="This Week" name="this_week"
+                            domain="[('call_timestamp', '&gt;=',
+                                      (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d 00:00:00'))]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Direction" name="group_direction"
+                                context="{'group_by': 'call_direction'}"/>
+                        <filter string="Status" name="group_status"
+                                context="{'group_by': 'call_status'}"/>
+                        <filter string="When" name="group_day_bucket"
+                                context="{'group_by': 'day_bucket'}"/>
+                        <filter string="Contact" name="group_partner"
+                                context="{'group_by': 'partner_id'}"/>
+                        <filter string="Day" name="group_day"
+                                context="{'group_by': 'call_timestamp:day'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ── List ────────────────────────────────────────────────── -->
         <record id="view_whatsapp_call_log_list" model="ir.ui.view">
             <field name="name">whatsapp.call.log.list</field>
             <field name="model">whatsapp.call.log</field>
             <field name="arch" type="xml">
-                <list string="WhatsApp Calls">
-                    <field name="call_timestamp"/>
-                    <field name="from_number"/>
-                    <field name="partner_id"/>
-                    <field name="call_direction"/>
-                    <field name="call_status"/>
-                    <field name="duration"/>
+                <list string="WhatsApp Calls"
+                      decoration-danger="is_missed"
+                      decoration-muted="call_status == 'declined'">
+                    <field name="call_timestamp" widget="datetime"/>
+                    <field name="call_direction" widget="badge"
+                           decoration-info="call_direction == 'incoming'"
+                           decoration-success="call_direction == 'outgoing'"/>
+                    <field name="contact_display" string="Contact"/>
+                    <field name="partner_id" optional="hide"/>
+                    <field name="from_number" optional="show"/>
+                    <field name="to_number" optional="hide"/>
+                    <field name="call_status" widget="badge"
+                           decoration-success="call_status == 'answered'"
+                           decoration-info="call_status == 'ringing'"
+                           decoration-warning="call_status == 'ended'"
+                           decoration-muted="call_status == 'declined'"
+                           decoration-danger="call_status == 'failed'"/>
+                    <field name="duration_display" string="Duration"/>
+                    <field name="is_missed" invisible="1"/>
+                    <field name="day_bucket" optional="hide"/>
+                    <button name="action_return_call" type="object"
+                            icon="fa-phone" title="Call back"
+                            class="btn-link"/>
                 </list>
             </field>
         </record>
+
+        <!-- ── Kanban ──────────────────────────────────────────────── -->
+        <record id="view_whatsapp_call_log_kanban" model="ir.ui.view">
+            <field name="name">whatsapp.call.log.kanban</field>
+            <field name="model">whatsapp.call.log</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="day_bucket"
+                        class="o_kanban_dashboard o_wa_call_kanban">
+                    <field name="call_direction"/>
+                    <field name="call_status"/>
+                    <field name="contact_display"/>
+                    <field name="call_timestamp"/>
+                    <field name="duration_display"/>
+                    <field name="is_missed"/>
+                    <field name="partner_id"/>
+                    <field name="from_number"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div t-att-class="'oe_kanban_card oe_kanban_global_click ' +
+                                              (record.is_missed.raw_value ? 'o_wa_missed' : '')">
+                                <div class="o_wa_kanban_head">
+                                    <span t-attf-class="o_wa_call_direction #{record.call_direction.raw_value === 'incoming' ? 'o_wa_call_in' : 'o_wa_call_out'}">
+                                        <i t-attf-class="fa #{record.call_direction.raw_value === 'incoming' ? 'fa-arrow-down' : 'fa-arrow-up'}"/>
+                                    </span>
+                                    <div class="o_wa_kanban_who">
+                                        <div class="o_wa_kanban_name">
+                                            <field name="contact_display"/>
+                                        </div>
+                                        <div class="text-muted small">
+                                            <field name="call_timestamp"/>
+                                        </div>
+                                    </div>
+                                    <span class="o_wa_kanban_dur">
+                                        <field name="duration_display"/>
+                                    </span>
+                                </div>
+                                <div class="o_wa_kanban_foot">
+                                    <span t-attf-class="badge #{record.call_status.raw_value === 'answered' ? 'text-bg-success' : record.call_status.raw_value === 'declined' ? 'text-bg-secondary' : record.call_status.raw_value === 'failed' ? 'text-bg-danger' : 'text-bg-info'}">
+                                        <field name="call_status"/>
+                                    </span>
+                                    <button name="action_return_call"
+                                            type="object"
+                                            class="btn btn-sm btn-outline-primary o_wa_kanban_call">
+                                        <i class="fa fa-phone me-1"/>Call back
+                                    </button>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- ── Form ────────────────────────────────────────────────── -->
         <record id="view_whatsapp_call_log_form" model="ir.ui.view">
             <field name="name">whatsapp.call.log.form</field>
             <field name="model">whatsapp.call.log</field>
             <field name="arch" type="xml">
                 <form string="WhatsApp Call">
+                    <header>
+                        <button name="action_return_call" type="object"
+                                string="Call back" class="btn-primary"
+                                icon="fa-phone"/>
+                        <field name="call_status" widget="statusbar"
+                               statusbar_visible="ringing,answered,ended,declined,failed"/>
+                    </header>
                     <sheet>
+                        <div class="oe_title">
+                            <label for="contact_display" string="Contact"/>
+                            <h1><field name="contact_display" readonly="1"/></h1>
+                        </div>
                         <group>
                             <group>
                                 <field name="call_id" readonly="1"/>
-                                <field name="call_status"/>
-                                <field name="call_direction"/>
+                                <field name="call_direction" readonly="1"/>
                                 <field name="partner_id"/>
-                                <field name="from_number"/>
-                                <field name="to_number"/>
+                                <field name="from_number" readonly="1"/>
+                                <field name="to_number" readonly="1"/>
                             </group>
                             <group>
-                                <field name="call_timestamp"/>
-                                <field name="end_timestamp"/>
-                                <field name="duration"/>
+                                <field name="call_timestamp" readonly="1"/>
+                                <field name="end_timestamp" readonly="1"/>
+                                <field name="duration_display" string="Duration"/>
+                                <field name="is_missed" readonly="1"/>
                                 <field name="meta_phone_number_id" optional="hide"/>
                             </group>
                         </group>
-                        <group string="SDP (debug)" invisible="not sdp_offer and not sdp_answer">
-                            <field name="sdp_offer" nolabel="1" readonly="1" placeholder="Offer from Meta"/>
-                            <field name="sdp_answer" nolabel="1" readonly="1" placeholder="Answer sent to Meta"/>
-                        </group>
+                        <notebook>
+                            <page string="SDP (debug)" name="sdp"
+                                  invisible="not sdp_offer and not sdp_answer">
+                                <field name="sdp_offer" nolabel="1" readonly="1"
+                                       placeholder="Offer from Meta"/>
+                                <field name="sdp_answer" nolabel="1" readonly="1"
+                                       placeholder="Answer sent to Meta"/>
+                            </page>
+                            <page string="Raw payload" name="raw"
+                                  invisible="not raw_data">
+                                <field name="raw_data" widget="text" nolabel="1" readonly="1"/>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>
         </record>
+
         <record id="action_whatsapp_call_log" model="ir.actions.act_window">
             <field name="name">WhatsApp Calls</field>
             <field name="res_model">whatsapp.call.log</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">list,kanban,form</field>
+            <field name="search_view_id" ref="view_whatsapp_call_log_search"/>
+            <field name="context">{'search_default_this_week': 1}</field>
         </record>
 
         <menuitem id="menu_whatsapp_calls"

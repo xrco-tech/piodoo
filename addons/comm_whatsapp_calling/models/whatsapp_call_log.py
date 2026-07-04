@@ -43,6 +43,100 @@ class WhatsappCallLog(models.Model):
     end_timestamp = fields.Datetime("End Time", readonly=True)
     duration = fields.Integer("Duration (seconds)", readonly=True)
 
+    # ── Display / reporting helpers ─────────────────────────────────
+    # Human-readable "1m 34s" / "45s" for the list view. Char so we
+    # don't lose the formatting to i18n.
+    duration_display = fields.Char(
+        string="Duration",
+        compute="_compute_duration_display", store=False,
+    )
+    # A call is "missed" when it was inbound, we knew about the ring,
+    # and nobody accepted it. Useful for a follow-up filter.
+    is_missed = fields.Boolean(
+        string="Missed", compute="_compute_is_missed", store=True, index=True,
+    )
+    # Day bucket for group-by ("Today", "Yesterday", "Older") in kanban.
+    day_bucket = fields.Char(
+        string="When", compute="_compute_day_bucket", store=False,
+    )
+    # Contact display: partner name if known, else the raw number.
+    contact_display = fields.Char(
+        string="Contact", compute="_compute_contact_display", store=False,
+    )
+
+    @api.depends("duration")
+    def _compute_duration_display(self):
+        for rec in self:
+            s = rec.duration or 0
+            if s <= 0:
+                rec.duration_display = "—"
+            elif s < 60:
+                rec.duration_display = f"{s}s"
+            elif s < 3600:
+                rec.duration_display = f"{s // 60}m {s % 60}s"
+            else:
+                h = s // 3600
+                m = (s % 3600) // 60
+                rec.duration_display = f"{h}h {m}m"
+
+    @api.depends("call_direction", "call_status")
+    def _compute_is_missed(self):
+        for rec in self:
+            rec.is_missed = (
+                rec.call_direction == "incoming"
+                and rec.call_status in ("ringing", "ended", "failed")
+            )
+
+    @api.depends("call_timestamp")
+    def _compute_day_bucket(self):
+        from datetime import date, timedelta
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        for rec in self:
+            if not rec.call_timestamp:
+                rec.day_bucket = "Older"
+                continue
+            d = rec.call_timestamp.date()
+            if d == today:
+                rec.day_bucket = "Today"
+            elif d == yesterday:
+                rec.day_bucket = "Yesterday"
+            elif d >= today - timedelta(days=7):
+                rec.day_bucket = "This week"
+            else:
+                rec.day_bucket = "Older"
+
+    @api.depends("partner_id.name", "from_number", "to_number", "call_direction")
+    def _compute_contact_display(self):
+        for rec in self:
+            if rec.partner_id and rec.partner_id.name:
+                rec.contact_display = rec.partner_id.name
+            elif rec.call_direction == "outgoing":
+                rec.contact_display = rec.to_number or "Unknown"
+            else:
+                rec.contact_display = rec.from_number or "Unknown"
+
+    def action_return_call(self):
+        """Fire an outbound call to whichever party isn't us — for a
+        missed inbound that's the caller's from_number, for an outbound
+        that timed out it's to_number. The frontend calling service
+        handles the actual WebRTC dial."""
+        self.ensure_one()
+        target = (
+            self.from_number if self.call_direction == "incoming"
+            else self.to_number
+        )
+        return {
+            "type": "ir.actions.client",
+            "tag":  "comm_whatsapp_calling.dial",
+            "params": {
+                "to_number":    target,
+                "partner_id":   self.partner_id.id if self.partner_id else False,
+                "partner_name": (self.partner_id.name if self.partner_id
+                                 else target),
+            },
+        }
+
     sdp_offer = fields.Text("SDP Offer", readonly=True)
     sdp_answer = fields.Text("SDP Answer", readonly=True)
     raw_data = fields.Text("Raw Webhook Data", readonly=True)
