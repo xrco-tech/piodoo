@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Calling (comm_whatsapp)',
-    'version': '18.0.1.3.1',
+    'version': '18.0.1.4.0',
     'category': 'Communications',
     'summary': 'WhatsApp Cloud API Calling: make and receive calls with comm_whatsapp',
     'description': """

@@ -23,6 +23,12 @@
     font-size: 13px; width: 160px;
     outline: none;
 }
+.o_wa_dialer_account {
+    background: #fff; border: 1px solid #d1d5db;
+    border-radius: 6px; padding: 6px 8px;
+    font-size: 12px; max-width: 150px;
+    outline: none; cursor: pointer;
+}
 .o_wa_dialer_input:focus { border-color: #25D366; }
 .o_wa_dialer_go {
     background: #25D366; color: #fff; border: none;

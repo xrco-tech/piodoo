@@ -7,6 +7,16 @@
                 <i class="fa fa-phone"/>
             </button>
             <div class="o_wa_dialer_panel" t-if="state.expanded">
+                <!-- Account picker — only when multiple WABAs are configured. -->
+                <select t-if="hasMultipleAccounts"
+                        class="o_wa_dialer_account"
+                        t-model.number="state.selectedAccountId"
+                        title="Which number to call from">
+                    <t t-foreach="state.accounts" t-as="acc" t-key="acc.id">
+                        <option t-att-value="acc.id"
+                                t-esc="(acc.phone_number || acc.name) + (acc.is_default ? ' (default)' : '')"/>
+                    </t>
+                </select>
                 <input type="tel" class="o_wa_dialer_input"
                        placeholder="+27600000000"
                        t-model="state.toNumber"

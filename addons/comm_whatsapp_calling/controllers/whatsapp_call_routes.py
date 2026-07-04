@@ -15,6 +15,30 @@ class WhatsappCallRoutes(http.Controller):
         """Return db and uid so the frontend can subscribe to the incoming-call bus channel."""
         return {"db": request.db, "uid": request.session.uid}
 
+    @http.route("/whatsapp/call/accounts", type="json", auth="user")
+    def list_accounts(self, **kwargs):
+        """Return the active WABA accounts the current user could dial
+        from, with the default flagged. Used by the systray dialer to
+        show a picker when there's more than one."""
+        Account = request.env["comm.whatsapp.account"].sudo()
+        accounts = Account.search([
+            ("active", "=", True),
+            ("access_token", "!=", False),
+            ("phone_number_id", "!=", False),
+        ], order="sequence, id")
+        default = Account.get_default()
+        return {
+            "accounts": [{
+                "id":            a.id,
+                "name":          a.name,
+                "phone_number":  a.phone_number,
+                "phone_number_id": a.phone_number_id,
+                "is_default":    a.id == (default.id if default else False),
+                "token_status":  a.token_status,
+            } for a in accounts],
+            "default_id": default.id if default else None,
+        }
+
     @http.route(
         "/whatsapp/call/dial",
         type="json",
@@ -59,6 +83,9 @@ class WhatsappCallRoutes(http.Controller):
             # + kanban immediately — Meta's connect webhook may arrive
             # seconds later.
             "call_timestamp":       fields.Datetime.now(),
+            # Direct-set the account so the compute doesn't overwrite it
+            # if the phone_number_id fingerprint changes.
+            "account_id":           acc.id,
         }
         # chatbot_id is only present when the glue module
         # comm_whatsapp_calling_chatbot is installed. Set it defensively.

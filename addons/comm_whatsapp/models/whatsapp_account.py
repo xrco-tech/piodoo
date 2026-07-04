@@ -111,6 +111,7 @@ class WhatsAppAccount(models.Model):
     flow_count = fields.Integer(compute='_compute_flow_count')
     template_count = fields.Integer(compute='_compute_template_count')
     message_count = fields.Integer(compute='_compute_message_count')
+    call_count = fields.Integer(compute='_compute_call_count')
 
     _sql_constraints = [
         ('phone_number_id_unique',
@@ -136,6 +137,34 @@ class WhatsAppAccount(models.Model):
             rec.message_count = Message.search_count(
                 [('account_id', '=', rec.id)]
             )
+
+    def _compute_call_count(self):
+        # Lazily depend on comm_whatsapp_calling — if the model isn't
+        # loaded (calling module not installed), return 0 quietly.
+        CallLog = self.env.get('whatsapp.call.log')
+        if CallLog is None:
+            for rec in self:
+                rec.call_count = 0
+            return
+        for rec in self:
+            rec.call_count = CallLog.search_count(
+                [('account_id', '=', rec.id)]
+            )
+
+    def action_view_calls(self):
+        self.ensure_one()
+        CallLog = self.env.get('whatsapp.call.log')
+        if CallLog is None:
+            raise UserError(
+                "comm_whatsapp_calling isn't installed. Install it via Apps."
+            )
+        return {
+            'type':      'ir.actions.act_window',
+            'name':      f"Calls — {self.name}",
+            'res_model': 'whatsapp.call.log',
+            'view_mode': 'list,kanban,form',
+            'domain':    [('account_id', '=', self.id)],
+        }
 
     # ── Sync actions (invoked from the account form header) ───────────
     # Each pushes force_account_id into context so the target model's

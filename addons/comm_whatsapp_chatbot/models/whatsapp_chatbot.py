@@ -219,8 +219,13 @@ class WhatsAppChatbot(models.Model):
             'tag':    'comm_whatsapp_chatbot.agent_workspace',
             'name':   f'Workspace — {self.name}',
             'params': {
-                'chatbot_id':   self.id,
-                'chatbot_name': self.name,
+                'chatbot_id':         self.id,
+                'chatbot_name':       self.name,
+                # Route outbound dials through the bot's bound WABA when
+                # set, so voice-channel workspace calls always leave from
+                # the number the customer recognises.
+                'chatbot_account_id': self.whatsapp_account_id.id
+                                      if self.whatsapp_account_id else False,
             },
         }
 

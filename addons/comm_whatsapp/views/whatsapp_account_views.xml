@@ -76,6 +76,10 @@
                                     class="oe_stat_button" icon="fa-comments">
                                 <field name="message_count" widget="statinfo" string="Messages"/>
                             </button>
+                            <button name="action_view_calls" type="object"
+                                    class="oe_stat_button" icon="fa-phone">
+                                <field name="call_count" widget="statinfo" string="Calls"/>
+                            </button>
                         </div>
                         <div class="oe_title">
                             <label for="name"/>

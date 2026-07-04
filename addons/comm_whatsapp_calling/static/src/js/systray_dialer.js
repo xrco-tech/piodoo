@@ -3,10 +3,11 @@
 /**
  * Systray dialer — a small phone-number input in the top bar so any
  * user can initiate an outbound WhatsApp call without hunting for a
- * partner record first.
+ * partner record first. When more than one active WABA is configured,
+ * a picker chooses which number to call from.
  */
 
-import { Component, useState } from "@odoo/owl";
+import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -20,15 +21,43 @@ class WhatsAppSystrayDialer extends Component {
             expanded: false,
             toNumber: "",
             dialing: false,
+            accounts: [],
+            selectedAccountId: null,
         });
-        // The service registers itself lazily; look it up on click.
-        this.env = this.env;
+        onWillStart(async () => {
+            try {
+                const result = await this._rpc("/whatsapp/call/accounts", {});
+                this.state.accounts = result?.accounts || [];
+                this.state.selectedAccountId = result?.default_id || null;
+            } catch (e) {
+                console.warn("[wa-dialer] account fetch failed:", e);
+            }
+        });
+    }
+
+    _rpc(url, params) {
+        return fetch(url, {
+            method:      "POST",
+            credentials: "same-origin",
+            headers:     { "Content-Type": "application/json" },
+            body:        JSON.stringify({
+                jsonrpc: "2.0", method: "call", params: params || {},
+                id: Math.floor(Math.random() * 1e9),
+            }),
+        }).then(r => r.json()).then(data => {
+            if (data.error) {
+                throw new Error(
+                    (data.error.data && data.error.data.message) ||
+                    data.error.message || "RPC error"
+                );
+            }
+            return data.result;
+        });
     }
 
     _toggle() {
         this.state.expanded = !this.state.expanded;
         if (this.state.expanded) {
-            // Focus the input after DOM update.
             setTimeout(() => {
                 const el = document.querySelector(".o_wa_dialer_input");
                 el && el.focus();
@@ -41,6 +70,17 @@ class WhatsAppSystrayDialer extends Component {
             ev.preventDefault();
             this._dial();
         }
+    }
+
+    get selectedAccount() {
+        if (!this.state.selectedAccountId) return null;
+        return this.state.accounts.find(
+            (a) => a.id === this.state.selectedAccountId
+        ) || null;
+    }
+
+    get hasMultipleAccounts() {
+        return this.state.accounts.length > 1;
     }
 
     async _dial() {
@@ -57,7 +97,10 @@ class WhatsAppSystrayDialer extends Component {
                     "Calling service not available.", { type: "danger" });
                 return;
             }
-            await svc.dialCall({ toNumber: to });
+            await svc.dialCall({
+                toNumber:  to,
+                accountId: this.state.selectedAccountId || null,
+            });
             this.state.expanded = false;
             this.state.toNumber = "";
         } finally {

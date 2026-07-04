@@ -33,6 +33,7 @@ export class AgentWorkspace extends Component {
 
         this.chatbotId = this.props.action.params?.chatbot_id;
         this.chatbotName = this.props.action.params?.chatbot_name || "";
+        this.chatbotAccountId = this.props.action.params?.chatbot_account_id || null;
 
         this.state = useState({
             // Pre-call form
@@ -122,6 +123,10 @@ export class AgentWorkspace extends Component {
                             partnerId:   data.partner?.id || null,
                             partnerName: data.partner?.name || mobile,
                             chatbotId:   this.chatbotId || null,
+                            // Force the chatbot's bound WABA so this
+                            // voice-channel call always leaves from the
+                            // number the customer knows.
+                            accountId:   this.chatbotAccountId || null,
                         }).catch((err) => {
                             this.state.waCallActive = false;
                             this.notification.add(

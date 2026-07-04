@@ -157,6 +157,33 @@ class WhatsappCallLog(models.Model):
         readonly=True,
         help="Phone number ID from webhook metadata; used for API calls when set.",
     )
+    # WABA account this call belongs to. Populated at dial time for
+    # outbound, and computed from meta_phone_number_id on inbound.
+    # Enables per-WABA reporting + credential routing on downstream
+    # Meta API calls.
+    account_id = fields.Many2one(
+        "comm.whatsapp.account", string="WhatsApp Account",
+        compute="_compute_account_id", store=True, index=True,
+        readonly=False,   # set at create time by the dial route
+        help="The WABA account that placed / received this call.",
+    )
+
+    @api.depends("meta_phone_number_id")
+    def _compute_account_id(self):
+        Account = self.env["comm.whatsapp.account"].sudo()
+        cache = {}
+        for rec in self:
+            # Only compute when nothing was explicitly set — outbound
+            # calls stamp account_id at dial time and we don't want the
+            # compute to overwrite it.
+            if rec.account_id:
+                continue
+            pnid = rec.meta_phone_number_id
+            if not pnid:
+                continue
+            if pnid not in cache:
+                cache[pnid] = Account.find_for_phone_number_id(pnid)
+            rec.account_id = cache[pnid]
 
     def _get_comm_whatsapp_config(self):
         """
