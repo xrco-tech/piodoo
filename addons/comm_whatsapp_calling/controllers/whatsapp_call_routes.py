@@ -15,6 +15,25 @@ class WhatsappCallRoutes(http.Controller):
         """Return db and uid so the frontend can subscribe to the incoming-call bus channel."""
         return {"db": request.db, "uid": request.session.uid}
 
+    @http.route("/whatsapp/call/presence/get", type="json", auth="user")
+    def get_presence(self, **kwargs):
+        """Return the current user's call presence. Uses sudo so a
+        regular user can read their own value regardless of ACL."""
+        user = request.env.user.sudo()
+        return {"presence": user.wa_call_presence or "available"}
+
+    @http.route("/whatsapp/call/presence/set", type="json", auth="user",
+                methods=["POST"])
+    def set_presence(self, presence=None, **kwargs):
+        """Update the current user's call presence. Regular users can't
+        write to res.users directly, so we sudo — but we only ever write
+        the current user's own record, not somebody else's."""
+        allowed = {"available", "away", "dnd"}
+        if presence not in allowed:
+            return {"success": False, "error": "invalid presence"}
+        request.env.user.sudo().write({"wa_call_presence": presence})
+        return {"success": True, "presence": presence}
+
     @http.route("/whatsapp/call/accounts", type="json", auth="user")
     def list_accounts(self, **kwargs):
         """Return the active WABA accounts the current user could dial
