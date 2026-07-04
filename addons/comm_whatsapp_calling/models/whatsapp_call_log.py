@@ -54,14 +54,40 @@ class WhatsappCallLog(models.Model):
 
     def _get_comm_whatsapp_config(self):
         """
-        Read token and phone_number_id from comm_whatsapp config (same as comm_whatsapp).
-        For phone_number_id: use record's meta_phone_number_id from webhook if set,
-        otherwise ir.config_parameter comm_whatsapp.phone_number_id.
+        Resolve (access_token, phone_number_id) for outbound Meta API calls.
+
+        Priority (matches the same resolver used by whatsapp.flow and
+        whatsapp.template so a fresh account-level token wins over the
+        legacy system param that tends to go stale on long-running
+        installs):
+          1. The comm.whatsapp.account whose phone_number_id matches the
+             call log's meta_phone_number_id. This is the number Meta
+             routed the call to, so its credentials are correct by
+             construction.
+          2. The default active comm.whatsapp.account (single-WABA
+             installs).
+          3. Legacy ir.config_parameter fallback for older installs
+             that never migrated to accounts.
         """
+        Account = self.env["comm.whatsapp.account"].sudo()
+        acc = self.env["comm.whatsapp.account"]
+        if self and len(self) == 1 and self.meta_phone_number_id:
+            acc = Account.find_for_phone_number_id(self.meta_phone_number_id)
+        if not acc:
+            acc = Account.get_default()
+
+        if acc and acc.access_token:
+            phone_number_id = (
+                self.meta_phone_number_id
+                if (self and len(self) == 1 and self.meta_phone_number_id)
+                else acc.phone_number_id
+            )
+            return acc.access_token, phone_number_id
+
+        # Legacy fallback.
         IrConfig = self.env["ir.config_parameter"].sudo()
-        token = IrConfig.get_param("comm_whatsapp.access_token") or IrConfig.get_param(
-            "comm_whatsapp.long_lived_token"
-        )
+        token = IrConfig.get_param("comm_whatsapp.access_token") \
+            or IrConfig.get_param("comm_whatsapp.long_lived_token")
         phone_number_id = None
         if self and len(self) == 1 and self.meta_phone_number_id:
             phone_number_id = self.meta_phone_number_id
