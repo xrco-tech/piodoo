@@ -94,7 +94,9 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 offer_sdp = call_data.get("session", {}).get("sdp")
                 if offer_sdp:
                     existing.write({"sdp_offer": offer_sdp, "call_status": "ringing"})
-                    existing.action_pre_accept()
+                    # pre_accept requires an SDP answer we don't have
+                    # server-side (the browser generates it on Accept);
+                    # skip straight to the ringing bus push.
                     self._send_ringing_notification(existing)
             return
 
@@ -124,8 +126,10 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             vals["sdp_offer"] = offer_sdp
 
         call_log = CallLog.create(vals)
-        if offer_sdp:
-            call_log.action_pre_accept()
+        # pre_accept is skipped intentionally — Meta requires an SDP
+        # answer with it, which only the browser can generate. The user
+        # clicking Accept produces the real SDP; the accept POST alone
+        # is sufficient for Meta to establish the DTLS-SRTP session.
         if call_log.call_status == "ringing":
             self._send_ringing_notification(call_log)
 

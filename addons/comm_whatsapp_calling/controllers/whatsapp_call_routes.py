@@ -39,7 +39,14 @@ class WhatsappCallRoutes(http.Controller):
         call_log = request.env["whatsapp.call.log"].sudo().browse(call_log_id)
         if not call_log.exists():
             return {"success": False, "error": "Call not found"}
-        if call_log.action_decline():
+        # Route by current status: ringing → reject; answered → terminate.
+        # This matches Meta's action enum which forbids reject on
+        # already-answered calls and terminate on ringing ones.
+        if call_log.call_status == "answered":
+            ok = call_log.action_hangup()
+        else:
+            ok = call_log.action_decline()
+        if ok:
             return {"success": True}
         return {"success": False, "error": "Decline failed"}
 

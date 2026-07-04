@@ -244,9 +244,21 @@ class WhatsappCallLog(models.Model):
         return res
 
     def action_decline(self):
-        """Send decline to Meta."""
+        """Send reject to Meta. The Meta API's allowed action enum is
+        [accept, connect, media_update, pre_accept, reject, terminate];
+        `decline` returns a schema error. `reject` is the correct verb
+        for a ringing call the user chooses not to pick up."""
         self.ensure_one()
-        res = self._send_call_action_to_meta("decline")
+        res = self._send_call_action_to_meta("reject")
         if res:
             self.write({"call_status": "declined"})
+        return res
+
+    def action_hangup(self):
+        """End an already-answered call. Meta uses `terminate` for this
+        (not `reject`, which is only valid while ringing)."""
+        self.ensure_one()
+        res = self._send_call_action_to_meta("terminate")
+        if res:
+            self.write({"call_status": "ended"})
         return res
