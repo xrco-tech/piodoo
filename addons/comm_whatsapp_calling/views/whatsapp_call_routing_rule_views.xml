@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_whatsapp_call_routing_rule_list" model="ir.ui.view">
+            <field name="name">whatsapp.call.routing.rule.list</field>
+            <field name="model">whatsapp.call.routing.rule</field>
+            <field name="arch" type="xml">
+                <list string="Routing Rules" default_order="sequence, id">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="account_id"/>
+                    <field name="caller_pattern"/>
+                    <field name="agent_ids" widget="many2many_tags"/>
+                    <field name="agent_group_id"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_whatsapp_call_routing_rule_form" model="ir.ui.view">
+            <field name="name">whatsapp.call.routing.rule.form</field>
+            <field name="model">whatsapp.call.routing.rule</field>
+            <field name="arch" type="xml">
+                <form string="Call Routing Rule">
+                    <sheet>
+                        <widget name="web_ribbon" title="Archived"
+                                bg_color="bg-danger" invisible="active"/>
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1><field name="name" placeholder="e.g. VIP South Africa → Handsome + Support"/></h1>
+                        </div>
+                        <group>
+                            <group string="Match">
+                                <field name="account_id"
+                                       options="{'no_create': True}"/>
+                                <field name="caller_pattern"
+                                       placeholder="e.g. ^\+27 for +27 numbers"/>
+                                <field name="sequence"/>
+                                <field name="active" invisible="1"/>
+                            </group>
+                            <group string="Route to">
+                                <field name="agent_ids" widget="many2many_tags"
+                                       options="{'no_create': True}"/>
+                                <field name="agent_group_id"
+                                       options="{'no_create': True}"/>
+                                <field name="match_count" readonly="1"/>
+                            </group>
+                        </group>
+                        <div class="alert alert-info" role="alert">
+                            <i class="fa fa-info-circle me-1"/>
+                            The union of <strong>Target Agents</strong> and
+                            <strong>Target Group</strong>'s users is the
+                            candidate set. Only members currently marked
+                            <strong>Available</strong> in the systray get the
+                            ringing popup. Rules are evaluated in
+                            <strong>Sequence</strong> order — the first to
+                            match wins. When no rule matches or nobody is
+                            available in the matched set, we fall back to
+                            broadcasting to every Available user so calls
+                            never drop silently.
+                        </div>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_whatsapp_call_routing_rule" model="ir.actions.act_window">
+            <field name="name">Call Routing Rules</field>
+            <field name="res_model">whatsapp.call.routing.rule</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No routing rules yet
+                </p>
+                <p>
+                    Rules narrow the "who does this call ring" broadcast to
+                    a specific agent set based on the WABA the call came
+                    into and the caller's number. Empty rule set = every
+                    Available user's browser rings.
+                </p>
+            </field>
+        </record>
+
+        <menuitem id="menu_whatsapp_call_routing_rule"
+                  name="Call Routing"
+                  action="action_whatsapp_call_routing_rule"
+                  parent="comm_whatsapp.menu_whatsapp_root"
+                  sequence="22"/>
+    </data>
+</odoo>

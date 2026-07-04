@@ -194,13 +194,21 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 # clicks Accept — no round-trip needed to fetch it.
                 "sdp_offer": call_log.sdp_offer or "",
             }
-            # Skip users whose presence is Away or DND — they shouldn't
-            # hear their browser ring. `wa_call_presence` is added by
-            # this module, so it always exists.
-            users = request.env["res.users"].sudo().search([
-                ("active", "=", True),
-                ("wa_call_presence", "=", "available"),
-            ])
+            # Routing rules first — a matching rule narrows the ring to
+            # a specific agent set. When no rule matches (or the match
+            # resolves to zero currently-available users), fall back to
+            # broadcasting to every Available user so no install ever
+            # silently drops a call.
+            Rule = request.env["whatsapp.call.routing.rule"].sudo()
+            users = Rule.resolve_target_users(
+                call_log.account_id.id if call_log.account_id else False,
+                call_log.from_number or "",
+            )
+            if not users:
+                users = request.env["res.users"].sudo().search([
+                    ("active", "=", True),
+                    ("wa_call_presence", "=", "available"),
+                ])
             bus = request.env["bus.bus"].sudo()
             # Target the user's partner record — Odoo 18 auto-subscribes
             # each authenticated session to its partner channel, so this
