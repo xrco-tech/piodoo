@@ -107,6 +107,22 @@ class WhatsAppAccount(models.Model):
         help="Error message from the most recent token probe, if any.",
     )
 
+    # Voicemail — when an inbound call goes unanswered and Meta ends it,
+    # we can auto-send a WhatsApp text message to the caller with a
+    # scripted reply so they know we saw the miss.
+    voicemail_enabled = fields.Boolean(
+        string="Voicemail on missed calls", default=False,
+        help="When ON, and an inbound call ends without being answered, "
+             "we auto-send the message below to the caller's WhatsApp.",
+    )
+    voicemail_message = fields.Text(
+        string="Voicemail Message",
+        default="Sorry we missed your call! Please reply with your "
+                "question and we'll get back to you shortly.",
+        help="Body of the WhatsApp text sent to callers on a missed call. "
+             "Plain text only (no template variables).",
+    )
+
     # Smart-button counts.
     flow_count = fields.Integer(compute='_compute_flow_count')
     template_count = fields.Integer(compute='_compute_template_count')
@@ -586,6 +602,50 @@ class WhatsAppAccount(models.Model):
             newly_expired.mapped('name'), len(admins),
         )
         return True
+
+    def send_text_message(self, to_number, body):
+        """Send a plain WhatsApp text message from this WABA to
+        `to_number`. Uses the account's own access_token so the caller
+        doesn't need to worry about the resolver.
+
+        Returns the parsed response dict on 200, otherwise None
+        (errors are logged but not raised — this is a fire-and-forget
+        helper suitable for voicemail auto-replies).
+        """
+        self.ensure_one()
+        if not to_number or not (body or '').strip():
+            return None
+        if not self.access_token or not self.phone_number_id:
+            _logger.warning(
+                "send_text_message: account %s has no token or phone_number_id",
+                self.name,
+            )
+            return None
+        # Normalise number: strip leading '+' — Meta accepts either
+        # but internal messages track without it.
+        wa_number = to_number.lstrip('+').strip()
+        url = f"https://graph.facebook.com/v18.0/{self.phone_number_id}/messages"
+        payload = {
+            "messaging_product": "whatsapp",
+            "to":                wa_number,
+            "type":              "text",
+            "text":              {"body": body},
+        }
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type":  "application/json",
+        }
+        try:
+            r = requests.post(url, json=payload, headers=headers, timeout=15)
+            if r.status_code == 200:
+                return r.json() or {}
+            _logger.warning(
+                "send_text_message to %s failed: %s %s",
+                to_number, r.status_code, r.text[:200],
+            )
+        except requests.exceptions.RequestException as e:
+            _logger.warning("send_text_message network error: %s", e)
+        return None
 
     def action_refresh_from_meta(self):
         """Look up this account's phone_number_id on Meta's Graph API and

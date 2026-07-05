@@ -212,6 +212,29 @@ class WhatsappCallLog(models.Model):
         readonly=False,   # set at create time by the dial route
         help="The WABA account that placed / received this call.",
     )
+    # Set to True once the voicemail auto-reply has been dispatched, so
+    # a repeat webhook (Meta sometimes sends duplicate terminate events)
+    # doesn't re-send the same message.
+    voicemail_sent = fields.Boolean(readonly=True)
+
+    # Transfer bookkeeping — populated when this call is either the
+    # source or the target of a mid-call handoff.
+    transferred_from_call_log_id = fields.Many2one(
+        "whatsapp.call.log", string="Transferred From",
+        ondelete="set null", readonly=True,
+        help="When set, this call was initiated as a transfer target "
+             "of the referenced call log.",
+    )
+    transferred_from_user_id = fields.Many2one(
+        "res.users", string="Transferred By", ondelete="set null",
+        readonly=True,
+        help="Agent who initiated the transfer that led to this call.",
+    )
+    transferred_to_team_id = fields.Many2one(
+        "whatsapp.call.team", string="Transferred To Team",
+        ondelete="set null", readonly=True,
+        help="Team the transfer request was sent to.",
+    )
 
     @api.depends("meta_phone_number_id")
     def _compute_account_id(self):

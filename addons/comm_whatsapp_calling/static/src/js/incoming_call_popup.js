@@ -178,11 +178,164 @@ const waCallService = {
             hud.innerHTML = `
                 <span style="width:8px;height:8px;background:#25D366;border-radius:50%;animation:wa-pulse 1.4s infinite;"></span>
                 <span>${escapeHtml(payload.partner_name || "In call")}</span>
+                <button data-action="transfer" title="Transfer to team"
+                        style="background:#4a6cf7;color:#fff;border:none;border-radius:999px;width:28px;height:28px;font-weight:700;cursor:pointer;">
+                    <i class="fa fa-random"/>
+                </button>
                 <button data-action="hangup" style="background:#dc2626;color:#fff;border:none;border-radius:999px;width:28px;height:28px;font-weight:700;cursor:pointer;">✕</button>
                 <style>@keyframes wa-pulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,0.7);}70%{box-shadow:0 0 0 10px rgba(37,211,102,0);}100%{box-shadow:0 0 0 0 rgba(37,211,102,0);}}</style>
             `;
-            hud.querySelector("[data-action=hangup]").addEventListener("click", () => hangupCall(payload.call_log_id));
+            hud.querySelector("[data-action=hangup]")
+                .addEventListener("click", () => hangupCall(payload.call_log_id));
+            hud.querySelector("[data-action=transfer]")
+                .addEventListener("click", () => openTransferPicker(payload.call_log_id));
             document.body.appendChild(hud);
+        }
+
+        // ── Transfer request popup (target agent side) ─────────────
+        const TRANSFER_POPUP_ID = "wa_transfer_request_popup";
+
+        function showTransferRequestPopup(payload) {
+            if (activeCall) {
+                // Don't interrupt an active call — this popup can queue
+                // as an alternative or just be skipped.
+                notify(`Transfer request from ${payload.transferred_from_name} ignored (in call)`,
+                       "info");
+                return;
+            }
+            const existing = document.getElementById(TRANSFER_POPUP_ID);
+            if (existing) existing.remove();
+
+            const wrap = document.createElement("div");
+            wrap.id = TRANSFER_POPUP_ID;
+            wrap.dataset.sourceCallLogId = payload.source_call_log_id;
+            Object.assign(wrap.style, {
+                position: "fixed", top: "20px", right: "20px",
+                width: "340px", background: "#111827", color: "#fff",
+                borderRadius: "12px",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                zIndex: "10000", overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            wrap.innerHTML = `
+                <div style="padding:14px 16px;">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:#4a6cf7;font-weight:700;margin-bottom:6px;">
+                        <i class="fa fa-random me-1"/>Call transfer request
+                    </div>
+                    <div style="font-size:14px;color:#9ca3af;margin-bottom:4px;">
+                        ${escapeHtml(payload.transferred_from_name || "Someone")}
+                        is transferring a call
+                    </div>
+                    <div style="font-size:15px;font-weight:600;">${escapeHtml(payload.partner_name || "Caller")}</div>
+                    <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
+                </div>
+                <div style="display:flex;gap:8px;padding:0 16px 14px;">
+                    <button data-action="decline" style="flex:1;background:#374151;color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Decline</button>
+                    <button data-action="accept" style="flex:1;background:#25D366;color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Call back</button>
+                </div>
+            `;
+            wrap.querySelector("[data-action=decline]").addEventListener("click", () => wrap.remove());
+            wrap.querySelector("[data-action=accept]").addEventListener("click", async () => {
+                wrap.remove();
+                // Dial the customer back via the standard outbound path.
+                // The new call log will get transferred_from_call_log_id
+                // via a follow-up write from server side (not yet — cold
+                // transfer means no continuity carried by Meta; this is
+                // a fresh outbound call).
+                await dialCall({
+                    toNumber:    payload.from_number,
+                    partnerId:   payload.partner_id || null,
+                    partnerName: payload.partner_name || payload.from_number,
+                    accountId:   payload.account_id || null,
+                });
+            });
+            document.body.appendChild(wrap);
+
+            // If the transfer request stales (someone else accepted the
+            // source call ended, etc.), auto-remove after 60s.
+            setTimeout(() => {
+                const el = document.getElementById(TRANSFER_POPUP_ID);
+                if (el && +el.dataset.sourceCallLogId === payload.source_call_log_id) {
+                    el.remove();
+                }
+            }, 60000);
+        }
+
+        // ── Transfer picker ────────────────────────────────────────
+        async function openTransferPicker(callLogId) {
+            let teams = [];
+            try {
+                const result = await callRpc("/whatsapp/call/teams", {});
+                teams = result?.teams || [];
+            } catch (err) {
+                notify("Could not load teams: " + (err?.message || err),
+                       "danger");
+                return;
+            }
+            if (!teams.length) {
+                notify("No call teams configured.", "warning");
+                return;
+            }
+            // Remove any existing picker.
+            const existing = document.getElementById("wa_transfer_picker");
+            if (existing) existing.remove();
+
+            const modal = document.createElement("div");
+            modal.id = "wa_transfer_picker";
+            Object.assign(modal.style, {
+                position: "fixed", top: "60px", right: "20px",
+                width: "320px", background: "#111827", color: "#fff",
+                borderRadius: "12px",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                zIndex: "10001", overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            const rows = teams.map(t =>
+                `<button data-team="${t.id}"
+                         ${t.available_count === 0 ? "disabled" : ""}
+                         style="display:block;width:100%;text-align:left;
+                                padding:10px 14px;background:transparent;
+                                border:none;border-top:1px solid #1f2937;
+                                color:#fff;cursor:${t.available_count ? "pointer" : "default"};
+                                opacity:${t.available_count ? "1" : "0.5"};">
+                    <div style="font-weight:600;">${escapeHtml(t.name)}</div>
+                    <div style="font-size:11px;color:#9ca3af;">
+                        ${t.available_count} of ${t.member_count} available
+                    </div>
+                </button>`
+            ).join("");
+            modal.innerHTML = `
+                <div style="padding:12px 14px;font-size:12px;text-transform:uppercase;color:#9ca3af;letter-spacing:0.4px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>Transfer to team</span>
+                    <button data-action="close" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;">×</button>
+                </div>
+                ${rows}
+            `;
+            modal.querySelector("[data-action=close]")
+                 .addEventListener("click", () => modal.remove());
+            modal.querySelectorAll("[data-team]").forEach(btn => {
+                if (btn.disabled) return;
+                btn.addEventListener("click", async () => {
+                    const teamId = +btn.dataset.team;
+                    modal.remove();
+                    try {
+                        const result = await callRpc(
+                            `/whatsapp/call/transfer/${callLogId}`,
+                            { team_id: teamId },
+                        );
+                        if (!result?.success) {
+                            throw new Error(result?.error || "Transfer failed");
+                        }
+                        notify(`Transferring — ${result.targets_notified} agent(s) notified`,
+                               "success");
+                        teardownCall(true);
+                    } catch (err) {
+                        notify("Transfer failed: " + (err?.message || err),
+                               "danger");
+                    }
+                });
+            });
+            document.body.appendChild(modal);
         }
 
         function hideHud() {
@@ -422,6 +575,10 @@ const waCallService = {
             bus_service.subscribe("whatsapp_outbound_answered", (payload) => {
                 log("outbound answered:", payload?.call_log_id);
                 handleOutboundAnswered(payload);
+            });
+            bus_service.subscribe("whatsapp_transfer_request", (payload) => {
+                log("transfer request received:", payload?.source_call_log_id);
+                showTransferRequestPopup(payload);
             });
             bus_service.subscribe("whatsapp_call_taken", (payload) => {
                 // Fired when: (a) another agent accepted / declined /

@@ -313,6 +313,42 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 call_log._broadcast_call_taken("remote_ended")
             except Exception:
                 pass
+            # Voicemail: when an inbound call ends without ever being
+            # answered, send the account's canned message to the caller
+            # so they know we saw the miss.
+            self._maybe_send_voicemail(call_log)
+
+    def _maybe_send_voicemail(self, call_log):
+        try:
+            if call_log.voicemail_sent:
+                return
+            if call_log.call_direction != "incoming":
+                return
+            # Only genuine misses: an answered call that later ended is
+            # a normal hangup, not a voicemail trigger.
+            if call_log.call_status not in ("ended", "ringing", "failed"):
+                return
+            if call_log.is_missed is False:
+                # is_missed is computed; guard against edge cases.
+                return
+            acc = call_log.account_id
+            if not acc or not acc.voicemail_enabled:
+                return
+            if not (acc.voicemail_message or "").strip():
+                return
+            result = acc.send_text_message(
+                call_log.from_number, acc.voicemail_message,
+            )
+            if result:
+                call_log.write({"voicemail_sent": True})
+                _logger.info(
+                    "comm_whatsapp_calling: voicemail sent for call %s to %s",
+                    call_log.call_id, call_log.from_number,
+                )
+        except Exception as e:
+            _logger.warning(
+                "comm_whatsapp_calling: voicemail dispatch failed: %s", e
+            )
 
     def _find_or_create_partner(self, phone_number):
         if not phone_number:

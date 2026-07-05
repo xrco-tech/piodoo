@@ -129,6 +129,22 @@
                                     matching account by <em>metadata.phone_number_id</em>.
                                 </div>
                             </page>
+                            <page string="Voicemail" name="voicemail">
+                                <group>
+                                    <field name="voicemail_enabled"/>
+                                </group>
+                                <field name="voicemail_message"
+                                       widget="text"
+                                       placeholder="Sorry we missed your call! ..."/>
+                                <div class="text-muted small">
+                                    Sent as a plain WhatsApp text to the caller's
+                                    number when an inbound call ends without
+                                    being answered. Requires the number to be
+                                    inside Meta's 24-hour customer service window
+                                    OR you'll need to precede it with a template
+                                    (not yet auto-wired — plain send only).
+                                </div>
+                            </page>
                         </notebook>
                     </sheet>
                 </form>
