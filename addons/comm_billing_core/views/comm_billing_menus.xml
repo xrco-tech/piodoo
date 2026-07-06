@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_comm_billing_root"
+              name="Comm Billing"
+              sequence="80"
+              web_icon="comm_billing_core,static/description/icon.png"/>
+
+    <menuitem id="menu_comm_billing_dashboard"
+              name="Dashboard"
+              parent="menu_comm_billing_root"
+              action="action_comm_billing_dashboard"
+              sequence="10"/>
+
+    <menuitem id="menu_comm_billing_events"
+              name="Billing Events"
+              parent="menu_comm_billing_root"
+              action="action_comm_billing_event"
+              sequence="20"/>
+
+    <menuitem id="menu_comm_billing_config"
+              name="Configuration"
+              parent="menu_comm_billing_root"
+              sequence="90"/>
+
+    <menuitem id="menu_comm_billing_rate_cards"
+              name="Rate Cards"
+              parent="menu_comm_billing_config"
+              action="action_comm_billing_rate_card"
+              sequence="10"/>
+
+    <menuitem id="menu_comm_billing_rates"
+              name="Rates"
+              parent="menu_comm_billing_config"
+              action="action_comm_billing_rate"
+              sequence="20"/>
+
+    <menuitem id="menu_comm_billing_fx"
+              name="Provider Monthly FX"
+              parent="menu_comm_billing_config"
+              action="action_comm_billing_fx_rate"
+              sequence="30"/>
+
+    <menuitem id="menu_comm_billing_free_windows"
+              name="Free Windows"
+              parent="menu_comm_billing_config"
+              action="action_comm_billing_free_window"
+              sequence="40"/>
+
+</odoo>

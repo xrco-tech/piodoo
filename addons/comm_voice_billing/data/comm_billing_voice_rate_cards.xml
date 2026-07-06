@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="rate_card_voice_default" model="comm.billing.rate.card">
+            <field name="name">Voice (non-WA) — default</field>
+            <field name="channel">voice</field>
+            <field name="provider">SIP</field>
+            <field name="effective_from">2025-01-01</field>
+            <field name="billing_model">per_minute</field>
+            <field name="notes">Placeholder minute-based rates. Refresh when you pick a SIP trunk / cloud voice provider.</field>
+        </record>
+
+    </data>
+</odoo>

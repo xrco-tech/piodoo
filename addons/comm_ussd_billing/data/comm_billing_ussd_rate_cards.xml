@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="rate_card_ussd_africas_talking" model="comm.billing.rate.card">
+            <field name="name">Africa's Talking USSD — default</field>
+            <field name="channel">ussd</field>
+            <field name="provider">Africa's Talking</field>
+            <field name="effective_from">2025-01-01</field>
+            <field name="billing_model">per_session</field>
+            <field name="notes">Placeholder rates. Africa's Talking bills per completed session per MNO. Refresh from your dashboard.</field>
+        </record>
+
+    </data>
+</odoo>

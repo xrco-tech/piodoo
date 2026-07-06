@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_billing_fx_rate_list" model="ir.ui.view">
+        <field name="name">comm.billing.fx.rate.list</field>
+        <field name="model">comm.billing.fx.rate</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" string="Provider Monthly Billing FX">
+                <field name="date" string="Month"/>
+                <field name="provider"/>
+                <field name="currency_id"/>
+                <field name="rate" string="USD → local"/>
+                <field name="source"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_comm_billing_fx_rate" model="ir.actions.act_window">
+        <field name="name">Provider Monthly FX</field>
+        <field name="res_model">comm.billing.fx.rate</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Add a row per (provider, currency, month) to reconcile the
+                ledger against each provider's invoice.
+            </p>
+            <p>
+                Leave provider empty for a house-wide default. Falls back to
+                Odoo's res.currency.rate when no row is found.
+            </p>
+        </field>
+    </record>
+
+</odoo>

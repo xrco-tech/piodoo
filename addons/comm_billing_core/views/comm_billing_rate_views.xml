@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_billing_rate_list" model="ir.ui.view">
+        <field name="name">comm.billing.rate.list</field>
+        <field name="model">comm.billing.rate</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="card_id"/>
+                <field name="channel"/>
+                <field name="country_id"/>
+                <field name="carrier"/>
+                <field name="direction"/>
+                <field name="category"/>
+                <field name="unit"/>
+                <field name="price_usd"/>
+                <field name="tier_from"/>
+                <field name="tier_to"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_billing_rate_search" model="ir.ui.view">
+        <field name="name">comm.billing.rate.search</field>
+        <field name="model">comm.billing.rate</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="card_id"/>
+                <field name="channel"/>
+                <field name="country_id"/>
+                <field name="carrier"/>
+                <field name="category"/>
+                <group expand="0" string="Group by">
+                    <filter string="Channel" name="group_channel"
+                            context="{'group_by': 'channel'}"/>
+                    <filter string="Rate Card" name="group_card"
+                            context="{'group_by': 'card_id'}"/>
+                    <filter string="Country" name="group_country"
+                            context="{'group_by': 'country_id'}"/>
+                    <filter string="Carrier" name="group_carrier"
+                            context="{'group_by': 'carrier'}"/>
+                    <filter string="Category" name="group_category"
+                            context="{'group_by': 'category'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_comm_billing_rate" model="ir.actions.act_window">
+        <field name="name">Rates</field>
+        <field name="res_model">comm.billing.rate</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

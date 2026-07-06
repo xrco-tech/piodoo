@@ -1,62 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <menuitem id="menu_whatsapp_billing_root"
-              name="Billing"
-              parent="comm_whatsapp.menu_whatsapp_root"
-              sequence="70"/>
+    <!-- WhatsApp-specific tools under the Comm Billing menu -->
+    <menuitem id="menu_whatsapp_billing_tools"
+              name="WhatsApp Tools"
+              parent="comm_billing_core.menu_comm_billing_root"
+              sequence="30"/>
 
-    <menuitem id="menu_whatsapp_billing_dashboard"
-              name="Dashboard"
-              parent="menu_whatsapp_billing_root"
-              action="action_whatsapp_billing_dashboard"
-              sequence="10"/>
-
-    <menuitem id="menu_whatsapp_billing_events"
-              name="Billing Events"
-              parent="menu_whatsapp_billing_root"
-              action="action_whatsapp_billing_event"
-              sequence="20"/>
-
-    <menuitem id="menu_whatsapp_billing_simulator"
-              name="Cost Simulator"
-              parent="menu_whatsapp_billing_root"
+    <menuitem id="menu_whatsapp_cost_simulator"
+              name="WhatsApp Cost Simulator"
+              parent="menu_whatsapp_billing_tools"
               action="action_whatsapp_cost_simulation"
-              sequence="30"/>
-
-    <menuitem id="menu_whatsapp_billing_config"
-              name="Configuration"
-              parent="menu_whatsapp_billing_root"
-              sequence="90"/>
-
-    <menuitem id="menu_whatsapp_rate_cards"
-              name="Rate Cards"
-              parent="menu_whatsapp_billing_config"
-              action="action_whatsapp_rate_card"
               sequence="10"/>
-
-    <menuitem id="menu_whatsapp_rates"
-              name="Rates"
-              parent="menu_whatsapp_billing_config"
-              action="action_whatsapp_rate"
-              sequence="20"/>
-
-    <menuitem id="menu_whatsapp_fx_rates"
-              name="Meta Monthly FX"
-              parent="menu_whatsapp_billing_config"
-              action="action_whatsapp_fx_rate"
-              sequence="30"/>
-
-    <menuitem id="menu_whatsapp_free_windows"
-              name="Free Windows"
-              parent="menu_whatsapp_billing_config"
-              action="action_whatsapp_free_window"
-              sequence="40"/>
 
     <menuitem id="menu_whatsapp_billing_backfill"
               name="Backfill from history"
-              parent="menu_whatsapp_billing_config"
+              parent="menu_whatsapp_billing_tools"
               action="action_whatsapp_billing_backfill"
-              sequence="50"/>
+              sequence="20"/>
 
 </odoo>

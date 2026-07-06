@@ -1,38 +1,35 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Billing',
-    'version': '18.0.1.1.0',
+    'version': '18.0.2.0.0',
     'category': 'Communications',
-    'summary': 'Predict, track and simulate Meta WhatsApp Business Platform costs',
+    'summary': 'WhatsApp channel adapter for comm_billing_core',
     'description': """
 WhatsApp Billing
 ================
 
-Real-time cost tracking and prediction for WhatsApp Business Platform usage
-built on top of comm_whatsapp (and, when installed, comm_whatsapp_calling).
+Channel adapter that hooks WhatsApp messages and calls into the shared
+comm_billing_core ledger:
 
-- Versioned rate cards: Jul 2025 per-message, Aug 2026 hybrid (MBA tokens),
-  Oct 2026 paid-service — switchable by effective date.
-- Unit-agnostic ledger: messages, call minutes, MBA tokens.
-- 24h customer-service and 72h entry-point free-window handling.
-- Campaign cost simulator with side-by-side rate-card comparison.
-- Backfill wizard: replay last N months of history into the ledger.
+- Seeds Meta rate cards: Jul 2025 per-message, Aug 2026 hybrid (MBA tokens),
+  Oct 2026 paid-service.
+- Hooks whatsapp.message and whatsapp.call.log write() to create
+  comm.billing.event rows automatically from Meta's status webhooks.
+- Adds billing currency + fallback FX to comm.whatsapp.account.
+- Backfill wizard replays historical messages/calls into the ledger.
+- Cost simulator projects campaigns against multiple rate cards.
     """,
     'author': 'XR Co.',
     'license': 'LGPL-3',
     'depends': [
+        'comm_billing_core',
         'comm_whatsapp',
         'comm_whatsapp_calling',
     ],
     'data': [
         'security/ir.model.access.csv',
-        'data/whatsapp_rate_card_data.xml',
-        'data/whatsapp_rate_za_data.xml',
-        'views/whatsapp_rate_card_views.xml',
-        'views/whatsapp_rate_views.xml',
-        'views/whatsapp_billing_event_views.xml',
-        'views/whatsapp_free_window_views.xml',
-        'views/whatsapp_fx_rate_views.xml',
+        'data/comm_billing_whatsapp_rate_cards.xml',
+        'data/comm_billing_whatsapp_za_rates.xml',
         'views/comm_whatsapp_account_views.xml',
         'wizards/whatsapp_cost_simulation_views.xml',
         'wizards/whatsapp_billing_backfill_views.xml',

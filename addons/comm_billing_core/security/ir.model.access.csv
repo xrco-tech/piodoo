@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_comm_billing_rate_card_admin,comm.billing.rate.card.admin,model_comm_billing_rate_card,comm_billing_core.group_billing_administrator,1,1,1,1
+access_comm_billing_rate_card_user,comm.billing.rate.card.user,model_comm_billing_rate_card,comm_billing_core.group_billing_user,1,0,0,0
+access_comm_billing_rate_admin,comm.billing.rate.admin,model_comm_billing_rate,comm_billing_core.group_billing_administrator,1,1,1,1
+access_comm_billing_rate_user,comm.billing.rate.user,model_comm_billing_rate,comm_billing_core.group_billing_user,1,0,0,0
+access_comm_billing_fx_rate_admin,comm.billing.fx.rate.admin,model_comm_billing_fx_rate,comm_billing_core.group_billing_administrator,1,1,1,1
+access_comm_billing_fx_rate_user,comm.billing.fx.rate.user,model_comm_billing_fx_rate,comm_billing_core.group_billing_user,1,0,0,0
+access_comm_billing_event_admin,comm.billing.event.admin,model_comm_billing_event,comm_billing_core.group_billing_administrator,1,1,1,1
+access_comm_billing_event_user,comm.billing.event.user,model_comm_billing_event,comm_billing_core.group_billing_user,1,0,0,0
+access_comm_billing_free_window_admin,comm.billing.free.window.admin,model_comm_billing_free_window,comm_billing_core.group_billing_administrator,1,1,1,1
+access_comm_billing_free_window_user,comm.billing.free.window.user,model_comm_billing_free_window,comm_billing_core.group_billing_user,1,0,0,0

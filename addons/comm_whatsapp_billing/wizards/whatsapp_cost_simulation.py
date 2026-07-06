@@ -4,41 +4,40 @@ from collections import defaultdict
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
-from ..models.whatsapp_rate import CATEGORY_SELECTION
+
+WA_CATEGORY_SELECTION = [
+    ('marketing',          'Marketing'),
+    ('utility',            'Utility'),
+    ('authentication',     'Authentication'),
+    ('auth_international', 'Authentication-International'),
+    ('service',            'Service'),
+]
 
 
 class WhatsappCostSimulation(models.TransientModel):
     _name = 'whatsapp.cost.simulation'
     _description = 'WhatsApp cost simulation wizard'
 
-    name = fields.Char(default='Cost simulation')
     account_id = fields.Many2one('comm.whatsapp.account')
     audience_domain = fields.Char(default="[]",
-        help='Odoo domain on res.partner selecting the target audience. '
-             'Leave as [] to enter a manual recipient count instead.')
+        help='Odoo domain on res.partner selecting the target audience.')
     manual_recipient_count = fields.Integer(default=0)
     manual_country_id = fields.Many2one('res.country',
-        help='When using manual recipient count, assume all recipients are in this country.')
-    category = fields.Selection(CATEGORY_SELECTION,
+        help='When using manual recipient count, assume this country.')
+    category = fields.Selection(WA_CATEGORY_SELECTION,
                                 required=True, default='marketing')
-    expected_reply_rate = fields.Float(default=0.0,
-        help='Fraction of recipients who reply (0-1). Used for MBA token projection.')
-    mba_handled_pct = fields.Float(default=0.0,
-        help='Fraction of replies handled by Meta Business Agent (0-1).')
+    expected_reply_rate = fields.Float(default=0.0)
+    mba_handled_pct = fields.Float(default=0.0)
     avg_tokens_per_interaction = fields.Integer(default=22000)
     avg_call_minutes_per_recipient = fields.Float(default=0.0)
 
-    rate_card_ids = fields.Many2many('whatsapp.rate.card',
+    rate_card_ids = fields.Many2many('comm.billing.rate.card',
         string='Compare against rate cards',
-        help='Pick one or more rate cards for side-by-side comparison. '
-             'Defaults to the current + next future cards.')
+        domain=[('channel', '=', 'whatsapp')])
 
     display_currency_id = fields.Many2one('res.currency', string='Display in',
         default=lambda self: self.env.company.currency_id)
-    display_fx_rate = fields.Float(string='USD → display FX',
-        digits=(12, 6),
-        help='FX rate applied to the projection. Prefilled from the account, '
-             'Meta monthly override, or Odoo live rates. Editable.')
+    display_fx_rate = fields.Float(string='USD → display FX', digits=(12, 6))
 
     result_json = fields.Text(readonly=True)
     result_summary = fields.Html(readonly=True)
@@ -46,21 +45,19 @@ class WhatsappCostSimulation(models.TransientModel):
     @api.model
     def default_get(self, fields_list):
         vals = super().default_get(fields_list)
-        # Preselect the currently active card and any future ones
-        cards = self.env['whatsapp.rate.card'].search([
+        cards = self.env['comm.billing.rate.card'].search([
+            ('channel', '=', 'whatsapp'),
             ('active', '=', True),
         ], order='effective_from')
         vals['rate_card_ids'] = [(6, 0, cards.ids)]
-        # Prefill display FX using the same resolver the ledger uses
         currency = self.env.company.currency_id
         vals.setdefault('display_currency_id', currency.id if currency else False)
-        fx, _ = self.env['whatsapp.billing.event']._resolve_fx(
-            self.env['comm.whatsapp.account'], fields.Date.today())
+        fx, _ = self.env['comm.billing.event']._resolve_fx(
+            'Meta', fields.Date.today(), currency_hint=currency)
         vals.setdefault('display_fx_rate', fx or 1.0)
         return vals
 
     def _audience_country_split(self):
-        """Return dict {res.country: recipient_count} for the audience."""
         if self.audience_domain and self.audience_domain.strip() not in ('', '[]'):
             try:
                 domain = eval(self.audience_domain, {'__builtins__': {}}, {})
@@ -77,93 +74,62 @@ class WhatsappCostSimulation(models.TransientModel):
         raise UserError(
             'Provide either an audience_domain or manual_recipient_count + country.')
 
-    def _project_for_card(self, card, country_split):
-        """Return dict with per-category cost breakdown under this card."""
-        total_recipients = sum(country_split.values())
+    def _project(self, card, country_split):
         result = {
-            'card_id': card.id,
-            'card_name': card.name,
+            'card_id': card.id, 'card_name': card.name,
             'billing_model': card.billing_model,
-            'lines': [],
-            'total_usd': 0.0,
+            'lines': [], 'total_usd': 0.0,
         }
-
         for country, recipients in country_split.items():
-            # 1) Template send (the chosen category)
-            rate = card.resolve_rate(country, self.category, 0)
+            rate = card.resolve_rate(country=country, category=self.category)
             price = (rate.price_usd if rate else 0.0) * recipients
             result['lines'].append({
                 'country': country.code or 'GLOBAL',
-                'category': self.category,
-                'qty': recipients,
+                'category': self.category, 'qty': recipients,
                 'unit_price': rate.price_usd if rate else 0.0,
                 'total': price,
             })
             result['total_usd'] += price
 
-            # 2) MBA tokens (only if hybrid card)
             if card.billing_model in ('hybrid_2026', 'hybrid_service_paid'):
                 replies = recipients * (self.expected_reply_rate or 0)
                 mba_replies = replies * (self.mba_handled_pct or 0)
                 if mba_replies > 0:
                     tokens = mba_replies * (self.avg_tokens_per_interaction or 0)
-                    rate = card.resolve_rate(None, 'mba_token', 0)
+                    rate = card.resolve_rate(category='mba_token')
                     kt = tokens / 1000.0
                     mba_price = (rate.price_usd if rate else 0.0) * kt
                     result['lines'].append({
-                        'country': 'GLOBAL',
-                        'category': 'mba_token',
+                        'country': 'GLOBAL', 'category': 'mba_token',
                         'qty': kt,
                         'unit_price': rate.price_usd if rate else 0.0,
                         'total': mba_price,
                     })
                     result['total_usd'] += mba_price
 
-                # Post-Oct 2026 non-MBA replies fall to paid service
                 if card.billing_model == 'hybrid_service_paid':
                     paid_service = replies - mba_replies
                     if paid_service > 0:
-                        rate = card.resolve_rate(country, 'service', 0)
+                        rate = card.resolve_rate(country=country, category='service')
                         svc_price = (rate.price_usd if rate else 0.0) * paid_service
                         result['lines'].append({
                             'country': country.code or 'GLOBAL',
-                            'category': 'service',
-                            'qty': paid_service,
+                            'category': 'service', 'qty': paid_service,
                             'unit_price': rate.price_usd if rate else 0.0,
                             'total': svc_price,
                         })
                         result['total_usd'] += svc_price
-
-            # 3) Call minutes
-            if self.avg_call_minutes_per_recipient > 0:
-                minutes = recipients * self.avg_call_minutes_per_recipient
-                rate = card.resolve_rate(country, 'call_minute', 0)
-                if rate:
-                    call_price = rate.price_usd * minutes
-                    result['lines'].append({
-                        'country': country.code or 'GLOBAL',
-                        'category': 'call_minute',
-                        'qty': minutes,
-                        'unit_price': rate.price_usd,
-                        'total': call_price,
-                    })
-                    result['total_usd'] += call_price
-
         return result
 
     def action_run(self):
         self.ensure_one()
         country_split = self._audience_country_split()
-        cards = self.rate_card_ids or self.env['whatsapp.rate.card'].search([
-            ('active', '=', True),
+        cards = self.rate_card_ids or self.env['comm.billing.rate.card'].search([
+            ('channel', '=', 'whatsapp'), ('active', '=', True),
         ], order='effective_from')
-
-        projections = []
-        for card in cards:
-            projections.append(self._project_for_card(card, country_split))
-
+        projections = [self._project(card, country_split) for card in cards]
         self.result_json = json.dumps(projections, indent=2, default=str)
-        self.result_summary = self._render_summary(projections)
+        self.result_summary = self._render(projections)
         return {
             'type': 'ir.actions.act_window',
             'res_model': self._name,
@@ -172,7 +138,7 @@ class WhatsappCostSimulation(models.TransientModel):
             'target': 'new',
         }
 
-    def _render_summary(self, projections):
+    def _render(self, projections):
         fx = self.display_fx_rate or 1.0
         sym = self.display_currency_id.symbol or self.display_currency_id.name or ''
         html = ['<div class="o_whatsapp_cost_summary">']

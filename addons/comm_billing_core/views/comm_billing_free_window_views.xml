@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_billing_free_window_list" model="ir.ui.view">
+        <field name="name">comm.billing.free.window.list</field>
+        <field name="model">comm.billing.free.window</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="channel"/>
+                <field name="wa_id"/>
+                <field name="partner_id"/>
+                <field name="account_ref"/>
+                <field name="window_type"/>
+                <field name="opened_at"/>
+                <field name="expires_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_comm_billing_free_window" model="ir.actions.act_window">
+        <field name="name">Free Windows</field>
+        <field name="res_model">comm.billing.free.window</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

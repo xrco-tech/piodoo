@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Africa's Talking ZA USSD pricing (placeholder).
+            Typical range: R0.20 - R0.50 per completed session, MNO-dependent.
+            Refresh with real values from the Africa's Talking dashboard.
+        -->
+
+        <record id="rate_ussd_za_session" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_ussd_africas_talking"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">ussd_session</field>
+            <field name="direction">any</field>
+            <field name="unit">session</field>
+            <field name="price_usd">0.02</field>
+        </record>
+
+    </data>
+</odoo>

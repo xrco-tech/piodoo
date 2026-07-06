@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Placeholder ZA voice rates. Typical SIP trunk (Telkom/VOX/Rain):
+              inbound local        ~ R0.20/min = ~$0.011
+              outbound local mobile ~ R0.60/min = ~$0.033
+              outbound local fixed  ~ R0.20/min = ~$0.011
+              outbound international ~ R2.00/min = ~$0.11
+            Refresh with actual provider rates.
+        -->
+
+        <record id="rate_voice_za_inbound" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_voice_default"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">voice_inbound</field>
+            <field name="direction">inbound</field>
+            <field name="unit">minute</field>
+            <field name="price_usd">0.011</field>
+        </record>
+
+        <record id="rate_voice_za_outbound_mobile" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_voice_default"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">voice_outbound_local_mobile</field>
+            <field name="direction">outbound</field>
+            <field name="unit">minute</field>
+            <field name="price_usd">0.033</field>
+        </record>
+
+        <record id="rate_voice_za_outbound_fixed" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_voice_default"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">voice_outbound_local_fixed</field>
+            <field name="direction">outbound</field>
+            <field name="unit">minute</field>
+            <field name="price_usd">0.011</field>
+        </record>
+
+        <record id="rate_voice_za_outbound_intl" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_voice_default"/>
+            <field name="category">voice_outbound_intl</field>
+            <field name="direction">outbound</field>
+            <field name="unit">minute</field>
+            <field name="price_usd">0.11</field>
+        </record>
+
+    </data>
+</odoo>

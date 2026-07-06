@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Placeholder ZA SMS rates. Real rates vary by MNO and are
+            best pulled from your Infobip account. Values here approximate
+            typical 2026 pricing (~R0.15/segment domestic, ~R1.00/segment
+            international). Refresh before invoicing.
+        -->
+
+        <record id="rate_sms_za_outbound_domestic" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_sms_infobip_default"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">sms_outbound_domestic</field>
+            <field name="direction">outbound</field>
+            <field name="unit">segment</field>
+            <field name="price_usd">0.008</field>
+        </record>
+
+        <record id="rate_sms_za_outbound_intl" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_sms_infobip_default"/>
+            <field name="category">sms_outbound_intl</field>
+            <field name="direction">outbound</field>
+            <field name="unit">segment</field>
+            <field name="price_usd">0.05</field>
+        </record>
+
+        <record id="rate_sms_za_inbound" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_sms_infobip_default"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">sms_inbound</field>
+            <field name="direction">inbound</field>
+            <field name="unit">segment</field>
+            <field name="price_usd">0.001</field>
+        </record>
+
+        <record id="rate_sms_za_two_way" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_sms_infobip_default"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">sms_two_way</field>
+            <field name="direction">any</field>
+            <field name="unit">segment</field>
+            <field name="price_usd">0.012</field>
+        </record>
+
+    </data>
+</odoo>

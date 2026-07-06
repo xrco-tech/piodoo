@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_billing_event_list" model="ir.ui.view">
+        <field name="name">comm.billing.event.list</field>
+        <field name="model">comm.billing.event</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="event_date"/>
+                <field name="channel"/>
+                <field name="provider" optional="show"/>
+                <field name="account_ref" optional="hide"/>
+                <field name="wa_id"/>
+                <field name="country_id"/>
+                <field name="carrier" optional="show"/>
+                <field name="direction" optional="hide"/>
+                <field name="category"/>
+                <field name="unit_qty"/>
+                <field name="price_local" sum="Total (local)"/>
+                <field name="currency_id"/>
+                <field name="price_usd" sum="Total (USD)" optional="hide"/>
+                <field name="fx_rate" optional="hide"/>
+                <field name="is_free" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_billing_event_form" model="ir.ui.view">
+        <field name="name">comm.billing.event.form</field>
+        <field name="model">comm.billing.event</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="event_date"/>
+                            <field name="channel"/>
+                            <field name="provider"/>
+                            <field name="account_ref"/>
+                            <field name="partner_id"/>
+                            <field name="wa_id"/>
+                            <field name="country_id"/>
+                            <field name="carrier"/>
+                            <field name="direction"/>
+                            <field name="campaign_id"/>
+                        </group>
+                        <group>
+                            <field name="category"/>
+                            <field name="unit"/>
+                            <field name="unit_qty"/>
+                            <field name="rate_card_id"/>
+                            <field name="rate_id"/>
+                            <field name="is_free"/>
+                            <field name="free_reason" invisible="not is_free"/>
+                        </group>
+                    </group>
+                    <group string="Amounts">
+                        <group>
+                            <field name="price_local"/>
+                            <field name="currency_id"/>
+                        </group>
+                        <group>
+                            <field name="price_usd"/>
+                            <field name="fx_rate"/>
+                        </group>
+                    </group>
+                    <group string="Source">
+                        <field name="source_model"/>
+                        <field name="source_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_comm_billing_event_pivot" model="ir.ui.view">
+        <field name="name">comm.billing.event.pivot</field>
+        <field name="model">comm.billing.event</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="channel" type="row"/>
+                <field name="category" type="row"/>
+                <field name="country_id" type="col"/>
+                <field name="price_local" type="measure"/>
+                <field name="price_usd" type="measure"/>
+                <field name="unit_qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_comm_billing_event_graph" model="ir.ui.view">
+        <field name="name">comm.billing.event.graph</field>
+        <field name="model">comm.billing.event</field>
+        <field name="arch" type="xml">
+            <graph type="line" sample="1">
+                <field name="event_date" interval="day"/>
+                <field name="price_local" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_comm_billing_event_search" model="ir.ui.view">
+        <field name="name">comm.billing.event.search</field>
+        <field name="model">comm.billing.event</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="wa_id"/>
+                <field name="channel"/>
+                <field name="provider"/>
+                <field name="account_ref"/>
+                <field name="country_id"/>
+                <field name="carrier"/>
+                <field name="category"/>
+                <field name="campaign_id"/>
+                <filter string="WhatsApp" name="channel_whatsapp"
+                        domain="[('channel', '=', 'whatsapp')]"/>
+                <filter string="SMS" name="channel_sms"
+                        domain="[('channel', '=', 'sms')]"/>
+                <filter string="USSD" name="channel_ussd"
+                        domain="[('channel', '=', 'ussd')]"/>
+                <filter string="Voice" name="channel_voice"
+                        domain="[('channel', '=', 'voice')]"/>
+                <separator/>
+                <filter string="Free (windows)" name="free"
+                        domain="[('is_free', '=', True)]"/>
+                <filter string="Paid" name="paid"
+                        domain="[('is_free', '=', False), ('price_usd', '>', 0)]"/>
+                <filter string="This month" name="this_month"
+                        domain="[('event_date', '>=', time.strftime('%Y-%m-01'))]"/>
+                <filter string="Last 7 days" name="last_7"
+                        domain="[('event_date', '>=', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group by">
+                    <filter string="Channel" name="group_channel"
+                            context="{'group_by': 'channel'}"/>
+                    <filter string="Category" name="group_category"
+                            context="{'group_by': 'category'}"/>
+                    <filter string="Country" name="group_country"
+                            context="{'group_by': 'country_id'}"/>
+                    <filter string="Carrier" name="group_carrier"
+                            context="{'group_by': 'carrier'}"/>
+                    <filter string="Campaign" name="group_campaign"
+                            context="{'group_by': 'campaign_id'}"/>
+                    <filter string="Day" name="group_day"
+                            context="{'group_by': 'event_date:day'}"/>
+                    <filter string="Month" name="group_month"
+                            context="{'group_by': 'event_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_comm_billing_event" model="ir.actions.act_window">
+        <field name="name">Billing Events</field>
+        <field name="res_model">comm.billing.event</field>
+        <field name="view_mode">list,graph,pivot,form</field>
+        <field name="context">{'search_default_this_month': 1, 'search_default_group_channel': 1}</field>
+    </record>
+
+    <record id="action_comm_billing_dashboard" model="ir.actions.act_window">
+        <field name="name">Cost Dashboard</field>
+        <field name="res_model">comm.billing.event</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="context">{'search_default_this_month': 1, 'search_default_group_channel': 1}</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="rate_card_sms_infobip_default" model="comm.billing.rate.card">
+            <field name="name">Infobip SMS — default</field>
+            <field name="channel">sms</field>
+            <field name="provider">Infobip</field>
+            <field name="effective_from">2025-01-01</field>
+            <field name="billing_model">per_segment</field>
+            <field name="notes">Placeholder SMS rates. Refresh from Infobip's monthly bill or rate sheet.</field>
+        </record>
+
+    </data>
+</odoo>

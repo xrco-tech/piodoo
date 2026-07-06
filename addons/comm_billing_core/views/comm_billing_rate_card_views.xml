@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_billing_rate_card_list" model="ir.ui.view">
+        <field name="name">comm.billing.rate.card.list</field>
+        <field name="model">comm.billing.rate.card</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="channel"/>
+                <field name="provider"/>
+                <field name="billing_model"/>
+                <field name="effective_from"/>
+                <field name="effective_to"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_billing_rate_card_form" model="ir.ui.view">
+        <field name="name">comm.billing.rate.card.form</field>
+        <field name="model">comm.billing.rate.card</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="channel"/>
+                            <field name="provider"/>
+                            <field name="billing_model"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="effective_from"/>
+                            <field name="effective_to"/>
+                            <field name="service_free_in_cs_window"
+                                   invisible="channel != 'whatsapp'"/>
+                            <field name="utility_free_in_cs_window"
+                                   invisible="channel != 'whatsapp'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Rates">
+                            <field name="rate_ids">
+                                <list editable="bottom">
+                                    <field name="country_id"/>
+                                    <field name="carrier"/>
+                                    <field name="direction"/>
+                                    <field name="category"/>
+                                    <field name="unit"/>
+                                    <field name="price_usd"/>
+                                    <field name="tier_from"/>
+                                    <field name="tier_to"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_comm_billing_rate_card_search" model="ir.ui.view">
+        <field name="name">comm.billing.rate.card.search</field>
+        <field name="model">comm.billing.rate.card</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="channel"/>
+                <field name="provider"/>
+                <group expand="0" string="Group by">
+                    <filter string="Channel" name="group_channel"
+                            context="{'group_by': 'channel'}"/>
+                    <filter string="Provider" name="group_provider"
+                            context="{'group_by': 'provider'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_comm_billing_rate_card" model="ir.actions.act_window">
+        <field name="name">Rate Cards</field>
+        <field name="res_model">comm.billing.rate.card</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_channel': 1}</field>
+    </record>
+
+</odoo>

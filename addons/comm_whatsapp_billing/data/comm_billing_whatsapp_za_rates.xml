@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============ Jul 2025 per-message card ============ -->
+        <record id="rate_za_2025_marketing" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2025_jul"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">marketing</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0379</field>
+        </record>
+        <record id="rate_za_2025_utility" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2025_jul"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">utility</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0076</field>
+        </record>
+        <record id="rate_za_2025_authentication" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2025_jul"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">authentication</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0076</field>
+        </record>
+        <record id="rate_za_2025_auth_international" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2025_jul"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">auth_international</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.02</field>
+        </record>
+        <record id="rate_za_2025_service" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2025_jul"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">service</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0</field>
+        </record>
+
+        <!-- ============ Aug 2026 hybrid card ============ -->
+        <record id="rate_za_2026aug_marketing" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_aug"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">marketing</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0379</field>
+        </record>
+        <record id="rate_za_2026aug_utility" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_aug"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">utility</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0076</field>
+        </record>
+        <record id="rate_za_2026aug_authentication" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_aug"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">authentication</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0076</field>
+        </record>
+        <record id="rate_za_2026aug_auth_international" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_aug"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">auth_international</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.02</field>
+        </record>
+        <record id="rate_2026aug_mba_token_global" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_aug"/>
+            <field name="category">mba_token</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.002</field>
+        </record>
+
+        <!-- ============ Oct 2026 hybrid + paid-service card ============ -->
+        <record id="rate_za_2026oct_marketing" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_oct"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">marketing</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0379</field>
+        </record>
+        <record id="rate_za_2026oct_utility" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_oct"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">utility</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0076</field>
+        </record>
+        <record id="rate_za_2026oct_authentication" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_oct"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">authentication</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0076</field>
+        </record>
+        <record id="rate_za_2026oct_auth_international" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_oct"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">auth_international</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.02</field>
+        </record>
+        <record id="rate_za_2026oct_service" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_oct"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">service</field>
+            <field name="unit">message</field>
+            <field name="price_usd">0.0076</field>
+        </record>
+        <record id="rate_2026oct_mba_token_global" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_2026_oct"/>
+            <field name="category">mba_token</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.002</field>
+        </record>
+
+    </data>
+</odoo>
