@@ -11,10 +11,11 @@
                     <group>
                         <field name="country_id"/>
                         <field name="billing_currency_id"/>
+                        <field name="default_fx_rate"/>
                     </group>
                     <group>
-                        <field name="billing_mtd_usd"/>
                         <field name="billing_mtd_local"/>
+                        <field name="billing_mtd_usd"/>
                     </group>
                 </group>
             </xpath>

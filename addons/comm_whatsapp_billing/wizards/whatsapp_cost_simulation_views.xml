@@ -23,9 +23,15 @@
                             <field name="avg_call_minutes_per_recipient"/>
                         </group>
                     </group>
-                    <group string="Compare against rate cards">
-                        <field name="rate_card_ids" widget="many2many_tags"
-                               nolabel="1" colspan="2"/>
+                    <group>
+                        <group string="Compare against rate cards">
+                            <field name="rate_card_ids" widget="many2many_tags"
+                                   nolabel="1"/>
+                        </group>
+                        <group string="Display currency">
+                            <field name="display_currency_id"/>
+                            <field name="display_fx_rate"/>
+                        </group>
                     </group>
                     <footer>
                         <button name="action_run" type="object"

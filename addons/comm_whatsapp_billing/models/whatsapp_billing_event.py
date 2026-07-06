@@ -124,10 +124,10 @@ class WhatsappBillingEvent(models.Model):
                 is_free, free_reason = True, 'entry_72h'
 
         if is_free:
+            _, currency = self._resolve_fx(account, event_date)
             vals.update(is_free=True, free_reason=free_reason,
                         price_usd=0.0, price_local=0.0, fx_rate=1.0,
-                        currency_id=(account.billing_currency_id.id
-                                     if account and account.billing_currency_id else False))
+                        currency_id=currency.id if currency else False)
             return vals
 
         # Volume tier
@@ -140,11 +140,7 @@ class WhatsappBillingEvent(models.Model):
             return vals
 
         price_usd = unit_qty * rate.price_usd
-        currency = (account.billing_currency_id if account and account.billing_currency_id
-                    else self.env.ref('base.USD', raise_if_not_found=False))
-        fx = 1.0
-        if currency and currency.name != 'USD':
-            fx = self.env['whatsapp.fx.rate'].rate_for(currency, event_date)
+        fx, currency = self._resolve_fx(account, event_date)
 
         vals.update(
             rate_id=rate.id,
@@ -154,6 +150,48 @@ class WhatsappBillingEvent(models.Model):
             currency_id=currency.id if currency else False,
         )
         return vals
+
+    @api.model
+    def _resolve_fx(self, account, event_date):
+        """Resolve USD -> account currency using, in order:
+        1. Meta monthly billing FX override (whatsapp.fx.rate) — reconciles to invoice
+        2. Odoo's res.currency.rate at event_date — real-time market rate
+        3. account.default_fx_rate — user-set fudge factor
+        Returns (fx_rate, currency). Falls back to (1.0, USD) if nothing works
+        so we never silently misrepresent local totals.
+        """
+        USD = self.env.ref('base.USD', raise_if_not_found=False)
+        company = self.env.company
+        currency = (account.billing_currency_id
+                    or company.currency_id
+                    or USD)
+
+        if not currency or (USD and currency.id == USD.id):
+            return 1.0, currency or USD
+
+        # 1. Meta monthly override
+        fx = self.env['whatsapp.fx.rate']._rate_for_month(currency, event_date)
+        if fx:
+            return fx, currency
+
+        # 2. Odoo's currency-rate table via _convert
+        if USD:
+            try:
+                as_date = fields.Date.to_date(event_date) if event_date else fields.Date.today()
+                fx = USD._convert(1.0, currency, company, as_date, round=False)
+                if fx and fx != 1.0:
+                    return fx, currency
+            except Exception as e:
+                _logger.debug('res.currency._convert failed: %s', e)
+
+        # 3. Account fallback
+        if account and account.default_fx_rate:
+            return account.default_fx_rate, currency
+
+        _logger.warning(
+            'No FX rate USD->%s for %s (account=%s). Storing event in USD.',
+            currency.name, event_date, account.name if account else '?')
+        return 1.0, USD or currency
 
     @api.model_create_multi
     def create(self, vals_list):

@@ -2,6 +2,10 @@
 from odoo import models, fields, api
 
 
+def _default_billing_currency(env):
+    return env.company.currency_id.id
+
+
 class CommWhatsappAccount(models.Model):
     _inherit = 'comm.whatsapp.account'
 
@@ -9,8 +13,13 @@ class CommWhatsappAccount(models.Model):
         help='Country of the WABA account. Drives auth-international detection.')
     billing_currency_id = fields.Many2one('res.currency',
         string='Billing Currency',
-        help='Currency used to display costs (via whatsapp.fx.rate). '
-             'USD if unset.')
+        default=lambda self: _default_billing_currency(self.env),
+        help='Currency used to display and reconcile costs. Defaults to the '
+             'company currency (typically ZAR).')
+    default_fx_rate = fields.Float(string='Fallback USD → local FX',
+        digits=(12, 6),
+        help='Used when neither the Meta monthly override nor Odoo currency '
+             'rates are available. Example: 18.5 = 1 USD costs R18.50.')
     billing_event_ids = fields.One2many('whatsapp.billing.event', 'account_id',
         string='Billing Events')
     billing_mtd_usd = fields.Float(string='MTD Cost (USD)',

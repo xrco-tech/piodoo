@@ -11,12 +11,12 @@
                 <field name="wa_id"/>
                 <field name="country_id"/>
                 <field name="category"/>
-                <field name="unit"/>
                 <field name="unit_qty"/>
-                <field name="price_usd" sum="Total USD"/>
-                <field name="price_local" sum="Total local"/>
+                <field name="price_local" sum="Total (local)"/>
                 <field name="currency_id"/>
-                <field name="is_free"/>
+                <field name="price_usd" sum="Total (USD)" optional="hide"/>
+                <field name="fx_rate" optional="hide"/>
+                <field name="is_free" optional="show"/>
             </list>
         </field>
     </record>
@@ -48,12 +48,12 @@
                     </group>
                     <group string="Amounts">
                         <group>
-                            <field name="price_usd"/>
-                            <field name="fx_rate"/>
-                        </group>
-                        <group>
                             <field name="price_local"/>
                             <field name="currency_id"/>
+                        </group>
+                        <group>
+                            <field name="price_usd"/>
+                            <field name="fx_rate"/>
                         </group>
                     </group>
                     <group string="Source">
@@ -73,8 +73,8 @@
             <pivot>
                 <field name="category" type="row"/>
                 <field name="country_id" type="col"/>
-                <field name="price_usd" type="measure"/>
                 <field name="price_local" type="measure"/>
+                <field name="price_usd" type="measure"/>
                 <field name="unit_qty" type="measure"/>
             </pivot>
         </field>
@@ -86,7 +86,7 @@
         <field name="arch" type="xml">
             <graph type="line" sample="1">
                 <field name="event_date" interval="day"/>
-                <field name="price_usd" type="measure"/>
+                <field name="price_local" type="measure"/>
             </graph>
         </field>
     </record>

@@ -42,7 +42,7 @@
               sequence="20"/>
 
     <menuitem id="menu_whatsapp_fx_rates"
-              name="FX Rates"
+              name="Meta Monthly FX"
               parent="menu_whatsapp_billing_config"
               action="action_whatsapp_fx_rate"
               sequence="30"/>

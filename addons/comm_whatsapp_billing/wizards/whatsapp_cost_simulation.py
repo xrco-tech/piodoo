@@ -33,6 +33,13 @@ class WhatsappCostSimulation(models.TransientModel):
         help='Pick one or more rate cards for side-by-side comparison. '
              'Defaults to the current + next future cards.')
 
+    display_currency_id = fields.Many2one('res.currency', string='Display in',
+        default=lambda self: self.env.company.currency_id)
+    display_fx_rate = fields.Float(string='USD → display FX',
+        digits=(12, 6),
+        help='FX rate applied to the projection. Prefilled from the account, '
+             'Meta monthly override, or Odoo live rates. Editable.')
+
     result_json = fields.Text(readonly=True)
     result_summary = fields.Html(readonly=True)
 
@@ -44,6 +51,12 @@ class WhatsappCostSimulation(models.TransientModel):
             ('active', '=', True),
         ], order='effective_from')
         vals['rate_card_ids'] = [(6, 0, cards.ids)]
+        # Prefill display FX using the same resolver the ledger uses
+        currency = self.env.company.currency_id
+        vals.setdefault('display_currency_id', currency.id if currency else False)
+        fx, _ = self.env['whatsapp.billing.event']._resolve_fx(
+            self.env['comm.whatsapp.account'], fields.Date.today())
+        vals.setdefault('display_fx_rate', fx or 1.0)
         return vals
 
     def _audience_country_split(self):
@@ -160,22 +173,25 @@ class WhatsappCostSimulation(models.TransientModel):
         }
 
     def _render_summary(self, projections):
+        fx = self.display_fx_rate or 1.0
+        sym = self.display_currency_id.symbol or self.display_currency_id.name or ''
         html = ['<div class="o_whatsapp_cost_summary">']
         for p in projections:
             html.append(f'<h4>{p["card_name"]} <small>({p["billing_model"]})</small></h4>')
             html.append('<table class="table table-sm"><thead><tr>'
                         '<th>Country</th><th>Category</th>'
                         '<th class="text-end">Qty</th>'
-                        '<th class="text-end">Unit ($)</th>'
+                        f'<th class="text-end">Total ({sym})</th>'
                         '<th class="text-end">Total ($)</th></tr></thead><tbody>')
             for line in p['lines']:
                 html.append(f'<tr><td>{line["country"]}</td>'
                             f'<td>{line["category"]}</td>'
                             f'<td class="text-end">{line["qty"]:.2f}</td>'
-                            f'<td class="text-end">{line["unit_price"]:.6f}</td>'
+                            f'<td class="text-end">{line["total"] * fx:,.2f}</td>'
                             f'<td class="text-end">{line["total"]:.4f}</td></tr>')
-            html.append(f'<tr><td colspan="4"><b>Total</b></td>'
-                        f'<td class="text-end"><b>${p["total_usd"]:.4f}</b></td></tr>')
+            html.append(f'<tr><td colspan="3"><b>Total</b></td>'
+                        f'<td class="text-end"><b>{sym} {p["total_usd"] * fx:,.2f}</b></td>'
+                        f'<td class="text-end">${p["total_usd"]:.4f}</td></tr>')
             html.append('</tbody></table>')
         html.append('</div>')
         return ''.join(html)
