@@ -1,0 +1,14 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_whatsapp_rate_card_admin,whatsapp.rate.card.admin,model_whatsapp_rate_card,comm_whatsapp.group_whatsapp_administrator,1,1,1,1
+access_whatsapp_rate_card_user,whatsapp.rate.card.user,model_whatsapp_rate_card,comm_whatsapp.group_whatsapp_user,1,0,0,0
+access_whatsapp_rate_admin,whatsapp.rate.admin,model_whatsapp_rate,comm_whatsapp.group_whatsapp_administrator,1,1,1,1
+access_whatsapp_rate_user,whatsapp.rate.user,model_whatsapp_rate,comm_whatsapp.group_whatsapp_user,1,0,0,0
+access_whatsapp_fx_rate_admin,whatsapp.fx.rate.admin,model_whatsapp_fx_rate,comm_whatsapp.group_whatsapp_administrator,1,1,1,1
+access_whatsapp_fx_rate_user,whatsapp.fx.rate.user,model_whatsapp_fx_rate,comm_whatsapp.group_whatsapp_user,1,0,0,0
+access_whatsapp_billing_event_admin,whatsapp.billing.event.admin,model_whatsapp_billing_event,comm_whatsapp.group_whatsapp_administrator,1,1,1,1
+access_whatsapp_billing_event_user,whatsapp.billing.event.user,model_whatsapp_billing_event,comm_whatsapp.group_whatsapp_user,1,0,0,0
+access_whatsapp_free_window_admin,whatsapp.free.window.admin,model_whatsapp_free_window,comm_whatsapp.group_whatsapp_administrator,1,1,1,1
+access_whatsapp_free_window_user,whatsapp.free.window.user,model_whatsapp_free_window,comm_whatsapp.group_whatsapp_user,1,0,0,0
+access_whatsapp_cost_simulation_admin,whatsapp.cost.simulation.admin,model_whatsapp_cost_simulation,comm_whatsapp.group_whatsapp_administrator,1,1,1,1
+access_whatsapp_cost_simulation_user,whatsapp.cost.simulation.user,model_whatsapp_cost_simulation,comm_whatsapp.group_whatsapp_user,1,1,1,1
+access_whatsapp_billing_backfill_admin,whatsapp.billing.backfill.admin,model_whatsapp_billing_backfill,comm_whatsapp.group_whatsapp_administrator,1,1,1,1

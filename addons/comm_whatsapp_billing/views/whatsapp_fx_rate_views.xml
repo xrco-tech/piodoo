@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_whatsapp_fx_rate_list" model="ir.ui.view">
+        <field name="name">whatsapp.fx.rate.list</field>
+        <field name="model">whatsapp.fx.rate</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="date"/>
+                <field name="currency_id"/>
+                <field name="rate"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_whatsapp_fx_rate" model="ir.actions.act_window">
+        <field name="name">FX Rates (USD → local)</field>
+        <field name="res_model">whatsapp.fx.rate</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

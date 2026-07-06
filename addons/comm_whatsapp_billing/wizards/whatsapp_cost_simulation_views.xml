@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_whatsapp_cost_simulation_form" model="ir.ui.view">
+        <field name="name">whatsapp.cost.simulation.form</field>
+        <field name="model">whatsapp.cost.simulation</field>
+        <field name="arch" type="xml">
+            <form string="WhatsApp Cost Simulator">
+                <sheet>
+                    <group>
+                        <group string="Audience">
+                            <field name="account_id"/>
+                            <field name="audience_domain"
+                                   placeholder="[('category_id.name','=','VIP')]"/>
+                            <field name="manual_recipient_count"/>
+                            <field name="manual_country_id"/>
+                        </group>
+                        <group string="Category / usage">
+                            <field name="category"/>
+                            <field name="expected_reply_rate"/>
+                            <field name="mba_handled_pct"/>
+                            <field name="avg_tokens_per_interaction"/>
+                            <field name="avg_call_minutes_per_recipient"/>
+                        </group>
+                    </group>
+                    <group string="Compare against rate cards">
+                        <field name="rate_card_ids" widget="many2many_tags"
+                               nolabel="1" colspan="2"/>
+                    </group>
+                    <footer>
+                        <button name="action_run" type="object"
+                                string="Run simulation" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                    <group string="Results" invisible="not result_summary">
+                        <field name="result_summary" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_whatsapp_cost_simulation" model="ir.actions.act_window">
+        <field name="name">Cost Simulator</field>
+        <field name="res_model">whatsapp.cost.simulation</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

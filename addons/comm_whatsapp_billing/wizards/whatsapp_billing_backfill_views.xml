@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_whatsapp_billing_backfill_form" model="ir.ui.view">
+        <field name="name">whatsapp.billing.backfill.form</field>
+        <field name="model">whatsapp.billing.backfill</field>
+        <field name="arch" type="xml">
+            <form string="Backfill WhatsApp billing events">
+                <sheet>
+                    <group>
+                        <group string="Scope">
+                            <field name="months"/>
+                            <field name="account_ids" widget="many2many_tags"/>
+                            <field name="category_filter"/>
+                        </group>
+                        <group string="Behaviour">
+                            <field name="include_messages"/>
+                            <field name="include_calls"/>
+                            <field name="only_missing"/>
+                            <field name="dry_run"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button name="action_run" type="object"
+                                string="Run backfill" class="btn-primary"/>
+                        <button string="Close" class="btn-secondary" special="cancel"/>
+                    </footer>
+                    <group string="Result" invisible="not result_html">
+                        <field name="result_html" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_whatsapp_billing_backfill" model="ir.actions.act_window">
+        <field name="name">Backfill from history</field>
+        <field name="res_model">whatsapp.billing.backfill</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_whatsapp_account_form_billing" model="ir.ui.view">
+        <field name="name">comm.whatsapp.account.form.billing</field>
+        <field name="model">comm.whatsapp.account</field>
+        <field name="inherit_id" ref="comm_whatsapp.view_comm_whatsapp_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Billing">
+                    <group>
+                        <field name="country_id"/>
+                        <field name="billing_currency_id"/>
+                    </group>
+                    <group>
+                        <field name="billing_mtd_usd"/>
+                        <field name="billing_mtd_local"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
