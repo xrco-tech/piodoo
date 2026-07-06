@@ -106,7 +106,7 @@
                 <filter string="Paid" name="paid"
                         domain="[('is_free', '=', False), ('price_usd', '>', 0)]"/>
                 <filter string="This month" name="this_month"
-                        domain="[('event_date', '>=', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('event_date', '>=', time.strftime('%Y-%m-01'))]"/>
                 <filter string="Last 7 days" name="last_7"
                         domain="[('event_date', '>=', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Group by">
