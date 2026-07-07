@@ -83,3 +83,121 @@ class CommBot(models.Model):
             if bot.engine_mode == 'live' and not bot.entry_step_id:
                 raise ValidationError(
                     'Bot %s cannot go live without an entry step.' % bot.name)
+
+    # ------------------------------------------------------------------
+    # Flow diagram — Mermaid source generator
+    # ------------------------------------------------------------------
+    STEP_SHAPES = {
+        'message':        ('[', ']'),
+        'menu':           ('{{', '}}'),
+        'input':          ('[/', '/]'),
+        'condition':      ('{', '}'),
+        'action':         ('(', ')'),
+        'handoff':        ('([', '])'),
+        'llm':            ('[[', ']]'),
+        'jump':           ('(', ')'),
+        'wait':           ('[', ']'),
+        'end':            ('((', '))'),
+        'channel_switch': ('[/', '\\]'),
+    }
+    STEP_CSS = {
+        'message':        'message',
+        'menu':           'menu',
+        'input':          'inputStep',
+        'condition':      'condition',
+        'action':         'action',
+        'handoff':        'handoff',
+        'llm':            'llm',
+        'jump':           'jump',
+        'wait':           'wait',
+        'end':            'endStep',
+        'channel_switch': 'channelSwitch',
+    }
+
+    def _mermaid_escape(self, text):
+        if not text:
+            return ''
+        return (str(text).replace('"', '&quot;')
+                          .replace('(', '\\(')
+                          .replace(')', '\\)')
+                          .replace('|', '\\|')
+                          .replace('\n', ' ')
+                          .replace('{', '\\{')
+                          .replace('}', '\\}')
+                          .replace('<', '&lt;'))
+
+    def _short_label(self, step):
+        body = (step.body or '').strip()
+        preview = body[:40] + ('…' if len(body) > 40 else '')
+        return (f'"<b>{self._mermaid_escape(step.name)}</b>'
+                f'<br/><small>{self._mermaid_escape(preview)}</small>"')
+
+    def _render_mermaid_source(self, base_url=''):
+        """Build a Mermaid flowchart source from bot.step_ids."""
+        self.ensure_one()
+        lines = ['flowchart TD']
+        if self.entry_step_id:
+            lines.append(
+                f'    ENTRY(("start")):::entryNode --> {self.entry_step_id.id}')
+
+        for step in self.step_ids:
+            shape_open, shape_close = self.STEP_SHAPES.get(
+                step.kind, ('[', ']'))
+            css = self.STEP_CSS.get(step.kind, 'message')
+            lines.append(
+                f'    {step.id}{shape_open}{self._short_label(step)}{shape_close}'
+                f':::{css}')
+            if base_url:
+                url = f'{base_url}/odoo/action-comm_chatbot.action_comm_bot_step/{step.id}'
+                lines.append(f'    click {step.id} "{url}" _blank')
+
+            if step.kind not in ('menu', 'condition', 'end'):
+                if step.next_step_id:
+                    lines.append(f'    {step.id} --> {step.next_step_id.id}')
+            for opt in step.option_ids.sorted('sequence'):
+                if opt.next_step_id:
+                    label = self._mermaid_escape(opt.label)
+                    lines.append(f'    {step.id} -->|{label}| {opt.next_step_id.id}')
+            if step.jump_target_step_id:
+                lines.append(f'    {step.id} -.->|jump| {step.jump_target_step_id.id}')
+            if step.llm_fallback_step_id:
+                lines.append(
+                    f'    {step.id} -.->|LLM fallback| {step.llm_fallback_step_id.id}')
+            if step.on_unsupported_step_id:
+                lines.append(
+                    f'    {step.id} -.->|unsupported| {step.on_unsupported_step_id.id}')
+            if step.input_retry_step_id:
+                lines.append(
+                    f'    {step.id} -.->|invalid input| {step.input_retry_step_id.id}')
+            for target in step.llm_decision_option_ids:
+                lines.append(f'    {step.id} ==>|LLM pick| {target.id}')
+
+        if self.on_error_step_id:
+            lines.append(
+                f'    ERROR(("on error")):::errorNode -.-> '
+                f'{self.on_error_step_id.id}')
+
+        lines.extend([
+            '    classDef entryNode fill:#37474f,color:#fff,stroke:#263238',
+            '    classDef errorNode fill:#ffcdd2,stroke:#c62828',
+            '    classDef message fill:#e3f2fd,stroke:#1976d2',
+            '    classDef menu fill:#fff3e0,stroke:#f57c00',
+            '    classDef inputStep fill:#f3e5f5,stroke:#7b1fa2',
+            '    classDef condition fill:#fce4ec,stroke:#c2185b',
+            '    classDef action fill:#e0f2f1,stroke:#00796b',
+            '    classDef handoff fill:#fff9c4,stroke:#f9a825',
+            '    classDef llm fill:#e8f5e9,stroke:#388e3c,stroke-width:2px',
+            '    classDef jump fill:#f3e5f5,stroke:#8e24aa',
+            '    classDef wait fill:#eceff1,stroke:#546e7a',
+            '    classDef endStep fill:#c8e6c9,stroke:#388e3c',
+            '    classDef channelSwitch fill:#e1f5fe,stroke:#0288d1',
+        ])
+        return '\n'.join(lines)
+
+    def action_view_flow_diagram(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/comm_chatbot/bot_flow/{self.id}',
+            'target': 'new',
+        }
