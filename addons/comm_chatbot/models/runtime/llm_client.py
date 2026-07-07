@@ -33,6 +33,23 @@ class LlmClient(models.AbstractModel):
     @api.model
     def _run_llm_step(self, step, conversation, leg):
         """Execute an LLM step; return the next comm.bot.step or None."""
+        if self.env.context.get('comm_chatbot_force_shadow'):
+            # Preview walker — don't spend real tokens; log a fake outbound
+            # with the system prompt so the walker shows what would have run.
+            self.env['comm.interaction'].create({
+                'conversation_id': conversation.id,
+                'leg_id': leg.id if leg else False,
+                'channel_id': (leg.channel_id if leg else
+                               conversation.primary_channel_id).id,
+                'direction': 'outbound',
+                'step_id': step.id,
+                'raw_body': f'(LLM step — skipped in preview)',
+                'rendered_body': f'(LLM step "{step.name}" would call '
+                                  f'{step.llm_model or step.bot_id.default_llm_model} '
+                                  f'here — skipped in preview walker.)',
+                'status': 'sent',
+            })
+            return step.next_step_id or step.llm_fallback_step_id
         model = step.llm_model or step.bot_id.default_llm_model or 'claude-sonnet-4-6'
         api_key = self._get_api_key()
         if not (api_key and _ANTHROPIC_AVAILABLE):

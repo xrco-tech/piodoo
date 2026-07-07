@@ -352,8 +352,10 @@ class ExecutorService(models.AbstractModel):
             'status': 'rendered',
         })
 
-        # Shadow-mode: do not actually send
-        if conversation.bot_id.engine_mode == 'shadow':
+        # Shadow-mode: do not actually send. force_shadow via context is
+        # used by the preview walker to advance a live bot without sending.
+        force_shadow = self.env.context.get('comm_chatbot_force_shadow')
+        if conversation.bot_id.engine_mode == 'shadow' or force_shadow:
             interaction.status = 'sent'
             return interaction
 
@@ -390,7 +392,9 @@ class ExecutorService(models.AbstractModel):
             'rendered_body': substituted,
             'status': 'rendered',
         })
-        if conversation.bot_id.engine_mode == 'shadow' or not adapter:
+        force_shadow = self.env.context.get('comm_chatbot_force_shadow')
+        if (conversation.bot_id.engine_mode == 'shadow' or force_shadow
+                or not adapter):
             interaction.status = 'sent'
             return interaction
         try:

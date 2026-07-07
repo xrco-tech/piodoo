@@ -90,6 +90,24 @@ class CommCampaignSimulation(models.TransientModel):
     summary_html = fields.Html(readonly=True)
     assumptions_html = fields.Html(readonly=True)
 
+    # Interactive walker
+    walker_active = fields.Boolean(default=False)
+    walker_channel_id = fields.Many2one('comm.channel',
+        string='Walk on channel',
+        help='Which channel to walk through the bot on. Defaults to the '
+             'campaign\'s top priority channel.')
+    walker_conversation_id = fields.Many2one('comm.conversation',
+        string='Preview conversation', readonly=True)
+    walker_transcript_html = fields.Html(readonly=True)
+    walker_current_prompt_html = fields.Html(readonly=True)
+    walker_awaiting = fields.Selection([
+        ('none',  'None'),
+        ('menu',  'Menu choice'),
+        ('input', 'Free text'),
+        ('done',  'Conversation ended'),
+    ], default='none', readonly=True)
+    walker_input = fields.Char(string='Your reply')
+
     # ---------- Public entry ----------
     @api.model
     def default_get(self, fields_list):
@@ -583,6 +601,195 @@ class CommCampaignSimulation(models.TransientModel):
             'ETA doesn\'t model deferrals.</li>'
             '</ul>'
         )
+
+    # ==========================================================
+    # Interactive walker
+    # ==========================================================
+    def action_start_walker(self):
+        """Begin a step-through simulation on the chosen channel."""
+        self.ensure_one()
+        campaign = self.campaign_id
+        bot = campaign.bot_id
+        if not bot or not bot.entry_step_id:
+            raise UserError('Bot has no entry step to walk from.')
+        if not self.preview_partner_id:
+            partners = self._resolve_audience(campaign)
+            self.preview_partner_id = partners[:1].id if partners else False
+        if not self.preview_partner_id:
+            raise UserError('Pick a preview recipient before starting the walker.')
+        channel = self.walker_channel_id or campaign.channel_priority_ids[:1]
+        if not channel:
+            raise UserError('Campaign has no channels configured.')
+
+        # Reset any prior walker conversation
+        if self.walker_conversation_id:
+            self.walker_conversation_id.sudo().unlink()
+
+        conversation = self.env['comm.conversation'].create({
+            'partner_id': self.preview_partner_id.id,
+            'bot_id': bot.id,
+            'primary_channel_id': channel.id,
+            'current_step_id': bot.entry_step_id.id,
+            'outcome': '__preview_walker__',
+            'lifecycle_state': 'open',
+        })
+        leg = self.env['comm.conversation.leg'].create({
+            'conversation_id': conversation.id,
+            'channel_id': channel.id,
+            'external_session_id': f'walker-{self.id}',
+        })
+
+        # Advance from entry with force_shadow so no adapter/LLM calls fire
+        self.env['comm.chatbot.executor'].with_context(
+            comm_chatbot_force_shadow=True
+        ).advance(conversation, leg)
+
+        self.walker_conversation_id = conversation.id
+        self.walker_channel_id = channel.id
+        self.walker_active = True
+        self._refresh_walker_view()
+        return self._return_self()
+
+    def action_walker_send(self):
+        """User replied — advance the flow."""
+        self.ensure_one()
+        conversation = self.walker_conversation_id
+        if not conversation:
+            raise UserError('No active walker conversation.')
+        leg = conversation.leg_ids.filtered(
+            lambda l: l.channel_id == self.walker_channel_id)[:1]
+
+        body = self.walker_input or ''
+        # Log the inbound
+        self.env['comm.interaction'].create({
+            'conversation_id': conversation.id,
+            'leg_id': leg.id if leg else False,
+            'channel_id': self.walker_channel_id.id,
+            'direction': 'inbound',
+            'raw_body': body,
+            'status': 'received',
+            'step_id': conversation.current_step_id.id if conversation.current_step_id else False,
+        })
+
+        # Advance with force_shadow so outbound never actually fires
+        Exec = self.env['comm.chatbot.executor'].with_context(
+            comm_chatbot_force_shadow=True)
+        if conversation.current_step_id and conversation.current_step_id.kind in ('menu', 'input'):
+            Exec._handle_input(conversation, leg, body)
+        else:
+            Exec.advance(conversation, leg)
+
+        self.walker_input = False
+        self._refresh_walker_view()
+        return self._return_self()
+
+    def action_reset_walker(self):
+        """Delete the current walker conversation and clear the panel."""
+        self.ensure_one()
+        if self.walker_conversation_id:
+            self.walker_conversation_id.sudo().unlink()
+        self.walker_conversation_id = False
+        self.walker_active = False
+        self.walker_transcript_html = ''
+        self.walker_current_prompt_html = ''
+        self.walker_input = False
+        self.walker_awaiting = 'none'
+        return self._return_self()
+
+    def _refresh_walker_view(self):
+        self.ensure_one()
+        conversation = self.walker_conversation_id
+        if not conversation:
+            return
+
+        # Build chat transcript
+        transcript = ['<div class="o_walker_transcript">']
+        for i in conversation.interaction_ids.sorted('at'):
+            body = (i.rendered_body or i.raw_body or '').replace('<', '&lt;')
+            if i.direction == 'outbound':
+                transcript.append(
+                    f'<div class="d-flex justify-content-start mb-2">'
+                    f'<div class="p-2 rounded" style="background:#e9ecef; '
+                    f'max-width: 75%;">'
+                    f'<small class="text-muted">🤖 Bot ({i.step_id.name or "-"})</small>'
+                    f'<pre style="white-space: pre-wrap; margin: 0.25rem 0 0 0;">'
+                    f'{body}</pre>'
+                    f'</div></div>'
+                )
+            else:
+                transcript.append(
+                    f'<div class="d-flex justify-content-end mb-2">'
+                    f'<div class="p-2 rounded" style="background:#d1e7ff; '
+                    f'max-width: 75%;">'
+                    f'<small class="text-muted">👤 You</small>'
+                    f'<pre style="white-space: pre-wrap; margin: 0.25rem 0 0 0;">'
+                    f'{body}</pre>'
+                    f'</div></div>'
+                )
+        transcript.append('</div>')
+        self.walker_transcript_html = ''.join(transcript)
+
+        # Determine current prompt
+        step = conversation.current_step_id
+        if not step or conversation.lifecycle_state in ('closed', 'timeout'):
+            self.walker_awaiting = 'done'
+            self.walker_current_prompt_html = (
+                f'<div class="alert alert-info">'
+                f'<b>Conversation ended.</b> '
+                f'Outcome: <code>{conversation.outcome or "—"}</code>'
+                f'</div>'
+            )
+            return
+
+        if step.kind == 'menu':
+            self.walker_awaiting = 'menu'
+            renderer = self.env['comm.chatbot.renderer']
+            options = renderer._resolve_options(step, conversation)
+            html = ['<div class="alert alert-secondary">'
+                    f'<b>Waiting for your choice</b> at step <code>{step.name}</code>. '
+                    'Reply with the number or the label:</div>'
+                    '<ul>']
+            for i, o in enumerate(options):
+                html.append(f'<li><b>{i+1}</b> — {o.get("label", "")}'
+                            f' <small class="text-muted">(value: {o.get("value", "")})</small></li>')
+            html.append('</ul>')
+            self.walker_current_prompt_html = ''.join(html)
+        elif step.kind == 'input':
+            self.walker_awaiting = 'input'
+            hint = {
+                'text':   'any text',
+                'number': 'a number',
+                'date':   'a date (YYYY-MM-DD)',
+                'email':  'an email address',
+                'phone':  'a phone number',
+                'choice': 'the option value',
+                'media':  '(media not supported in walker)',
+            }.get(step.input_type or 'text', 'anything')
+            self.walker_current_prompt_html = (
+                f'<div class="alert alert-secondary">'
+                f'<b>Waiting for input</b> at step <code>{step.name}</code>. '
+                f'Reply with {hint}.'
+                f'</div>'
+            )
+        else:
+            # Auto-advancing kind — just show current step name
+            self.walker_awaiting = 'none'
+            self.walker_current_prompt_html = (
+                f'<div class="alert alert-warning">'
+                f'Stuck at step <code>{step.name}</code> ({step.kind}) — '
+                f'this kind doesn\'t wait for input. Press Send with an empty '
+                f'reply to advance.'
+                f'</div>'
+            )
+
+    def _return_self(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': self._name,
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
 
     def _format_eta(self, minutes):
         if minutes < 1:
