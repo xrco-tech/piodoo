@@ -40,6 +40,7 @@ Channel adapters are separate installable modules:
         'data/anthropic_rate_card_data.xml',
         'data/ir_cron_data.xml',
         'views/comm_channel_views.xml',
+        'wizards/comm_bot_preview_views.xml',
         'views/comm_bot_views.xml',
         'views/comm_bot_step_views.xml',
         'views/comm_bot_trigger_views.xml',

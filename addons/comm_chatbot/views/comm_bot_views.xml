@@ -21,6 +21,12 @@
         <field name="model">comm.bot</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="%(action_comm_bot_preview)d"
+                            type="action" string="Preview / Simulate"
+                            class="btn-primary"
+                            invisible="not entry_step_id"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <label for="name"/>

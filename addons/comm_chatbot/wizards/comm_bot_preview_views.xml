@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_bot_preview_form" model="ir.ui.view">
+        <field name="name">comm.bot.preview.form</field>
+        <field name="model">comm.bot.preview</field>
+        <field name="arch" type="xml">
+            <form string="Bot preview">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Preview: <field name="bot_id" readonly="1"/></h1>
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="preview_partner_id"
+                                   options="{'no_create': True}"
+                                   required="1"/>
+                        </group>
+                        <group>
+                            <field name="walker_channel_id"
+                                   domain="[('id', 'in', bot_id.channel_ids)]"
+                                   options="{'no_create': True}"
+                                   string="Walker channel"/>
+                            <field name="walker_spend_real_llm_tokens"/>
+                            <field name="walker_spent_usd"
+                                   invisible="not walker_active"
+                                   string="Spent (LLM $)"/>
+                        </group>
+                    </group>
+
+                    <footer>
+                        <button name="action_render_comparison" type="object"
+                                string="Render channel comparison"
+                                class="btn-primary"/>
+                        <button string="Close" class="btn-secondary" special="cancel"/>
+                    </footer>
+
+                    <notebook>
+                        <page string="Channel comparison">
+                            <div class="alert alert-info">
+                                Static render of the bot's entry step on every
+                                allowed channel. Shows how the renderer degrades
+                                the same content per channel — buttons on
+                                WhatsApp, numbered text on SMS, CON menu on USSD,
+                                DTMF prompt on voice.
+                            </div>
+                            <field name="comparison_html" nolabel="1"/>
+                        </page>
+
+                        <page string="Interactive walker">
+                            <div class="alert alert-info">
+                                Step through the whole flow on the picked
+                                channel. Change the walker channel to reset and
+                                walk on a different channel. LLM steps skip the
+                                real API unless you toggle "Spend real LLM
+                                tokens" above.
+                            </div>
+                            <div class="alert alert-warning"
+                                 invisible="not walker_spend_real_llm_tokens">
+                                <b>⚠️ Real tokens will be charged</b> when the
+                                walker hits an LLM step.
+                            </div>
+                            <div>
+                                <button name="action_start_walker" type="object"
+                                        string="Start walker" class="btn-primary"
+                                        invisible="walker_active"/>
+                                <button name="action_reset_walker" type="object"
+                                        string="Reset"
+                                        invisible="not walker_active"/>
+                            </div>
+                            <div invisible="not walker_active" class="mt-3">
+                                <field name="walker_transcript_html" nolabel="1"/>
+                                <field name="walker_current_prompt_html" nolabel="1"/>
+                                <group invisible="walker_awaiting == 'done'">
+                                    <field name="walker_input"
+                                           placeholder="Type your reply, then press Send"/>
+                                </group>
+                                <button name="action_walker_send" type="object"
+                                        string="Send" class="btn-primary"
+                                        invisible="walker_awaiting == 'done'"/>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_comm_bot_preview" model="ir.actions.act_window">
+        <field name="name">Preview bot</field>
+        <field name="res_model">comm.bot.preview</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_bot_id': active_id}</field>
+    </record>
+
+</odoo>
