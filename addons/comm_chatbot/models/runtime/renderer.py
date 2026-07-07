@@ -109,7 +109,7 @@ class RendererService(models.AbstractModel):
     def _substitute(self, template, conversation, bot):
         if not template:
             return ''
-        ctx = self._context(conversation, bot)
+        ctx = self._build_context(conversation, bot)
         mode = bot.missing_variable_mode
 
         def replace(match):
@@ -136,7 +136,7 @@ class RendererService(models.AbstractModel):
         except Exception as e:
             raise TemplateParseError(str(e))
 
-    def _context(self, conversation, bot):
+    def _build_context(self, conversation, bot):
         partner = conversation.partner_id
         return {
             'contact': {
