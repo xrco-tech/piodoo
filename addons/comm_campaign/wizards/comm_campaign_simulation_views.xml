@@ -11,6 +11,16 @@
                         <h1>Simulate: <field name="campaign_id" readonly="1"/></h1>
                     </div>
 
+                    <group string="Simulation inputs">
+                        <group>
+                            <field name="engagement_rate_pct"/>
+                        </group>
+                        <group>
+                            <field name="preview_partner_id"
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </group>
+
                     <footer>
                         <button name="action_run" type="object"
                                 string="Run simulation" class="btn-primary"/>
@@ -28,24 +38,25 @@
                             <field name="opted_out_count"/>
                             <field name="unreachable_count"/>
                         </group>
-                        <group string="Cost">
-                            <field name="projected_cost_local"/>
+                        <group string="Cost range">
+                            <field name="cost_min_local" string="Min (local)"/>
+                            <field name="cost_realistic_local" string="Realistic (local)"/>
+                            <field name="cost_max_local" string="Max (local)"/>
                             <field name="display_currency_id"/>
-                            <field name="projected_cost_usd"/>
-                            <field name="budget_cap_local"/>
-                            <field name="budget_utilization_pct"/>
-                            <field name="budget_status" widget="badge"/>
                         </group>
                     </group>
 
                     <group invisible="not summary_html">
                         <group string="Bot analysis">
-                            <field name="billable_step_count"/>
+                            <field name="guaranteed_step_count"/>
+                            <field name="conditional_step_count"/>
                             <field name="llm_step_count"/>
                             <field name="llm_projected_tokens_per_conversation"/>
                         </group>
-                        <group string="Throughput">
-                            <field name="eta_minutes"/>
+                        <group string="Budget + ETA">
+                            <field name="budget_cap_local"/>
+                            <field name="budget_utilization_pct"/>
+                            <field name="budget_status" widget="badge"/>
                             <field name="eta_display"/>
                         </group>
                     </group>
@@ -53,6 +64,9 @@
                     <notebook invisible="not summary_html">
                         <page string="Channel projection">
                             <field name="channel_projection_html" nolabel="1"/>
+                        </page>
+                        <page string="Send preview">
+                            <field name="send_preview_html" nolabel="1"/>
                         </page>
                         <page string="A/B variant split">
                             <field name="variant_projection_html" nolabel="1"/>
