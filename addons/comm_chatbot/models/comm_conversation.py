@@ -17,19 +17,21 @@ class CommConversation(models.Model):
     _name = 'comm.conversation'
     _description = 'Cross-channel conversation'
     _order = 'last_activity_at desc, id desc'
+    _inherit = ['mail.thread']
 
     name = fields.Char(compute='_compute_name', store=True)
-    partner_id = fields.Many2one('res.partner', required=True, index=True)
-    bot_id = fields.Many2one('comm.bot', index=True,
+    partner_id = fields.Many2one('res.partner', required=True, index=True,
+                                 tracking=True)
+    bot_id = fields.Many2one('comm.bot', index=True, tracking=True,
                              help='Currently active bot.')
-    current_step_id = fields.Many2one('comm.bot.step')
+    current_step_id = fields.Many2one('comm.bot.step', tracking=True)
     primary_channel_id = fields.Many2one('comm.channel', index=True,
         help='Channel the conversation is currently on.')
 
     state = fields.Json(default=dict,
         help='Session variables — populated by input, action, and llm steps.')
     lifecycle_state = fields.Selection(CONVERSATION_STATE_SELECTION,
-        default='open', required=True, index=True)
+        default='open', required=True, index=True, tracking=True)
 
     opened_at = fields.Datetime(default=fields.Datetime.now, required=True)
     last_activity_at = fields.Datetime(default=fields.Datetime.now, required=True,
@@ -39,7 +41,7 @@ class CommConversation(models.Model):
     closed_at = fields.Datetime()
     outcome = fields.Char(help='Free-form tag set by end steps.')
 
-    assigned_agent_id = fields.Many2one('res.users')
+    assigned_agent_id = fields.Many2one('res.users', tracking=True)
     assigned_team_code = fields.Char()
 
     campaign_id = fields.Char(index=True,

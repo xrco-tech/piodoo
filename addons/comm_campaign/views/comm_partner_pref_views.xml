@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_partner_pref_list" model="ir.ui.view">
+        <field name="name">comm.partner.communication.preference.list</field>
+        <field name="model">comm.partner.communication.preference</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="partner_id"/>
+                <field name="channel_id"/>
+                <field name="purpose"/>
+                <field name="opted_in"/>
+                <field name="opted_in_at"/>
+                <field name="opt_out_source"/>
+                <field name="opt_out_reason"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_comm_partner_pref" model="ir.actions.act_window">
+        <field name="name">Communication Preferences</field>
+        <field name="res_model">comm.partner.communication.preference</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

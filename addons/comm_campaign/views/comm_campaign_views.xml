@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_campaign_list" model="ir.ui.view">
+        <field name="name">comm.campaign.list</field>
+        <field name="model">comm.campaign</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="state" widget="badge"/>
+                <field name="bot_id"/>
+                <field name="schedule_at"/>
+                <field name="audience_count"/>
+                <field name="total_sends"/>
+                <field name="successful_sends"/>
+                <field name="failed_sends"/>
+                <field name="conversion_count"/>
+                <field name="total_cost_local" sum="Total cost (local)"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_campaign_kanban" model="ir.ui.view">
+        <field name="name">comm.campaign.kanban</field>
+        <field name="model">comm.campaign</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state">
+                <field name="name"/>
+                <field name="state"/>
+                <field name="bot_id"/>
+                <field name="audience_count"/>
+                <field name="total_sends"/>
+                <field name="total_cost_local"/>
+                <field name="conversion_count"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card">
+                            <div class="o_kanban_record_top">
+                                <strong><field name="name"/></strong>
+                            </div>
+                            <div>Bot: <field name="bot_id"/></div>
+                            <div>Audience: <field name="audience_count"/></div>
+                            <div>Sent: <field name="total_sends"/></div>
+                            <div>Cost: <field name="total_cost_local"/></div>
+                            <div>Conversions: <field name="conversion_count"/></div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_comm_campaign_form" model="ir.ui.view">
+        <field name="name">comm.campaign.form</field>
+        <field name="model">comm.campaign</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_schedule" type="object" string="Schedule"
+                            invisible="state != 'draft'" class="btn-primary"/>
+                    <button name="action_run_now" type="object" string="Run now"
+                            invisible="state != 'draft'"/>
+                    <button name="action_pause" type="object" string="Pause"
+                            invisible="state != 'running'"/>
+                    <button name="action_resume" type="object" string="Resume"
+                            invisible="state != 'paused'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,scheduled,running,completed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="What runs">
+                            <field name="bot_id"/>
+                            <field name="purpose"/>
+                            <field name="owner_id"/>
+                        </group>
+                        <group string="Schedule">
+                            <field name="schedule_at"/>
+                            <field name="expires_at"/>
+                            <field name="throttle_per_minute"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Audience">
+                            <field name="audience_mode"/>
+                            <field name="audience_domain" widget="char"
+                                   placeholder="[('customer_rank','&gt;',0)]"/>
+                            <field name="audience_count"/>
+                        </group>
+                        <group string="Channels">
+                            <field name="channel_priority_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Quiet hours + opt-out">
+                            <field name="respect_quiet_hours"/>
+                            <field name="partner_timezone_source"/>
+                            <field name="send_on_weekends"/>
+                            <field name="opt_out_keywords"/>
+                        </group>
+                        <group string="Budget (soft)">
+                            <field name="budget_cap_local"/>
+                            <field name="budget_currency_id"/>
+                            <field name="budget_soft_threshold_pct"/>
+                            <field name="hard_stop_at_cap"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Attribution">
+                            <field name="attribution_window_hours"/>
+                            <field name="attribution_model"/>
+                        </group>
+                        <group string="Results">
+                            <field name="total_sends"/>
+                            <field name="successful_sends"/>
+                            <field name="failed_sends"/>
+                            <field name="conversion_count"/>
+                            <field name="total_cost_local"/>
+                            <field name="total_cost_usd"/>
+                        </group>
+                    </group>
+                    <field name="description" placeholder="Describe this campaign..."/>
+                    <notebook>
+                        <page string="A/B Variants">
+                            <field name="variant_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="bot_id"/>
+                                    <field name="weight"/>
+                                    <field name="is_control"/>
+                                    <field name="send_count"/>
+                                    <field name="conversion_count"/>
+                                    <field name="conversion_rate"/>
+                                    <field name="cost_local"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Audience snapshot" invisible="audience_mode != 'static'">
+                            <field name="snapshot_ids">
+                                <list>
+                                    <field name="partner_id"/>
+                                    <field name="added_at"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Sends">
+                            <field name="send_ids">
+                                <list>
+                                    <field name="partner_id"/>
+                                    <field name="chosen_channel_id"/>
+                                    <field name="status"/>
+                                    <field name="sent_at"/>
+                                    <field name="conversation_id"/>
+                                    <field name="conversion_registered"/>
+                                    <field name="billed_local"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_comm_campaign_search" model="ir.ui.view">
+        <field name="name">comm.campaign.search</field>
+        <field name="model">comm.campaign</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="bot_id"/>
+                <field name="owner_id"/>
+                <filter string="Running" name="running"
+                        domain="[('state', '=', 'running')]"/>
+                <filter string="Scheduled" name="scheduled"
+                        domain="[('state', '=', 'scheduled')]"/>
+                <filter string="Completed" name="completed"
+                        domain="[('state', '=', 'completed')]"/>
+                <group expand="0" string="Group by">
+                    <filter string="State" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Bot" name="group_bot"
+                            context="{'group_by': 'bot_id'}"/>
+                    <filter string="Owner" name="group_owner"
+                            context="{'group_by': 'owner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_comm_campaign" model="ir.actions.act_window">
+        <field name="name">Campaigns</field>
+        <field name="res_model">comm.campaign</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+
+</odoo>

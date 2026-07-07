@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- The bot itself -->
+        <record id="bot_canary" model="comm.bot">
+            <field name="name">Canary — Hello World</field>
+            <field name="description">Smoke-test bot. Triggered by keyword `canary_hello`. Runs in shadow mode by default — flip engine_mode to live on the bot form to make it actually send.</field>
+            <field name="engine_mode">shadow</field>
+            <field name="channel_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+                ref('comm_chatbot.channel_sms'),
+                ref('comm_chatbot.channel_ussd'),
+            ])]"/>
+            <field name="default_language">en_US</field>
+            <field name="conversation_timeout_hours">1</field>
+            <field name="missing_variable_mode">lenient</field>
+        </record>
+
+        <!-- Variables the bot uses -->
+        <record id="var_canary_choice" model="comm.bot.variable">
+            <field name="bot_id" ref="bot_canary"/>
+            <field name="name">choice</field>
+            <field name="type">string</field>
+            <field name="description">Menu choice captured from the user.</field>
+        </record>
+
+        <!-- Steps -->
+
+        <!-- 1. Greeting -->
+        <record id="step_canary_greet" model="comm.bot.step">
+            <field name="bot_id" ref="bot_canary"/>
+            <field name="name">greet</field>
+            <field name="sequence">10</field>
+            <field name="kind">message</field>
+            <field name="body">Hi {{contact.first_name|default:there}}! I'm the canary bot. This is a smoke-test.</field>
+        </record>
+
+        <!-- 2. Menu -->
+        <record id="step_canary_menu" model="comm.bot.step">
+            <field name="bot_id" ref="bot_canary"/>
+            <field name="name">menu</field>
+            <field name="sequence">20</field>
+            <field name="kind">menu</field>
+            <field name="body">What would you like to do?</field>
+            <field name="input_save_to">choice</field>
+        </record>
+
+        <record id="step_canary_menu_opt_ping" model="comm.bot.step.option">
+            <field name="step_id" ref="step_canary_menu"/>
+            <field name="sequence">10</field>
+            <field name="label">Ping</field>
+            <field name="value">ping</field>
+        </record>
+        <record id="step_canary_menu_opt_summary" model="comm.bot.step.option">
+            <field name="step_id" ref="step_canary_menu"/>
+            <field name="sequence">20</field>
+            <field name="label">Show summary</field>
+            <field name="value">summary</field>
+        </record>
+        <record id="step_canary_menu_opt_bye" model="comm.bot.step.option">
+            <field name="step_id" ref="step_canary_menu"/>
+            <field name="sequence">30</field>
+            <field name="label">Goodbye</field>
+            <field name="value">bye</field>
+        </record>
+
+        <!-- 3. Branch by choice -->
+        <record id="step_canary_branch" model="comm.bot.step">
+            <field name="bot_id" ref="bot_canary"/>
+            <field name="name">branch</field>
+            <field name="sequence">30</field>
+            <field name="kind">condition</field>
+            <field name="condition_expression">{{state.choice}}</field>
+        </record>
+        <record id="step_canary_branch_opt_ping" model="comm.bot.step.option">
+            <field name="step_id" ref="step_canary_branch"/>
+            <field name="sequence">10</field>
+            <field name="label">is ping</field>
+            <field name="value">ping</field>
+        </record>
+        <record id="step_canary_branch_opt_default" model="comm.bot.step.option">
+            <field name="step_id" ref="step_canary_branch"/>
+            <field name="sequence">20</field>
+            <field name="label">default</field>
+            <field name="value">default</field>
+            <field name="is_default" eval="True"/>
+        </record>
+
+        <!-- 4a. Reply for ping -->
+        <record id="step_canary_reply_ping" model="comm.bot.step">
+            <field name="bot_id" ref="bot_canary"/>
+            <field name="name">reply_ping</field>
+            <field name="sequence">40</field>
+            <field name="kind">message</field>
+            <field name="body">Pong! You said "{{state.choice}}". Bye.</field>
+        </record>
+
+        <!-- 4b. Reply generic -->
+        <record id="step_canary_reply_generic" model="comm.bot.step">
+            <field name="bot_id" ref="bot_canary"/>
+            <field name="name">reply_generic</field>
+            <field name="sequence">50</field>
+            <field name="kind">message</field>
+            <field name="body">You picked "{{state.choice}}". Ending now.</field>
+        </record>
+
+        <!-- 5. End -->
+        <record id="step_canary_end" model="comm.bot.step">
+            <field name="bot_id" ref="bot_canary"/>
+            <field name="name">end</field>
+            <field name="sequence">60</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">canary_done</field>
+        </record>
+
+        <!-- Wire up next_step_id + branch targets -->
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_canary_greet')]"/>
+            <value eval="{'next_step_id': ref('step_canary_menu')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_canary_menu')]"/>
+            <value eval="{'next_step_id': ref('step_canary_branch')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('step_canary_branch_opt_ping')]"/>
+            <value eval="{'next_step_id': ref('step_canary_reply_ping')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('step_canary_branch_opt_default')]"/>
+            <value eval="{'next_step_id': ref('step_canary_reply_generic')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_canary_reply_ping')]"/>
+            <value eval="{'next_step_id': ref('step_canary_end')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_canary_reply_generic')]"/>
+            <value eval="{'next_step_id': ref('step_canary_end')}"/>
+        </function>
+
+        <!-- Set entry step -->
+        <function model="comm.bot" name="write">
+            <value eval="[ref('bot_canary')]"/>
+            <value eval="{'entry_step_id': ref('step_canary_greet')}"/>
+        </function>
+
+        <!-- Trigger: 'canary_hello' keyword on WhatsApp -->
+        <record id="trigger_canary_wa" model="comm.bot.trigger">
+            <field name="bot_id" ref="bot_canary"/>
+            <field name="channel_id" ref="comm_chatbot.channel_whatsapp"/>
+            <field name="kind">keyword</field>
+            <field name="value">canary_hello</field>
+            <field name="match_mode">exact</field>
+            <field name="case_sensitive" eval="False"/>
+            <field name="priority">1</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_comm_campaign_root"
+              name="Campaigns"
+              parent="comm_chatbot.menu_comm_chatbot_root"
+              sequence="15"/>
+
+    <menuitem id="menu_comm_campaign"
+              name="Campaigns"
+              parent="menu_comm_campaign_root"
+              action="action_comm_campaign"
+              sequence="10"/>
+
+    <menuitem id="menu_comm_campaign_send"
+              name="Sends"
+              parent="menu_comm_campaign_root"
+              action="action_comm_campaign_send"
+              sequence="20"/>
+
+    <menuitem id="menu_comm_partner_pref"
+              name="Communication Preferences"
+              parent="menu_comm_campaign_root"
+              action="action_comm_partner_pref"
+              sequence="30"/>
+
+</odoo>

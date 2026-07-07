@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_campaign_send_list" model="ir.ui.view">
+        <field name="name">comm.campaign.send.list</field>
+        <field name="model">comm.campaign.send</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="campaign_id"/>
+                <field name="partner_id"/>
+                <field name="chosen_channel_id"/>
+                <field name="status" widget="badge"/>
+                <field name="scheduled_at"/>
+                <field name="sent_at"/>
+                <field name="conversation_id"/>
+                <field name="conversion_registered"/>
+                <field name="billed_local"/>
+                <field name="skip_reason" optional="show"/>
+                <field name="error" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_campaign_send_search" model="ir.ui.view">
+        <field name="name">comm.campaign.send.search</field>
+        <field name="model">comm.campaign.send</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="campaign_id"/>
+                <field name="partner_id"/>
+                <field name="status"/>
+                <group expand="0" string="Group by">
+                    <filter string="Campaign" name="group_campaign"
+                            context="{'group_by': 'campaign_id'}"/>
+                    <filter string="Status" name="group_status"
+                            context="{'group_by': 'status'}"/>
+                    <filter string="Channel" name="group_channel"
+                            context="{'group_by': 'chosen_channel_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_comm_campaign_send" model="ir.actions.act_window">
+        <field name="name">Campaign Sends</field>
+        <field name="res_model">comm.campaign.send</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

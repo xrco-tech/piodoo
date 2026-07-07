@@ -29,6 +29,7 @@ Channel adapters are separate installable modules:
     'license': 'LGPL-3',
     'depends': [
         'base',
+        'mail',
         'contacts',
         'comm_billing_core',
     ],
