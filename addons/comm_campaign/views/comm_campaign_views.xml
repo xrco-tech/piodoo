@@ -56,6 +56,9 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="%(action_comm_campaign_simulation)d"
+                            type="action" string="Simulate"
+                            invisible="state not in ('draft', 'scheduled', 'paused')"/>
                     <button name="action_schedule" type="object" string="Schedule"
                             invisible="state != 'draft'" class="btn-primary"/>
                     <button name="action_run_now" type="object" string="Run now"

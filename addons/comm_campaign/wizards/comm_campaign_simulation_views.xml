@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_campaign_simulation_form" model="ir.ui.view">
+        <field name="name">comm.campaign.simulation.form</field>
+        <field name="model">comm.campaign.simulation</field>
+        <field name="arch" type="xml">
+            <form string="Campaign Simulator">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Simulate: <field name="campaign_id" readonly="1"/></h1>
+                    </div>
+
+                    <footer>
+                        <button name="action_run" type="object"
+                                string="Run simulation" class="btn-primary"/>
+                        <button string="Close" class="btn-secondary" special="cancel"/>
+                    </footer>
+
+                    <group string="Summary" invisible="not summary_html">
+                        <field name="summary_html" nolabel="1" colspan="2"/>
+                    </group>
+
+                    <group invisible="not summary_html">
+                        <group string="Audience">
+                            <field name="total_audience"/>
+                            <field name="reachable_count"/>
+                            <field name="opted_out_count"/>
+                            <field name="unreachable_count"/>
+                        </group>
+                        <group string="Cost">
+                            <field name="projected_cost_local"/>
+                            <field name="display_currency_id"/>
+                            <field name="projected_cost_usd"/>
+                            <field name="budget_cap_local"/>
+                            <field name="budget_utilization_pct"/>
+                            <field name="budget_status" widget="badge"/>
+                        </group>
+                    </group>
+
+                    <group invisible="not summary_html">
+                        <group string="Bot analysis">
+                            <field name="billable_step_count"/>
+                            <field name="llm_step_count"/>
+                            <field name="llm_projected_tokens_per_conversation"/>
+                        </group>
+                        <group string="Throughput">
+                            <field name="eta_minutes"/>
+                            <field name="eta_display"/>
+                        </group>
+                    </group>
+
+                    <notebook invisible="not summary_html">
+                        <page string="Channel projection">
+                            <field name="channel_projection_html" nolabel="1"/>
+                        </page>
+                        <page string="A/B variant split">
+                            <field name="variant_projection_html" nolabel="1"/>
+                        </page>
+                        <page string="Assumptions">
+                            <field name="assumptions_html" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_comm_campaign_simulation" model="ir.actions.act_window">
+        <field name="name">Simulate campaign</field>
+        <field name="res_model">comm.campaign.simulation</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_campaign_id': active_id}</field>
+    </record>
+
+</odoo>
