@@ -71,18 +71,37 @@
                         <page string="Interactive walker">
                             <div class="alert alert-info">
                                 Step through the bot as if you were the recipient.
-                                All outbound is captured in the transcript —
-                                nothing is actually sent (force-shadow mode).
+                                Outbound sends are captured in the transcript
+                                only — nothing hits the channel (force-shadow).
+                                LLM steps are skipped by default; toggle
+                                <b>Spend real LLM tokens</b> to actually call
+                                the Anthropic API.
                             </div>
                             <group>
-                                <field name="walker_channel_id"
-                                       domain="[('id', 'in', parent.campaign_id.channel_priority_ids)]"
-                                       options="{'no_create': True}"/>
-                                <field name="walker_conversation_id"
-                                       readonly="1" invisible="not walker_active"/>
-                                <field name="walker_awaiting" widget="badge"
-                                       invisible="not walker_active"/>
+                                <group>
+                                    <field name="walker_channel_id"
+                                           domain="[('id', 'in', parent.campaign_id.channel_priority_ids)]"
+                                           options="{'no_create': True}"/>
+                                    <field name="walker_conversation_id"
+                                           readonly="1" invisible="not walker_active"/>
+                                    <field name="walker_awaiting" widget="badge"
+                                           invisible="not walker_active"/>
+                                </group>
+                                <group>
+                                    <field name="walker_spend_real_llm_tokens"/>
+                                    <field name="walker_spent_usd"
+                                           invisible="not walker_active"
+                                           string="Spent on LLM ($)"/>
+                                </group>
                             </group>
+                            <div class="alert alert-warning"
+                                 invisible="not walker_spend_real_llm_tokens">
+                                <b>⚠️ Real tokens will be charged</b> when the
+                                walker hits an LLM step. Ensure the Anthropic
+                                API key is set in system parameters
+                                (<code>comm_chatbot.anthropic_api_key</code>).
+                                Typical cost: $0.04–$0.05 per Sonnet 4.6 step.
+                            </div>
                             <div>
                                 <button name="action_start_walker" type="object"
                                         string="Start walker" class="btn-primary"

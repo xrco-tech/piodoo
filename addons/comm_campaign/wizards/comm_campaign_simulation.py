@@ -107,6 +107,14 @@ class CommCampaignSimulation(models.TransientModel):
         ('done',  'Conversation ended'),
     ], default='none', readonly=True)
     walker_input = fields.Char(string='Your reply')
+    walker_spend_real_llm_tokens = fields.Boolean(
+        string='Spend real LLM tokens',
+        default=False,
+        help='When on, LLM steps actually call the Anthropic API instead of '
+             'logging a placeholder. Costs real money per call — check the '
+             'API key is configured before enabling.')
+    walker_spent_usd = fields.Float(readonly=True, digits=(12, 6),
+        help='Running total of USD spent on LLM steps in this walker session.')
 
     # ---------- Public entry ----------
     @api.model
@@ -639,10 +647,13 @@ class CommCampaignSimulation(models.TransientModel):
             'external_session_id': f'walker-{self.id}',
         })
 
-        # Advance from entry with force_shadow so no adapter/LLM calls fire
-        self.env['comm.chatbot.executor'].with_context(
-            comm_chatbot_force_shadow=True
-        ).advance(conversation, leg)
+        # Advance from entry with force_shadow so no adapter sends fire.
+        # skip_llm is a separate flag so the user can opt into real tokens.
+        ctx = {'comm_chatbot_force_shadow': True}
+        if not self.walker_spend_real_llm_tokens:
+            ctx['comm_chatbot_skip_llm'] = True
+        self.env['comm.chatbot.executor'].with_context(**ctx).advance(
+            conversation, leg)
 
         self.walker_conversation_id = conversation.id
         self.walker_channel_id = channel.id
@@ -672,8 +683,10 @@ class CommCampaignSimulation(models.TransientModel):
         })
 
         # Advance with force_shadow so outbound never actually fires
-        Exec = self.env['comm.chatbot.executor'].with_context(
-            comm_chatbot_force_shadow=True)
+        ctx = {'comm_chatbot_force_shadow': True}
+        if not self.walker_spend_real_llm_tokens:
+            ctx['comm_chatbot_skip_llm'] = True
+        Exec = self.env['comm.chatbot.executor'].with_context(**ctx)
         if conversation.current_step_id and conversation.current_step_id.kind in ('menu', 'input'):
             Exec._handle_input(conversation, leg, body)
         else:
@@ -694,6 +707,7 @@ class CommCampaignSimulation(models.TransientModel):
         self.walker_current_prompt_html = ''
         self.walker_input = False
         self.walker_awaiting = 'none'
+        self.walker_spent_usd = 0.0
         return self._return_self()
 
     def _refresh_walker_view(self):
@@ -702,10 +716,24 @@ class CommCampaignSimulation(models.TransientModel):
         if not conversation:
             return
 
-        # Build chat transcript
+        # Build chat transcript + tally LLM cost
         transcript = ['<div class="o_walker_transcript">']
+        total_usd = 0.0
+        token_price = self._resolve_token_price()
         for i in conversation.interaction_ids.sorted('at'):
             body = (i.rendered_body or i.raw_body or '').replace('<', '&lt;')
+            # LLM telemetry footer for outbound LLM steps
+            llm_line = ''
+            if i.direction == 'outbound' and (i.llm_input_tokens or i.llm_output_tokens):
+                cost = ((i.llm_input_tokens or 0) + (i.llm_output_tokens or 0)) \
+                        / 1000.0 * token_price
+                total_usd += cost
+                llm_line = (
+                    f'<div class="mt-1"><small class="text-muted">'
+                    f'⚡ {i.llm_model_used or "llm"} • '
+                    f'{i.llm_input_tokens:,} in / {i.llm_output_tokens:,} out • '
+                    f'${cost:.4f}</small></div>'
+                )
             if i.direction == 'outbound':
                 transcript.append(
                     f'<div class="d-flex justify-content-start mb-2">'
@@ -714,6 +742,7 @@ class CommCampaignSimulation(models.TransientModel):
                     f'<small class="text-muted">🤖 Bot ({i.step_id.name or "-"})</small>'
                     f'<pre style="white-space: pre-wrap; margin: 0.25rem 0 0 0;">'
                     f'{body}</pre>'
+                    f'{llm_line}'
                     f'</div></div>'
                 )
             else:
@@ -728,6 +757,7 @@ class CommCampaignSimulation(models.TransientModel):
                 )
         transcript.append('</div>')
         self.walker_transcript_html = ''.join(transcript)
+        self.walker_spent_usd = total_usd
 
         # Determine current prompt
         step = conversation.current_step_id

@@ -89,6 +89,9 @@
                         domain="[('lifecycle_state', '=', 'handoff')]"/>
                 <filter string="Closed" name="closed"
                         domain="[('lifecycle_state', 'in', ['closed', 'timeout'])]"/>
+                <separator/>
+                <filter string="Hide previews" name="hide_previews"
+                        domain="['|', ('outcome', '=', False), ('outcome', 'not like', '\_\_%')]"/>
                 <group expand="0" string="Group by">
                     <filter string="Bot" name="group_bot"
                             context="{'group_by': 'bot_id'}"/>
@@ -105,7 +108,7 @@
         <field name="name">Conversations</field>
         <field name="res_model">comm.conversation</field>
         <field name="view_mode">list,form</field>
-        <field name="context">{'search_default_open': 1}</field>
+        <field name="context">{'search_default_open': 1, 'search_default_hide_previews': 1}</field>
     </record>
 
 </odoo>

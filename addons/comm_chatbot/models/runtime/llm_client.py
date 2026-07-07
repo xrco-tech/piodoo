@@ -32,10 +32,15 @@ class LlmClient(models.AbstractModel):
     # ---------- Public entry ----------
     @api.model
     def _run_llm_step(self, step, conversation, leg):
-        """Execute an LLM step; return the next comm.bot.step or None."""
-        if self.env.context.get('comm_chatbot_force_shadow'):
-            # Preview walker — don't spend real tokens; log a fake outbound
-            # with the system prompt so the walker shows what would have run.
+        """Execute an LLM step; return the next comm.bot.step or None.
+
+        Honours comm_chatbot_skip_llm context flag — set by the walker
+        when the user hasn't opted into spending real tokens. Distinct
+        from comm_chatbot_force_shadow which only blocks adapter sends.
+        """
+        if self.env.context.get('comm_chatbot_skip_llm'):
+            # Preview walker without real-tokens toggle — don't call API;
+            # log a placeholder so the walker transcript still shows the step.
             self.env['comm.interaction'].create({
                 'conversation_id': conversation.id,
                 'leg_id': leg.id if leg else False,
@@ -46,7 +51,8 @@ class LlmClient(models.AbstractModel):
                 'raw_body': f'(LLM step — skipped in preview)',
                 'rendered_body': f'(LLM step "{step.name}" would call '
                                   f'{step.llm_model or step.bot_id.default_llm_model} '
-                                  f'here — skipped in preview walker.)',
+                                  f'here — skipped. Toggle "Spend real tokens" '
+                                  f'in the walker to actually run it.)',
                 'status': 'sent',
             })
             return step.next_step_id or step.llm_fallback_step_id
