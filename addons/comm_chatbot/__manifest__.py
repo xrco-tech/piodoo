@@ -37,6 +37,7 @@ Channel adapters are separate installable modules:
         'security/comm_chatbot_groups.xml',
         'security/ir.model.access.csv',
         'data/comm_channel_data.xml',
+        'data/anthropic_rate_card_data.xml',
         'data/ir_cron_data.xml',
         'views/comm_channel_views.xml',
         'views/comm_bot_views.xml',

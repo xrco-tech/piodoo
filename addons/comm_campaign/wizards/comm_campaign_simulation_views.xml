@@ -91,7 +91,10 @@
                                     <field name="walker_spend_real_llm_tokens"/>
                                     <field name="walker_spent_usd"
                                            invisible="not walker_active"
-                                           string="Spent on LLM ($)"/>
+                                           string="Spent this run ($)"/>
+                                    <field name="walker_archived_spent_usd"
+                                           invisible="not walker_archived_transcripts_html"
+                                           string="Archived runs total ($)"/>
                                 </group>
                             </group>
                             <div class="alert alert-warning"
@@ -107,8 +110,12 @@
                                         string="Start walker" class="btn-primary"
                                         invisible="walker_active"/>
                                 <button name="action_reset_walker" type="object"
-                                        string="Reset"
+                                        string="New run (archive current)"
                                         invisible="not walker_active"/>
+                                <button name="action_clear_walker_log" type="object"
+                                        string="Clear archived runs"
+                                        class="btn-secondary"
+                                        invisible="not walker_archived_transcripts_html"/>
                             </div>
                             <div invisible="not walker_active" class="mt-3">
                                 <field name="walker_transcript_html" nolabel="1"/>
@@ -120,6 +127,12 @@
                                 <button name="action_walker_send" type="object"
                                         string="Send" class="btn-primary"
                                         invisible="walker_awaiting == 'done'"/>
+                            </div>
+                            <div invisible="not walker_archived_transcripts_html"
+                                 class="mt-4">
+                                <h5>Archived runs</h5>
+                                <field name="walker_archived_transcripts_html"
+                                       nolabel="1"/>
                             </div>
                         </page>
                         <page string="A/B variant split">

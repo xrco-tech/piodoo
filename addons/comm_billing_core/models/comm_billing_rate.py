@@ -28,6 +28,11 @@ CATEGORY_SELECTION = [
     ('voice_outbound_local_mobile','Voice / Outbound local mobile'),
     ('voice_outbound_local_fixed', 'Voice / Outbound local fixed-line'),
     ('voice_outbound_intl',        'Voice / Outbound international'),
+    # LLM (carrier = model name, e.g. 'claude-opus-4-7')
+    ('llm_input',       'LLM / Input tokens'),
+    ('llm_output',      'LLM / Output tokens'),
+    ('llm_cache_read',  'LLM / Cache read (discounted input)'),
+    ('llm_cache_write', 'LLM / Cache write (surcharged input)'),
 ]
 
 UNIT_SELECTION = [

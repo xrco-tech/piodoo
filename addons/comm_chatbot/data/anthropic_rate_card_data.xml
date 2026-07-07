@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Anthropic Claude pricing — 2026.
+            Rates in USD per 1,000 tokens (kilotokens).
+
+            Cache pricing:
+            - Cache write: 25% surcharge over input rate
+            - Cache read:  90% discount off input rate
+
+            Verify against console.anthropic.com/pricing before invoicing.
+        -->
+
+        <record id="rate_card_anthropic_2026" model="comm.billing.rate.card">
+            <field name="name">Anthropic Claude — 2026</field>
+            <field name="channel">other</field>
+            <field name="provider">Anthropic</field>
+            <field name="effective_from">2026-01-01</field>
+            <field name="billing_model">generic</field>
+            <field name="notes">Per-model input/output token rates plus cache read/write. Carrier field holds the model name.</field>
+        </record>
+
+        <!-- =============== Claude Opus 4.7 =============== -->
+
+        <record id="rate_anthropic_opus_4_7_input" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-opus-4-7</field>
+            <field name="category">llm_input</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.015</field>
+        </record>
+
+        <record id="rate_anthropic_opus_4_7_output" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-opus-4-7</field>
+            <field name="category">llm_output</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.075</field>
+        </record>
+
+        <record id="rate_anthropic_opus_4_7_cache_read" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-opus-4-7</field>
+            <field name="category">llm_cache_read</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.0015</field>
+        </record>
+
+        <record id="rate_anthropic_opus_4_7_cache_write" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-opus-4-7</field>
+            <field name="category">llm_cache_write</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.01875</field>
+        </record>
+
+        <!-- =============== Claude Sonnet 4.6 =============== -->
+
+        <record id="rate_anthropic_sonnet_4_6_input" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-sonnet-4-6</field>
+            <field name="category">llm_input</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.003</field>
+        </record>
+
+        <record id="rate_anthropic_sonnet_4_6_output" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-sonnet-4-6</field>
+            <field name="category">llm_output</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.015</field>
+        </record>
+
+        <record id="rate_anthropic_sonnet_4_6_cache_read" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-sonnet-4-6</field>
+            <field name="category">llm_cache_read</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.0003</field>
+        </record>
+
+        <record id="rate_anthropic_sonnet_4_6_cache_write" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-sonnet-4-6</field>
+            <field name="category">llm_cache_write</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.00375</field>
+        </record>
+
+        <!-- =============== Claude Haiku 4.5 =============== -->
+
+        <record id="rate_anthropic_haiku_4_5_input" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-haiku-4-5</field>
+            <field name="category">llm_input</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.0008</field>
+        </record>
+
+        <record id="rate_anthropic_haiku_4_5_output" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-haiku-4-5</field>
+            <field name="category">llm_output</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.004</field>
+        </record>
+
+        <record id="rate_anthropic_haiku_4_5_cache_read" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-haiku-4-5</field>
+            <field name="category">llm_cache_read</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.00008</field>
+        </record>
+
+        <record id="rate_anthropic_haiku_4_5_cache_write" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-haiku-4-5</field>
+            <field name="category">llm_cache_write</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.001</field>
+        </record>
+
+    </data>
+</odoo>

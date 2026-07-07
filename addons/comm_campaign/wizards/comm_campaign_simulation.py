@@ -114,7 +114,12 @@ class CommCampaignSimulation(models.TransientModel):
              'logging a placeholder. Costs real money per call — check the '
              'API key is configured before enabling.')
     walker_spent_usd = fields.Float(readonly=True, digits=(12, 6),
-        help='Running total of USD spent on LLM steps in this walker session.')
+        help='USD spent on LLM steps in the current walker run.')
+    walker_archived_transcripts_html = fields.Html(readonly=True,
+        help='Past walker runs, most recent first. Use "New run" to archive '
+             'the current transcript here before starting a fresh walk.')
+    walker_archived_spent_usd = fields.Float(readonly=True, digits=(12, 6),
+        help='Cumulative USD across archived walker runs.')
 
     # ---------- Public entry ----------
     @api.model
@@ -447,15 +452,46 @@ class CommCampaignSimulation(models.TransientModel):
         share = analysis['llm_steps_guaranteed'] / total_llm
         return (analysis['llm_tokens_per_convo'] / 1000.0) * share
 
-    def _resolve_token_price(self):
+    def _resolve_token_price(self, model_name=None, category='llm_input'):
+        """Look up per-token USD price for a specific model + token category.
+        Falls back to blended proxy if no Anthropic card exists yet."""
         card = self.env['comm.billing.rate.card'].search([
+            ('channel', '=', 'other'),
+            ('provider', '=', 'Anthropic'),
+        ], limit=1, order='effective_from desc')
+        if card and model_name:
+            rate = card.resolve_rate(carrier=model_name, category=category)
+            if rate:
+                return rate.price_usd
+        # Fallback: legacy mba_token rate
+        wa = self.env['comm.billing.rate.card'].search([
             ('channel', '=', 'whatsapp'),
             ('billing_model', 'in', ('hybrid_2026', 'hybrid_service_paid')),
         ], limit=1, order='effective_from desc')
-        if not card:
-            return 0.002
-        rate = card.resolve_rate(country=None, category='mba_token')
-        return rate.price_usd if rate else 0.002
+        if wa:
+            rate = wa.resolve_rate(country=None, category='mba_token')
+            if rate:
+                return rate.price_usd
+        return 0.002
+
+    def _cost_for_llm_interaction(self, interaction):
+        """Exact cost using per-category rates on the Anthropic card."""
+        model = interaction.llm_model_used
+        if not model:
+            return 0.0
+        buckets = [
+            ('llm_input',       interaction.llm_input_tokens or 0),
+            ('llm_output',      interaction.llm_output_tokens or 0),
+            ('llm_cache_read',  interaction.llm_cache_read_tokens or 0),
+            ('llm_cache_write', interaction.llm_cache_write_tokens or 0),
+        ]
+        total = 0.0
+        for category, tokens in buckets:
+            if not tokens:
+                continue
+            rate = self._resolve_token_price(model, category)
+            total += (tokens / 1000.0) * rate
+        return total
 
     # ---------- Variant projection ----------
     def _project_variants(self, campaign, reachable):
@@ -697,8 +733,34 @@ class CommCampaignSimulation(models.TransientModel):
         return self._return_self()
 
     def action_reset_walker(self):
-        """Delete the current walker conversation and clear the panel."""
+        """Archive the current transcript and start a fresh run.
+
+        Safer default than a destructive reset — the log accumulates so you
+        can compare consecutive runs (different inputs, different LLM temp,
+        etc.). Call action_clear_walker_log to wipe archived runs.
+        """
         self.ensure_one()
+        # Archive current if there is one
+        if self.walker_conversation_id and self.walker_transcript_html:
+            archived = self.walker_archived_transcripts_html or ''
+            run_num = archived.count('walker-run-sep') + 1
+            header = (
+                f'<div class="mt-3 mb-2 p-2 rounded" '
+                f'style="background:#fff3cd;">'
+                f'<b>📼 Archived run #{run_num}</b> '
+                f'<small class="text-muted">— channel: '
+                f'{(self.walker_channel_id.name or "?")}, '
+                f'partner: {self.preview_partner_id.name if self.preview_partner_id else "?"}, '
+                f'spent: ${self.walker_spent_usd:.4f}</small>'
+                f'</div>'
+            )
+            self.walker_archived_transcripts_html = (
+                header + (self.walker_transcript_html or '') +
+                '<hr class="walker-run-sep"/>' + archived
+            )
+            self.walker_archived_spent_usd += self.walker_spent_usd
+
+        # Clear current
         if self.walker_conversation_id:
             self.walker_conversation_id.sudo().unlink()
         self.walker_conversation_id = False
@@ -710,29 +772,38 @@ class CommCampaignSimulation(models.TransientModel):
         self.walker_spent_usd = 0.0
         return self._return_self()
 
+    def action_clear_walker_log(self):
+        """Wipe archived runs. Doesn't affect the current walker."""
+        self.ensure_one()
+        self.walker_archived_transcripts_html = False
+        self.walker_archived_spent_usd = 0.0
+        return self._return_self()
+
     def _refresh_walker_view(self):
         self.ensure_one()
         conversation = self.walker_conversation_id
         if not conversation:
             return
 
-        # Build chat transcript + tally LLM cost
+        # Build chat transcript + tally LLM cost (per-model rate lookup)
         transcript = ['<div class="o_walker_transcript">']
         total_usd = 0.0
-        token_price = self._resolve_token_price()
         for i in conversation.interaction_ids.sorted('at'):
             body = (i.rendered_body or i.raw_body or '').replace('<', '&lt;')
             # LLM telemetry footer for outbound LLM steps
             llm_line = ''
             if i.direction == 'outbound' and (i.llm_input_tokens or i.llm_output_tokens):
-                cost = ((i.llm_input_tokens or 0) + (i.llm_output_tokens or 0)) \
-                        / 1000.0 * token_price
+                cost = self._cost_for_llm_interaction(i)
                 total_usd += cost
+                cache_line = ''
+                if i.llm_cache_read_tokens or i.llm_cache_write_tokens:
+                    cache_line = (f' • cache: {i.llm_cache_read_tokens:,} R / '
+                                  f'{i.llm_cache_write_tokens:,} W')
                 llm_line = (
                     f'<div class="mt-1"><small class="text-muted">'
                     f'⚡ {i.llm_model_used or "llm"} • '
-                    f'{i.llm_input_tokens:,} in / {i.llm_output_tokens:,} out • '
-                    f'${cost:.4f}</small></div>'
+                    f'{i.llm_input_tokens:,} in / {i.llm_output_tokens:,} out'
+                    f'{cache_line} • ${cost:.4f}</small></div>'
                 )
             if i.direction == 'outbound':
                 transcript.append(

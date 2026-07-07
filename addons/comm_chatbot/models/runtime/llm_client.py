@@ -149,6 +149,7 @@ class LlmClient(models.AbstractModel):
         iterations = 0
         max_iters = step.llm_max_tool_iterations or 5
         total_input = total_output = 0
+        total_cache_read = total_cache_write = 0
         first_token_at = None
         tool_calls_count = 0
 
@@ -176,6 +177,8 @@ class LlmClient(models.AbstractModel):
             if usage:
                 total_input += getattr(usage, 'input_tokens', 0) or 0
                 total_output += getattr(usage, 'output_tokens', 0) or 0
+                total_cache_read += getattr(usage, 'cache_read_input_tokens', 0) or 0
+                total_cache_write += getattr(usage, 'cache_creation_input_tokens', 0) or 0
 
             if resp.stop_reason == 'tool_use':
                 # Execute all tool calls in this turn
@@ -201,12 +204,17 @@ class LlmClient(models.AbstractModel):
             interaction.write({
                 'llm_input_tokens': total_input,
                 'llm_output_tokens': total_output,
+                'llm_cache_read_tokens': total_cache_read,
+                'llm_cache_write_tokens': total_cache_write,
                 'llm_tool_calls': tool_calls_count,
                 'llm_first_token_latency_ms': first_token_at or 0,
                 'rendered_body': '\n'.join(text_parts),
                 'status': 'sent',
             })
-            self._log_billing(step, model, total_input, total_output, interaction)
+            self._log_billing(step, model,
+                              total_input, total_output,
+                              total_cache_read, total_cache_write,
+                              interaction)
             return {'text': '\n'.join(text_parts), 'stop': 'end_turn',
                     'tool_choice': self._extract_decision(resp)}
 
@@ -296,20 +304,37 @@ class LlmClient(models.AbstractModel):
             _logger.warning('LLM adapter send failed: %s', e)
 
     # ---------- Billing ----------
-    def _log_billing(self, step, model, input_tokens, output_tokens, interaction):
+    def _log_billing(self, step, model, input_tokens, output_tokens,
+                     cache_read_tokens, cache_write_tokens, interaction):
+        """Log four separate comm.billing.event rows (one per token category)
+        so per-category ledger queries roll up cleanly. The rate resolver on
+        the Anthropic card matches by carrier=model + category."""
         Event = self.env['comm.billing.event']
-        Event.create({
+        common = {
             'event_date': fields.Datetime.now(),
             'channel': 'other',
-            'provider': 'anthropic',
-            'category': 'mba_token',
+            'provider': 'Anthropic',
+            'carrier': model,
             'unit': 'kilotoken',
-            'unit_qty': (input_tokens + output_tokens) / 1000.0,
             'source_model': 'comm.interaction',
             'source_id': interaction.id,
             'interaction_id': interaction.id,
             'conversation_id': interaction.conversation_id.id,
-        })
+        }
+        buckets = [
+            ('llm_input',       input_tokens),
+            ('llm_output',      output_tokens),
+            ('llm_cache_read',  cache_read_tokens),
+            ('llm_cache_write', cache_write_tokens),
+        ]
+        for category, tokens in buckets:
+            if not tokens:
+                continue
+            Event.create({
+                **common,
+                'category': category,
+                'unit_qty': tokens / 1000.0,
+            })
 
     # ---------- Config ----------
     def _get_api_key(self):
