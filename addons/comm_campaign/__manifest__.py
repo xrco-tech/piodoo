@@ -28,10 +28,10 @@ Marketing / campaign layer that treats every send as a bot invocation:
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        'wizards/comm_campaign_simulation_views.xml',
         'views/comm_campaign_views.xml',
         'views/comm_campaign_send_views.xml',
         'views/comm_partner_pref_views.xml',
-        'wizards/comm_campaign_simulation_views.xml',
         'views/comm_campaign_menus.xml',
     ],
     'installable': True,
