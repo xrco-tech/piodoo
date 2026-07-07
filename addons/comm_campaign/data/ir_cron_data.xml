@@ -16,15 +16,7 @@
             <field name="name">Comm Campaign: purge orphan walker conversations</field>
             <field name="model_id" ref="comm_chatbot.model_comm_conversation"/>
             <field name="state">code</field>
-            <field name="code"><![CDATA[
-import datetime
-cutoff = datetime.datetime.now() - datetime.timedelta(hours=1)
-stale = env['comm.conversation'].search([
-    ('outcome', '=', '__preview_walker__'),
-    ('create_date', '<', cutoff),
-])
-stale.sudo().unlink()
-]]></field>
+            <field name="code">model.cron_purge_walker_previews()</field>
             <field name="interval_number">1</field>
             <field name="interval_type">hours</field>
             <field name="active" eval="True"/>
