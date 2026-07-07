@@ -21,14 +21,13 @@ class CommBot(models.Model):
     _name = 'comm.bot'
     _description = 'Communication bot (channel-agnostic script)'
     _order = 'sequence, name'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
 
-    name = fields.Char(required=True, tracking=True)
+    name = fields.Char(required=True)
     description = fields.Text()
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     engine_mode = fields.Selection(ENGINE_MODE_SELECTION, required=True,
-                                   default='draft', tracking=True)
+                                   default='draft')
 
     channel_ids = fields.Many2many('comm.channel', string='Allowed channels',
         help='Channels this bot is allowed to run on.')
