@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============================================================ -->
+        <!-- Booking Flow bot: menu → confirm → input date → condition →  -->
+        <!-- confirmation. Real-world pattern; exercises degradation      -->
+        <!-- across WA (buttons) and SMS (numbered text).                 -->
+        <!-- ============================================================ -->
+
+        <record id="bot_booking" model="comm.bot">
+            <field name="name">Booking Flow (test)</field>
+            <field name="description">Book an appointment via WhatsApp or SMS. Demonstrates menu / input / condition / channel-override rendering.</field>
+            <field name="engine_mode">shadow</field>
+            <field name="channel_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+                ref('comm_chatbot.channel_sms'),
+            ])]"/>
+            <field name="default_language">en_US</field>
+            <field name="conversation_timeout_hours">2</field>
+        </record>
+
+        <record id="var_booking_date" model="comm.bot.variable">
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="name">requested_date</field>
+            <field name="type">string</field>
+        </record>
+
+        <!-- Step 1: greeting -->
+        <record id="step_booking_greet" model="comm.bot.step">
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="name">greet</field>
+            <field name="sequence">10</field>
+            <field name="kind">message</field>
+            <field name="body">Hi {{contact.first_name|default:there}}! I can help you book an appointment.</field>
+        </record>
+
+        <!-- Step 2: confirm menu -->
+        <record id="step_booking_confirm" model="comm.bot.step">
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="name">confirm</field>
+            <field name="sequence">20</field>
+            <field name="kind">menu</field>
+            <field name="body">Would you like to proceed?</field>
+        </record>
+        <record id="opt_booking_yes" model="comm.bot.step.option">
+            <field name="step_id" ref="step_booking_confirm"/>
+            <field name="label">Yes</field>
+            <field name="value">yes</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="opt_booking_no" model="comm.bot.step.option">
+            <field name="step_id" ref="step_booking_confirm"/>
+            <field name="label">No</field>
+            <field name="value">no</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Step 3: date input -->
+        <record id="step_booking_ask_date" model="comm.bot.step">
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="name">ask_date</field>
+            <field name="sequence">30</field>
+            <field name="kind">input</field>
+            <field name="body">Great! What date would you like? (YYYY-MM-DD)</field>
+            <field name="input_type">date</field>
+            <field name="input_save_to">requested_date</field>
+        </record>
+
+        <!-- Step 4: confirm -->
+        <record id="step_booking_done" model="comm.bot.step">
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="name">done</field>
+            <field name="sequence">40</field>
+            <field name="kind">message</field>
+            <field name="body">Confirmed! You're booked for {{state.requested_date}}. See you then, {{contact.first_name|default:friend}}.</field>
+        </record>
+
+        <!-- Step 5: farewell (declined) -->
+        <record id="step_booking_bye" model="comm.bot.step">
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="name">bye</field>
+            <field name="sequence">50</field>
+            <field name="kind">message</field>
+            <field name="body">No problem, maybe next time.</field>
+        </record>
+
+        <!-- Step 6: end (success) -->
+        <record id="step_booking_end_success" model="comm.bot.step">
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="name">end_success</field>
+            <field name="sequence">60</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">completed</field>
+        </record>
+
+        <!-- Step 7: end (declined) -->
+        <record id="step_booking_end_declined" model="comm.bot.step">
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="name">end_declined</field>
+            <field name="sequence">70</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">declined</field>
+        </record>
+
+        <!-- Channel override: SMS gets a shorter body -->
+        <record id="ovr_booking_greet_sms" model="comm.bot.step.channel.override">
+            <field name="step_id" ref="step_booking_greet"/>
+            <field name="channel_id" ref="comm_chatbot.channel_sms"/>
+            <field name="body_override">Hi {{contact.first_name|default:there}}! Book an appt via SMS?</field>
+        </record>
+
+        <!-- Wire up graph -->
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_booking_greet')]"/>
+            <value eval="{'next_step_id': ref('step_booking_confirm')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('opt_booking_yes')]"/>
+            <value eval="{'next_step_id': ref('step_booking_ask_date')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('opt_booking_no')]"/>
+            <value eval="{'next_step_id': ref('step_booking_bye')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_booking_ask_date')]"/>
+            <value eval="{'next_step_id': ref('step_booking_done')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_booking_done')]"/>
+            <value eval="{'next_step_id': ref('step_booking_end_success')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_booking_bye')]"/>
+            <value eval="{'next_step_id': ref('step_booking_end_declined')}"/>
+        </function>
+
+        <function model="comm.bot" name="write">
+            <value eval="[ref('bot_booking')]"/>
+            <value eval="{'entry_step_id': ref('step_booking_greet')}"/>
+        </function>
+
+        <!-- Trigger: "book" keyword on WhatsApp -->
+        <record id="trigger_booking_wa" model="comm.bot.trigger">
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="channel_id" ref="comm_chatbot.channel_whatsapp"/>
+            <field name="kind">keyword</field>
+            <field name="value">book</field>
+            <field name="match_mode">exact</field>
+            <field name="priority">5</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Palesa: opted out of marketing WA, but SMS marketing still fine -->
+        <record id="pref_palesa_wa_marketing_out" model="comm.partner.communication.preference">
+            <field name="partner_id" ref="partner_palesa"/>
+            <field name="channel_id" ref="comm_chatbot.channel_whatsapp"/>
+            <field name="purpose">marketing</field>
+            <field name="opted_in" eval="False"/>
+            <field name="opt_out_source">keyword</field>
+            <field name="opt_out_reason">Replied STOP on a previous campaign</field>
+        </record>
+
+        <!-- Explicit opt-in rows for the premium partners so the audit trail
+             shows consent (POPIA-style — implicit true is legally weak) -->
+        <record id="pref_thabo_wa_marketing" model="comm.partner.communication.preference">
+            <field name="partner_id" ref="partner_thabo"/>
+            <field name="channel_id" ref="comm_chatbot.channel_whatsapp"/>
+            <field name="purpose">marketing</field>
+            <field name="opted_in" eval="True"/>
+        </record>
+        <record id="pref_naledi_wa_marketing" model="comm.partner.communication.preference">
+            <field name="partner_id" ref="partner_naledi"/>
+            <field name="channel_id" ref="comm_chatbot.channel_whatsapp"/>
+            <field name="purpose">marketing</field>
+            <field name="opted_in" eval="True"/>
+        </record>
+        <record id="pref_lerato_wa_marketing" model="comm.partner.communication.preference">
+            <field name="partner_id" ref="partner_lerato"/>
+            <field name="channel_id" ref="comm_chatbot.channel_whatsapp"/>
+            <field name="purpose">marketing</field>
+            <field name="opted_in" eval="True"/>
+        </record>
+
+        <!-- Bongani SMS-marketing opted-in (opt-in flow for SMS-only crew) -->
+        <record id="pref_bongani_sms_marketing" model="comm.partner.communication.preference">
+            <field name="partner_id" ref="partner_bongani"/>
+            <field name="channel_id" ref="comm_chatbot.channel_sms"/>
+            <field name="purpose">marketing</field>
+            <field name="opted_in" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

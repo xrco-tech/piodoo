@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Premium (WA + phone + email) -->
+        <record id="partner_thabo" model="res.partner">
+            <field name="name">Thabo Nkosi (test)</field>
+            <field name="mobile">27831110001</field>
+            <field name="whatsapp_id">27831110001</field>
+            <field name="email">thabo.test@example.com</field>
+            <field name="country_id" ref="base.za"/>
+        </record>
+        <record id="partner_naledi" model="res.partner">
+            <field name="name">Naledi Modise (test)</field>
+            <field name="mobile">27831110002</field>
+            <field name="whatsapp_id">27831110002</field>
+            <field name="email">naledi.test@example.com</field>
+            <field name="country_id" ref="base.za"/>
+        </record>
+        <record id="partner_lerato" model="res.partner">
+            <field name="name">Lerato Sithole (test)</field>
+            <field name="mobile">27831110003</field>
+            <field name="whatsapp_id">27831110003</field>
+            <field name="email">lerato.test@example.com</field>
+            <field name="country_id" ref="base.za"/>
+        </record>
+
+        <!-- Standard (WA + phone, no email) -->
+        <record id="partner_kagiso" model="res.partner">
+            <field name="name">Kagiso Molefe (test)</field>
+            <field name="mobile">27821110004</field>
+            <field name="whatsapp_id">27821110004</field>
+            <field name="country_id" ref="base.za"/>
+        </record>
+        <record id="partner_zanele" model="res.partner">
+            <field name="name">Zanele Dube (test)</field>
+            <field name="mobile">27821110005</field>
+            <field name="whatsapp_id">27821110005</field>
+            <field name="country_id" ref="base.za"/>
+        </record>
+
+        <!-- SMS-only (phone, no WA registration) -->
+        <record id="partner_bongani" model="res.partner">
+            <field name="name">Bongani Khoza (test)</field>
+            <field name="mobile">27721110006</field>
+            <field name="country_id" ref="base.za"/>
+        </record>
+        <record id="partner_ayesha" model="res.partner">
+            <field name="name">Ayesha Patel (test)</field>
+            <field name="mobile">27721110007</field>
+            <field name="country_id" ref="base.za"/>
+        </record>
+
+        <!-- Opted-out (still reachable, but preference blocks marketing) -->
+        <record id="partner_palesa" model="res.partner">
+            <field name="name">Palesa Sithole (test — opted out)</field>
+            <field name="mobile">27621110008</field>
+            <field name="whatsapp_id">27621110008</field>
+            <field name="country_id" ref="base.za"/>
+        </record>
+        <record id="partner_sipho" model="res.partner">
+            <field name="name">Sipho Ndlovu (test — global opt-out)</field>
+            <field name="mobile">27621110009</field>
+            <field name="whatsapp_id">27621110009</field>
+            <field name="marketing_opt_out" eval="True"/>
+            <field name="country_id" ref="base.za"/>
+        </record>
+
+        <!-- International (for country resolution testing) -->
+        <record id="partner_james" model="res.partner">
+            <field name="name">James Smith (test — UK)</field>
+            <field name="mobile">447700900010</field>
+            <field name="whatsapp_id">447700900010</field>
+            <field name="email">james.test@example.co.uk</field>
+            <field name="country_id" ref="base.uk"/>
+        </record>
+
+    </data>
+</odoo>

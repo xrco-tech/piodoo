@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============================================================ -->
+        <!-- Customer Service bot: greeting → free-text input → LLM step   -->
+        <!-- with decision output → dispatch to one of three branches       -->
+        <!-- (check_balance / escalate / other). Exercises the LLM tool     -->
+        <!-- loop and structured routing.                                    -->
+        <!-- ============================================================ -->
+
+        <record id="bot_service" model="comm.bot">
+            <field name="name">Customer Service (test — LLM)</field>
+            <field name="description">Free-text customer question is classified by an LLM decision step and routed to the right branch. Exercises LLM step + tool loop + decision output.</field>
+            <field name="engine_mode">shadow</field>
+            <field name="channel_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+            ])]"/>
+            <field name="default_language">en_US</field>
+            <field name="default_llm_model">claude-sonnet-4-6</field>
+            <field name="conversation_timeout_hours">1</field>
+        </record>
+
+        <record id="var_service_question" model="comm.bot.variable">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">question</field>
+            <field name="type">string</field>
+        </record>
+        <record id="var_service_balance" model="comm.bot.variable">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">balance</field>
+            <field name="type">float</field>
+            <field name="default_value">2450.00</field>
+        </record>
+
+        <!-- 1. Greeting -->
+        <record id="step_service_greet" model="comm.bot.step">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">greet</field>
+            <field name="sequence">10</field>
+            <field name="kind">message</field>
+            <field name="body">Hi {{contact.first_name|default:there}}! What can I help you with?</field>
+        </record>
+
+        <!-- 2. Capture question -->
+        <record id="step_service_ask" model="comm.bot.step">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">ask</field>
+            <field name="sequence">20</field>
+            <field name="kind">input</field>
+            <field name="body">Type your question or request.</field>
+            <field name="input_type">text</field>
+            <field name="input_save_to">question</field>
+        </record>
+
+        <!-- 3. Balance branch -->
+        <record id="step_service_balance" model="comm.bot.step">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">check_balance</field>
+            <field name="sequence">40</field>
+            <field name="kind">message</field>
+            <field name="body">Your current balance is R{{state.balance|currency:R}}.</field>
+        </record>
+
+        <!-- 4. Escalate branch -->
+        <record id="step_service_escalate" model="comm.bot.step">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">escalate</field>
+            <field name="sequence">50</field>
+            <field name="kind">handoff</field>
+            <field name="handoff_message">Connecting you to an agent now...</field>
+        </record>
+
+        <!-- 5. Other branch -->
+        <record id="step_service_other" model="comm.bot.step">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">other</field>
+            <field name="sequence">60</field>
+            <field name="kind">message</field>
+            <field name="body">I understand you're asking about "{{state.question}}". Let me look that up for you.</field>
+        </record>
+
+        <!-- 6. Ends -->
+        <record id="step_service_end_ok" model="comm.bot.step">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">end_ok</field>
+            <field name="sequence">80</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">completed</field>
+        </record>
+        <record id="step_service_end_error" model="comm.bot.step">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">end_error</field>
+            <field name="sequence">90</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">error</field>
+        </record>
+
+        <!-- 7. The LLM decision step — routes by intent -->
+        <record id="step_service_classify" model="comm.bot.step">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="name">classify</field>
+            <field name="sequence">30</field>
+            <field name="kind">llm</field>
+            <field name="body">Classify: {{state.question}}</field>
+            <field name="llm_model">claude-haiku-4-5</field>
+            <field name="llm_fallback_model">claude-sonnet-4-6</field>
+            <field name="llm_system_prompt">You are a customer service intent classifier for a South African retail bank. The customer message is: "{{state.question}}"
+
+Pick the single most relevant next step from the allowed set:
+- check_balance: customer wants to know their account balance
+- escalate: customer needs a human (complaint, dispute, complex query)
+- other: any other request; a fallback catch-all
+
+Reply by calling the choose_next_step tool with your pick.</field>
+            <field name="llm_temperature">0.2</field>
+            <field name="llm_max_tokens">300</field>
+            <field name="llm_output_mode">decision</field>
+            <field name="llm_include_history" eval="False"/>
+            <field name="llm_content_filter">basic</field>
+            <field name="llm_cache_breakpoint" eval="True"/>
+            <field name="llm_fallback_step_id" ref="step_service_end_error"/>
+        </record>
+
+        <!-- Wire graph -->
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_service_greet')]"/>
+            <value eval="{'next_step_id': ref('step_service_ask')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_service_ask')]"/>
+            <value eval="{'next_step_id': ref('step_service_classify')}"/>
+        </function>
+        <!-- Attach decision options AFTER the target steps exist -->
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_service_classify')]"/>
+            <value eval="{'llm_decision_option_ids': [(6, 0, [
+                ref('step_service_balance'),
+                ref('step_service_escalate'),
+                ref('step_service_other'),
+            ])]}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_service_balance')]"/>
+            <value eval="{'next_step_id': ref('step_service_end_ok')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_service_other')]"/>
+            <value eval="{'next_step_id': ref('step_service_end_ok')}"/>
+        </function>
+
+        <function model="comm.bot" name="write">
+            <value eval="[ref('bot_service')]"/>
+            <value eval="{'entry_step_id': ref('step_service_greet'),
+                          'on_error_step_id': ref('step_service_end_error')}"/>
+        </function>
+
+        <!-- Trigger: "help" keyword on WA -->
+        <record id="trigger_service_wa" model="comm.bot.trigger">
+            <field name="bot_id" ref="bot_service"/>
+            <field name="channel_id" ref="comm_chatbot.channel_whatsapp"/>
+            <field name="kind">keyword</field>
+            <field name="value">help</field>
+            <field name="match_mode">exact</field>
+            <field name="priority">5</field>
+        </record>
+
+    </data>
+</odoo>

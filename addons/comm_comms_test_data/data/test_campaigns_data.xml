@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- 1. Draft campaign — for simulator testing -->
+        <record id="campaign_bookings" model="comm.campaign">
+            <field name="name">Bookings drive (draft)</field>
+            <field name="description">Draft campaign targeting premium test partners for the booking flow. Use this one to run the Simulate wizard and Walker end-to-end.</field>
+            <field name="state">draft</field>
+            <field name="bot_id" ref="bot_booking"/>
+            <field name="purpose">marketing</field>
+            <field name="audience_mode">dynamic</field>
+            <field name="audience_domain">[('id', 'in', [ref('partner_thabo'), ref('partner_naledi'), ref('partner_lerato')])]</field>
+            <field name="channel_priority_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+                ref('comm_chatbot.channel_sms'),
+            ])]"/>
+            <field name="throttle_per_minute">30</field>
+            <field name="budget_cap_local">500.00</field>
+            <field name="budget_soft_threshold_pct">80</field>
+            <field name="attribution_window_hours">72</field>
+        </record>
+
+        <!-- 2. Running campaign with A/B variants -->
+        <record id="campaign_onboarding_ab" model="comm.campaign">
+            <field name="name">Onboarding A/B (running)</field>
+            <field name="description">A/B testing brief vs chatty onboarding copy. Currently running — will show in-flight sends and variant stats.</field>
+            <field name="state">running</field>
+            <field name="bot_id" ref="bot_onboarding_a"/>
+            <field name="purpose">marketing</field>
+            <field name="audience_mode">static</field>
+            <field name="audience_domain">[('id', 'in', [ref('partner_thabo'), ref('partner_naledi'), ref('partner_lerato'), ref('partner_kagiso'), ref('partner_zanele')])]</field>
+            <field name="channel_priority_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+            ])]"/>
+            <field name="throttle_per_minute">10</field>
+            <field name="budget_cap_local">200.00</field>
+        </record>
+
+        <record id="variant_onboarding_a" model="comm.campaign.variant">
+            <field name="campaign_id" ref="campaign_onboarding_ab"/>
+            <field name="name">A — Chatty</field>
+            <field name="bot_id" ref="bot_onboarding_a"/>
+            <field name="weight">50</field>
+            <field name="is_control" eval="True"/>
+        </record>
+        <record id="variant_onboarding_b" model="comm.campaign.variant">
+            <field name="campaign_id" ref="campaign_onboarding_ab"/>
+            <field name="name">B — Brief</field>
+            <field name="bot_id" ref="bot_onboarding_b"/>
+            <field name="weight">50</field>
+        </record>
+
+        <!-- 3. Completed campaign -->
+        <record id="campaign_service_check" model="comm.campaign">
+            <field name="name">Service check-in (completed)</field>
+            <field name="description">Wraps up a previous LLM-driven customer service outreach. Populated with historical sends + conversions by the post-init hook.</field>
+            <field name="state">completed</field>
+            <field name="bot_id" ref="bot_service"/>
+            <field name="purpose">service</field>
+            <field name="audience_mode">static</field>
+            <field name="channel_priority_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+            ])]"/>
+            <field name="throttle_per_minute">20</field>
+            <field name="attribution_window_hours">48</field>
+        </record>
+
+        <!-- 4. Paused campaign -->
+        <record id="campaign_vip_paused" model="comm.campaign">
+            <field name="name">VIP outreach (paused)</field>
+            <field name="description">Suspended mid-run — likely budget or content-review concern. Owner can resume anytime.</field>
+            <field name="state">paused</field>
+            <field name="bot_id" ref="bot_onboarding_a"/>
+            <field name="purpose">marketing</field>
+            <field name="audience_mode">dynamic</field>
+            <field name="audience_domain">[('id', 'in', [ref('partner_thabo'), ref('partner_naledi')])]</field>
+            <field name="channel_priority_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+                ref('comm_chatbot.channel_sms'),
+            ])]"/>
+            <field name="throttle_per_minute">5</field>
+            <field name="budget_cap_local">1000.00</field>
+        </record>
+
+    </data>
+</odoo>

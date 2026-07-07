@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============================================================ -->
+        <!-- A/B onboarding bots: chatty vs brief. Used by the running     -->
+        <!-- campaign to compare conversion rates.                          -->
+        <!-- ============================================================ -->
+
+        <!-- ============ Variant A: chatty ============ -->
+
+        <record id="bot_onboarding_a" model="comm.bot">
+            <field name="name">Onboarding — Variant A (chatty)</field>
+            <field name="description">Warm, longer messaging. Tests whether more context lifts conversion.</field>
+            <field name="engine_mode">shadow</field>
+            <field name="channel_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+            ])]"/>
+            <field name="default_language">en_US</field>
+        </record>
+
+        <record id="var_onboard_a_service" model="comm.bot.variable">
+            <field name="bot_id" ref="bot_onboarding_a"/>
+            <field name="name">service_interest</field>
+            <field name="type">string</field>
+        </record>
+
+        <record id="step_onboard_a_greet" model="comm.bot.step">
+            <field name="bot_id" ref="bot_onboarding_a"/>
+            <field name="name">greet</field>
+            <field name="sequence">10</field>
+            <field name="kind">message</field>
+            <field name="body">Hi {{contact.first_name|default:there}}, welcome aboard! I'm here to help you get set up. We offer three services — Personal Banking, Business Banking, and Wealth Management. Each one is tailored to different needs, and I'd love to help you pick the right one.</field>
+        </record>
+
+        <record id="step_onboard_a_menu" model="comm.bot.step">
+            <field name="bot_id" ref="bot_onboarding_a"/>
+            <field name="name">menu</field>
+            <field name="sequence">20</field>
+            <field name="kind">menu</field>
+            <field name="body">Which service would you like to explore first?</field>
+            <field name="input_save_to">service_interest</field>
+        </record>
+        <record id="opt_onboard_a_personal" model="comm.bot.step.option">
+            <field name="step_id" ref="step_onboard_a_menu"/>
+            <field name="label">Personal Banking</field>
+            <field name="value">personal</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="opt_onboard_a_business" model="comm.bot.step.option">
+            <field name="step_id" ref="step_onboard_a_menu"/>
+            <field name="label">Business Banking</field>
+            <field name="value">business</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="opt_onboard_a_wealth" model="comm.bot.step.option">
+            <field name="step_id" ref="step_onboard_a_menu"/>
+            <field name="label">Wealth Management</field>
+            <field name="value">wealth</field>
+            <field name="sequence">30</field>
+        </record>
+
+        <record id="step_onboard_a_thanks" model="comm.bot.step">
+            <field name="bot_id" ref="bot_onboarding_a"/>
+            <field name="name">thanks</field>
+            <field name="sequence">30</field>
+            <field name="kind">message</field>
+            <field name="body">Great choice — {{state.service_interest}} suits you well. An advisor will reach out within 24 hours. Meanwhile you'll find our brochures on our website. Thanks for choosing us, {{contact.first_name|default:friend}}!</field>
+        </record>
+
+        <record id="step_onboard_a_end" model="comm.bot.step">
+            <field name="bot_id" ref="bot_onboarding_a"/>
+            <field name="name">end</field>
+            <field name="sequence">40</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">completed</field>
+        </record>
+
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_onboard_a_greet')]"/>
+            <value eval="{'next_step_id': ref('step_onboard_a_menu')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_onboard_a_menu')]"/>
+            <value eval="{'next_step_id': ref('step_onboard_a_thanks')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_onboard_a_thanks')]"/>
+            <value eval="{'next_step_id': ref('step_onboard_a_end')}"/>
+        </function>
+        <function model="comm.bot" name="write">
+            <value eval="[ref('bot_onboarding_a')]"/>
+            <value eval="{'entry_step_id': ref('step_onboard_a_greet')}"/>
+        </function>
+
+        <!-- ============ Variant B: brief ============ -->
+
+        <record id="bot_onboarding_b" model="comm.bot">
+            <field name="name">Onboarding — Variant B (brief)</field>
+            <field name="description">Terse, snappy messaging. Tests whether concise copy lifts conversion.</field>
+            <field name="engine_mode">shadow</field>
+            <field name="channel_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+            ])]"/>
+            <field name="default_language">en_US</field>
+        </record>
+
+        <record id="var_onboard_b_service" model="comm.bot.variable">
+            <field name="bot_id" ref="bot_onboarding_b"/>
+            <field name="name">service_interest</field>
+            <field name="type">string</field>
+        </record>
+
+        <record id="step_onboard_b_greet" model="comm.bot.step">
+            <field name="bot_id" ref="bot_onboarding_b"/>
+            <field name="name">greet</field>
+            <field name="sequence">10</field>
+            <field name="kind">message</field>
+            <field name="body">Welcome, {{contact.first_name|default:there}}. What are you here for?</field>
+        </record>
+
+        <record id="step_onboard_b_menu" model="comm.bot.step">
+            <field name="bot_id" ref="bot_onboarding_b"/>
+            <field name="name">menu</field>
+            <field name="sequence">20</field>
+            <field name="kind">menu</field>
+            <field name="body">Pick one:</field>
+            <field name="input_save_to">service_interest</field>
+        </record>
+        <record id="opt_onboard_b_personal" model="comm.bot.step.option">
+            <field name="step_id" ref="step_onboard_b_menu"/>
+            <field name="label">Personal</field>
+            <field name="value">personal</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="opt_onboard_b_business" model="comm.bot.step.option">
+            <field name="step_id" ref="step_onboard_b_menu"/>
+            <field name="label">Business</field>
+            <field name="value">business</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="opt_onboard_b_wealth" model="comm.bot.step.option">
+            <field name="step_id" ref="step_onboard_b_menu"/>
+            <field name="label">Wealth</field>
+            <field name="value">wealth</field>
+            <field name="sequence">30</field>
+        </record>
+
+        <record id="step_onboard_b_thanks" model="comm.bot.step">
+            <field name="bot_id" ref="bot_onboarding_b"/>
+            <field name="name">thanks</field>
+            <field name="sequence">30</field>
+            <field name="kind">message</field>
+            <field name="body">Got it — {{state.service_interest}}. Advisor incoming.</field>
+        </record>
+
+        <record id="step_onboard_b_end" model="comm.bot.step">
+            <field name="bot_id" ref="bot_onboarding_b"/>
+            <field name="name">end</field>
+            <field name="sequence">40</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">completed</field>
+        </record>
+
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_onboard_b_greet')]"/>
+            <value eval="{'next_step_id': ref('step_onboard_b_menu')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_onboard_b_menu')]"/>
+            <value eval="{'next_step_id': ref('step_onboard_b_thanks')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_onboard_b_thanks')]"/>
+            <value eval="{'next_step_id': ref('step_onboard_b_end')}"/>
+        </function>
+        <function model="comm.bot" name="write">
+            <value eval="[ref('bot_onboarding_b')]"/>
+            <value eval="{'entry_step_id': ref('step_onboard_b_greet')}"/>
+        </function>
+
+    </data>
+</odoo>
