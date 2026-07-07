@@ -51,3 +51,13 @@ class CommConversation(models.Model):
             'billed_usd': sum(events.mapped('price_usd')),
             'billed_local': sum(events.mapped('price_local')),
         })
+
+    @api.model
+    def cron_purge_walker_previews(self):
+        """Delete walker preview conversations older than 1 hour."""
+        cutoff = fields.Datetime.now() - timedelta(hours=1)
+        stale = self.search([
+            ('outcome', '=', '__preview_walker__'),
+            ('create_date', '<', cutoff),
+        ], limit=500)
+        stale.sudo().unlink()
