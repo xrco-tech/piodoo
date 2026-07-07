@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_bot_step_form" model="ir.ui.view">
+        <field name="name">comm.bot.step.form</field>
+        <field name="model">comm.bot.step</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="bot_id"/>
+                            <field name="name"/>
+                            <field name="kind" widget="badge"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="next_step_id"/>
+                            <field name="on_unsupported_step_id"/>
+                            <field name="truncation_strategy"/>
+                            <field name="guard_expression"/>
+                        </group>
+                    </group>
+                    <field name="body" placeholder="Message body (Mustache: {{state.varname}})"/>
+
+                    <group string="Input" invisible="kind != 'input'">
+                        <field name="input_type"/>
+                        <field name="input_save_to"/>
+                        <field name="input_validation_regex"/>
+                        <field name="input_retry_step_id"/>
+                    </group>
+
+                    <group string="Condition" invisible="kind != 'condition'">
+                        <field name="condition_expression"/>
+                    </group>
+
+                    <group string="Action" invisible="kind != 'action'">
+                        <field name="action_executor"/>
+                        <field name="action_config" widget="ace" options="{'mode': 'json'}"/>
+                        <field name="action_save_to"/>
+                    </group>
+
+                    <group string="Handoff" invisible="kind != 'handoff'">
+                        <field name="handoff_team_id"/>
+                        <field name="handoff_message"/>
+                    </group>
+
+                    <group string="LLM" invisible="kind != 'llm'">
+                        <group>
+                            <field name="llm_model"/>
+                            <field name="llm_fallback_model"/>
+                            <field name="llm_temperature"/>
+                            <field name="llm_max_tokens"/>
+                            <field name="llm_max_duration_sec"/>
+                            <field name="llm_max_tool_iterations"/>
+                            <field name="llm_max_cost_usd"/>
+                            <field name="llm_cache_breakpoint"/>
+                        </group>
+                        <group>
+                            <field name="llm_output_mode"/>
+                            <field name="llm_output_save_to" invisible="llm_output_mode != 'structured'"/>
+                            <field name="llm_include_history"/>
+                            <field name="llm_history_turns"/>
+                            <field name="llm_fallback_step_id"/>
+                            <field name="llm_content_filter"/>
+                        </group>
+                        <field name="llm_system_prompt" placeholder="System prompt (Mustache templated)"/>
+                        <field name="llm_output_schema" invisible="llm_output_mode != 'structured'"
+                               widget="ace" options="{'mode': 'json'}"/>
+                        <field name="llm_decision_option_ids"
+                               invisible="llm_output_mode != 'decision'"
+                               widget="many2many_tags"/>
+                        <field name="llm_tool_ids">
+                            <list editable="bottom">
+                                <field name="name"/>
+                                <field name="description"/>
+                                <field name="executor_type"/>
+                                <field name="result_variable"/>
+                                <field name="requires_handoff"/>
+                            </list>
+                        </field>
+                    </group>
+
+                    <group string="Wait" invisible="kind != 'wait'">
+                        <field name="wait_seconds"/>
+                        <field name="wait_until_variable"/>
+                    </group>
+
+                    <group string="Jump" invisible="kind != 'jump'">
+                        <field name="jump_target_step_id"/>
+                        <field name="jump_target_bot_id"/>
+                    </group>
+
+                    <group string="Channel switch" invisible="kind != 'channel_switch'">
+                        <field name="channel_switch_target_id"/>
+                        <field name="channel_switch_message"/>
+                    </group>
+
+                    <group string="End" invisible="kind != 'end'">
+                        <field name="end_outcome"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Menu options" invisible="kind != 'menu' and input_type != 'choice'">
+                            <field name="option_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="label"/>
+                                    <field name="value"/>
+                                    <field name="next_step_id"/>
+                                    <field name="condition_expression"/>
+                                    <field name="is_default"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Media">
+                            <field name="media_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="kind"/>
+                                    <field name="url"/>
+                                    <field name="attachment_id"/>
+                                    <field name="alt_text"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Channel overrides">
+                            <field name="channel_override_ids">
+                                <list editable="bottom">
+                                    <field name="channel_id"/>
+                                    <field name="body_override"/>
+                                    <field name="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Translations">
+                            <field name="body_translation_ids">
+                                <list editable="bottom">
+                                    <field name="language"/>
+                                    <field name="body"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_comm_bot_step_list" model="ir.ui.view">
+        <field name="name">comm.bot.step.list</field>
+        <field name="model">comm.bot.step</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="bot_id"/>
+                <field name="name"/>
+                <field name="kind" widget="badge"/>
+                <field name="body"/>
+                <field name="next_step_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_comm_bot_step" model="ir.actions.act_window">
+        <field name="name">Steps</field>
+        <field name="res_model">comm.bot.step</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_bot_list" model="ir.ui.view">
+        <field name="name">comm.bot.list</field>
+        <field name="model">comm.bot</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="engine_mode" widget="badge"/>
+                <field name="channel_ids" widget="many2many_tags"/>
+                <field name="entry_step_id"/>
+                <field name="step_count"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_bot_form" model="ir.ui.view">
+        <field name="name">comm.bot.form</field>
+        <field name="model">comm.bot</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="engine_mode" widget="badge"/>
+                            <field name="channel_ids" widget="many2many_tags"/>
+                            <field name="entry_step_id"/>
+                            <field name="on_error_step_id"/>
+                            <field name="handoff_team_id"/>
+                        </group>
+                        <group>
+                            <field name="default_language"/>
+                            <field name="supported_language_ids" widget="many2many_tags"/>
+                            <field name="conversation_timeout_hours"/>
+                            <field name="missing_variable_mode"/>
+                            <field name="truncation_strategy"/>
+                            <field name="default_llm_model"/>
+                        </group>
+                    </group>
+                    <field name="description" placeholder="Describe what this bot does..."/>
+                    <notebook>
+                        <page string="Steps">
+                            <field name="step_ids">
+                                <list>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="kind" widget="badge"/>
+                                    <field name="body"/>
+                                    <field name="next_step_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Triggers">
+                            <field name="trigger_ids">
+                                <list editable="bottom">
+                                    <field name="channel_id"/>
+                                    <field name="kind"/>
+                                    <field name="value"/>
+                                    <field name="match_mode"/>
+                                    <field name="priority"/>
+                                    <field name="active"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Variables">
+                            <field name="variable_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="type"/>
+                                    <field name="default_value"/>
+                                    <field name="is_persistent"/>
+                                    <field name="description"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Env">
+                            <field name="env_variables" widget="ace" options="{'mode': 'json'}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_comm_bot" model="ir.actions.act_window">
+        <field name="name">Bots</field>
+        <field name="res_model">comm.bot</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

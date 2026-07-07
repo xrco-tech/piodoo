@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="channel_whatsapp" model="comm.channel">
+            <field name="name">WhatsApp</field>
+            <field name="code">whatsapp</field>
+            <field name="adapter_key">whatsapp</field>
+            <field name="sequence">10</field>
+            <field name="supports_buttons" eval="True"/>
+            <field name="max_buttons">3</field>
+            <field name="supports_lists" eval="True"/>
+            <field name="max_list_rows">10</field>
+            <field name="supports_media_image" eval="True"/>
+            <field name="supports_media_video" eval="True"/>
+            <field name="supports_media_audio" eval="True"/>
+            <field name="supports_media_document" eval="True"/>
+            <field name="supports_typing" eval="True"/>
+            <field name="max_body_length">4096</field>
+            <field name="regulatory_lock" eval="True"/>
+        </record>
+
+        <record id="channel_sms" model="comm.channel">
+            <field name="name">SMS</field>
+            <field name="code">sms</field>
+            <field name="adapter_key">sms</field>
+            <field name="sequence">20</field>
+            <field name="supports_buttons" eval="False"/>
+            <field name="supports_lists" eval="False"/>
+            <field name="supports_media_image" eval="False"/>
+            <field name="max_body_length">1600</field>
+            <field name="regulatory_lock" eval="True"/>
+        </record>
+
+        <record id="channel_ussd" model="comm.channel">
+            <field name="name">USSD</field>
+            <field name="code">ussd</field>
+            <field name="adapter_key">ussd</field>
+            <field name="sequence">30</field>
+            <field name="supports_buttons" eval="False"/>
+            <field name="supports_lists" eval="False"/>
+            <field name="is_synchronous" eval="True"/>
+            <field name="max_body_length">182</field>
+        </record>
+
+        <record id="channel_voice" model="comm.channel">
+            <field name="name">Voice</field>
+            <field name="code">voice</field>
+            <field name="adapter_key">voice</field>
+            <field name="sequence">40</field>
+            <field name="supports_media_audio" eval="True"/>
+            <field name="supports_streaming" eval="True"/>
+            <field name="is_synchronous" eval="True"/>
+            <field name="regulatory_lock" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

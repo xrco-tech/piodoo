@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_interaction_list" model="ir.ui.view">
+        <field name="name">comm.interaction.list</field>
+        <field name="model">comm.interaction</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="at"/>
+                <field name="conversation_id"/>
+                <field name="channel_id"/>
+                <field name="direction" widget="badge"/>
+                <field name="step_id"/>
+                <field name="rendered_body"/>
+                <field name="status" widget="badge"/>
+                <field name="llm_input_tokens" optional="hide"/>
+                <field name="llm_output_tokens" optional="hide"/>
+                <field name="llm_model_used" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_comm_interaction" model="ir.actions.act_window">
+        <field name="name">Interactions</field>
+        <field name="res_model">comm.interaction</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

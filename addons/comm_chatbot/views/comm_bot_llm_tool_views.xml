@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_bot_llm_tool_list" model="ir.ui.view">
+        <field name="name">comm.bot.llm.tool.list</field>
+        <field name="model">comm.bot.llm.tool</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="step_id"/>
+                <field name="name"/>
+                <field name="executor_type"/>
+                <field name="result_variable"/>
+                <field name="log_result_mode"/>
+                <field name="requires_handoff"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_comm_bot_llm_tool" model="ir.actions.act_window">
+        <field name="name">LLM Tools</field>
+        <field name="res_model">comm.bot.llm.tool</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

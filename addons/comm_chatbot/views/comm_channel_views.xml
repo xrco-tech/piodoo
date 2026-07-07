@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_channel_list" model="ir.ui.view">
+        <field name="name">comm.channel.list</field>
+        <field name="model">comm.channel</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="adapter_key"/>
+                <field name="supports_buttons"/>
+                <field name="supports_lists"/>
+                <field name="is_synchronous"/>
+                <field name="max_body_length"/>
+                <field name="regulatory_lock"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_channel_form" model="ir.ui.view">
+        <field name="name">comm.channel.form</field>
+        <field name="model">comm.channel</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="adapter_key"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="is_synchronous"/>
+                            <field name="regulatory_lock"/>
+                            <field name="max_body_length"/>
+                            <field name="quiet_hours_start"/>
+                            <field name="quiet_hours_end"/>
+                        </group>
+                    </group>
+                    <group string="Capabilities">
+                        <group>
+                            <field name="supports_buttons"/>
+                            <field name="max_buttons"/>
+                            <field name="supports_lists"/>
+                            <field name="max_list_rows"/>
+                        </group>
+                        <group>
+                            <field name="supports_media_image"/>
+                            <field name="supports_media_video"/>
+                            <field name="supports_media_audio"/>
+                            <field name="supports_media_document"/>
+                            <field name="supports_typing"/>
+                            <field name="supports_streaming"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_comm_channel" model="ir.actions.act_window">
+        <field name="name">Channels</field>
+        <field name="res_model">comm.channel</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

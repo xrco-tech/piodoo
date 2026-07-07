@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_comm_chatbot_root"
+              name="Comm Bots"
+              sequence="75"/>
+
+    <menuitem id="menu_comm_bot"
+              name="Bots"
+              parent="menu_comm_chatbot_root"
+              action="action_comm_bot"
+              sequence="10"/>
+
+    <menuitem id="menu_comm_bot_step"
+              name="Steps"
+              parent="menu_comm_chatbot_root"
+              action="action_comm_bot_step"
+              sequence="20"/>
+
+    <menuitem id="menu_comm_bot_trigger"
+              name="Triggers"
+              parent="menu_comm_chatbot_root"
+              action="action_comm_bot_trigger"
+              sequence="30"/>
+
+    <menuitem id="menu_comm_conversation"
+              name="Conversations"
+              parent="menu_comm_chatbot_root"
+              action="action_comm_conversation"
+              sequence="40"/>
+
+    <menuitem id="menu_comm_interaction"
+              name="Interactions"
+              parent="menu_comm_chatbot_root"
+              action="action_comm_interaction"
+              sequence="50"/>
+
+    <menuitem id="menu_comm_chatbot_config"
+              name="Configuration"
+              parent="menu_comm_chatbot_root"
+              sequence="90"/>
+
+    <menuitem id="menu_comm_channel"
+              name="Channels"
+              parent="menu_comm_chatbot_config"
+              action="action_comm_channel"
+              sequence="10"/>
+
+    <menuitem id="menu_comm_bot_llm_tool"
+              name="LLM Tools"
+              parent="menu_comm_chatbot_config"
+              action="action_comm_bot_llm_tool"
+              sequence="20"/>
+
+</odoo>
