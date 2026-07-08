@@ -32,3 +32,9 @@ access_comm_interaction_designer,comm.interaction.designer,model_comm_interactio
 access_comm_interaction_agent,comm.interaction.agent,model_comm_interaction,comm_chatbot.group_chatbot_agent,1,0,0,0
 access_comm_bot_preview_admin,comm.bot.preview.admin,model_comm_bot_preview,comm_chatbot.group_chatbot_administrator,1,1,1,1
 access_comm_bot_preview_designer,comm.bot.preview.designer,model_comm_bot_preview,comm_chatbot.group_chatbot_designer,1,1,1,1
+access_comm_bot_step_translation_admin,comm.bot.step.translation.admin,model_comm_bot_step_translation,comm_chatbot.group_chatbot_administrator,1,1,1,1
+access_comm_bot_step_translation_designer,comm.bot.step.translation.designer,model_comm_bot_step_translation,comm_chatbot.group_chatbot_designer,1,1,1,1
+access_comm_bot_step_translation_agent,comm.bot.step.translation.agent,model_comm_bot_step_translation,comm_chatbot.group_chatbot_agent,1,0,0,0
+access_comm_bot_step_media_admin,comm.bot.step.media.admin,model_comm_bot_step_media,comm_chatbot.group_chatbot_administrator,1,1,1,1
+access_comm_bot_step_media_designer,comm.bot.step.media.designer,model_comm_bot_step_media,comm_chatbot.group_chatbot_designer,1,1,1,1
+access_comm_bot_step_media_agent,comm.bot.step.media.agent,model_comm_bot_step_media,comm_chatbot.group_chatbot_agent,1,0,0,0
