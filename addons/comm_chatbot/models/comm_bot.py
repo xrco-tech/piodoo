@@ -195,6 +195,18 @@ class CommBot(models.Model):
         return '\n'.join(lines)
 
     def action_view_flow_diagram(self):
+        """Open the OWL bot flow client action (canvas + simulator)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'comm_chatbot.bot_flow',
+            'name': f'Flow: {self.name}',
+            'target': 'current',
+            'context': {'active_id': self.id, 'default_bot_id': self.id},
+        }
+
+    def action_view_flow_diagram_mermaid(self):
+        """Fallback: Mermaid HTML page in new tab (kept as legacy option)."""
         self.ensure_one()
         return {
             'type': 'ir.actions.act_url',

@@ -39,6 +39,7 @@ Channel adapters are separate installable modules:
         'data/comm_channel_data.xml',
         'data/anthropic_rate_card_data.xml',
         'data/ir_cron_data.xml',
+        'data/bot_flow_action_data.xml',
         'views/comm_channel_views.xml',
         'wizards/comm_bot_preview_views.xml',
         'views/comm_bot_views.xml',
@@ -49,6 +50,13 @@ Channel adapters are separate installable modules:
         'views/comm_interaction_views.xml',
         'views/comm_chatbot_menus.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'comm_chatbot/static/src/css/bot_flow_action.css',
+            'comm_chatbot/static/src/js/bot_flow_widget.js',
+            'comm_chatbot/static/src/xml/bot_flow_action.xml',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,

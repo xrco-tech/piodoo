@@ -1,0 +1,1110 @@
+/* ── Client action shell ─────────────────────────────────────────────────────── */
+.o_bot_flow_action {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #f3f4f6;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────────── */
+.o_bot_flow_toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 54px;
+    flex-shrink: 0;
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    z-index: 10;
+}
+.o_bot_flow_toolbar_left  { display: flex; align-items: center; gap: 12px; }
+.o_bot_flow_toolbar_right { display: flex; align-items: center; gap: 6px; }
+.o_bot_flow_bot_icon {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px;
+    background: #25d366; color: #fff; font-size: 18px;
+    flex-shrink: 0;
+}
+.o_bot_flow_title { font-size: 16px; font-weight: 500; color: #212529; letter-spacing: 0; }
+.o_bf_back_btn { color: #374151; padding: 0 6px; font-size: 15px; font-weight: 700; border: none; background: none; }
+.o_bf_back_btn:hover { color: #111827; background: none; }
+.o_bf_add_step_btn { font-weight: 600; }
+.o_bf_zoom_btn   { min-width: 28px; padding: 0 6px; font-size: 16px; }
+.o_bf_zoom_label { min-width: 44px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; }
+
+/* ── Loading ─────────────────────────────────────────────────────────────────── */
+.o_bot_flow_loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Body (canvas + props panel) ─────────────────────────────────────────────── */
+.o_bot_flow_body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative; /* anchor for mobile overlay panel */
+}
+
+.o_bot_flow_canvas_wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* ── Canvas (scrollable viewport) ────────────────────────────────────────────── */
+.o_bot_flow_canvas {
+    flex: 1;
+    overflow: auto;
+    cursor: grab;
+    position: relative;
+    background-color: #f3f4f6;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+.o_bot_flow_canvas.o_bf_dragging { cursor: grabbing; }
+
+/* ── Properties panel ────────────────────────────────────────────────────────── */
+.o_bot_flow_props {
+    width: 210px;
+    flex-shrink: 0;
+    background: #fff;
+    border-left: 1px solid #dee2e6;
+    overflow-y: auto;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    transition: width 0.25s ease, padding 0.25s ease, opacity 0.18s ease;
+}
+/* Simulator mode needs more horizontal space for the phone frame. */
+.o_bot_flow_props:has(.o_bf_sim) {
+    width: 320px;
+}
+
+/* ── Right-panel tab switcher ────────────────────────────────────────────────── */
+.o_bf_panel_tabs {
+    display: flex;
+    gap: 4px;
+    margin: -8px -4px 12px -4px;
+    padding: 4px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.o_bf_panel_tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 6px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.o_bf_panel_tab:hover { color: #111827; }
+.o_bf_panel_tab.active {
+    background: #fff;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* ── Simulator ──────────────────────────────────────────────────────────────── */
+.o_bf_sim {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Persona form — shown before the session starts */
+.o_bf_sim_persona_form {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.o_bf_sim_persona_title {
+    font-weight: 700; font-size: 13px; color: #111827;
+}
+.o_bf_sim_persona_help {
+    color: #6b7280; font-size: 11px; line-height: 1.4; margin-bottom: 8px;
+}
+.o_bf_sim_persona_label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: #6b7280; font-weight: 700; margin-bottom: 0;
+}
+.o_bf_sim_persona_input {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+    width: 100%;
+}
+.o_bf_sim_persona_input:focus { border-color: #9ca3af; }
+
+/* Variable inputs grouped by chatbot — shown both in the pre-session form
+   and in the in-session editor. */
+.o_bf_sim_vars_group {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+.o_bf_sim_vars_group_title {
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+/* In-session editor — takes over the phone area when open. Editor and chat
+   are mutually exclusive (the OWL template hides the chat when this is
+   visible) so the editor can use the full panel height. */
+.o_bf_sim_editor {
+    padding: 12px;
+    background: #fff;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+.o_bf_sim_editor_title {
+    font-weight: 700;
+    font-size: 12px;
+    color: #111827;
+    margin-bottom: 8px;
+}
+.o_bf_sim_editor .o_bf_sim_persona_input {
+    margin-bottom: 4px;
+}
+
+/* Persona chip — small pill in the phone status bar once session is running */
+.o_bf_sim_persona_chip {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 8px;
+    padding: 3px 8px;
+    background: #f3f4f6;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    max-width: 100%;
+    min-width: 0;
+}
+.o_bf_sim_persona_chip:hover { background: #e5e7eb; }
+.o_bf_sim_persona_chip_name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1; min-width: 0;
+}
+.o_bf_sim_persona_chip_pencil { font-size: 9px; opacity: 0.6; }
+.o_bf_sim_phone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    min-height: 480px;
+    background: #fff;
+}
+.o_bf_sim_phone_status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+.o_bf_sim_channel_pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: #111827;
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+.o_bf_sim_restart { color: #6b7280; padding: 2px 6px; }
+.o_bf_sim_restart:hover { color: #111827; }
+
+.o_bf_sim_chat {
+    flex: 1;
+    padding: 12px 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #efeae2;  /* WhatsApp default */
+}
+.o_bf_sim_bubble {
+    max-width: 75%;
+    padding: 6px 9px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.35;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    background: #fff;
+}
+.o_bf_sim_bubble_in  { align-self: flex-start; }
+.o_bf_sim_bubble_out { align-self: flex-end; background: #d9fdd3; }
+.o_bf_sim_bubble_t_error    { background: #fee2e2; color: #b91c1c; }
+.o_bf_sim_bubble_t_sim_note { background: #fef3c7; color: #92400e; font-style: italic; font-size: 11px; }
+.o_bf_sim_bubble_t_menu     { background: #fff; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+.o_bf_sim_bubble_t_user     { white-space: pre-wrap; }
+
+/* Simulator bubble sub-elements — reuse the canvas-bubble CSS classes for
+   visual parity with the card preview but tighten spacing so they read
+   cleanly inside a chat bubble. */
+.o_bf_sim_bubble .o_bf_bubble_header_text {
+    margin-bottom: 4px; font-size: 13px;
+}
+.o_bf_sim_bubble .o_bf_bubble_header_media,
+.o_bf_sim_bubble .o_bf_bubble_header_doc {
+    margin: -2px -2px 6px -2px; padding: 14px 10px;
+}
+.o_bf_sim_bubble .o_bf_bubble_body {
+    font-size: 13px; line-height: 1.35;
+}
+.o_bf_sim_bubble .o_bf_bubble_body code {
+    background: rgba(0, 0, 0, 0.07);
+    padding: 1px 4px; border-radius: 3px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+}
+.o_bf_sim_bubble .o_bf_bubble_footer {
+    margin-top: 4px; font-size: 11px; color: #6b7280; font-style: italic;
+}
+
+/* Interactive flow CTA inside the bubble */
+.o_bf_sim_bubble .o_bf_bubble_flow_sep {
+    height: 1px; background: rgba(0, 0, 0, 0.08); margin: 8px -8px;
+}
+.o_bf_sim_bubble .o_bf_bubble_flow_cta {
+    display: flex; align-items: center; justify-content: space-between;
+    color: #0b8a8a; font-weight: 600; font-size: 13px;
+    margin: -2px -2px 0 -2px; padding: 4px 0 0;
+}
+
+/* Reply buttons & interactive list sit OUTSIDE the body bubble in real
+   WhatsApp, but inside it on the canvas preview. We follow the canvas
+   convention so the simulator visually matches the card. */
+.o_bf_sim_bubble .o_bf_ia_sep {
+    height: 1px; background: rgba(0, 0, 0, 0.08); margin: 8px -8px;
+}
+.o_bf_sim_bubble .o_bf_ia_btn {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    padding: 5px 8px;
+    margin-top: 4px;
+    color: #0b8a8a;
+    font-weight: 600;
+    font-size: 12px;
+}
+.o_bf_sim_bubble .o_bf_ia_list_btn {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    padding: 5px 8px;
+    margin-top: 4px;
+    color: #0b8a8a;
+    font-weight: 600;
+    font-size: 12px;
+    text-align: center;
+}
+.o_bf_sim_bubble .o_bf_ia_list_row {
+    padding: 4px 0 4px 6px;
+    margin-top: 2px;
+    font-size: 12px;
+    color: #1f2937;
+    border-left: 2px solid #cfd8dc;
+}
+
+/* Clickable interactive elements (reply buttons / list rows / flow CTA).
+   When the user taps one, the simulator forwards its label as the next
+   user input — exactly what real WhatsApp does behind the scenes. */
+.o_bf_sim_bubble .o_bf_sim_clickable {
+    display: block;
+    width: 100%;
+    text-align: center;
+    border: 1px solid #cfd8dc;
+    background: rgba(255, 255, 255, 0.6);
+    color: #0b8a8a;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+    font: inherit;
+}
+.o_bf_sim_bubble button.o_bf_ia_btn {
+    background: rgba(255, 255, 255, 0.6);
+    color: #0b8a8a;
+}
+.o_bf_sim_bubble button.o_bf_ia_list_row {
+    background: rgba(255, 255, 255, 0.6);
+    color: #1f2937;
+    text-align: left;
+    border-left: 2px solid #cfd8dc;
+    border-top: none; border-right: none; border-bottom: none;
+}
+.o_bf_sim_bubble .o_bf_sim_clickable:hover:not([disabled]) {
+    background: #e0f7f4;
+}
+.o_bf_sim_bubble .o_bf_sim_clickable:active:not([disabled]) {
+    transform: scale(0.98);
+}
+.o_bf_sim_bubble .o_bf_sim_clickable[disabled] {
+    opacity: 0.6; cursor: not-allowed;
+}
+.o_bf_sim_bubble button.o_bf_bubble_flow_cta {
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+/* Live-agent assist call-outs — shown inline above the body for any step
+   that has coaching_notes or crm_action set. Useful for previewing voice
+   agent scripts in the simulator before the dedicated Agent Workspace
+   ships. */
+.o_bf_sim_bubble .o_bf_sim_coaching,
+.o_bf_sim_bubble .o_bf_sim_crm {
+    margin: -2px -2px 6px -2px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.35;
+}
+.o_bf_sim_bubble .o_bf_sim_coaching {
+    background: #ede9fe;
+    color: #5b21b6;
+    border-left: 3px solid #7c3aed;
+}
+.o_bf_sim_bubble .o_bf_sim_crm {
+    background: #fff7ed;
+    color: #9a3412;
+    border-left: 3px solid #f97316;
+}
+.o_bf_sim_bubble .o_bf_sim_coaching strong,
+.o_bf_sim_bubble .o_bf_sim_crm strong {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 4px;
+}
+.o_bf_sim_bubble .o_bf_sim_coaching > div,
+.o_bf_sim_bubble .o_bf_sim_crm > div {
+    margin-top: 2px;
+    white-space: pre-wrap;
+}
+
+/* Media-question placeholders — small dashed bordered chip with an icon. */
+.o_bf_sim_media_prompt {
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px dashed #94a3b8;
+    border-radius: 8px;
+    color: #475569;
+    font-size: 12px;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.o_bf_sim_media_prompt i { color: #64748b; font-size: 14px; }
+
+.o_bf_sim_typing { display: flex; gap: 4px; padding: 8px 10px; }
+.o_bf_sim_typing .dot {
+    width: 6px; height: 6px; background: #9ca3af; border-radius: 50%;
+    animation: o_bf_sim_typing_blink 1.2s infinite ease-in-out;
+}
+.o_bf_sim_typing .dot:nth-child(2) { animation-delay: 0.2s; }
+.o_bf_sim_typing .dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes o_bf_sim_typing_blink {
+    0%, 80%, 100% { opacity: 0.3; }
+    40%           { opacity: 1; }
+}
+
+.o_bf_sim_input_row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    background: #f3f4f6;
+    border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+.o_bf_sim_input {
+    flex: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 13px;
+    background: #fff;
+    outline: none;
+}
+.o_bf_sim_input:focus { border-color: #9ca3af; }
+.o_bf_sim_send { border-radius: 50%; width: 30px; height: 30px; padding: 0; }
+.o_bf_sim_send i { font-size: 12px; }
+
+.o_bf_sim_terminated {
+    text-align: center;
+    padding: 10px;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+/* Channel-specific theming */
+.o_bf_sim_whatsapp .o_bf_sim_channel_pill { background: #25d366; }
+.o_bf_sim_whatsapp .o_bf_sim_chat         { background: #efeae2; }
+
+.o_bf_sim_sms .o_bf_sim_channel_pill { background: #3b82f6; }
+.o_bf_sim_sms .o_bf_sim_chat         { background: #f1f5f9; }
+.o_bf_sim_sms .o_bf_sim_bubble_in,
+.o_bf_sim_sms .o_bf_sim_bubble_out   { background: #fff; border: 1px solid #e2e8f0; }
+.o_bf_sim_sms .o_bf_sim_bubble_out   { background: #dbeafe; border-color: #93c5fd; }
+
+.o_bf_sim_ussd .o_bf_sim_channel_pill { background: #4338ca; }
+.o_bf_sim_ussd .o_bf_sim_phone        { background: #111; }
+.o_bf_sim_ussd .o_bf_sim_phone_status { background: #1f2937; border-color: #374151; }
+.o_bf_sim_ussd .o_bf_sim_chat         { background: #111; color: #d1d5db; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.o_bf_sim_ussd .o_bf_sim_bubble,
+.o_bf_sim_ussd .o_bf_sim_bubble_in,
+.o_bf_sim_ussd .o_bf_sim_bubble_out   {
+    background: transparent; color: #f9fafb; max-width: 100%;
+    border-radius: 0; padding: 4px 0; align-self: stretch;
+    border-bottom: 1px dashed #374151;
+}
+.o_bf_sim_ussd .o_bf_sim_bubble_out::before { content: "> "; color: #6ee7b7; }
+.o_bf_sim_ussd .o_bf_sim_input_row { background: #1f2937; border-color: #374151; }
+.o_bf_sim_ussd .o_bf_sim_input     { background: #111; border-color: #374151; color: #f9fafb; }
+.o_bf_sim_ussd .o_bf_sim_terminated{ background: #1f2937; color: #9ca3af; }
+.o_bf_sim_ussd .o_bf_sim_persona_chip { background: #374151; color: #f9fafb; }
+.o_bf_sim_ussd .o_bf_sim_persona_chip:hover { background: #4b5563; }
+/* Desktop collapsed: panel slides shut sideways, canvas takes the freed width. */
+.o_bot_flow_props_collapsed {
+    width: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    border-left-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Mobile: panel becomes an overlay so the canvas keeps full width regardless. */
+@media (max-width: 767px) {
+    .o_bot_flow_props {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(86vw, 320px);
+        z-index: 12;
+        box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08);
+        transition: transform 0.25s ease, opacity 0.18s ease;
+    }
+    .o_bot_flow_props_collapsed {
+        transform: translateX(100%);
+        opacity: 0;
+        pointer-events: none;
+        /* Reset desktop-only collapse rules so mobile uses transform instead. */
+        width: min(86vw, 320px) !important;
+        padding: 14px 12px !important;
+        border-left-width: 1px;
+        overflow: hidden;
+    }
+}
+.o_bf_props_header {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+    font-weight: 700;
+    margin-bottom: 14px;
+}
+.o_bf_props_type_row { margin-bottom: 12px; }
+.o_bf_props_badge {
+    font-size: 11px !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px !important;
+}
+.o_bf_props_label {
+    font-size: 10.5px;
+    color: #9ca3af;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 3px;
+}
+.o_bf_props_value { font-size: 13px; color: #1f2937; }
+.o_bf_props_bubble { font-size: 11.5px; max-height: 80px; overflow: hidden; }
+.o_bf_props_actions {
+    margin-top: auto;
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+/* Sequence + delivery type side-by-side */
+.o_bf_props_meta_row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 4px;
+}
+.o_bf_props_meta_row > div { min-width: 0; }
+
+/* Delivery type mini badge */
+.o_bf_props_wa_badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    color: #fff;
+    margin-top: 1px;
+}
+
+/* Icon + text rows (header, flow name) */
+.o_bf_props_icon_row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #374151;
+}
+.o_bf_props_icon_row .fa { color: #6b7280; font-size: 11px; flex-shrink: 0; }
+
+/* Footer value */
+.o_bf_props_footer_val {
+    font-size: 11.5px;
+    color: #6b7280;
+    font-style: italic;
+}
+
+/* Interactive items list (buttons / list rows) */
+.o_bf_props_ia_list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 4px;
+}
+.o_bf_props_ia_item {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid #c8d8f8;
+    background: #f0f5ff;
+    color: #0b5ed7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Flow CTA value */
+.o_bf_props_flow_cta {
+    font-size: 12px;
+    font-weight: 600;
+    color: #00a884;
+}
+
+.o_bf_props_add_btn {
+    border: 1px solid #d1fae5;
+    color: #059669;
+    background: #f0fdf4;
+}
+.o_bf_props_add_btn:hover { background: #d1fae5; border-color: #6ee7b7; }
+.o_bf_props_delete_btn {
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    background: #fff;
+}
+.o_bf_props_delete_btn:hover { background: #fef2f2; border-color: #f87171; }
+.o_bf_props_warning {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #92400e;
+    line-height: 1.45;
+    margin-bottom: 10px;
+}
+.o_bf_props_warning .fa { color: #f59e0b; }
+
+.o_bf_props_empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    text-align: center;
+    font-size: 12px;
+    gap: 4px;
+    padding: 20px 0;
+}
+
+/* ── Flow grid (absolute-positioned card container) ─────────────────────────── */
+.o_bf_grid {
+    position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.o_bf_svg {
+    position: absolute;
+    left: 0; top: 0;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.o_bf_connector { fill: none; stroke: #9ca3b8; stroke-width: 1.8; }
+.o_bf_lbl_bg  { fill: #f0fdf4; stroke: #4ade80; stroke-width: 1.2; }
+.o_bf_lbl_txt {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    fill: #15803d;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────────── */
+.o_bf_card {
+    background: #eef0f8;
+    border: 1px solid #dde1ee;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    overflow: visible;
+    position: relative;
+    z-index: 1;
+    transition: box-shadow .18s, transform .15s, border-color .15s;
+    cursor: grab;
+}
+.o_bf_card:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,.1);
+    border-color: #c4c9de;
+    transform: translateY(-2px);
+}
+.o_bf_card.o_bf_card_selected {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.35), 0 4px 18px rgba(59,130,246,.15) !important;
+    transform: translateY(-2px);
+}
+
+/* Card header: icon + name + type badge */
+.o_bf_card_head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 11px 12px 8px;
+}
+.o_bf_card_type_icon {
+    font-size: 15px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.o_bf_card_name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1f2937;
+    outline: none;
+    border-radius: 4px;
+    padding: 2px 3px;
+    margin: -2px -3px;
+    cursor: text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_bf_card_name:focus {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    background: rgba(255,255,255,.9);
+    box-shadow: 0 0 0 2px #93c5fd;
+}
+.o_bf_card_badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+/* White content box inside card */
+.o_bf_card_content {
+    margin: 0 10px 10px;
+    background: #fff;
+    border-radius: 9px;
+    padding: 8px 10px;
+    border: 1px solid #e4e7f5;
+}
+
+/* WhatsApp bubble preview (no chat-tail, clean box) */
+.o_bf_bubble {
+    background: #dcf8c6;
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #1f2937;
+    word-break: break-word;
+}
+
+/* Header: bold text above body */
+.o_bf_bubble_header_text {
+    padding: 7px 10px 4px;
+    font-weight: 700;
+    font-size: 12.5px;
+    color: #111827;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+/* Header: image / video placeholder */
+.o_bf_bubble_header_media {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(0,0,0,.08);
+    padding: 14px 10px;
+    font-size: 11px;
+    color: #6b7280;
+}
+.o_bf_bubble_header_media .fa { font-size: 22px; color: #9ca3af; }
+
+/* Header: document row */
+.o_bf_bubble_header_doc {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(0,0,0,.06);
+    padding: 7px 10px;
+    font-size: 11.5px;
+    color: #374151;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.o_bf_bubble_header_doc .fa { font-size: 16px; color: #6b7280; flex-shrink: 0; }
+
+/* Body text */
+.o_bf_bubble_body {
+    padding: 6px 10px;
+}
+
+/* Footer: small muted caption */
+.o_bf_bubble_footer {
+    padding: 2px 10px 6px;
+    font-size: 10.5px;
+    color: #6b7280;
+    font-style: italic;
+}
+
+/* Interactive flow CTA — separator + tappable row (matches WhatsApp device rendering) */
+.o_bf_bubble_flow_sep {
+    height: 1px;
+    background: rgba(0,0,0,.12);
+    margin: 4px 0 0;
+}
+.o_bf_bubble_flow_cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #00a884;
+}
+.o_bf_bubble_flow_cta .fa { font-size: 11px; }
+
+/* Answer chips */
+.o_bf_chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.o_bf_chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1.5px solid #93c5fd;
+    color: #1d4ed8;
+    background: #eff6ff;
+    white-space: nowrap;
+}
+
+/* Interactive preview elements inside card content ─────────────────────────── */
+.o_bf_ia_sep {
+    height: 1px;
+    background: #e4e7f5;
+    margin: 8px 0 6px;
+}
+
+/* Reply buttons (interactive_button) */
+.o_bf_ia_btn {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #0b5ed7;
+    text-align: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid #c8d8f8;
+    background: #f0f5ff;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_bf_ia_btn:last-child { margin-bottom: 0; }
+
+/* List button + rows (interactive_list) */
+.o_bf_ia_list_btn {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #0b5ed7;
+    text-align: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid #c8d8f8;
+    background: #f0f5ff;
+    margin-bottom: 6px;
+}
+.o_bf_ia_list_row {
+    font-size: 11px;
+    color: #374151;
+    padding: 3px 4px;
+    border-bottom: 1px solid #f0f0f5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.o_bf_ia_list_row:last-of-type { border-bottom: none; }
+.o_bf_ia_list_more {
+    font-size: 10px;
+    color: #9ca3af;
+    text-align: center;
+    padding-top: 3px;
+}
+
+/* ── Message count strip (funnel stats on each card) ────────────────────────── */
+.o_bf_card_stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 12px 9px;
+}
+.o_bf_card_stat_count {
+    font-size: 10px;
+    font-weight: 700;
+    color: #4b5563;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 48px;
+}
+.o_bf_card_stat_bar {
+    flex: 1;
+    height: 3px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    overflow: hidden;
+}
+.o_bf_card_stat_fill { height: 100%; border-radius: 2px; }
+.o_bf_card_stat_pct {
+    font-size: 9.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+    min-width: 28px;
+    text-align: right;
+}
+
+/* ── Props panel reach section ───────────────────────────────────────────────── */
+.o_bf_props_reach_row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+.o_bf_props_reach_num {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 52px;
+}
+.o_bf_props_reach_bar_wrap {
+    flex: 1;
+    height: 5px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.o_bf_props_reach_bar_fill { height: 100%; border-radius: 3px; transition: width .3s; }
+.o_bf_props_reach_pct {
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    min-width: 34px;
+    text-align: right;
+}
+.o_bf_props_drop_lbl {
+    font-size: 10px;
+    color: #9ca3af;
+    margin-bottom: 2px;
+}
+
+/* Output dot — replaces the + button; click to add a child step */
+.o_bf_out_dot {
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #818cf8;
+    border: 2.5px solid #fff;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 1px 4px rgba(0,0,0,.18);
+    transition: transform .15s, background .12s, box-shadow .12s;
+}
+.o_bf_out_dot:hover {
+    transform: translateX(-50%) scale(1.55);
+    background: #25d366;
+    box-shadow: 0 2px 8px rgba(37,211,102,.45);
+}
+
+/* ── Dead-end warning ────────────────────────────────────────────────────────── */
+.o_bf_card_dead_end {
+    border-color: #f59e0b !important;
+}
+.o_bf_dead_end_badge {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #f59e0b;
+    color: #fff;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 25;
+    box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+
+/* ── Fallback connector (dashed orange) ──────────────────────────────────────── */
+.o_bf_fallback_connector {
+    fill: none;
+    stroke: #f59e0b;
+    stroke-width: 1.6;
+    stroke-dasharray: 5 3;
+}
+.o_bf_fallback_lbl {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    fill: #d97706;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+/* ── Jump-to-Flow card body ──────────────────────────────────────────────────── */
+.o_bf_jump_box {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 4px 0 6px 0;
+    color: #312e81;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.o_bf_jump_target {
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 600;
+    color: #3730a3;
+}
+.o_bf_jump_arrow { color: #4f46e5; font-size: 11px; }
+.o_bf_jump_target_name { word-break: break-word; flex: 1; }
+
+.o_bf_props_target_link {
+    color: #4338ca;
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 1px dashed #a5b4fc;
+}
+.o_bf_props_target_link:hover {
+    color: #312e81;
+    border-bottom-color: #4338ca;
+    background: #eef2ff;
+}
+.o_bf_jump_step { margin-top: 2px; font-size: 11px; }
+.o_bf_jump_mode {
+    margin-top: 6px;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.o_bf_jump_mode_sub { background: #4338ca; color: #fff; }
+.o_bf_jump_mode_one { background: #fde68a; color: #92400e; }
+.o_bf_jump_map_count { margin-top: 6px; font-size: 10px; }
+
+/* ── Subroutine return arc (dashed self-loop on jump cards) ──────────────────── */
+.o_bf_jump_arc {
+    fill: none;
+    stroke: #4338ca;
+    stroke-width: 1.6;
+    stroke-dasharray: 5 3;
+}
+.o_bf_jump_arc_head { fill: #4338ca; }
+
+/* ── Empty state ─────────────────────────────────────────────────────────────── */
+.o_bf_empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #9ca3af;
+    text-align: center;
+}

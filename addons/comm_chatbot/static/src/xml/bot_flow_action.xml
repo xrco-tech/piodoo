@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="comm_chatbot.BotFlowAction">
+        <div class="o_bot_flow_action">
+
+            <!-- Toolbar -->
+            <div class="o_bot_flow_toolbar">
+                <div class="o_bf_toolbar_left">
+                    <button class="btn btn-sm btn-light o_bf_back_btn"
+                            t-on-click="() => this._goBack()"
+                            title="Back to bot details">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <span class="o_bot_flow_title" t-esc="state.botName"/>
+                </div>
+                <div class="o_bf_toolbar_right">
+                    <button class="btn btn-sm btn-light o_bf_zoom_btn"
+                            t-on-click="() => this._setZoom(state.zoom - 0.1)">−</button>
+                    <span class="o_bf_zoom_label" t-esc="zoomLabel"/>
+                    <button class="btn btn-sm btn-light o_bf_zoom_btn"
+                            t-on-click="() => this._setZoom(state.zoom + 0.1)">+</button>
+                    <button class="btn btn-sm btn-light ms-2"
+                            t-on-click="() => this._togglePanel()"
+                            t-att-title="state.panelVisible ? 'Hide panel' : 'Show panel'">
+                        <i t-att-class="state.panelVisible ? 'fa fa-angle-double-right' : 'fa fa-angle-double-left'"/>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body: canvas + right panel -->
+            <div class="o_bot_flow_body">
+
+                <!-- Canvas -->
+                <div class="o_bot_flow_canvas_wrap">
+                    <div t-if="state.loading" class="o_bot_flow_loading">
+                        <div class="o_bf_loading_spinner"/>
+                    </div>
+                    <div t-else="" class="o_bot_flow_canvas" t-ref="canvas">
+                        <div class="o_bot_flow_layer"
+                             t-attf-style="transform: scale({{state.zoom}}); transform-origin: 0 0;">
+                            <!-- Nodes -->
+                            <t t-foreach="state.nodes" t-as="node" t-key="node.id">
+                                <div class="o_bot_flow_node"
+                                     t-attf-class="o_bot_flow_node o_bot_flow_kind_#{node.kind} #{state.selectedStepId === node.id ? 'o_bf_selected' : ''} #{state.sim.currentStepId === node.id ? 'o_bf_sim_current' : ''}"
+                                     t-attf-style="#{_nodePosStyle(node)} background:#{_typeCfg(node.kind).bg}; border-color:#{_typeCfg(node.kind).border};"
+                                     t-on-click="() => this._selectStep(node.id)"
+                                     t-on-dblclick="() => this._openStepForm(node.id)">
+                                    <div class="o_bf_node_header"
+                                         t-attf-style="color:#{_typeCfg(node.kind).color};">
+                                        <span class="o_bf_node_icon"
+                                              t-esc="_typeCfg(node.kind).icon"/>
+                                        <span class="o_bf_node_type"
+                                              t-esc="_typeCfg(node.kind).label"/>
+                                    </div>
+                                    <div class="o_bf_node_name" t-esc="node.name"/>
+                                    <div class="o_bf_node_body"
+                                         t-if="node.preview"
+                                         t-esc="node.preview"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right panel -->
+                <div t-att-class="'o_bot_flow_props' + (state.panelVisible ? '' : ' o_bot_flow_props_collapsed')"
+                     t-if="!state.loading">
+                    <!-- Tabs -->
+                    <div class="o_bf_panel_tabs">
+                        <button t-att-class="'o_bf_panel_tab' + (state.panelMode === 'props' ? ' active' : '')"
+                                t-on-click="() => this._setPanelMode('props')">
+                            <i class="fa fa-info-circle me-1"/>Properties
+                        </button>
+                        <button t-att-class="'o_bf_panel_tab' + (state.panelMode === 'sim' ? ' active' : '')"
+                                t-on-click="() => this._setPanelMode('sim')">
+                            <i class="fa fa-play-circle me-1"/>Simulator
+                        </button>
+                    </div>
+
+                    <!-- Properties tab -->
+                    <t t-if="state.panelMode === 'props'">
+                        <t t-set="step" t-value="_selectedStep()"/>
+                        <div class="o_bf_props_content">
+                            <t t-if="!step">
+                                <div class="text-muted p-3">
+                                    Click a step in the canvas to view its properties.
+                                </div>
+                            </t>
+                            <t t-if="step">
+                                <div class="o_bf_prop_row">
+                                    <div class="o_bf_prop_label">Name</div>
+                                    <div class="o_bf_prop_value" t-esc="step.name"/>
+                                </div>
+                                <div class="o_bf_prop_row">
+                                    <div class="o_bf_prop_label">Kind</div>
+                                    <div class="o_bf_prop_value">
+                                        <span t-esc="_typeCfg(step.kind).icon"/>
+                                        <span t-esc="_typeCfg(step.kind).label"/>
+                                    </div>
+                                </div>
+                                <div class="o_bf_prop_row" t-if="step.body">
+                                    <div class="o_bf_prop_label">Body</div>
+                                    <div class="o_bf_prop_value">
+                                        <pre t-esc="step.body" class="o_bf_prop_pre"/>
+                                    </div>
+                                </div>
+                                <div class="o_bf_prop_row" t-if="step.input_type">
+                                    <div class="o_bf_prop_label">Input type</div>
+                                    <div class="o_bf_prop_value" t-esc="step.input_type"/>
+                                </div>
+                                <div class="o_bf_prop_row" t-if="step.save_to">
+                                    <div class="o_bf_prop_label">Save to</div>
+                                    <div class="o_bf_prop_value" t-esc="step.save_to"/>
+                                </div>
+                                <div class="o_bf_prop_row" t-if="step.llm_model">
+                                    <div class="o_bf_prop_label">LLM model</div>
+                                    <div class="o_bf_prop_value" t-esc="step.llm_model"/>
+                                </div>
+                                <div class="o_bf_prop_row" t-if="step.llm_output_mode">
+                                    <div class="o_bf_prop_label">LLM output</div>
+                                    <div class="o_bf_prop_value" t-esc="step.llm_output_mode"/>
+                                </div>
+                                <div class="o_bf_prop_row" t-if="step.options and step.options.length">
+                                    <div class="o_bf_prop_label">Options</div>
+                                    <div class="o_bf_prop_value">
+                                        <ul class="o_bf_options_list">
+                                            <t t-foreach="step.options" t-as="opt" t-key="opt.label">
+                                                <li>
+                                                    <b t-esc="opt.label"/>
+                                                    <span class="text-muted">
+                                                        → <t t-esc="opt.next_step_name || '(no next)'"/>
+                                                    </span>
+                                                </li>
+                                            </t>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-primary mt-3"
+                                        t-on-click="() => this._openStepForm(step.id)">
+                                    <i class="fa fa-external-link me-1"/>
+                                    Open step form
+                                </button>
+                            </t>
+                        </div>
+                    </t>
+
+                    <!-- Simulator tab -->
+                    <t t-if="state.panelMode === 'sim'">
+                        <div t-attf-class="o_bf_sim o_bf_sim_#{state.sim.channel}">
+
+                            <!-- Persona / setup form -->
+                            <t t-if="!state.sim.started">
+                                <div class="o_bf_sim_persona_form">
+                                    <div class="o_bf_sim_persona_title">
+                                        Run as a contact
+                                    </div>
+                                    <div class="o_bf_sim_persona_help">
+                                        The bot will run against this test persona in shadow
+                                        mode — nothing is actually sent.
+                                    </div>
+                                    <label class="o_bf_sim_persona_label">Channel</label>
+                                    <select class="o_bf_sim_persona_input"
+                                            t-model="state.sim.channel">
+                                        <t t-foreach="state.channels" t-as="ch" t-key="ch.code">
+                                            <option t-att-value="ch.code" t-esc="ch.name"/>
+                                        </t>
+                                    </select>
+                                    <label class="o_bf_sim_persona_label">Name</label>
+                                    <input type="text" class="o_bf_sim_persona_input"
+                                           t-model="state.sim.personaName"
+                                           placeholder="Test User"/>
+                                    <label class="o_bf_sim_persona_label">Mobile</label>
+                                    <input type="tel" class="o_bf_sim_persona_input"
+                                           t-model="state.sim.personaMobile"
+                                           placeholder="+27600000001"/>
+                                    <div class="o_bf_sim_llm_toggle">
+                                        <label>
+                                            <input type="checkbox"
+                                                   t-model="state.sim.spendRealLlmTokens"/>
+                                            Spend real LLM tokens
+                                        </label>
+                                    </div>
+                                    <t t-if="state.sim.spendRealLlmTokens">
+                                        <div class="o_bf_sim_warning">
+                                            ⚠️ Real tokens will be charged for any LLM step
+                                            hit during the simulation.
+                                        </div>
+                                    </t>
+
+                                    <!-- Variable prefills -->
+                                    <t t-if="state.variables and state.variables.length">
+                                        <div class="o_bf_sim_vars_group_title">
+                                            <i class="fa fa-tag me-1"/>Variables
+                                        </div>
+                                        <t t-foreach="state.variables" t-as="v" t-key="v.name">
+                                            <label class="o_bf_sim_persona_label"
+                                                   t-esc="v.name"/>
+                                            <input type="text" class="o_bf_sim_persona_input"
+                                                   t-att-placeholder="v.default_value || v.type"
+                                                   t-on-input="ev => state.sim.variables[v.name] = ev.target.value"/>
+                                        </t>
+                                    </t>
+
+                                    <button class="btn btn-primary mt-3 w-100"
+                                            t-att-disabled="state.sim.loading"
+                                            t-on-click="() => this._startSim()">
+                                        <i class="fa fa-play me-1"/>Start simulation
+                                    </button>
+                                </div>
+                            </t>
+
+                            <!-- Running simulator -->
+                            <t t-if="state.sim.started">
+                                <div class="o_bf_sim_header">
+                                    <span>
+                                        <i class="fa fa-user me-1"/>
+                                        <t t-esc="state.sim.personaName"/>
+                                        <span class="text-muted ms-2 small">
+                                            (<t t-esc="state.sim.channel"/>)
+                                        </span>
+                                    </span>
+                                    <span t-if="state.sim.spentUsd > 0" class="small text-muted">
+                                        LLM: $<t t-esc="state.sim.spentUsd.toFixed(4)"/>
+                                    </span>
+                                </div>
+
+                                <div class="o_bf_sim_transcript">
+                                    <t t-foreach="state.sim.messages" t-as="msg" t-key="msg_index">
+                                        <div t-attf-class="o_bf_sim_bubble o_bf_sim_bubble_#{msg.direction}">
+                                            <div class="o_bf_sim_bubble_meta">
+                                                <t t-if="msg.direction === 'outbound'">🤖 Bot</t>
+                                                <t t-else="">👤 You</t>
+                                                <span t-if="msg.step_name" class="text-muted ms-1">
+                                                    (<t t-esc="msg.step_name"/>)
+                                                </span>
+                                            </div>
+                                            <pre class="o_bf_sim_bubble_body" t-esc="msg.body"/>
+                                            <div t-if="msg.llm" class="o_bf_sim_llm_line">
+                                                ⚡ <t t-esc="msg.llm.model"/> •
+                                                <t t-esc="msg.llm.tokens_in"/> in /
+                                                <t t-esc="msg.llm.tokens_out"/> out •
+                                                $<t t-esc="msg.llm.cost.toFixed(4)"/>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+
+                                <div class="o_bf_sim_prompt" t-if="state.sim.waiting === 'menu'">
+                                    <div class="o_bf_sim_prompt_title">
+                                        <i class="fa fa-hand-o-right me-1"/>
+                                        Reply with:
+                                    </div>
+                                    <ul>
+                                        <t t-foreach="state.sim.currentOptions" t-as="opt"
+                                           t-key="opt.value">
+                                            <li>
+                                                <b><t t-esc="opt_index + 1"/></b> —
+                                                <t t-esc="opt.label"/>
+                                            </li>
+                                        </t>
+                                    </ul>
+                                </div>
+                                <div class="o_bf_sim_prompt" t-if="state.sim.waiting === 'input'">
+                                    <div class="o_bf_sim_prompt_title">
+                                        <i class="fa fa-keyboard-o me-1"/>
+                                        Enter your reply
+                                    </div>
+                                </div>
+                                <div class="o_bf_sim_prompt o_bf_sim_prompt_done"
+                                     t-if="state.sim.waiting === 'done'">
+                                    <i class="fa fa-check-circle me-1"/>
+                                    Conversation ended.
+                                </div>
+
+                                <div class="o_bf_sim_input_row"
+                                     t-if="state.sim.waiting !== 'done'">
+                                    <input type="text" class="o_bf_sim_input"
+                                           t-model="state.sim.userInput"
+                                           placeholder="Your reply..."
+                                           t-on-keydown="ev => ev.key === 'Enter' &amp;&amp; this._sendSimReply()"/>
+                                    <button class="btn btn-primary btn-sm ms-1"
+                                            t-att-disabled="state.sim.loading"
+                                            t-on-click="() => this._sendSimReply()">
+                                        Send
+                                    </button>
+                                </div>
+
+                                <div class="o_bf_sim_footer">
+                                    <button class="btn btn-sm btn-light"
+                                            t-on-click="() => this._resetSim()">
+                                        <i class="fa fa-refresh me-1"/>Reset
+                                    </button>
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+
+                </div>
+            </div>
+
+        </div>
+    </t>
+
+</templates>
