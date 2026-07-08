@@ -261,6 +261,8 @@ export class BotFlowAction extends Component {
 }
 
 BotFlowAction.template = "comm_chatbot.BotFlowAction";
-BotFlowAction.props = ["action", "actionId?"];
+BotFlowAction.props = {
+    "*": true,   // Odoo 18 injects action / actionId / updateActionState / className
+};
 
 registry.category("actions").add("comm_chatbot.bot_flow", BotFlowAction);
