@@ -105,7 +105,9 @@ function plainToHtml(text) {
 // ── Client action component ───────────────────────────────────────────────────
 export class ChatbotFlowAction extends Component {
     static template = "comm_whatsapp_chatbot.ChatbotFlowAction";
-    static props = ["action", "actionId?"];
+    // Wildcard: Odoo 18 client-action framework injects extra props
+    // (updateActionState, className) beyond the ones the widget uses.
+    static props = { "*": true };
 
     setup() {
         this.orm    = useService("orm");
