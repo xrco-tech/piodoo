@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onMounted, onWillUnmount, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, onPatched, onWillUnmount, useEffect, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { rpc } from "@web/core/network/rpc";
@@ -57,6 +57,8 @@ export class BotFlowAction extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.canvasRef = useRef("canvas");
+        this.gridRef = useRef("grid");
+        this.svgRef = useRef("svg");
 
         this.state = useState({
             loading: true,
@@ -88,6 +90,7 @@ export class BotFlowAction extends Component {
         });
 
         onMounted(() => this._loadFlow());
+        onPatched(() => this._drawEdges());
     }
 
     // ── Data loading ────────────────────────────────────────────────
@@ -174,11 +177,69 @@ export class BotFlowAction extends Component {
     _nodePosStyle(node) {
         const col = node._col ?? 0;
         const row = node.level ?? 0;
-        const colWidth = 260;
-        const rowHeight = 130;
-        const left = col * colWidth;
-        const top = row * rowHeight;
+        const left = col * this._colWidth() + 20;
+        const top = row * this._rowHeight() + 20;
         return `left:${left}px;top:${top}px;`;
+    }
+
+    _colWidth() { return 260; }
+    _rowHeight() { return 150; }
+
+    _gridWidth() {
+        const maxCol = this.state.nodes.reduce(
+            (m, n) => Math.max(m, n._col ?? 0), 0);
+        return (maxCol + 1) * this._colWidth() + 60;
+    }
+    _gridHeight() {
+        const maxRow = this.state.nodes.reduce(
+            (m, n) => Math.max(m, n.level ?? 0), 0);
+        return (maxRow + 1) * this._rowHeight() + 60;
+    }
+
+    _drawEdges() {
+        const svg = this.svgRef.el;
+        const grid = this.gridRef.el;
+        if (!svg || !grid) return;
+        const w = this._gridWidth();
+        const h = this._gridHeight();
+        svg.setAttribute("width", w);
+        svg.setAttribute("height", h);
+        svg.style.width = w + "px";
+        svg.style.height = h + "px";
+        svg.innerHTML = "";
+        const NS = "http://www.w3.org/2000/svg";
+
+        // Look up cards by data-id for exact positioning
+        const cards = grid.querySelectorAll(".o_bf_card");
+        const cardById = {};
+        cards.forEach(c => { cardById[c.dataset.id] = c; });
+
+        for (const node of this.state.nodes) {
+            if (!node.parent) continue;
+            const parent = cardById[String(node.parent)];
+            const child  = cardById[String(node.id)];
+            if (!parent || !child) continue;
+
+            const px = parent.offsetLeft + parent.offsetWidth / 2;
+            const py = parent.offsetTop  + parent.offsetHeight;
+            const cx = child.offsetLeft  + child.offsetWidth / 2;
+            const cy = child.offsetTop;
+            const midY = (py + cy) / 2;
+
+            const path = document.createElementNS(NS, "path");
+            path.setAttribute("d",
+                `M${px},${py} C${px},${midY} ${cx},${midY} ${cx},${cy}`);
+            path.setAttribute("class", "o_bf_connector");
+            svg.appendChild(path);
+
+            // Small arrow head at the child end
+            const dot = document.createElementNS(NS, "circle");
+            dot.setAttribute("cx", cx);
+            dot.setAttribute("cy", cy);
+            dot.setAttribute("r", 3);
+            dot.setAttribute("fill", "#9ca3b8");
+            svg.appendChild(dot);
+        }
     }
 
     _selectedStep() {
