@@ -17,7 +17,7 @@
                     </group>
 
                     <group string="Floating chat bubble">
-                        <div class="alert alert-info" colspan="2">
+                        <div class="alert alert-info" role="status" colspan="2">
                             Adds a floating chat bubble bottom-right when embedded.
                         </div>
                         <field name="embed_snippet" nolabel="1" colspan="2"
@@ -32,7 +32,7 @@
                     </group>
 
                     <group string="Allowed embed domains">
-                        <div class="alert alert-warning" colspan="2">
+                        <div class="alert alert-warning" role="alert" colspan="2">
                             Newline-separated origins. Leave empty for
                             same-origin only.
                         </div>
