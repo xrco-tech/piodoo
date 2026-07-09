@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============================================================ -->
+        <!-- NPS survey bot: exercises input step with number type +      -->
+        <!-- text input + condition branching. Great for testing input   -->
+        <!-- validation and free-text capture.                            -->
+        <!-- ============================================================ -->
+
+        <record id="bot_survey_nps" model="comm.bot">
+            <field name="name">NPS Survey (test)</field>
+            <field name="description">Ask for a 0–10 score, capture a follow-up comment, categorise as detractor / passive / promoter. Exercises input:number + input:text + condition branches.</field>
+            <field name="engine_mode">shadow</field>
+            <field name="channel_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+                ref('comm_chatbot.channel_sms'),
+                ref('comm_chatbot_web.channel_web'),
+            ])]"/>
+            <field name="default_language">en_US</field>
+            <field name="conversation_timeout_hours">1</field>
+        </record>
+
+        <record id="var_nps_score" model="comm.bot.variable">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">score</field>
+            <field name="type">int</field>
+        </record>
+        <record id="var_nps_comment" model="comm.bot.variable">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">comment</field>
+            <field name="type">string</field>
+        </record>
+
+        <record id="step_nps_intro" model="comm.bot.step">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">intro</field>
+            <field name="sequence">10</field>
+            <field name="kind">message</field>
+            <field name="body">Hi {{contact.first_name|default:there}} — quick 30-second survey. Your feedback shapes how we improve.</field>
+        </record>
+
+        <record id="step_nps_ask_score" model="comm.bot.step">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">ask_score</field>
+            <field name="sequence">20</field>
+            <field name="kind">input</field>
+            <field name="body">On a scale of 0 to 10, how likely are you to recommend us to a friend?</field>
+            <field name="input_type">number</field>
+            <field name="input_save_to">score</field>
+        </record>
+
+        <record id="step_nps_ask_comment" model="comm.bot.step">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">ask_comment</field>
+            <field name="sequence">30</field>
+            <field name="kind">input</field>
+            <field name="body">Thanks! What's the main reason for your score?</field>
+            <field name="input_type">text</field>
+            <field name="input_save_to">comment</field>
+        </record>
+
+        <record id="step_nps_categorize" model="comm.bot.step">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">categorize</field>
+            <field name="sequence">40</field>
+            <field name="kind">condition</field>
+            <field name="condition_expression">{{state.score}}</field>
+        </record>
+        <record id="opt_nps_promoter" model="comm.bot.step.option">
+            <field name="step_id" ref="step_nps_categorize"/>
+            <field name="label">promoter (9-10)</field>
+            <field name="value">promoter</field>
+        </record>
+        <record id="opt_nps_default" model="comm.bot.step.option">
+            <field name="step_id" ref="step_nps_categorize"/>
+            <field name="label">detractor or passive</field>
+            <field name="value">follow_up</field>
+            <field name="is_default" eval="True"/>
+        </record>
+
+        <record id="step_nps_thank_promoter" model="comm.bot.step">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">thank_promoter</field>
+            <field name="sequence">50</field>
+            <field name="kind">message</field>
+            <field name="body">Thanks so much! We're glad you're a fan 🎉 Would you mind leaving a Google review? {{env.review_url|default:https://g.co/}}</field>
+        </record>
+
+        <record id="step_nps_follow_up" model="comm.bot.step">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">follow_up</field>
+            <field name="sequence">60</field>
+            <field name="kind">message</field>
+            <field name="body">Thank you for the honest feedback. We'll pass "{{state.comment}}" to the team and someone will be in touch to make it right.</field>
+        </record>
+
+        <record id="step_nps_end_promoter" model="comm.bot.step">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">end_promoter</field>
+            <field name="sequence">80</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">promoter</field>
+        </record>
+        <record id="step_nps_end_follow_up" model="comm.bot.step">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="name">end_follow_up</field>
+            <field name="sequence">90</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">follow_up</field>
+        </record>
+
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_nps_intro')]"/>
+            <value eval="{'next_step_id': ref('step_nps_ask_score')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_nps_ask_score')]"/>
+            <value eval="{'next_step_id': ref('step_nps_ask_comment')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_nps_ask_comment')]"/>
+            <value eval="{'next_step_id': ref('step_nps_categorize')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('opt_nps_promoter')]"/>
+            <value eval="{'next_step_id': ref('step_nps_thank_promoter')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('opt_nps_default')]"/>
+            <value eval="{'next_step_id': ref('step_nps_follow_up')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_nps_thank_promoter')]"/>
+            <value eval="{'next_step_id': ref('step_nps_end_promoter')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_nps_follow_up')]"/>
+            <value eval="{'next_step_id': ref('step_nps_end_follow_up')}"/>
+        </function>
+
+        <function model="comm.bot" name="write">
+            <value eval="[ref('bot_survey_nps')]"/>
+            <value eval="{'entry_step_id': ref('step_nps_intro'),
+                          'env_variables': {'review_url': 'https://g.co/kgs/example'}}"/>
+        </function>
+
+        <record id="trigger_nps_wa" model="comm.bot.trigger">
+            <field name="bot_id" ref="bot_survey_nps"/>
+            <field name="channel_id" ref="comm_chatbot.channel_whatsapp"/>
+            <field name="kind">keyword</field>
+            <field name="value">survey</field>
+            <field name="match_mode">exact</field>
+            <field name="priority">5</field>
+        </record>
+
+    </data>
+</odoo>

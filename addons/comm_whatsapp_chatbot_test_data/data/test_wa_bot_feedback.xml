@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============================================================ -->
+        <!-- Feedback Survey: rating → comment → set_variable → thanks.   -->
+        <!-- Exercises numeric input capture + variable-derived branching. -->
+        <!-- ============================================================ -->
+
+        <record id="wa_bot_feedback" model="whatsapp.chatbot">
+            <field name="name">Feedback Survey (WA test)</field>
+            <field name="description">Ask for a 1-5 rating, capture free-text feedback, and thank the customer. Great for testing question_text with answer_data_type='number'.</field>
+            <field name="channel">whatsapp</field>
+            <field name="status">published</field>
+        </record>
+
+        <!-- Intro -->
+        <record id="wa_step_feedback_intro" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_feedback"/>
+            <field name="name">intro</field>
+            <field name="sequence">10</field>
+            <field name="step_type">message</field>
+            <field name="body_plain">Thanks for choosing us 🙏 A quick 2-question survey — your input shapes what we build.</field>
+        </record>
+
+        <!-- Ask rating -->
+        <record id="wa_step_feedback_rating" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_feedback"/>
+            <field name="parent_id" ref="wa_step_feedback_intro"/>
+            <field name="name">ask_rating</field>
+            <field name="sequence">20</field>
+            <field name="step_type">question_numeric</field>
+            <field name="body_plain">On a scale of 1 to 5, how was your experience?</field>
+            <field name="answer_data_type">number</field>
+            <field name="variable_name">rating</field>
+        </record>
+
+        <!-- Ask comment -->
+        <record id="wa_step_feedback_comment" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_feedback"/>
+            <field name="parent_id" ref="wa_step_feedback_rating"/>
+            <field name="name">ask_comment</field>
+            <field name="sequence">30</field>
+            <field name="step_type">question_text</field>
+            <field name="body_plain">Thanks for the {{rating}}/5! What's the one thing that could be better?</field>
+            <field name="answer_data_type">string</field>
+            <field name="variable_name">comment</field>
+        </record>
+
+        <!-- Set derived variable — categorize -->
+        <record id="wa_step_feedback_categorize" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_feedback"/>
+            <field name="parent_id" ref="wa_step_feedback_comment"/>
+            <field name="name">categorize</field>
+            <field name="sequence">40</field>
+            <field name="step_type">set_variable</field>
+            <field name="variable_name">category</field>
+            <field name="variable_value">received</field>
+        </record>
+
+        <!-- Thank you -->
+        <record id="wa_step_feedback_thanks" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_feedback"/>
+            <field name="parent_id" ref="wa_step_feedback_categorize"/>
+            <field name="name">thanks</field>
+            <field name="sequence">50</field>
+            <field name="step_type">message</field>
+            <field name="body_plain">Thank you 💚 We've recorded your feedback: "{{comment}}". Someone from the team will follow up shortly.</field>
+        </record>
+
+        <!-- End -->
+        <record id="wa_step_feedback_end" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_feedback"/>
+            <field name="parent_id" ref="wa_step_feedback_thanks"/>
+            <field name="name">end</field>
+            <field name="sequence">60</field>
+            <field name="step_type">end_flow</field>
+        </record>
+
+    </data>
+</odoo>

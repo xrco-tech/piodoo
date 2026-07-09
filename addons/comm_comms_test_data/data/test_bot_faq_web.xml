@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============================================================ -->
+        <!-- FAQ bot: showcases the Web channel with quick-reply buttons  -->
+        <!-- for common questions. Uses conditions to loop back to menu.  -->
+        <!-- ============================================================ -->
+
+        <record id="bot_faq_web" model="comm.bot">
+            <field name="name">FAQ Bot (test — Web)</field>
+            <field name="description">Website FAQ bot with quick-reply buttons. Runs on WhatsApp AND Web — try it via the Device tab in the flow viewer.</field>
+            <field name="engine_mode">shadow</field>
+            <field name="channel_ids" eval="[(6, 0, [
+                ref('comm_chatbot.channel_whatsapp'),
+                ref('comm_chatbot_web.channel_web'),
+            ])]"/>
+            <field name="default_language">en_US</field>
+            <field name="conversation_timeout_hours">1</field>
+            <field name="web_allowed_domains">https://example.com
+https://www.example.com</field>
+        </record>
+
+        <record id="var_faq_topic" model="comm.bot.variable">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">topic</field>
+            <field name="type">string</field>
+        </record>
+
+        <record id="step_faq_greet" model="comm.bot.step">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">greet</field>
+            <field name="sequence">10</field>
+            <field name="kind">message</field>
+            <field name="body">Hi {{contact.first_name|default:there}}! 👋 I can help with questions about our services.</field>
+        </record>
+
+        <record id="step_faq_menu" model="comm.bot.step">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">menu</field>
+            <field name="sequence">20</field>
+            <field name="kind">menu</field>
+            <field name="body">What would you like to know about?</field>
+            <field name="input_save_to">topic</field>
+        </record>
+
+        <record id="opt_faq_pricing" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_menu"/>
+            <field name="label">💰 Pricing</field>
+            <field name="value">pricing</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="opt_faq_hours" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_menu"/>
+            <field name="label">🕐 Hours</field>
+            <field name="value">hours</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="opt_faq_location" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_menu"/>
+            <field name="label">📍 Location</field>
+            <field name="value">location</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="opt_faq_agent" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_menu"/>
+            <field name="label">🎧 Talk to agent</field>
+            <field name="value">agent</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="opt_faq_bye" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_menu"/>
+            <field name="label">👋 Goodbye</field>
+            <field name="value">bye</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <record id="step_faq_router" model="comm.bot.step">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">route</field>
+            <field name="sequence">30</field>
+            <field name="kind">condition</field>
+            <field name="condition_expression">{{state.topic}}</field>
+        </record>
+        <record id="opt_faq_route_pricing" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_router"/>
+            <field name="label">is pricing</field>
+            <field name="value">pricing</field>
+        </record>
+        <record id="opt_faq_route_hours" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_router"/>
+            <field name="label">is hours</field>
+            <field name="value">hours</field>
+        </record>
+        <record id="opt_faq_route_location" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_router"/>
+            <field name="label">is location</field>
+            <field name="value">location</field>
+        </record>
+        <record id="opt_faq_route_agent" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_router"/>
+            <field name="label">is agent</field>
+            <field name="value">agent</field>
+        </record>
+        <record id="opt_faq_route_default" model="comm.bot.step.option">
+            <field name="step_id" ref="step_faq_router"/>
+            <field name="label">bye</field>
+            <field name="value">bye</field>
+            <field name="is_default" eval="True"/>
+        </record>
+
+        <record id="step_faq_reply_pricing" model="comm.bot.step">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">reply_pricing</field>
+            <field name="sequence">40</field>
+            <field name="kind">message</field>
+            <field name="body">Our pricing starts at R99/month for individuals and R499/month for teams. Enterprise plans are custom — contact sales for a quote.</field>
+        </record>
+
+        <record id="step_faq_reply_hours" model="comm.bot.step">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">reply_hours</field>
+            <field name="sequence">50</field>
+            <field name="kind">message</field>
+            <field name="body">We're open Mon–Fri, 8am–6pm SAST. Weekend support is available for premium customers.</field>
+        </record>
+
+        <record id="step_faq_reply_location" model="comm.bot.step">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">reply_location</field>
+            <field name="sequence">60</field>
+            <field name="kind">message</field>
+            <field name="body">Our offices are in Sandton, Johannesburg. Book an on-site visit via our website.</field>
+        </record>
+
+        <record id="step_faq_reply_agent" model="comm.bot.step">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">reply_agent</field>
+            <field name="sequence">70</field>
+            <field name="kind">handoff</field>
+            <field name="handoff_message">Connecting you to a human agent — one moment please...</field>
+        </record>
+
+        <record id="step_faq_bye" model="comm.bot.step">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">bye</field>
+            <field name="sequence">80</field>
+            <field name="kind">message</field>
+            <field name="body">Thanks for chatting! Have a great day, {{contact.first_name|default:friend}} 👋</field>
+        </record>
+
+        <record id="step_faq_end" model="comm.bot.step">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="name">end</field>
+            <field name="sequence">90</field>
+            <field name="kind">end</field>
+            <field name="end_outcome">completed</field>
+        </record>
+
+        <!-- Wire graph -->
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_faq_greet')]"/>
+            <value eval="{'next_step_id': ref('step_faq_menu')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_faq_menu')]"/>
+            <value eval="{'next_step_id': ref('step_faq_router')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('opt_faq_route_pricing')]"/>
+            <value eval="{'next_step_id': ref('step_faq_reply_pricing')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('opt_faq_route_hours')]"/>
+            <value eval="{'next_step_id': ref('step_faq_reply_hours')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('opt_faq_route_location')]"/>
+            <value eval="{'next_step_id': ref('step_faq_reply_location')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('opt_faq_route_agent')]"/>
+            <value eval="{'next_step_id': ref('step_faq_reply_agent')}"/>
+        </function>
+        <function model="comm.bot.step.option" name="write">
+            <value eval="[ref('opt_faq_route_default')]"/>
+            <value eval="{'next_step_id': ref('step_faq_bye')}"/>
+        </function>
+
+        <!-- All reply branches loop back to the menu for another question -->
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_faq_reply_pricing')]"/>
+            <value eval="{'next_step_id': ref('step_faq_menu')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_faq_reply_hours')]"/>
+            <value eval="{'next_step_id': ref('step_faq_menu')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_faq_reply_location')]"/>
+            <value eval="{'next_step_id': ref('step_faq_menu')}"/>
+        </function>
+        <function model="comm.bot.step" name="write">
+            <value eval="[ref('step_faq_bye')]"/>
+            <value eval="{'next_step_id': ref('step_faq_end')}"/>
+        </function>
+
+        <function model="comm.bot" name="write">
+            <value eval="[ref('bot_faq_web')]"/>
+            <value eval="{'entry_step_id': ref('step_faq_greet')}"/>
+        </function>
+
+        <!-- Trigger: 'faq' keyword on WhatsApp -->
+        <record id="trigger_faq_wa" model="comm.bot.trigger">
+            <field name="bot_id" ref="bot_faq_web"/>
+            <field name="channel_id" ref="comm_chatbot.channel_whatsapp"/>
+            <field name="kind">keyword</field>
+            <field name="value">faq</field>
+            <field name="match_mode">exact</field>
+            <field name="priority">5</field>
+        </record>
+
+    </data>
+</odoo>

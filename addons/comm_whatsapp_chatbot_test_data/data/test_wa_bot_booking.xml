@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============================================================ -->
+        <!-- Booking Bot: linear message → question → question → confirm  -->
+        <!-- Simplest working example on the WA chatbot engine.           -->
+        <!-- ============================================================ -->
+
+        <record id="wa_bot_booking" model="whatsapp.chatbot">
+            <field name="name">Booking Bot (WA test)</field>
+            <field name="description">Linear appointment-booking flow. Ask name, ask date, confirm. Try it from the flow viewer's simulator OR via the Copy embed code button.</field>
+            <field name="channel">whatsapp</field>
+            <field name="status">published</field>
+        </record>
+
+        <!-- Root: greeting -->
+        <record id="wa_step_booking_greet" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_booking"/>
+            <field name="name">greet</field>
+            <field name="sequence">10</field>
+            <field name="step_type">message</field>
+            <field name="body_plain">Hi 👋 I can book an appointment for you. Let's get started.</field>
+        </record>
+
+        <!-- Ask name -->
+        <record id="wa_step_booking_ask_name" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_booking"/>
+            <field name="parent_id" ref="wa_step_booking_greet"/>
+            <field name="name">ask_name</field>
+            <field name="sequence">20</field>
+            <field name="step_type">question_text</field>
+            <field name="body_plain">What's your name?</field>
+            <field name="answer_data_type">string</field>
+            <field name="variable_name">contact_name</field>
+        </record>
+
+        <!-- Ask date -->
+        <record id="wa_step_booking_ask_date" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_booking"/>
+            <field name="parent_id" ref="wa_step_booking_ask_name"/>
+            <field name="name">ask_date</field>
+            <field name="sequence">30</field>
+            <field name="step_type">question_date</field>
+            <field name="body_plain">Thanks {{contact_name}}! What date would you like? (YYYY-MM-DD)</field>
+            <field name="answer_data_type">string</field>
+            <field name="variable_name">booking_date</field>
+        </record>
+
+        <!-- Confirmation -->
+        <record id="wa_step_booking_confirm" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_booking"/>
+            <field name="parent_id" ref="wa_step_booking_ask_date"/>
+            <field name="name">confirm</field>
+            <field name="sequence">40</field>
+            <field name="step_type">message</field>
+            <field name="body_plain">All set, {{contact_name}}! Your appointment on {{booking_date}} is booked. We'll send a reminder the day before.</field>
+        </record>
+
+        <!-- End -->
+        <record id="wa_step_booking_end" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_booking"/>
+            <field name="parent_id" ref="wa_step_booking_confirm"/>
+            <field name="name">end</field>
+            <field name="sequence">50</field>
+            <field name="step_type">end_flow</field>
+        </record>
+
+    </data>
+</odoo>

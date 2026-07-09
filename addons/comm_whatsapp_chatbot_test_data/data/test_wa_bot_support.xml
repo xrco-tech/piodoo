@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============================================================ -->
+        <!-- Support Triage: interactive buttons routing to sub-flows.    -->
+        <!-- Exercises WA button rendering + branch by button choice.      -->
+        <!-- ============================================================ -->
+
+        <record id="wa_bot_support" model="whatsapp.chatbot">
+            <field name="name">Support Triage (WA test)</field>
+            <field name="description">Interactive button triage. Customer picks Order / Return / Other and gets routed to the right sub-flow.</field>
+            <field name="channel">whatsapp</field>
+            <field name="status">published</field>
+        </record>
+
+        <!-- Root: interactive question with buttons -->
+        <record id="wa_step_support_menu" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="name">menu</field>
+            <field name="sequence">10</field>
+            <field name="step_type">question_interactive</field>
+            <field name="wa_message_type">interactive_button</field>
+            <field name="body_plain">Hi 👋 How can we help today?</field>
+            <field name="variable_name">support_topic</field>
+        </record>
+
+        <record id="wa_btn_support_order" model="whatsapp.chatbot.step.button">
+            <field name="step_id" ref="wa_step_support_menu"/>
+            <field name="sequence">10</field>
+            <field name="button_id">order</field>
+            <field name="title">Order status</field>
+        </record>
+        <record id="wa_btn_support_return" model="whatsapp.chatbot.step.button">
+            <field name="step_id" ref="wa_step_support_menu"/>
+            <field name="sequence">20</field>
+            <field name="button_id">return</field>
+            <field name="title">Return item</field>
+        </record>
+        <record id="wa_btn_support_other" model="whatsapp.chatbot.step.button">
+            <field name="step_id" ref="wa_step_support_menu"/>
+            <field name="sequence">30</field>
+            <field name="button_id">other</field>
+            <field name="title">Something else</field>
+        </record>
+
+        <!-- Order branch -->
+        <record id="wa_step_support_order" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="parent_id" ref="wa_step_support_menu"/>
+            <field name="name">order_ask_id</field>
+            <field name="sequence">10</field>
+            <field name="step_type">question_text</field>
+            <field name="body_plain">Please share your order number (starts with #):</field>
+            <field name="answer_data_type">string</field>
+            <field name="variable_name">order_number</field>
+        </record>
+        <record id="wa_step_support_order_reply" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="parent_id" ref="wa_step_support_order"/>
+            <field name="name">order_reply</field>
+            <field name="sequence">10</field>
+            <field name="step_type">message</field>
+            <field name="body_plain">Thanks — I've looked up {{order_number}}. Your order is out for delivery today. A courier will contact you before 5pm.</field>
+        </record>
+        <record id="wa_step_support_order_end" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="parent_id" ref="wa_step_support_order_reply"/>
+            <field name="name">order_end</field>
+            <field name="sequence">10</field>
+            <field name="step_type">end_flow</field>
+        </record>
+
+        <!-- Return branch -->
+        <record id="wa_step_support_return" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="parent_id" ref="wa_step_support_menu"/>
+            <field name="name">return_reason</field>
+            <field name="sequence">20</field>
+            <field name="step_type">question_text</field>
+            <field name="body_plain">Sure, let's start a return. What's the reason?</field>
+            <field name="answer_data_type">string</field>
+            <field name="variable_name">return_reason</field>
+        </record>
+        <record id="wa_step_support_return_reply" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="parent_id" ref="wa_step_support_return"/>
+            <field name="name">return_reply</field>
+            <field name="sequence">10</field>
+            <field name="step_type">message</field>
+            <field name="body_plain">Return request logged: "{{return_reason}}". You'll get a prepaid label by email within 15 minutes.</field>
+        </record>
+        <record id="wa_step_support_return_end" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="parent_id" ref="wa_step_support_return_reply"/>
+            <field name="name">return_end</field>
+            <field name="sequence">10</field>
+            <field name="step_type">end_flow</field>
+        </record>
+
+        <!-- Other branch — transfer to agent -->
+        <record id="wa_step_support_other" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="parent_id" ref="wa_step_support_menu"/>
+            <field name="name">other_transfer</field>
+            <field name="sequence">30</field>
+            <field name="step_type">transfer_to_agent</field>
+            <field name="body_plain">No problem — connecting you to a human agent now.</field>
+        </record>
+        <record id="wa_step_support_other_end" model="whatsapp.chatbot.step">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="parent_id" ref="wa_step_support_other"/>
+            <field name="name">other_end</field>
+            <field name="sequence">10</field>
+            <field name="step_type">end_flow</field>
+        </record>
+
+    </data>
+</odoo>
