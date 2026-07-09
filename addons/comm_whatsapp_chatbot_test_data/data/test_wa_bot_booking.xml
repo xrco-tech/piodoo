@@ -39,7 +39,7 @@
         <record id="wa_step_booking_ask_name" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_booking"/>
             <field name="parent_id" ref="wa_step_booking_greet"/>
-            <field name="name">ask_name</field>
+            <field name="name">ask name</field>
             <field name="sequence">20</field>
             <field name="step_type">question_text</field>
             <field name="body_plain">What's your name?</field>
@@ -51,7 +51,7 @@
         <record id="wa_step_booking_ask_date" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_booking"/>
             <field name="parent_id" ref="wa_step_booking_ask_name"/>
-            <field name="name">ask_date</field>
+            <field name="name">ask date</field>
             <field name="sequence">30</field>
             <field name="step_type">question_date</field>
             <field name="body_plain">Thanks {{contact_name}}! What date would you like? (YYYY-MM-DD)</field>

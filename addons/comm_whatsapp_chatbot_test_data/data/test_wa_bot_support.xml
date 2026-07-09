@@ -66,7 +66,7 @@
         <record id="wa_step_support_order" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
             <field name="parent_id" ref="wa_step_support_menu"/>
-            <field name="name">order_ask_id</field>
+            <field name="name">order ask_id</field>
             <field name="sequence">10</field>
             <field name="step_type">question_text</field>
             <field name="body_plain">Please share your order number (starts with #):</field>
@@ -76,7 +76,7 @@
         <record id="wa_step_support_order_reply" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
             <field name="parent_id" ref="wa_step_support_order"/>
-            <field name="name">order_reply</field>
+            <field name="name">order reply</field>
             <field name="sequence">10</field>
             <field name="step_type">message</field>
             <field name="body_plain">Thanks — I've looked up {{order_number}}. Your order is out for delivery today. A courier will contact you before 5pm.</field>
@@ -84,7 +84,7 @@
         <record id="wa_step_support_order_end" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
             <field name="parent_id" ref="wa_step_support_order_reply"/>
-            <field name="name">order_end</field>
+            <field name="name">order end</field>
             <field name="sequence">10</field>
             <field name="step_type">end_flow</field>
         </record>
@@ -93,7 +93,7 @@
         <record id="wa_step_support_return" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
             <field name="parent_id" ref="wa_step_support_menu"/>
-            <field name="name">return_reason</field>
+            <field name="name">return reason</field>
             <field name="sequence">20</field>
             <field name="step_type">question_text</field>
             <field name="body_plain">Sure, let's start a return. What's the reason?</field>
@@ -103,7 +103,7 @@
         <record id="wa_step_support_return_reply" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
             <field name="parent_id" ref="wa_step_support_return"/>
-            <field name="name">return_reply</field>
+            <field name="name">return reply</field>
             <field name="sequence">10</field>
             <field name="step_type">message</field>
             <field name="body_plain">Return request logged: "{{return_reason}}". You'll get a prepaid label by email within 15 minutes.</field>
@@ -111,7 +111,7 @@
         <record id="wa_step_support_return_end" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
             <field name="parent_id" ref="wa_step_support_return_reply"/>
-            <field name="name">return_end</field>
+            <field name="name">return end</field>
             <field name="sequence">10</field>
             <field name="step_type">end_flow</field>
         </record>
@@ -120,7 +120,7 @@
         <record id="wa_step_support_other" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
             <field name="parent_id" ref="wa_step_support_menu"/>
-            <field name="name">other_transfer</field>
+            <field name="name">other transfer</field>
             <field name="sequence">30</field>
             <field name="step_type">transfer_to_agent</field>
             <field name="body_plain">No problem — connecting you to a human agent now.</field>
@@ -128,7 +128,7 @@
         <record id="wa_step_support_other_end" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
             <field name="parent_id" ref="wa_step_support_other"/>
-            <field name="name">other_end</field>
+            <field name="name">other end</field>
             <field name="sequence">10</field>
             <field name="step_type">end_flow</field>
         </record>
