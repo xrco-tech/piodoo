@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_comm_bot_web_session_admin,comm.bot.web.session.admin,model_comm_bot_web_session,comm_chatbot.group_chatbot_administrator,1,1,1,1
+access_comm_bot_web_session_designer,comm.bot.web.session.designer,model_comm_bot_web_session,comm_chatbot.group_chatbot_designer,1,1,1,0
+access_comm_bot_web_session_agent,comm.bot.web.session.agent,model_comm_bot_web_session,comm_chatbot.group_chatbot_agent,1,0,0,0

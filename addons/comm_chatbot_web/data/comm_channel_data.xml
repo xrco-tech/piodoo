@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="channel_web" model="comm.channel">
+            <field name="name">Web</field>
+            <field name="code">web</field>
+            <field name="adapter_key">web</field>
+            <field name="sequence">5</field>
+            <field name="supports_buttons" eval="True"/>
+            <field name="max_buttons">99</field>
+            <field name="supports_lists" eval="True"/>
+            <field name="max_list_rows">99</field>
+            <field name="supports_media_image" eval="True"/>
+            <field name="supports_media_video" eval="True"/>
+            <field name="supports_media_audio" eval="True"/>
+            <field name="supports_media_document" eval="True"/>
+            <field name="supports_typing" eval="True"/>
+            <field name="supports_streaming" eval="False"/>
+            <field name="max_body_length">10000</field>
+            <field name="regulatory_lock" eval="False"/>
+        </record>
+
+    </data>
+</odoo>
