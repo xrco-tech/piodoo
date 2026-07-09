@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_whatsapp_chatbot_web_session_list" model="ir.ui.view">
+        <field name="name">whatsapp.chatbot.web.session.list</field>
+        <field name="model">whatsapp.chatbot.web.session</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="created_at"/>
+                <field name="chatbot_id"/>
+                <field name="token"/>
+                <field name="persona_name"/>
+                <field name="referer"/>
+                <field name="last_activity_at"/>
+                <field name="closed"/>
+                <field name="is_preview"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_whatsapp_chatbot_web_session" model="ir.actions.act_window">
+        <field name="name">Web Sessions</field>
+        <field name="res_model">whatsapp.chatbot.web.session</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

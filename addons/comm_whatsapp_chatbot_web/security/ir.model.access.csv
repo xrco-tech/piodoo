@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_whatsapp_chatbot_web_session_admin,whatsapp.chatbot.web.session.admin,model_whatsapp_chatbot_web_session,base.group_system,1,1,1,1
+access_whatsapp_chatbot_web_session_user,whatsapp.chatbot.web.session.user,model_whatsapp_chatbot_web_session,base.group_user,1,1,1,0
+access_whatsapp_chatbot_web_embed_wizard,whatsapp.chatbot.web.embed.wizard,model_whatsapp_chatbot_web_embed_wizard,base.group_user,1,1,1,1

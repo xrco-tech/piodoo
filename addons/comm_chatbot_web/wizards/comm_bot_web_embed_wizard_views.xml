@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_bot_web_embed_wizard_form" model="ir.ui.view">
+        <field name="name">comm.bot.web.embed.wizard.form</field>
+        <field name="model">comm.bot.web.embed.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Web widget embed code">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Embed <field name="bot_id" readonly="1"/> on any website</h2>
+                    </div>
+
+                    <group>
+                        <field name="direct_link" widget="url"/>
+                        <field name="base_url" invisible="1"/>
+                    </group>
+
+                    <group string="Floating chat bubble (recommended)">
+                        <div class="alert alert-info" colspan="2">
+                            Drop this snippet in the &lt;head&gt; or before &lt;/body&gt;
+                            of any page. Adds a floating chat bubble bottom-right
+                            that opens the widget when clicked.
+                        </div>
+                        <field name="embed_snippet" nolabel="1" colspan="2"
+                               widget="ace" options="{'mode': 'html'}"
+                               style="min-height: 180px;"/>
+                    </group>
+
+                    <group string="Iframe (fullscreen embed)">
+                        <div class="alert alert-info" colspan="2">
+                            Use this to embed the widget as a full block inside
+                            a page — no floating bubble, always open.
+                        </div>
+                        <field name="iframe_snippet" nolabel="1" colspan="2"
+                               widget="ace" options="{'mode': 'html'}"
+                               style="min-height: 100px;"/>
+                    </group>
+
+                    <group string="Allowed embed domains">
+                        <div class="alert alert-warning" colspan="2">
+                            Newline-separated origins allowed to embed the widget.
+                            Leave empty for same-origin only.
+                            Example:
+                            <pre>https://example.com
+https://www.example.com</pre>
+                        </div>
+                        <field name="allowed_domains" nolabel="1" colspan="2"
+                               style="min-height: 80px;"/>
+                        <button name="action_save_allowlist" type="object"
+                                string="Save allowlist" class="btn-primary"
+                                colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

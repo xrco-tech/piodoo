@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Add a "Device" tab to the WA chatbot flow's right panel -->
+    <t t-name="comm_whatsapp_chatbot_web.DeviceTab"
+       t-inherit="comm_whatsapp_chatbot.ChatbotFlowAction"
+       t-inherit-mode="extension">
+
+        <xpath expr="//div[@class='o_flow_panel_tabs']" position="inside">
+            <button t-att-class="'o_flow_panel_tab' + (state.panelMode === 'device' ? ' active' : '')"
+                    t-on-click="() => this._setPanelMode('device')">
+                <i class="fa fa-mobile me-1"/>Device
+            </button>
+        </xpath>
+
+        <xpath expr="//div[@class='o_flow_panel_tabs']" position="after">
+            <t t-if="state.panelMode === 'device'">
+                <div class="o_wa_device_sim">
+                    <div class="o_wa_device_picker">
+                        <t t-foreach="_deviceList()" t-as="dev" t-key="dev.key">
+                            <button t-att-class="state.deviceSim and state.deviceSim.active === dev.key ? 'active' : ''"
+                                    t-on-click="() => this._pickWaDevice(dev.key)"
+                                    t-esc="dev.label"/>
+                        </t>
+                    </div>
+                    <div t-attf-class="o_wa_device_shell #{_activeWaDevice().cssClass}">
+                        <t t-if="_activeWaDevice().key === 'desktop'">
+                            <div class="o_wa_browser_bar">
+                                <span/><span/><span/>
+                            </div>
+                        </t>
+                        <iframe t-att-src="_waDeviceEmbedUrl()"
+                                title="Web widget preview"/>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </t>
+
+</templates>

@@ -63,15 +63,26 @@ class WebWidgetController(http.Controller):
         is_preview = bool(preview)
         base = request.env['ir.config_parameter'].sudo().get_param(
             'web.base.url', '') or ''
+
+        # Frame-ancestors CSP built from the bot's allowlist
+        allowed = bot._web_allowed_domain_list()
+        base_origin = base.rstrip('/')
+        frame_ancestors = "'self'"
+        if allowed:
+            frame_ancestors = "'self' " + ' '.join(allowed)
+
         html = _EMBED_TEMPLATE.format(
             bot_name=(bot.name or '').replace('<', '&lt;'),
             bot_id=bot.id,
             preview='true' if is_preview else 'false',
             base_url=base,
         )
-        return request.make_response(
-            html, headers=[('Content-Type', 'text/html; charset=utf-8'),
-                           ('X-Frame-Options', 'SAMEORIGIN')])
+        headers = [
+            ('Content-Type', 'text/html; charset=utf-8'),
+            ('Content-Security-Policy',
+              f'frame-ancestors {frame_ancestors}'),
+        ]
+        return request.make_response(html, headers=headers)
 
     # ── Session endpoints ────────────────────────────────────────────
     @http.route('/comm_chatbot_web/session/start',
@@ -83,6 +94,19 @@ class WebWidgetController(http.Controller):
         bot = env['comm.bot'].sudo().browse(int(bot_id))
         if not bot.exists() or not bot.entry_step_id:
             return {'error': 'bot has no entry step'}
+
+        # Domain allowlist check — Origin header preferred over Referer
+        origin = (request.httprequest.headers.get('Origin')
+                  or request.httprequest.headers.get('Referer') or '')
+        if origin:
+            # Strip path from Referer
+            from urllib.parse import urlparse
+            parsed = urlparse(origin)
+            origin = f'{parsed.scheme}://{parsed.netloc}' if parsed.scheme else origin
+        if not bot._web_origin_allowed(origin):
+            _logger.warning('Web widget: origin %s not allowed for bot %s',
+                            origin, bot.name)
+            return {'error': 'origin not allowed'}
 
         Session = env['comm.bot.web.session'].sudo()
         Partner = env['res.partner'].sudo()

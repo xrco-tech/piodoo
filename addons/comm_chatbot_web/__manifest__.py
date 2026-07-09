@@ -22,6 +22,8 @@ images / video / audio / documents, HTML rendering.
     'data': [
         'security/ir.model.access.csv',
         'data/comm_channel_data.xml',
+        'wizards/comm_bot_web_embed_wizard_views.xml',
+        'views/comm_bot_views.xml',
         'views/comm_bot_web_session_views.xml',
     ],
     'assets': {

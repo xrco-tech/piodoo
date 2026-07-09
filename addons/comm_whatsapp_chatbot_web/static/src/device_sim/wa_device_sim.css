@@ -1,0 +1,122 @@
+/* WA chatbot device simulator — device frames wrapping the widget iframe. */
+
+.o_wa_device_sim {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background: #eef1f5;
+    min-height: 100%;
+}
+
+.o_wa_device_picker {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+.o_wa_device_picker button {
+    padding: 6px 14px;
+    border: 1px solid #cfd6df;
+    background: #fff;
+    color: #4b5563;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+}
+.o_wa_device_picker button.active {
+    background: #128c7e;
+    color: #fff;
+    border-color: #128c7e;
+}
+
+.o_wa_device_shell {
+    position: relative;
+    background: #111;
+    box-sizing: content-box;
+}
+.o_wa_device_shell iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #f4f4f6;
+}
+
+.o_wa_device_iphone {
+    width: 375px; height: 720px;
+    border-radius: 44px;
+    padding: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+}
+.o_wa_device_iphone iframe { border-radius: 32px; background: #fff; }
+.o_wa_device_iphone::before {
+    content: "";
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 26px;
+    background: #111;
+    border-radius: 14px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.o_wa_device_pixel {
+    width: 380px; height: 730px;
+    border-radius: 38px;
+    padding: 10px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    background: #222;
+}
+.o_wa_device_pixel iframe { border-radius: 30px; background: #fff; }
+.o_wa_device_pixel::before {
+    content: "";
+    position: absolute;
+    top: 24px; left: 50%;
+    transform: translateX(-50%);
+    width: 12px; height: 12px;
+    background: #111;
+    border-radius: 50%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.o_wa_device_ipad {
+    width: 800px; height: 600px;
+    border-radius: 22px;
+    padding: 22px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    background: #333;
+}
+.o_wa_device_ipad iframe { border-radius: 8px; background: #fff; }
+
+.o_wa_device_desktop {
+    width: 1000px; height: 620px;
+    max-width: 100%;
+    border-radius: 8px;
+    padding: 0;
+    background: #ddd;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    overflow: hidden;
+}
+.o_wa_device_desktop .o_wa_browser_bar {
+    height: 32px;
+    background: #e0e0e0;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 6px;
+    border-bottom: 1px solid #cfcfcf;
+}
+.o_wa_device_desktop .o_wa_browser_bar span {
+    width: 10px; height: 10px; border-radius: 50%;
+}
+.o_wa_device_desktop .o_wa_browser_bar span:nth-child(1) { background: #ff5f57; }
+.o_wa_device_desktop .o_wa_browser_bar span:nth-child(2) { background: #ffbd2e; }
+.o_wa_device_desktop .o_wa_browser_bar span:nth-child(3) { background: #28c840; }
+.o_wa_device_desktop iframe {
+    width: 100%;
+    height: calc(100% - 32px);
+    background: #fff;
+}

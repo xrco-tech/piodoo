@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_whatsapp_chatbot_web_embed_wizard_form" model="ir.ui.view">
+        <field name="name">whatsapp.chatbot.web.embed.wizard.form</field>
+        <field name="model">whatsapp.chatbot.web.embed.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Web widget embed code">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Embed <field name="chatbot_id" readonly="1"/> on any website</h2>
+                    </div>
+
+                    <group>
+                        <field name="direct_link" widget="url"/>
+                        <field name="base_url" invisible="1"/>
+                    </group>
+
+                    <group string="Floating chat bubble">
+                        <div class="alert alert-info" colspan="2">
+                            Adds a floating chat bubble bottom-right when embedded.
+                        </div>
+                        <field name="embed_snippet" nolabel="1" colspan="2"
+                               widget="ace" options="{'mode': 'html'}"
+                               style="min-height: 180px;"/>
+                    </group>
+
+                    <group string="Iframe (fullscreen embed)">
+                        <field name="iframe_snippet" nolabel="1" colspan="2"
+                               widget="ace" options="{'mode': 'html'}"
+                               style="min-height: 100px;"/>
+                    </group>
+
+                    <group string="Allowed embed domains">
+                        <div class="alert alert-warning" colspan="2">
+                            Newline-separated origins. Leave empty for
+                            same-origin only.
+                        </div>
+                        <field name="allowed_domains" nolabel="1" colspan="2"
+                               style="min-height: 80px;"/>
+                        <button name="action_save_allowlist" type="object"
+                                string="Save allowlist" class="btn-primary"
+                                colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

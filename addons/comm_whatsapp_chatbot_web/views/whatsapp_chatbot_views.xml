@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_whatsapp_chatbot_form_web" model="ir.ui.view">
+        <field name="name">whatsapp.chatbot.form.web</field>
+        <field name="model">whatsapp.chatbot</field>
+        <field name="inherit_id" ref="comm_whatsapp_chatbot.view_whatsapp_chatbot_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_web_embed_code"
+                        type="object" string="Copy embed code"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group string="Web widget">
+                    <field name="web_allowed_domains"
+                           placeholder="https://example.com&#10;https://www.example.com"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
