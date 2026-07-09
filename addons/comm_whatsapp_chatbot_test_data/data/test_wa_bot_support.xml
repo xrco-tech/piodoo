@@ -66,7 +66,7 @@
         <record id="wa_step_support_order" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
             <field name="parent_id" ref="wa_step_support_menu"/>
-            <field name="name">order ask_id</field>
+            <field name="name">order ask id</field>
             <field name="sequence">10</field>
             <field name="step_type">question_text</field>
             <field name="body_plain">Please share your order number (starts with #):</field>
