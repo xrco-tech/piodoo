@@ -23,8 +23,7 @@
                             that opens the widget when clicked.
                         </div>
                         <field name="embed_snippet" nolabel="1" colspan="2"
-                               widget="ace" options="{'mode': 'html'}"
-                               style="min-height: 180px;"/>
+                               style="min-height: 180px; font-family: monospace;"/>
                     </group>
 
                     <group string="Iframe (fullscreen embed)">
@@ -33,8 +32,7 @@
                             a page — no floating bubble, always open.
                         </div>
                         <field name="iframe_snippet" nolabel="1" colspan="2"
-                               widget="ace" options="{'mode': 'html'}"
-                               style="min-height: 100px;"/>
+                               style="min-height: 100px; font-family: monospace;"/>
                     </group>
 
                     <group string="Allowed embed domains">

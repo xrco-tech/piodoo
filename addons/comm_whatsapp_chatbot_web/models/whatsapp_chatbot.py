@@ -5,6 +5,12 @@ from odoo import models, fields, api
 class WhatsappChatbot(models.Model):
     _inherit = 'whatsapp.chatbot'
 
+    # Extend the channel Selection to include 'web'. Odoo merges the two
+    # lists so all existing options (whatsapp / sms / ussd / voice) remain.
+    channel = fields.Selection(selection_add=[
+        ('web', 'Web'),
+    ], ondelete={'web': 'set default'})
+
     web_allowed_domains = fields.Text(
         string='Web widget: allowed embed domains',
         help='Newline-separated list of origins allowed to embed the widget.\n'
