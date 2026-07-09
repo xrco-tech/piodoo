@@ -9,9 +9,26 @@
 
         <record id="wa_bot_feedback" model="whatsapp.chatbot">
             <field name="name">Feedback Survey - WA test</field>
-            <field name="description">Ask for a 1-5 rating, capture free-text feedback, and thank the customer. Great for testing question_text with answer_data_type='number'.</field>
+            <field name="description">Ask for a 1-5 rating, capture free-text feedback, thank the customer.</field>
             <field name="channel">whatsapp</field>
             <field name="status">published</field>
+        </record>
+
+        <!-- Variables -->
+        <record id="wa_var_feedback_rating" model="whatsapp.chatbot.variable">
+            <field name="chatbot_id" ref="wa_bot_feedback"/>
+            <field name="name">rating</field>
+            <field name="data_type">integer</field>
+        </record>
+        <record id="wa_var_feedback_comment" model="whatsapp.chatbot.variable">
+            <field name="chatbot_id" ref="wa_bot_feedback"/>
+            <field name="name">comment</field>
+            <field name="data_type">text</field>
+        </record>
+        <record id="wa_var_feedback_category" model="whatsapp.chatbot.variable">
+            <field name="chatbot_id" ref="wa_bot_feedback"/>
+            <field name="name">category</field>
+            <field name="data_type">text</field>
         </record>
 
         <!-- Intro -->
@@ -31,8 +48,8 @@
             <field name="sequence">20</field>
             <field name="step_type">question_numeric</field>
             <field name="body_plain">On a scale of 1 to 5, how was your experience?</field>
-            <field name="answer_data_type">number</field>
-            <field name="variable_name">rating</field>
+            <field name="answer_data_type">integer</field>
+            <field name="variable_id" ref="wa_var_feedback_rating"/>
         </record>
 
         <!-- Ask comment -->
@@ -43,8 +60,8 @@
             <field name="sequence">30</field>
             <field name="step_type">question_text</field>
             <field name="body_plain">Thanks for the {{rating}}/5! What's the one thing that could be better?</field>
-            <field name="answer_data_type">string</field>
-            <field name="variable_name">comment</field>
+            <field name="answer_data_type">text</field>
+            <field name="variable_id" ref="wa_var_feedback_comment"/>
         </record>
 
         <!-- Set derived variable — categorize -->
@@ -54,7 +71,7 @@
             <field name="name">categorize</field>
             <field name="sequence">40</field>
             <field name="step_type">set_variable</field>
-            <field name="variable_name">category</field>
+            <field name="variable_id" ref="wa_var_feedback_category"/>
             <field name="variable_value">received</field>
         </record>
 

@@ -14,6 +14,23 @@
             <field name="status">published</field>
         </record>
 
+        <!-- Variables -->
+        <record id="wa_var_support_topic" model="whatsapp.chatbot.variable">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="name">support_topic</field>
+            <field name="data_type">text</field>
+        </record>
+        <record id="wa_var_support_order_number" model="whatsapp.chatbot.variable">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="name">order_number</field>
+            <field name="data_type">text</field>
+        </record>
+        <record id="wa_var_support_return_reason" model="whatsapp.chatbot.variable">
+            <field name="chatbot_id" ref="wa_bot_support"/>
+            <field name="name">return_reason</field>
+            <field name="data_type">text</field>
+        </record>
+
         <!-- Root: interactive question with buttons -->
         <record id="wa_step_support_menu" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
@@ -22,7 +39,8 @@
             <field name="step_type">question_interactive</field>
             <field name="wa_message_type">interactive_button</field>
             <field name="body_plain">Hi 👋 How can we help today?</field>
-            <field name="variable_name">support_topic</field>
+            <field name="answer_data_type">text</field>
+            <field name="variable_id" ref="wa_var_support_topic"/>
         </record>
 
         <record id="wa_btn_support_order" model="whatsapp.chatbot.step.button">
@@ -52,8 +70,8 @@
             <field name="sequence">10</field>
             <field name="step_type">question_text</field>
             <field name="body_plain">Please share your order number (starts with #):</field>
-            <field name="answer_data_type">string</field>
-            <field name="variable_name">order_number</field>
+            <field name="answer_data_type">text</field>
+            <field name="variable_id" ref="wa_var_support_order_number"/>
         </record>
         <record id="wa_step_support_order_reply" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>
@@ -79,8 +97,8 @@
             <field name="sequence">20</field>
             <field name="step_type">question_text</field>
             <field name="body_plain">Sure, let's start a return. What's the reason?</field>
-            <field name="answer_data_type">string</field>
-            <field name="variable_name">return_reason</field>
+            <field name="answer_data_type">text</field>
+            <field name="variable_id" ref="wa_var_support_return_reason"/>
         </record>
         <record id="wa_step_support_return_reply" model="whatsapp.chatbot.step">
             <field name="chatbot_id" ref="wa_bot_support"/>

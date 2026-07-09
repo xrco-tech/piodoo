@@ -9,9 +9,21 @@
 
         <record id="wa_bot_booking" model="whatsapp.chatbot">
             <field name="name">Booking Bot - WA test</field>
-            <field name="description">Linear appointment-booking flow. Ask name, ask date, confirm. Try it from the flow viewer's simulator OR via the Copy embed code button.</field>
+            <field name="description">Linear appointment-booking flow. Ask name, ask date, confirm.</field>
             <field name="channel">whatsapp</field>
             <field name="status">published</field>
+        </record>
+
+        <!-- Variables -->
+        <record id="wa_var_booking_name" model="whatsapp.chatbot.variable">
+            <field name="chatbot_id" ref="wa_bot_booking"/>
+            <field name="name">contact_name</field>
+            <field name="data_type">text</field>
+        </record>
+        <record id="wa_var_booking_date" model="whatsapp.chatbot.variable">
+            <field name="chatbot_id" ref="wa_bot_booking"/>
+            <field name="name">booking_date</field>
+            <field name="data_type">text</field>
         </record>
 
         <!-- Root: greeting -->
@@ -31,8 +43,8 @@
             <field name="sequence">20</field>
             <field name="step_type">question_text</field>
             <field name="body_plain">What's your name?</field>
-            <field name="answer_data_type">string</field>
-            <field name="variable_name">contact_name</field>
+            <field name="answer_data_type">text</field>
+            <field name="variable_id" ref="wa_var_booking_name"/>
         </record>
 
         <!-- Ask date -->
@@ -43,8 +55,8 @@
             <field name="sequence">30</field>
             <field name="step_type">question_date</field>
             <field name="body_plain">Thanks {{contact_name}}! What date would you like? (YYYY-MM-DD)</field>
-            <field name="answer_data_type">string</field>
-            <field name="variable_name">booking_date</field>
+            <field name="answer_data_type">text</field>
+            <field name="variable_id" ref="wa_var_booking_date"/>
         </record>
 
         <!-- Confirmation -->
