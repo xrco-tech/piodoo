@@ -8,7 +8,7 @@
         <!-- ============================================================ -->
 
         <record id="wa_bot_booking" model="whatsapp.chatbot">
-            <field name="name">Booking Bot (WA test)</field>
+            <field name="name">Booking Bot - WA test</field>
             <field name="description">Linear appointment-booking flow. Ask name, ask date, confirm. Try it from the flow viewer's simulator OR via the Copy embed code button.</field>
             <field name="channel">whatsapp</field>
             <field name="status">published</field>

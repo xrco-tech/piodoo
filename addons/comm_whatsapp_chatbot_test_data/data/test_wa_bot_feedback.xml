@@ -8,7 +8,7 @@
         <!-- ============================================================ -->
 
         <record id="wa_bot_feedback" model="whatsapp.chatbot">
-            <field name="name">Feedback Survey (WA test)</field>
+            <field name="name">Feedback Survey - WA test</field>
             <field name="description">Ask for a 1-5 rating, capture free-text feedback, and thank the customer. Great for testing question_text with answer_data_type='number'.</field>
             <field name="channel">whatsapp</field>
             <field name="status">published</field>
