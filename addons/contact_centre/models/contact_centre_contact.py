@@ -44,7 +44,7 @@ class ContactCentreContact(models.Model):
         'tag_id',
         string='Tags',
     )
-    message_ids = fields.One2many(
+    centre_message_ids = fields.One2many(
         'contact.centre.message',
         'contact_id',
         string='Messages',
@@ -59,10 +59,10 @@ class ContactCentreContact(models.Model):
     message_count = fields.Integer('Message Count', compute='_compute_message_count')
     campaign_count = fields.Integer('Campaign Count', compute='_compute_campaign_count')
 
-    @api.depends('message_ids')
+    @api.depends('centre_message_ids')
     def _compute_message_count(self):
         for contact in self:
-            contact.message_count = len(contact.message_ids)
+            contact.message_count = len(contact.centre_message_ids)
 
     @api.depends('campaign_ids')
     def _compute_campaign_count(self):

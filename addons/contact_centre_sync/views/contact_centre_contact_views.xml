@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_contact_centre_contact_form_sync" model="ir.ui.view">
+        <field name="name">contact.centre.contact.form.sync</field>
+        <field name="model">contact.centre.contact</field>
+        <field name="inherit_id" ref="contact_centre.view_contact_centre_contact_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="open,pending,resolved"/>
+                </header>
+            </xpath>
+            <xpath expr="//sheet" position="after">
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

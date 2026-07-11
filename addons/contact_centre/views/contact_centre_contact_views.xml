@@ -23,7 +23,7 @@
                     <filter string="Never Contacted" name="never_contacted"
                             domain="[('last_contact_date', '=', False)]"/>
                     <filter string="Has Messages" name="has_messages"
-                            domain="[('message_ids', '!=', False)]"/>
+                            domain="[('centre_message_ids', '!=', False)]"/>
                     <separator/>
                     <group expand="0" string="Group By">
                         <filter string="Tags" name="group_by_tags"
@@ -163,7 +163,7 @@
                                 </field>
                             </page>
                             <page string="Message History">
-                                <field name="message_ids" readonly="1">
+                                <field name="centre_message_ids" readonly="1">
                                     <list>
                                         <field name="message_timestamp"/>
                                         <field name="channel" widget="badge"/>
