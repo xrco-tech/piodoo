@@ -19,6 +19,7 @@ _WA_TO_CENTRE_MESSAGE_TYPE = {
 
 
 class ContactCentreContact(models.Model):
+    _name = "contact.centre.contact"
     _inherit = ["contact.centre.contact", "mail.thread", "mail.activity.mixin"]
 
     state = fields.Selection([
