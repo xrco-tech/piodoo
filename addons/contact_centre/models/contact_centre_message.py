@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from datetime import timedelta
 from odoo import models, fields, api
 
 _logger = logging.getLogger(__name__)
@@ -72,3 +73,26 @@ class ContactCentreMessage(models.Model):
         for record in records:
             record.contact_id.write({'last_contact_date': record.message_timestamp})
         return records
+
+    @api.model
+    def get_response_time_stats(self, days=30):
+        """Average time between each inbound message and the next outbound
+        reply from the same contact, across all such pairs in the window."""
+        since = fields.Datetime.now() - timedelta(days=days)
+        messages = self.search([
+            ('message_timestamp', '>=', since),
+        ], order='contact_id, message_timestamp asc')
+
+        first_inbound = {}
+        deltas = []
+        for message in messages:
+            contact_id = message.contact_id.id
+            if message.direction == 'inbound':
+                first_inbound.setdefault(contact_id, message.message_timestamp)
+            elif message.direction == 'outbound' and contact_id in first_inbound:
+                inbound_time = first_inbound.pop(contact_id)
+                deltas.append((message.message_timestamp - inbound_time).total_seconds())
+
+        if not deltas:
+            return {'avg_seconds': None, 'sample_size': 0}
+        return {'avg_seconds': sum(deltas) / len(deltas), 'sample_size': len(deltas)}

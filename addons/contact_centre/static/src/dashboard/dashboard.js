@@ -19,6 +19,9 @@ export class ContactCentreDashboard extends Component {
             messages: { total: 0, today: 0, failed: 0 },
             campaigns: { total: 0, running: 0, done: 0 },
             chatbots: { total: 0, active: 0, waiting: 0 },
+            channels: [],
+            conversationStates: { open: 0, pending: 0, resolved: 0 },
+            responseTime: { avg_seconds: null, sample_size: 0 },
         });
 
         onWillStart(() => this._loadData());
@@ -79,12 +82,55 @@ export class ContactCentreDashboard extends Component {
                 // Chatbot models may not exist or may not be installed
             }
 
+            const channelLabels = {
+                whatsapp: "WhatsApp", sms: "SMS", email: "Email", voice: "Voice",
+            };
+            let channels = [];
+            try {
+                const channelGroups = await this.orm.readGroup(
+                    "contact.centre.message", [], ["channel"], ["channel"]
+                );
+                channels = channelGroups.map((g) => ({
+                    channel: g.channel,
+                    label: channelLabels[g.channel] || g.channel,
+                    count: g.channel_count,
+                }));
+            } catch (_e) {
+                // Ignore — channel breakdown is a nice-to-have
+            }
+
+            let conversationStates = { open: 0, pending: 0, resolved: 0 };
+            try {
+                const stateGroups = await this.orm.readGroup(
+                    "contact.centre.contact", [], ["state"], ["state"]
+                );
+                for (const g of stateGroups) {
+                    if (g.state in conversationStates) {
+                        conversationStates[g.state] = g.state_count;
+                    }
+                }
+            } catch (_e) {
+                // contact_centre_sync (which adds `state`) may not be installed
+            }
+
+            let responseTime = { avg_seconds: null, sample_size: 0 };
+            try {
+                responseTime = await this.orm.call(
+                    "contact.centre.message", "get_response_time_stats", []
+                );
+            } catch (_e) {
+                // Ignore — response time is a nice-to-have
+            }
+
             Object.assign(this.state, {
                 loading: false,
                 contacts: { total: totalContacts, new_this_month: newContacts },
                 messages: { total: totalMessages, today: todayMessages, failed: failedMessages },
                 campaigns: { total: totalCampaigns, running: runningCampaigns, done: doneCampaigns },
                 chatbots: { total: totalChatbots, active: activeSessions, waiting: waitingSessions },
+                channels,
+                conversationStates,
+                responseTime,
             });
         } catch (err) {
             console.error("[Contact Centre] Dashboard load error:", err);
@@ -143,6 +189,28 @@ export class ContactCentreDashboard extends Component {
     openWaitingSessions(ev) {
         ev.stopPropagation();
         this._doAction("contact_centre.action_contact_centre_chatbot_session_human");
+    }
+
+    openConversationsByState(state) {
+        this._doWindowAction(
+            `Conversations — ${state}`, "contact.centre.contact", [["state", "=", state]]
+        );
+    }
+
+    openInboundMessages() {
+        this._doWindowAction("Inbound Messages", "contact.centre.message", [
+            ["direction", "=", "inbound"],
+        ]);
+    }
+
+    formatResponseTime() {
+        const seconds = this.state.responseTime.avg_seconds;
+        if (seconds === null || seconds === undefined) {
+            return "No data yet";
+        }
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.round(seconds % 60);
+        return `${minutes}m ${remainingSeconds}s`;
     }
 }
 

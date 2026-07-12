@@ -78,6 +78,76 @@
                                         <t t-esc="state.messages.failed"/> failed
                                     </span>
                                 </div>
+                                <div t-if="state.channels.length" class="d-flex flex-wrap gap-2 mt-2">
+                                    <t t-foreach="state.channels" t-as="ch" t-key="ch.channel">
+                                        <span class="badge text-bg-light border">
+                                            <t t-esc="ch.label"/>: <t t-esc="ch.count"/>
+                                        </span>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Conversations (by state) ─────────────────────── -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm o_cc_card"
+                             t-on-click="() => this.openConversationsByState('open')">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <p class="o_cc_label">Conversations</p>
+                                        <h2 class="o_cc_main_stat">
+                                            <t t-esc="state.conversationStates.open"/>
+                                        </h2>
+                                    </div>
+                                    <div class="o_cc_icon_wrap o_cc_icon_primary">
+                                        <i class="fa fa-inbox"/>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-3 o_cc_sub">
+                                    <span class="text-muted">open</span>
+                                    <span class="o_cc_sublink"
+                                          t-on-click="(ev) => { ev.stopPropagation(); this.openConversationsByState('pending'); }">
+                                        <span class="fw-semibold text-dark">
+                                            <t t-esc="state.conversationStates.pending"/>
+                                        </span>
+                                        <span class="text-muted ms-1">pending</span>
+                                    </span>
+                                    <span class="o_cc_sublink"
+                                          t-on-click="(ev) => { ev.stopPropagation(); this.openConversationsByState('resolved'); }">
+                                        <span class="fw-semibold text-dark">
+                                            <t t-esc="state.conversationStates.resolved"/>
+                                        </span>
+                                        <span class="text-muted ms-1">resolved</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Avg. First Response ──────────────────────────── -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm o_cc_card"
+                             t-on-click="openInboundMessages">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <p class="o_cc_label">Avg. First Response</p>
+                                        <h2 class="o_cc_main_stat">
+                                            <t t-esc="formatResponseTime()"/>
+                                        </h2>
+                                    </div>
+                                    <div class="o_cc_icon_wrap o_cc_icon_info">
+                                        <i class="fa fa-clock-o"/>
+                                    </div>
+                                </div>
+                                <div class="o_cc_sub">
+                                    <span class="text-muted">
+                                        based on <t t-esc="state.responseTime.sample_size"/> replies,
+                                        last 30 days
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
