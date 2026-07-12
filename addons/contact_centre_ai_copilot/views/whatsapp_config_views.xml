@@ -5,7 +5,7 @@
         <field name="model">contact.centre.whatsapp.config</field>
         <field name="inherit_id" ref="contact_centre.view_contact_centre_whatsapp_config_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//group[@string='AI Agent (OpenAI)']" position="attributes">
+            <xpath expr="//field[@name='open_ai_api_key']/parent::group" position="attributes">
                 <attribute name="string">AI Agent</attribute>
             </xpath>
             <xpath expr="//field[@name='open_ai_api_key']" position="after">
