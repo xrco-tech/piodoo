@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_contact_centre_whatsapp_config_form_ai_copilot" model="ir.ui.view">
+        <field name="name">contact.centre.whatsapp.config.form.ai.copilot</field>
+        <field name="model">contact.centre.whatsapp.config</field>
+        <field name="inherit_id" ref="contact_centre.view_contact_centre_whatsapp_config_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@string='AI Agent (OpenAI)']" position="attributes">
+                <attribute name="string">AI Agent</attribute>
+            </xpath>
+            <xpath expr="//field[@name='open_ai_api_key']" position="after">
+                <field name="anthropic_api_key" password="True"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

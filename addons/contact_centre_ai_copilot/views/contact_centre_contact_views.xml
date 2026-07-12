@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_contact_centre_contact_form_ai_copilot" model="ir.ui.view">
+        <field name="name">contact.centre.contact.form.ai.copilot</field>
+        <field name="model">contact.centre.contact</field>
+        <field name="inherit_id" ref="contact_centre.view_contact_centre_contact_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="AI Copilot">
+                    <button name="_generate_ai_copilot" type="object"
+                            string="Regenerate Now" class="btn-secondary mb-3"/>
+                    <group>
+                        <field name="ai_sentiment" widget="badge" readonly="1"
+                               decoration-success="ai_sentiment == 'positive'"
+                               decoration-warning="ai_sentiment == 'neutral'"
+                               decoration-danger="ai_sentiment == 'negative'"/>
+                        <field name="ai_analyzed_date" readonly="1"/>
+                    </group>
+                    <group string="Summary">
+                        <field name="ai_summary" nolabel="1" readonly="1"/>
+                    </group>
+                    <group string="Suggested Reply">
+                        <field name="ai_suggested_reply" nolabel="1" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
