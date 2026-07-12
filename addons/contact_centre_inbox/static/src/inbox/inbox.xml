@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="contact_centre_inbox.Inbox">
+        <div class="o_action o_cc_inbox d-flex" style="height: 100%;">
+
+            <!-- ── Left: conversation list ──────────────────────────── -->
+            <div class="o_cc_inbox_list border-end d-flex flex-column" style="width: 320px; min-width: 320px;">
+                <div class="p-2 border-bottom d-flex gap-1">
+                    <button class="btn btn-sm" t-att-class="!state.stateFilter ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.filterByState(false)">All</button>
+                    <button class="btn btn-sm" t-att-class="state.stateFilter === 'open' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.filterByState('open')">Open</button>
+                    <button class="btn btn-sm" t-att-class="state.stateFilter === 'pending' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.filterByState('pending')">Pending</button>
+                    <button class="btn btn-sm" t-att-class="state.stateFilter === 'resolved' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.filterByState('resolved')">Resolved</button>
+                </div>
+                <div class="flex-grow-1 overflow-auto">
+                    <div t-if="state.loadingContacts" class="p-3 text-muted">Loading…</div>
+                    <t t-foreach="state.contacts" t-as="contact" t-key="contact.id">
+                        <div class="p-2 border-bottom o_cc_inbox_contact"
+                             t-att-class="{'bg-light': contact.id === state.selectedContactId}"
+                             t-on-click="() => this.selectContact(contact.id)"
+                             style="cursor:pointer;">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <strong><t t-esc="contact.name"/></strong>
+                                <span class="badge" t-att-class="{
+                                    'text-bg-success': contact.state === 'open',
+                                    'text-bg-warning': contact.state === 'pending',
+                                    'text-bg-secondary': contact.state === 'resolved',
+                                }"><t t-esc="contact.state"/></span>
+                            </div>
+                            <div class="text-muted small"><t t-esc="contact.phone_number"/></div>
+                        </div>
+                    </t>
+                    <div t-if="!state.loadingContacts and !state.contacts.length" class="p-3 text-muted">
+                        No conversations
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Center: thread + composer ────────────────────────── -->
+            <div class="o_cc_inbox_thread flex-grow-1 d-flex flex-column">
+                <t t-if="!state.selectedContactId">
+                    <div class="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
+                        Select a conversation
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="flex-grow-1 overflow-auto p-3">
+                        <div t-if="state.loadingMessages" class="text-muted">Loading…</div>
+                        <t t-foreach="state.messages" t-as="message" t-key="message.id">
+                            <div class="d-flex mb-2"
+                                 t-att-class="message.direction === 'outbound' ? 'justify-content-end' : 'justify-content-start'">
+                                <div class="p-2 rounded" style="max-width: 60%;"
+                                     t-att-class="message.direction === 'outbound' ? 'bg-primary text-white' : 'bg-light'">
+                                    <div class="small opacity-75">
+                                        <span class="badge text-bg-dark me-1"><t t-esc="message.channel"/></span>
+                                        <t t-esc="message.message_timestamp"/>
+                                    </div>
+                                    <div style="white-space: pre-wrap;"><t t-esc="message.body_text"/></div>
+                                    <div class="small opacity-75" t-if="message.direction === 'outbound'">
+                                        <t t-esc="message.status"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                        <div t-if="!state.loadingMessages and !state.messages.length" class="text-muted">
+                            No messages yet
+                        </div>
+                    </div>
+                    <div class="border-top p-2 d-flex gap-2">
+                        <select class="form-select form-select-sm" style="width: auto;" t-model="state.composerChannel">
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="sms">SMS</option>
+                        </select>
+                        <textarea class="form-control form-control-sm" rows="1"
+                                  t-model="state.composerText"
+                                  placeholder="Type a reply..."/>
+                        <button class="btn btn-primary btn-sm" t-on-click="sendReply">Send</button>
+                    </div>
+                </t>
+            </div>
+
+            <!-- ── Right: AI copilot + internal notes ───────────────── -->
+            <div class="o_cc_inbox_side border-start d-flex flex-column overflow-auto"
+                 style="width: 320px; min-width: 320px;" t-if="state.selectedContactId">
+                <div class="p-2 border-bottom" t-if="state.aiAvailable">
+                    <h6>AI Copilot</h6>
+                    <div class="small text-muted mb-1" t-if="state.ai.ai_analyzed_date">
+                        Analyzed <t t-esc="state.ai.ai_analyzed_date"/>
+                    </div>
+                    <span class="badge mb-1" t-if="state.ai.ai_sentiment" t-att-class="{
+                        'text-bg-success': state.ai.ai_sentiment === 'positive',
+                        'text-bg-warning': state.ai.ai_sentiment === 'neutral',
+                        'text-bg-danger': state.ai.ai_sentiment === 'negative',
+                    }"><t t-esc="state.ai.ai_sentiment"/></span>
+                    <p class="small" t-if="state.ai.ai_summary"><t t-esc="state.ai.ai_summary"/></p>
+                    <div t-if="state.ai.ai_suggested_reply" class="border rounded p-2 small mb-2">
+                        <t t-esc="state.ai.ai_suggested_reply"/>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" t-if="state.ai.ai_suggested_reply"
+                            t-on-click="insertSuggestedReply">Insert as Reply</button>
+                </div>
+                <div class="p-2 border-bottom">
+                    <button class="btn btn-sm btn-link p-0" t-on-click="toggleInternalNotes">
+                        <t t-esc="state.showInternalNotes ? 'Hide Internal Notes' : 'Show Internal Notes'"/>
+                    </button>
+                </div>
+                <div class="flex-grow-1 overflow-auto" t-if="state.showInternalNotes">
+                    <Chatter threadModel="'contact.centre.contact'" threadId="state.selectedContactId"/>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>
