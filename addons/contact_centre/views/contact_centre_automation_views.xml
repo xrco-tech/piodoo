@@ -19,6 +19,69 @@
             </field>
         </record>
 
+        <!-- Automation Search View -->
+        <record id="view_contact_centre_automation_search" model="ir.ui.view">
+            <field name="name">contact.centre.automation.search</field>
+            <field name="model">contact.centre.automation</field>
+            <field name="arch" type="xml">
+                <search string="Search Automated Replies">
+                    <field name="name"/>
+                    <field name="trigger_keyword"/>
+                    <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                    <separator/>
+                    <filter string="WhatsApp" name="channel_whatsapp"
+                            domain="[('channel', 'in', ['whatsapp', 'both'])]"/>
+                    <filter string="SMS" name="channel_sms"
+                            domain="[('channel', 'in', ['sms', 'both'])]"/>
+                    <filter string="Email" name="channel_email"
+                            domain="[('channel', '=', 'email')]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter string="Channel" name="group_by_channel"
+                                context="{'group_by': 'channel'}"/>
+                        <filter string="Trigger" name="group_by_trigger_type"
+                                context="{'group_by': 'trigger_type'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Automation Kanban View -->
+        <record id="view_contact_centre_automation_kanban" model="ir.ui.view">
+            <field name="name">contact.centre.automation.kanban</field>
+            <field name="model">contact.centre.automation</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="channel">
+                    <field name="name"/>
+                    <field name="channel"/>
+                    <field name="trigger_type"/>
+                    <field name="trigger_keyword"/>
+                    <field name="response_type"/>
+                    <field name="active"/>
+                    <templates>
+                        <t t-name="card">
+                            <div class="oe_kanban_global_click">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <strong><field name="name"/></strong>
+                                    <field name="active" widget="boolean_toggle"/>
+                                </div>
+                                <div class="text-muted">
+                                    <field name="trigger_type"/>
+                                    <span t-if="record.trigger_keyword.raw_value">
+                                        · "<field name="trigger_keyword"/>"
+                                    </span>
+                                </div>
+                                <div class="mt-2">
+                                    <span class="badge bg-info"><field name="response_type"/></span>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
         <!-- Automation Form View -->
         <record id="view_contact_centre_automation_form" model="ir.ui.view">
             <field name="name">contact.centre.automation.form</field>
@@ -54,24 +117,24 @@
         <record id="action_contact_centre_automation" model="ir.actions.act_window">
             <field name="name">Automated Replies</field>
             <field name="res_model">contact.centre.automation</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">kanban,list,form</field>
         </record>
         <record id="action_contact_centre_automation_whatsapp" model="ir.actions.act_window">
             <field name="name">WhatsApp Automated Replies</field>
             <field name="res_model">contact.centre.automation</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">kanban,list,form</field>
             <field name="domain">[('channel', 'in', ['whatsapp', 'both'])]</field>
         </record>
         <record id="action_contact_centre_automation_sms" model="ir.actions.act_window">
             <field name="name">SMS Automated Replies</field>
             <field name="res_model">contact.centre.automation</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">kanban,list,form</field>
             <field name="domain">[('channel', 'in', ['sms', 'both'])]</field>
         </record>
         <record id="action_contact_centre_automation_email" model="ir.actions.act_window">
             <field name="name">Email Automated Replies</field>
             <field name="res_model">contact.centre.automation</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">kanban,list,form</field>
             <field name="domain">[('channel', '=', 'email')]</field>
         </record>
     </data>

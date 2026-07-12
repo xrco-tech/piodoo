@@ -126,12 +126,22 @@ class ContactCentreWebhookController(http.Controller):
         })
 
         # Route through chatbot if one is active for this contact/channel
+        handled = False
         try:
-            request.env['contact.centre.chatbot'].sudo().route_inbound(
+            handled = request.env['contact.centre.chatbot'].sudo().route_inbound(
                 contact, 'whatsapp', body, cc_message=cc_msg
             )
         except Exception as e:
             _logger.error("Chatbot routing error (WhatsApp): %s", e)
+
+        # No chatbot matched — fall back to a keyword/inbound automation reply
+        if not handled:
+            try:
+                request.env['contact.centre.automation'].sudo().check_and_fire(
+                    contact, 'whatsapp', body, cc_message=cc_msg
+                )
+            except Exception as e:
+                _logger.error("Automation firing error (WhatsApp): %s", e)
 
     # -------------------------------------------------------------------------
     # SMS webhook (InfoBip delivery reports – mirrors comm_sms logic)
@@ -229,12 +239,22 @@ class ContactCentreWebhookController(http.Controller):
         })
 
         # Route through chatbot
+        handled = False
         try:
-            request.env['contact.centre.chatbot'].sudo().route_inbound(
+            handled = request.env['contact.centre.chatbot'].sudo().route_inbound(
                 contact, 'sms', body, cc_message=cc_msg
             )
         except Exception as e:
             _logger.error("Chatbot routing error (SMS): %s", e)
+
+        # No chatbot matched — fall back to a keyword/inbound automation reply
+        if not handled:
+            try:
+                request.env['contact.centre.automation'].sudo().check_and_fire(
+                    contact, 'sms', body, cc_message=cc_msg
+                )
+            except Exception as e:
+                _logger.error("Automation firing error (SMS): %s", e)
 
     # -------------------------------------------------------------------------
     # Email webhook

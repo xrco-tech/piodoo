@@ -16,6 +16,7 @@ class ContactCentreMessage(models.Model):
                        default=lambda self: self.env['ir.sequence'].next_by_code('contact.centre.message'))
     contact_id = fields.Many2one('contact.centre.contact', 'Contact', required=True, index=True, ondelete='cascade')
     campaign_id = fields.Many2one('contact.centre.campaign', 'Campaign', index=True, ondelete='set null')
+    automation_id = fields.Many2one('contact.centre.automation', 'Automation', index=True, ondelete='set null')
     assigned_user_id = fields.Many2one('res.users', 'Assigned Agent', index=True)
 
     channel = fields.Selection([
