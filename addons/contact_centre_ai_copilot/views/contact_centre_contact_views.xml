@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="AI Copilot">
-                    <button name="_generate_ai_copilot" type="object"
+                    <button name="action_regenerate_ai_copilot" type="object"
                             string="Regenerate Now" class="btn-secondary mb-3"/>
                     <group>
                         <field name="ai_sentiment" widget="badge" readonly="1"

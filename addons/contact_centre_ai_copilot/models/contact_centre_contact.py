@@ -58,6 +58,12 @@ class ContactCentreContact(models.Model):
                 )
             processed += 1
 
+    def action_regenerate_ai_copilot(self):
+        """Public wrapper so the form button can trigger it (Odoo blocks
+        buttons from calling underscore-prefixed/private methods)."""
+        for contact in self:
+            contact._generate_ai_copilot()
+
     # -------------------------------------------------------------------------
     # Per-contact worker
     # -------------------------------------------------------------------------
