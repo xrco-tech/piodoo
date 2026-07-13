@@ -142,7 +142,7 @@
                                           chatbotName="state.voiceChatbotName"
                                           onEnd="() => this.endVoiceScript()"/>
                     </div>
-                    <div class="o_cc_inbox_side_section" t-if="(not state.showVoiceScript or state.rightPaneTab === 'copilot') and state.aiAvailable">
+                    <div class="o_cc_inbox_side_section" t-if="(!state.showVoiceScript or state.rightPaneTab === 'copilot') and state.aiAvailable">
                         <h6>AI Copilot</h6>
                         <div class="small text-muted mb-1" t-if="state.ai.ai_analyzed_date">
                             Analyzed <t t-esc="state.ai.ai_analyzed_date"/>
@@ -162,7 +162,7 @@
                             Not analyzed yet
                         </div>
                     </div>
-                    <div class="o_cc_inbox_side_section" t-if="not state.showVoiceScript or state.rightPaneTab === 'copilot'">
+                    <div class="o_cc_inbox_side_section" t-if="!state.showVoiceScript or state.rightPaneTab === 'copilot'">
                         <button class="btn btn-sm btn-link p-0" t-on-click="toggleInternalNotes">
                             <t t-esc="state.showInternalNotes ? 'Hide Internal Notes' : 'Show Internal Notes'"/>
                         </button>
