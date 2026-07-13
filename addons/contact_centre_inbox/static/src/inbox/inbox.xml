@@ -7,6 +7,10 @@
             <!-- ── Left: conversation list ──────────────────────────── -->
             <div class="o_cc_inbox_list d-flex flex-column" t-if="state.showLeftPane">
                 <div class="o_cc_inbox_pane_header">Conversations</div>
+                <div class="p-2 border-bottom">
+                    <input type="text" class="form-control form-control-sm" placeholder="Search name, phone, email..."
+                           t-att-value="state.searchQuery" t-on-input="onSearchInput"/>
+                </div>
                 <div class="p-2 border-bottom d-flex gap-1">
                     <button class="btn btn-sm" t-att-class="!state.stateFilter ? 'btn-primary' : 'btn-outline-secondary'"
                             t-on-click="() => this.filterByState(false)">All</button>

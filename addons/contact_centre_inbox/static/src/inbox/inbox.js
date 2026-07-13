@@ -2,6 +2,7 @@
 
 import { Component, useState, onWillStart, onWillDestroy } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
+import { useDebounced } from "@web/core/utils/timing";
 import { registry } from "@web/core/registry";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { Chatter } from "@mail/chatter/web_portal/chatter";
@@ -21,6 +22,7 @@ export class ContactCentreInbox extends Component {
             loadingContacts: true,
             contacts: [],
             stateFilter: false,
+            searchQuery: "",
             selectedContactId: false,
             selectedContact: false,
             loadingMessages: false,
@@ -34,6 +36,7 @@ export class ContactCentreInbox extends Component {
         });
 
         this._onBusNotification = this._onBusNotification.bind(this);
+        this.debouncedLoadContacts = useDebounced(() => this.loadContacts(), 300);
 
         onWillStart(() => this.loadContacts());
 
@@ -50,7 +53,16 @@ export class ContactCentreInbox extends Component {
 
     async loadContacts() {
         this.state.loadingContacts = true;
-        const domain = this.state.stateFilter ? [["state", "=", this.state.stateFilter]] : [];
+        let domain = this.state.stateFilter ? [["state", "=", this.state.stateFilter]] : [];
+        const term = this.state.searchQuery.trim();
+        if (term) {
+            domain = domain.concat([
+                "|", "|",
+                ["name", "ilike", term],
+                ["phone_number", "ilike", term],
+                ["email", "ilike", term],
+            ]);
+        }
         try {
             this.state.contacts = await this.orm.searchRead(
                 "contact.centre.contact",
@@ -109,6 +121,11 @@ export class ContactCentreInbox extends Component {
     filterByState(stateValue) {
         this.state.stateFilter = this.state.stateFilter === stateValue ? false : stateValue;
         this.loadContacts();
+    }
+
+    onSearchInput(ev) {
+        this.state.searchQuery = ev.target.value;
+        this.debouncedLoadContacts();
     }
 
     insertSuggestedReply() {
