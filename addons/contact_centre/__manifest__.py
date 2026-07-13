@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contact Centre',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Customer Relationship Management',
     'summary': 'Unified SMS and WhatsApp Contact Centre',
     'description': """
