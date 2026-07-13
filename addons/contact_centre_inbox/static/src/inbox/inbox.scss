@@ -1,0 +1,60 @@
+.o_cc_inbox {
+    height: 100%;
+    background: var(--o-view-background-color, #fff);
+
+    .o_cc_inbox_pane_header {
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        background: var(--o-gray-100, #f8f9fa);
+        flex-shrink: 0;
+    }
+
+    // ── Left: conversation list ──────────────────────────────────────
+    .o_cc_inbox_list {
+        width: 320px;
+        min-width: 320px;
+        background: var(--o-gray-100, #f8f9fa);
+        border-right: 1px solid var(--o-gray-300, #dee2e6) !important;
+    }
+
+    .o_cc_inbox_contact {
+        border-left: 4px solid transparent;
+        transition: background-color 0.1s ease;
+
+        &:hover {
+            background: var(--o-gray-200, #e9ecef);
+        }
+
+        &.o_cc_inbox_contact_selected {
+            border-left-color: var(--bs-primary, #0d6efd);
+            background: var(--o-view-background-color, #fff);
+        }
+    }
+
+    // ── Center: thread ────────────────────────────────────────────────
+    .o_cc_inbox_thread {
+        background: var(--o-view-background-color, #fff);
+    }
+
+    .o_cc_inbox_bubble {
+        max-width: 65%;
+        border-radius: 12px;
+    }
+
+    // ── Right: copilot + notes ────────────────────────────────────────
+    .o_cc_inbox_side {
+        width: 320px;
+        min-width: 320px;
+        background: var(--o-gray-100, #f8f9fa);
+        border-left: 1px solid var(--o-gray-300, #dee2e6) !important;
+    }
+
+    .o_cc_inbox_side_section {
+        background: var(--o-view-background-color, #fff);
+        border-radius: 8px;
+        margin: 0.75rem;
+        padding: 0.75rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+}

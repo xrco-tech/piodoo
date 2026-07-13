@@ -22,6 +22,7 @@ real time via bus.bus.
         "web.assets_backend": [
             "contact_centre_inbox/static/src/inbox/inbox.xml",
             "contact_centre_inbox/static/src/inbox/inbox.js",
+            "contact_centre_inbox/static/src/inbox/inbox.scss",
         ],
     },
     "installable": True,

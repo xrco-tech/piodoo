@@ -5,7 +5,8 @@
         <div class="o_action o_cc_inbox d-flex" style="height: 100%;">
 
             <!-- ── Left: conversation list ──────────────────────────── -->
-            <div class="o_cc_inbox_list border-end d-flex flex-column" style="width: 320px; min-width: 320px;">
+            <div class="o_cc_inbox_list d-flex flex-column">
+                <div class="o_cc_inbox_pane_header">Conversations</div>
                 <div class="p-2 border-bottom d-flex gap-1">
                     <button class="btn btn-sm" t-att-class="!state.stateFilter ? 'btn-primary' : 'btn-outline-secondary'"
                             t-on-click="() => this.filterByState(false)">All</button>
@@ -20,7 +21,7 @@
                     <div t-if="state.loadingContacts" class="p-3 text-muted">Loading…</div>
                     <t t-foreach="state.contacts" t-as="contact" t-key="contact.id">
                         <div class="p-2 border-bottom o_cc_inbox_contact"
-                             t-att-class="{'bg-light': contact.id === state.selectedContactId}"
+                             t-att-class="{'o_cc_inbox_contact_selected': contact.id === state.selectedContactId}"
                              t-on-click="() => this.selectContact(contact.id)"
                              style="cursor:pointer;">
                             <div class="d-flex justify-content-between align-items-start">
@@ -42,9 +43,16 @@
 
             <!-- ── Center: thread + composer ────────────────────────── -->
             <div class="o_cc_inbox_thread flex-grow-1 d-flex flex-column">
+                <div class="o_cc_inbox_pane_header">
+                    <t t-if="state.selectedContact">
+                        <t t-esc="state.selectedContact.name"/>
+                        <span class="text-muted fw-normal ms-2 small"><t t-esc="state.selectedContact.phone_number"/></span>
+                    </t>
+                    <t t-else="">Thread</t>
+                </div>
                 <t t-if="!state.selectedContactId">
                     <div class="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
-                        Select a conversation
+                        Select a conversation on the left to see its thread
                     </div>
                 </t>
                 <t t-else="">
@@ -53,7 +61,7 @@
                         <t t-foreach="state.messages" t-as="message" t-key="message.id">
                             <div class="d-flex mb-2"
                                  t-att-class="message.direction === 'outbound' ? 'justify-content-end' : 'justify-content-start'">
-                                <div class="p-2 rounded" style="max-width: 60%;"
+                                <div class="o_cc_inbox_bubble p-2"
                                      t-att-class="message.direction === 'outbound' ? 'bg-primary text-white' : 'bg-light'">
                                     <div class="small opacity-75">
                                         <span class="badge text-bg-dark me-1"><t t-esc="message.channel"/></span>
@@ -84,33 +92,43 @@
             </div>
 
             <!-- ── Right: AI copilot + internal notes ───────────────── -->
-            <div class="o_cc_inbox_side border-start d-flex flex-column overflow-auto"
-                 style="width: 320px; min-width: 320px;" t-if="state.selectedContactId">
-                <div class="p-2 border-bottom" t-if="state.aiAvailable">
-                    <h6>AI Copilot</h6>
-                    <div class="small text-muted mb-1" t-if="state.ai.ai_analyzed_date">
-                        Analyzed <t t-esc="state.ai.ai_analyzed_date"/>
+            <div class="o_cc_inbox_side d-flex flex-column overflow-auto">
+                <div class="o_cc_inbox_pane_header">Copilot &amp; Notes</div>
+                <t t-if="!state.selectedContactId">
+                    <div class="p-3 text-muted small">
+                        Select a conversation to see its AI summary and internal notes
                     </div>
-                    <span class="badge mb-1" t-if="state.ai.ai_sentiment" t-att-class="{
-                        'text-bg-success': state.ai.ai_sentiment === 'positive',
-                        'text-bg-warning': state.ai.ai_sentiment === 'neutral',
-                        'text-bg-danger': state.ai.ai_sentiment === 'negative',
-                    }"><t t-esc="state.ai.ai_sentiment"/></span>
-                    <p class="small" t-if="state.ai.ai_summary"><t t-esc="state.ai.ai_summary"/></p>
-                    <div t-if="state.ai.ai_suggested_reply" class="border rounded p-2 small mb-2">
-                        <t t-esc="state.ai.ai_suggested_reply"/>
+                </t>
+                <t t-else="">
+                    <div class="o_cc_inbox_side_section" t-if="state.aiAvailable">
+                        <h6>AI Copilot</h6>
+                        <div class="small text-muted mb-1" t-if="state.ai.ai_analyzed_date">
+                            Analyzed <t t-esc="state.ai.ai_analyzed_date"/>
+                        </div>
+                        <span class="badge mb-1" t-if="state.ai.ai_sentiment" t-att-class="{
+                            'text-bg-success': state.ai.ai_sentiment === 'positive',
+                            'text-bg-warning': state.ai.ai_sentiment === 'neutral',
+                            'text-bg-danger': state.ai.ai_sentiment === 'negative',
+                        }"><t t-esc="state.ai.ai_sentiment"/></span>
+                        <p class="small" t-if="state.ai.ai_summary"><t t-esc="state.ai.ai_summary"/></p>
+                        <div t-if="state.ai.ai_suggested_reply" class="border rounded p-2 small mb-2">
+                            <t t-esc="state.ai.ai_suggested_reply"/>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" t-if="state.ai.ai_suggested_reply"
+                                t-on-click="insertSuggestedReply">Insert as Reply</button>
+                        <div t-if="!state.ai.ai_summary and !state.ai.ai_suggested_reply" class="small text-muted">
+                            Not analyzed yet
+                        </div>
                     </div>
-                    <button class="btn btn-sm btn-outline-primary" t-if="state.ai.ai_suggested_reply"
-                            t-on-click="insertSuggestedReply">Insert as Reply</button>
-                </div>
-                <div class="p-2 border-bottom">
-                    <button class="btn btn-sm btn-link p-0" t-on-click="toggleInternalNotes">
-                        <t t-esc="state.showInternalNotes ? 'Hide Internal Notes' : 'Show Internal Notes'"/>
-                    </button>
-                </div>
-                <div class="flex-grow-1 overflow-auto" t-if="state.showInternalNotes">
-                    <Chatter threadModel="'contact.centre.contact'" threadId="state.selectedContactId"/>
-                </div>
+                    <div class="o_cc_inbox_side_section">
+                        <button class="btn btn-sm btn-link p-0" t-on-click="toggleInternalNotes">
+                            <t t-esc="state.showInternalNotes ? 'Hide Internal Notes' : 'Show Internal Notes'"/>
+                        </button>
+                        <div t-if="state.showInternalNotes" class="mt-2">
+                            <Chatter threadModel="'contact.centre.contact'" threadId="state.selectedContactId"/>
+                        </div>
+                    </div>
+                </t>
             </div>
         </div>
     </t>

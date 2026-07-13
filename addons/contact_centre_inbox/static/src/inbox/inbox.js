@@ -22,6 +22,7 @@ export class ContactCentreInbox extends Component {
             contacts: [],
             stateFilter: false,
             selectedContactId: false,
+            selectedContact: false,
             loadingMessages: false,
             messages: [],
             composerText: "",
@@ -63,6 +64,7 @@ export class ContactCentreInbox extends Component {
 
     async selectContact(contactId) {
         this.state.selectedContactId = contactId;
+        this.state.selectedContact = this.state.contacts.find((c) => c.id === contactId) || false;
         await Promise.all([this.loadMessages(contactId), this.loadAiPanel(contactId)]);
     }
 
