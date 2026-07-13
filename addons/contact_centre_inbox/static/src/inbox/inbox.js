@@ -4,19 +4,22 @@ import { Component, useState, useRef, useEffect, onWillStart, onWillDestroy } fr
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { registry } from "@web/core/registry";
+import { rpc } from "@web/core/network/rpc";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { Chatter } from "@mail/chatter/web_portal/chatter";
+import { VoiceScriptPanel } from "./voice_script_panel";
 
 const SENDABLE_CHANNELS = ["whatsapp", "sms"];
 
 export class ContactCentreInbox extends Component {
     static template = "contact_centre_inbox.Inbox";
-    static components = { Chatter };
+    static components = { Chatter, VoiceScriptPanel };
     static props = { ...standardActionServiceProps };
 
     setup() {
         this.orm = useService("orm");
         this.busService = useService("bus_service");
+        this.notification = useService("notification");
 
         this.state = useState({
             loadingContacts: true,
@@ -33,6 +36,11 @@ export class ContactCentreInbox extends Component {
             showInternalNotes: false,
             aiAvailable: false,
             ai: { ai_summary: "", ai_sentiment: false, ai_suggested_reply: "", ai_analyzed_date: false },
+            showCallPicker: false,
+            voiceChatbots: [],
+            showVoiceScript: false,
+            voiceSessionId: false,
+            voiceChatbotName: "",
         });
 
         this.composerRef = useRef("composerTextarea");
@@ -77,7 +85,7 @@ export class ContactCentreInbox extends Component {
             this.state.contacts = await this.orm.searchRead(
                 "contact.centre.contact",
                 domain,
-                ["name", "phone_number", "state", "last_contact_date"],
+                ["name", "phone_number", "state", "last_contact_date", "partner_id"],
                 { order: "last_contact_date desc", limit: 200 }
             );
         } finally {
@@ -159,6 +167,64 @@ export class ContactCentreInbox extends Component {
 
     toggleLeftPane() {
         this.state.showLeftPane = !this.state.showLeftPane;
+    }
+
+    async toggleCallPicker() {
+        this.state.showCallPicker = !this.state.showCallPicker;
+        if (this.state.showCallPicker && !this.state.voiceChatbots.length) {
+            this.state.voiceChatbots = await this.orm.searchRead(
+                "whatsapp.chatbot",
+                [["channel", "=", "voice"], ["status", "=", "published"]],
+                ["name"]
+            );
+        }
+    }
+
+    async startVoiceCall(chatbotId) {
+        this.state.showCallPicker = false;
+        const contact = this.state.selectedContact;
+        if (!contact || !contact.phone_number) {
+            this.notification.add("This contact has no phone number.", { type: "warning" });
+            return;
+        }
+        const callingService = this.env.services.comm_whatsapp_calling;
+        if (!callingService) {
+            this.notification.add("WhatsApp calling isn't available.", { type: "danger" });
+            return;
+        }
+
+        let sessionId = false;
+        if (chatbotId) {
+            try {
+                const startData = await rpc("/voice/start", {
+                    chatbot_id: chatbotId,
+                    contact_details: { name: contact.name, mobile: contact.phone_number },
+                });
+                sessionId = startData.session_id;
+            } catch (_e) {
+                this.notification.add("Failed to start the voice script — calling without one.", { type: "warning" });
+            }
+        }
+
+        callingService.dialCall({
+            toNumber: contact.phone_number,
+            partnerId: contact.partner_id ? contact.partner_id[0] : undefined,
+            partnerName: contact.name,
+            chatbotId: chatbotId || undefined,
+        });
+
+        if (sessionId) {
+            const chatbot = this.state.voiceChatbots.find((c) => c.id === chatbotId);
+            this.state.voiceSessionId = sessionId;
+            this.state.voiceChatbotName = chatbot ? chatbot.name : "";
+            this.state.showVoiceScript = true;
+        }
+    }
+
+    endVoiceScript() {
+        this.state.showVoiceScript = false;
+        this.state.voiceSessionId = false;
+        this.state.voiceChatbotName = "";
     }
 
     toggleInternalNotes() {

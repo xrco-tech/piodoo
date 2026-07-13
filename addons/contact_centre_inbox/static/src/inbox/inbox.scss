@@ -53,6 +53,44 @@
         max-height: 12rem;
     }
 
+    // ── Call picker dropdown (also reused by VoiceScriptPanel's list_rows) ──
+    .o_cc_inbox_call_picker {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 10;
+        min-width: 220px;
+        max-height: 300px;
+        overflow-y: auto;
+        background: var(--o-view-background-color, #fff);
+        border: 1px solid var(--o-gray-300, #dee2e6);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        margin-top: 0.25rem;
+    }
+
+    .o_cc_inbox_call_picker_item {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+
+        &:hover {
+            background: var(--o-gray-100, #f8f9fa);
+        }
+    }
+
+    // ── Voice script follower (right pane, during a scripted call) ──────
+    .o_cc_voice_script_bubbles {
+        max-height: 22rem;
+        overflow-y: auto;
+    }
+
+    .o_cc_voice_script_bubble {
+        background: var(--o-gray-100, #f8f9fa);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+    }
+
     // ── Right: copilot + notes ────────────────────────────────────────
     .o_cc_inbox_side {
         width: 320px;

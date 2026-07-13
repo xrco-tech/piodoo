@@ -58,6 +58,25 @@
                         </t>
                         <t t-else="">Thread</t>
                     </span>
+                    <div class="ms-auto position-relative" t-if="state.selectedContactId">
+                        <button class="btn btn-sm btn-success" t-on-click="toggleCallPicker">
+                            <i class="fa fa-phone me-1"/>Call WhatsApp
+                        </button>
+                        <div t-if="state.showCallPicker" class="o_cc_inbox_call_picker">
+                            <div class="fw-semibold small text-muted px-2 pt-2 pb-1">Choose a script</div>
+                            <div class="o_cc_inbox_call_picker_item" t-on-click="() => this.startVoiceCall(false)">
+                                No script (plain call)
+                            </div>
+                            <t t-foreach="state.voiceChatbots" t-as="chatbot" t-key="chatbot.id">
+                                <div class="o_cc_inbox_call_picker_item" t-on-click="() => this.startVoiceCall(chatbot.id)">
+                                    <t t-esc="chatbot.name"/>
+                                </div>
+                            </t>
+                            <div t-if="!state.voiceChatbots.length" class="px-2 py-2 text-muted small">
+                                No published voice scripts
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <t t-if="!state.selectedContactId">
                     <div class="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
@@ -104,7 +123,7 @@
 
             <!-- ── Right: AI copilot + internal notes ───────────────── -->
             <div class="o_cc_inbox_side d-flex flex-column overflow-auto"
-                 t-att-class="{'o_cc_inbox_side_wide': state.showInternalNotes}">
+                 t-att-class="{'o_cc_inbox_side_wide': state.showInternalNotes or state.showVoiceScript}">
                 <div class="o_cc_inbox_pane_header">Copilot &amp; Notes</div>
                 <t t-if="!state.selectedContactId">
                     <div class="p-3 text-muted small">
@@ -112,6 +131,11 @@
                     </div>
                 </t>
                 <t t-else="">
+                    <div class="o_cc_inbox_side_section" t-if="state.showVoiceScript">
+                        <VoiceScriptPanel sessionId="state.voiceSessionId"
+                                          chatbotName="state.voiceChatbotName"
+                                          onEnd="() => this.endVoiceScript()"/>
+                    </div>
                     <div class="o_cc_inbox_side_section" t-if="state.aiAvailable">
                         <h6>AI Copilot</h6>
                         <div class="small text-muted mb-1" t-if="state.ai.ai_analyzed_date">
@@ -141,6 +165,53 @@
                         </div>
                     </div>
                 </t>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="contact_centre_inbox.VoiceScriptPanel">
+        <div class="o_cc_voice_script">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <span class="badge text-bg-success me-1">On call</span>
+                    <strong t-esc="props.chatbotName"/>
+                </div>
+                <button class="btn btn-sm btn-outline-danger" t-on-click="endCall">End Call &amp; Script</button>
+            </div>
+
+            <div class="o_cc_voice_script_bubbles mb-2">
+                <t t-foreach="state.bubbles" t-as="bubble" t-key="bubble_index">
+                    <div class="o_cc_voice_script_bubble mb-2">
+                        <div t-if="bubble.coaching_notes" class="small text-muted fst-italic mb-1">
+                            <t t-esc="bubble.coaching_notes"/>
+                        </div>
+                        <div style="white-space: pre-wrap;" t-esc="bubble.body"/>
+                        <div t-if="bubble.buttons and bubble.buttons.length" class="d-flex flex-wrap gap-1 mt-2">
+                            <t t-foreach="bubble.buttons" t-as="btn" t-key="btn">
+                                <button class="btn btn-sm btn-outline-primary" t-on-click="() => this.clickOption(btn)">
+                                    <t t-esc="btn"/>
+                                </button>
+                            </t>
+                        </div>
+                        <div t-if="bubble.list_rows and bubble.list_rows.length" class="mt-2">
+                            <t t-foreach="bubble.list_rows" t-as="row" t-key="row">
+                                <div class="o_cc_inbox_call_picker_item" t-on-click="() => this.clickOption(row)">
+                                    <t t-esc="row"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </t>
+                <div t-if="state.loading" class="text-muted small">Loading next step…</div>
+            </div>
+
+            <div t-if="state.terminated" class="alert alert-success small py-2">
+                Script complete.
+            </div>
+            <div t-else="" class="d-flex gap-2">
+                <input type="text" class="form-control form-control-sm" placeholder="Type the customer's answer..."
+                       t-att-value="state.inputText" t-on-input="onInputChange"/>
+                <button class="btn btn-primary btn-sm" t-on-click="submitFreeText">Send</button>
             </div>
         </div>
     </t>

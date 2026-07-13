@@ -14,7 +14,7 @@ real time via bus.bus.
 """,
     "author": "Tsela NavTech",
     "license": "LGPL-3",
-    "depends": ["contact_centre"],
+    "depends": ["contact_centre", "comm_whatsapp_calling"],
     "data": [
         "views/contact_centre_inbox_views.xml",
     ],
@@ -22,6 +22,7 @@ real time via bus.bus.
         "web.assets_backend": [
             "contact_centre_inbox/static/src/inbox/inbox.xml",
             "contact_centre_inbox/static/src/inbox/inbox.js",
+            "contact_centre_inbox/static/src/inbox/voice_script_panel.js",
             "contact_centre_inbox/static/src/inbox/inbox.scss",
         ],
     },
