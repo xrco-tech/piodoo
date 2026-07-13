@@ -52,6 +52,12 @@
         min-width: 320px;
         background: var(--o-gray-100, #f8f9fa);
         border-left: 1px solid var(--o-gray-300, #dee2e6) !important;
+        transition: width 0.15s ease, min-width 0.15s ease;
+
+        &.o_cc_inbox_side_wide {
+            width: 520px;
+            min-width: 520px;
+        }
     }
 
     .o_cc_inbox_side_section {

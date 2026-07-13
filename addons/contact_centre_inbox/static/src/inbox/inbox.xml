@@ -97,7 +97,8 @@
             </div>
 
             <!-- ── Right: AI copilot + internal notes ───────────────── -->
-            <div class="o_cc_inbox_side d-flex flex-column overflow-auto">
+            <div class="o_cc_inbox_side d-flex flex-column overflow-auto"
+                 t-att-class="{'o_cc_inbox_side_wide': state.showInternalNotes}">
                 <div class="o_cc_inbox_pane_header">Copilot &amp; Notes</div>
                 <t t-if="!state.selectedContactId">
                     <div class="p-3 text-muted small">
