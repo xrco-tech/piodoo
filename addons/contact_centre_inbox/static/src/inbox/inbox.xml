@@ -87,13 +87,15 @@
                             No messages yet
                         </div>
                     </div>
-                    <div class="border-top p-2 d-flex gap-2">
+                    <div class="border-top p-2 d-flex gap-2 align-items-end">
                         <select class="form-select form-select-sm" style="width: auto;" t-model="state.composerChannel">
                             <option value="whatsapp">WhatsApp</option>
                             <option value="sms">SMS</option>
                         </select>
-                        <textarea class="form-control form-control-sm" rows="1"
-                                  t-model="state.composerText"
+                        <textarea class="form-control form-control-sm o_cc_inbox_composer" rows="1"
+                                  t-ref="composerTextarea"
+                                  t-att-value="state.composerText"
+                                  t-on-input="onComposerInput"
                                   placeholder="Type a reply..."/>
                         <button class="btn btn-primary btn-sm" t-on-click="sendReply">Send</button>
                     </div>

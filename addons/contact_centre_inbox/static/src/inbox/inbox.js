@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, useState, onWillStart, onWillDestroy } from "@odoo/owl";
+import { Component, useState, useRef, useEffect, onWillStart, onWillDestroy } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { registry } from "@web/core/registry";
@@ -34,6 +34,16 @@ export class ContactCentreInbox extends Component {
             aiAvailable: false,
             ai: { ai_summary: "", ai_sentiment: false, ai_suggested_reply: "", ai_analyzed_date: false },
         });
+
+        this.composerRef = useRef("composerTextarea");
+        // Auto-grow the composer textarea to fit its content (capped by
+        // max-height/overflow in CSS) - re-run on every change to the text,
+        // regardless of whether it came from typing, "Insert as Reply", or
+        // being cleared after sending.
+        useEffect(
+            () => this._autoResizeComposer(),
+            () => [this.state.composerText]
+        );
 
         this._onBusNotification = this._onBusNotification.bind(this);
         this.debouncedLoadContacts = useDebounced(() => this.loadContacts(), 300);
@@ -126,6 +136,19 @@ export class ContactCentreInbox extends Component {
     onSearchInput(ev) {
         this.state.searchQuery = ev.target.value;
         this.debouncedLoadContacts();
+    }
+
+    onComposerInput(ev) {
+        this.state.composerText = ev.target.value;
+    }
+
+    _autoResizeComposer() {
+        const el = this.composerRef.el;
+        if (!el) {
+            return;
+        }
+        el.style.height = "auto";
+        el.style.height = `${el.scrollHeight}px`;
     }
 
     insertSuggestedReply() {

@@ -46,6 +46,13 @@
         border-radius: 12px;
     }
 
+    // Auto-grows via JS up to ~8 lines, then scrolls instead of growing further.
+    .o_cc_inbox_composer {
+        resize: none;
+        overflow-y: auto;
+        max-height: 12rem;
+    }
+
     // ── Right: copilot + notes ────────────────────────────────────────
     .o_cc_inbox_side {
         width: 320px;
