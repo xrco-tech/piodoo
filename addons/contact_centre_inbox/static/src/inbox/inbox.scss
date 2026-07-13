@@ -105,6 +105,26 @@
         }
     }
 
+    .o_cc_inbox_tabs {
+        background: var(--o-view-background-color, #fff);
+    }
+
+    .o_cc_inbox_tab {
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 0.6rem 0.5rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--o-gray-600, #6c757d);
+        border-bottom: 2px solid transparent;
+
+        &.o_cc_inbox_tab_active {
+            color: var(--bs-primary, #0d6efd);
+            border-bottom-color: var(--bs-primary, #0d6efd);
+        }
+    }
+
     .o_cc_inbox_side_section {
         background: var(--o-view-background-color, #fff);
         border-radius: 8px;

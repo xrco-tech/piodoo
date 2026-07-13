@@ -41,6 +41,7 @@ export class ContactCentreInbox extends Component {
             showVoiceScript: false,
             voiceSessionId: false,
             voiceChatbotName: "",
+            rightPaneTab: "copilot",
         });
 
         this.composerRef = useRef("composerTextarea");
@@ -218,13 +219,19 @@ export class ContactCentreInbox extends Component {
             this.state.voiceSessionId = sessionId;
             this.state.voiceChatbotName = chatbot ? chatbot.name : "";
             this.state.showVoiceScript = true;
+            this.state.rightPaneTab = "script";
         }
+    }
+
+    switchRightPaneTab(tab) {
+        this.state.rightPaneTab = tab;
     }
 
     endVoiceScript() {
         this.state.showVoiceScript = false;
         this.state.voiceSessionId = false;
         this.state.voiceChatbotName = "";
+        this.state.rightPaneTab = "copilot";
     }
 
     toggleInternalNotes() {

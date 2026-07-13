@@ -125,18 +125,24 @@
             <div class="o_cc_inbox_side d-flex flex-column overflow-auto"
                  t-att-class="{'o_cc_inbox_side_wide': state.showInternalNotes or state.showVoiceScript}">
                 <div class="o_cc_inbox_pane_header">Copilot &amp; Notes</div>
+                <div t-if="state.showVoiceScript and state.selectedContactId" class="o_cc_inbox_tabs d-flex border-bottom">
+                    <button class="o_cc_inbox_tab" t-att-class="{'o_cc_inbox_tab_active': state.rightPaneTab === 'script'}"
+                            t-on-click="() => this.switchRightPaneTab('script')">Call Script</button>
+                    <button class="o_cc_inbox_tab" t-att-class="{'o_cc_inbox_tab_active': state.rightPaneTab === 'copilot'}"
+                            t-on-click="() => this.switchRightPaneTab('copilot')">Copilot &amp; Notes</button>
+                </div>
                 <t t-if="!state.selectedContactId">
                     <div class="p-3 text-muted small">
                         Select a conversation to see its AI summary and internal notes
                     </div>
                 </t>
                 <t t-else="">
-                    <div class="o_cc_inbox_side_section" t-if="state.showVoiceScript">
+                    <div class="o_cc_inbox_side_section" t-if="state.showVoiceScript and state.rightPaneTab === 'script'">
                         <VoiceScriptPanel sessionId="state.voiceSessionId"
                                           chatbotName="state.voiceChatbotName"
                                           onEnd="() => this.endVoiceScript()"/>
                     </div>
-                    <div class="o_cc_inbox_side_section" t-if="state.aiAvailable">
+                    <div class="o_cc_inbox_side_section" t-if="(not state.showVoiceScript or state.rightPaneTab === 'copilot') and state.aiAvailable">
                         <h6>AI Copilot</h6>
                         <div class="small text-muted mb-1" t-if="state.ai.ai_analyzed_date">
                             Analyzed <t t-esc="state.ai.ai_analyzed_date"/>
@@ -156,7 +162,7 @@
                             Not analyzed yet
                         </div>
                     </div>
-                    <div class="o_cc_inbox_side_section">
+                    <div class="o_cc_inbox_side_section" t-if="not state.showVoiceScript or state.rightPaneTab === 'copilot'">
                         <button class="btn btn-sm btn-link p-0" t-on-click="toggleInternalNotes">
                             <t t-esc="state.showInternalNotes ? 'Hide Internal Notes' : 'Show Internal Notes'"/>
                         </button>
