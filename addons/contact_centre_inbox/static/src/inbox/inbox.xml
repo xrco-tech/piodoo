@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
 
     <t t-name="contact_centre_inbox.Inbox">
-        <div class="o_action o_cc_inbox d-flex" style="height: 100%;">
+        <div class="o_action o_cc_inbox d-flex flex-row" style="height: 100%;">
 
             <!-- ── Left: conversation list ──────────────────────────── -->
             <div class="o_cc_inbox_list d-flex flex-column">
