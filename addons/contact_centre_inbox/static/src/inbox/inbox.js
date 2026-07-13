@@ -27,6 +27,7 @@ export class ContactCentreInbox extends Component {
             messages: [],
             composerText: "",
             composerChannel: "whatsapp",
+            showLeftPane: true,
             showInternalNotes: false,
             aiAvailable: false,
             ai: { ai_summary: "", ai_sentiment: false, ai_suggested_reply: "", ai_analyzed_date: false },
@@ -116,8 +117,16 @@ export class ContactCentreInbox extends Component {
         }
     }
 
+    toggleLeftPane() {
+        this.state.showLeftPane = !this.state.showLeftPane;
+    }
+
     toggleInternalNotes() {
         this.state.showInternalNotes = !this.state.showInternalNotes;
+        // Notes get cropped with all 3 panes open - free up the width by
+        // hiding the conversation list while notes are shown, and restore
+        // it when notes are hidden again.
+        this.state.showLeftPane = !this.state.showInternalNotes;
     }
 
     async sendReply() {

@@ -5,7 +5,7 @@
         <div class="o_action o_cc_inbox d-flex flex-row" style="height: 100%;">
 
             <!-- ── Left: conversation list ──────────────────────────── -->
-            <div class="o_cc_inbox_list d-flex flex-column">
+            <div class="o_cc_inbox_list d-flex flex-column" t-if="state.showLeftPane">
                 <div class="o_cc_inbox_pane_header">Conversations</div>
                 <div class="p-2 border-bottom d-flex gap-1">
                     <button class="btn btn-sm" t-att-class="!state.stateFilter ? 'btn-primary' : 'btn-outline-secondary'"
@@ -43,12 +43,17 @@
 
             <!-- ── Center: thread + composer ────────────────────────── -->
             <div class="o_cc_inbox_thread flex-grow-1 d-flex flex-column">
-                <div class="o_cc_inbox_pane_header">
-                    <t t-if="state.selectedContact">
-                        <t t-esc="state.selectedContact.name"/>
-                        <span class="text-muted fw-normal ms-2 small"><t t-esc="state.selectedContact.phone_number"/></span>
-                    </t>
-                    <t t-else="">Thread</t>
+                <div class="o_cc_inbox_pane_header d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-1" t-on-click="toggleLeftPane" title="Show/hide conversations">
+                        <i t-att-class="state.showLeftPane ? 'fa fa-angle-double-left' : 'fa fa-angle-double-right'"/>
+                    </button>
+                    <span>
+                        <t t-if="state.selectedContact">
+                            <t t-esc="state.selectedContact.name"/>
+                            <span class="text-muted fw-normal ms-2 small"><t t-esc="state.selectedContact.phone_number"/></span>
+                        </t>
+                        <t t-else="">Thread</t>
+                    </span>
                 </div>
                 <t t-if="!state.selectedContactId">
                     <div class="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
