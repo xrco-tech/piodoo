@@ -20,6 +20,18 @@ MAX_TOOL_ITERATIONS = 5
 # Parsed out and stored separately - never shown to the user as raw text.
 SUGGESTIONS_RE = re.compile(r"<<suggestions>>(\[.*?\])<<end>>", re.S)
 
+# Fallback when the main reply doesn't carry an inline <<suggestions>> tag -
+# a small, separate, tool-free call asking only for quick-reply options.
+FALLBACK_SUGGESTIONS_SYSTEM = (
+    "Given the assistant's last message in a support-app chat, suggest 2-4 short "
+    "quick-reply options a user might click to respond - each a few words, phrased "
+    "as something the user would say (e.g. \"Yes, add it\", not \"Add it? Yes\"). "
+    "Reply with ONLY a JSON array of strings, nothing else - no markdown, no "
+    "explanation, no code fences. If the message doesn't have a clear small set of "
+    "likely replies (e.g. it's just a status update, an error, or open-ended), "
+    "reply with exactly []."
+)
+
 # Mirrors contact.centre.dashboard.card's own Selection field - the model
 # enforces this too, this is just so the tool schema's enum matches.
 DASHBOARD_CARD_MODELS = [
@@ -594,6 +606,13 @@ class ContactCentreAiChat(models.Model):
         messages = [{"role": m.role, "content": m.content} for m in self.message_ids]
         final_text = self._run_tool_loop(api_key, messages)
         clean_text, suggestions = self._extract_suggestions(final_text)
+        # The inline <<suggestions>> tag is unreliable in practice (Haiku
+        # skips it even on textbook forks) - as a fallback, when the reply
+        # ends in "?" and didn't already carry a tag, make one small extra
+        # call asking specifically for suggestions. Gated on "?" so plain
+        # status updates/errors don't pay for an extra round trip.
+        if suggestions is None and clean_text.rstrip().endswith("?"):
+            suggestions = self._generate_fallback_suggestions(api_key, clean_text)
         Message.create({
             "session_id": self.id, "role": "assistant",
             "content": clean_text, "suggestions": suggestions,
@@ -616,6 +635,33 @@ class ContactCentreAiChat(models.Model):
             return clean_text, None
         suggestions = [s.strip() for s in suggestions if isinstance(s, str) and s.strip()][:4]
         return clean_text, suggestions or None
+
+    def _generate_fallback_suggestions(self, api_key, assistant_text):
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": ANTHROPIC_VERSION,
+            "content-type": "application/json",
+        }
+        payload = {
+            "model": ANTHROPIC_MODEL,
+            "max_tokens": 150,
+            "system": FALLBACK_SUGGESTIONS_SYSTEM,
+            "messages": [{"role": "user", "content": assistant_text}],
+        }
+        try:
+            response = requests.post(ANTHROPIC_API_URL, headers=headers, json=payload, timeout=15)
+            if response.status_code != 200:
+                return None
+            data = response.json()
+            text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
+            suggestions = json.loads(text.strip())
+        except Exception as e:
+            _logger.warning("AI Ops: fallback suggestions request failed for session %s: %s", self.id, e)
+            return None
+        if not isinstance(suggestions, list):
+            return None
+        suggestions = [s.strip() for s in suggestions if isinstance(s, str) and s.strip()][:4]
+        return suggestions or None
 
     def _run_tool_loop(self, api_key, messages):
         self.ensure_one()
