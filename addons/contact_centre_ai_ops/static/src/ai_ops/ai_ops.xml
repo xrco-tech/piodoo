@@ -123,15 +123,21 @@
                             No actions taken yet in this chat
                         </div>
                         <t t-foreach="state.actions" t-as="action" t-key="action.id">
-                            <div class="o_cc_aiops_side_section">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <strong><t t-esc="action.tool_name"/></strong>
+                            <div class="o_cc_aiops_side_section o_cc_aiops_side_section_clickable"
+                                 t-on-click="() => this.toggleAction(action)">
+                                <div class="d-flex justify-content-between align-items-center" t-att-class="action.expanded ? 'mb-1' : ''">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="fa text-muted" t-att-class="action.expanded ? 'fa-angle-down' : 'fa-angle-right'"/>
+                                        <strong><t t-esc="action.tool_name"/></strong>
+                                    </div>
                                     <span class="badge" t-att-class="action.success ? 'text-bg-success' : 'text-bg-danger'">
                                         <t t-esc="action.success ? 'success' : 'failed'"/>
                                     </span>
                                 </div>
-                                <pre class="small mb-1 o_cc_aiops_json"><t t-esc="formatToolJson(action.tool_input)"/></pre>
-                                <pre class="small mb-0 o_cc_aiops_json text-muted"><t t-esc="formatToolJson(action.tool_result)"/></pre>
+                                <t t-if="action.expanded">
+                                    <pre class="small mb-1 o_cc_aiops_json"><t t-esc="formatToolJson(action.tool_input)"/></pre>
+                                    <pre class="small mb-0 o_cc_aiops_json text-muted"><t t-esc="formatToolJson(action.tool_result)"/></pre>
+                                </t>
                             </div>
                         </t>
                     </t>

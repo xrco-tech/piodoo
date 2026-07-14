@@ -194,12 +194,19 @@ export class ContactCentreAiOps extends Component {
     }
 
     async loadActions(sessionId) {
-        this.state.actions = await this.orm.searchRead(
+        const rows = await this.orm.searchRead(
             "contact.centre.ai.chat.action",
             [["session_id", "=", sessionId]],
             ["tool_name", "tool_input", "tool_result", "success"],
             { order: "create_date asc", limit: 200 }
         );
+        // expanded is client-only UI state, not a real field - collapsed
+        // by default so the list scans as just tool names + status.
+        this.state.actions = rows.map((row) => ({ ...row, expanded: false }));
+    }
+
+    toggleAction(action) {
+        action.expanded = !action.expanded;
     }
 
     // Templates can't reference the global JSON object directly (Owl's

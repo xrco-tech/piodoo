@@ -93,7 +93,13 @@ user sees it, so don't also restate the same options as a numbered list \
 in your prose right above it. Only add it when there's an actual \
 decision point; most replies (a status update, an error explanation, a \
 tool result) don't need one - never attach it just to keep the \
-conversation going."""
+conversation going. This is a real, working feature, not a suggestion \
+you might skip - use it every time a reply ends on a fork. Example - a \
+reply ending in a plain yes/no follow-up should look exactly like this, \
+tag included, on its own line at the very end:
+
+I've created the template. Want me to add it to your Summer Promo campaign now?
+<<suggestions>>["Yes, add it to the campaign", "No, leave it for now"]<<end>>"""
 
 TOOLS = [
     {
