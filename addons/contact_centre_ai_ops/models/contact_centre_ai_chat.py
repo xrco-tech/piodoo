@@ -712,7 +712,13 @@ class ContactCentreAiChat(models.Model):
         if not handler:
             return {"error": f"Unknown tool: {name}"}
         try:
-            return handler(args)
+            # A savepoint means a failed write (e.g. a bad foreign key) only
+            # rolls back this one tool call, not the whole request - without
+            # it, a DB-level error here poisons the transaction and takes
+            # down everything else in the turn, including the user's own
+            # message, the next time anything tries to write.
+            with self.env.cr.savepoint():
+                return handler(args)
         except Exception as e:
             _logger.warning("AI Ops: tool %s failed for session %s: %s", name, self.id, e)
             return {"error": str(e)}
@@ -722,6 +728,21 @@ class ContactCentreAiChat(models.Model):
     # Campaigns always land in 'draft' - create()/write() never start one.
     # -------------------------------------------------------------------------
 
+    def _validate_campaign_template_id(self, template_id):
+        """campaign.template_id is a contact.centre.template fk - a common
+        mistake is passing a whatsapp.template id instead (they're separate
+        tables with separate id sequences, see list_templates vs
+        list_whatsapp_templates). Catch that before it becomes a raw FK
+        error, since a raw DB error at this point would otherwise poison
+        the surrounding transaction."""
+        if not self.env["contact.centre.template"].browse(template_id).exists():
+            hint = ""
+            if self.env["whatsapp.template"].browse(template_id).exists():
+                hint = (" - that id belongs to a whatsapp.template instead; campaigns need a "
+                        "contact.centre.template id from list_templates, not a whatsapp.template one")
+            return f"template_id {template_id} is not a valid contact.centre.template id{hint}"
+        return None
+
     def _tool_create_campaign(self, args):
         vals = {
             "name": args["name"],
@@ -729,6 +750,9 @@ class ContactCentreAiChat(models.Model):
             "channel": args["channel"],
         }
         if args.get("template_id"):
+            error = self._validate_campaign_template_id(args["template_id"])
+            if error:
+                return {"error": error}
             vals["template_id"] = args["template_id"]
         if args.get("contact_ids"):
             vals["contact_ids"] = [(6, 0, args["contact_ids"])]
@@ -745,6 +769,9 @@ class ContactCentreAiChat(models.Model):
         if "name" in args:
             vals["name"] = args["name"]
         if "template_id" in args:
+            error = self._validate_campaign_template_id(args["template_id"])
+            if error:
+                return {"error": error}
             vals["template_id"] = args["template_id"]
         if "contact_ids" in args:
             vals["contact_ids"] = [(6, 0, args["contact_ids"])]
