@@ -17,7 +17,27 @@
                              t-att-class="{'o_cc_aiops_session_selected': session.id === state.selectedSessionId}"
                              t-on-click="() => this.selectSession(session.id)"
                              style="cursor:pointer;">
-                            <strong><t t-esc="session.name"/></strong>
+                            <t t-if="state.renamingSessionId === session.id">
+                                <div class="d-flex gap-1" t-on-click="(ev) => ev.stopPropagation()">
+                                    <input type="text" class="form-control form-control-sm"
+                                           t-att-value="state.renameText"
+                                           t-on-input="onRenameInput"
+                                           t-on-keydown="(ev) => this.onRenameKeydown(session.id, ev)"/>
+                                    <button class="btn btn-sm btn-success py-0 px-2"
+                                            t-on-click="(ev) => this.saveRename(session.id, ev)">✓</button>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                            t-on-click="cancelRename">✕</button>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <strong><t t-esc="session.name"/></strong>
+                                    <button class="btn btn-sm btn-link p-0 text-muted"
+                                            t-on-click="(ev) => this.startRename(session, ev)" title="Rename">
+                                        <i class="fa fa-pencil"/>
+                                    </button>
+                                </div>
+                            </t>
                             <div class="text-muted small"><t t-esc="session.write_date"/></div>
                         </div>
                     </t>

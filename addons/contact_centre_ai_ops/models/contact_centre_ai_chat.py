@@ -17,7 +17,11 @@ MAX_TOOL_ITERATIONS = 5
 SYSTEM_PROMPT = """You are an AI Copilot inside a contact-centre Odoo app. \
 You can create and update marketing/support campaigns, and create/extend \
 linear (non-branching) WhatsApp chatbot flows, on the user's behalf using \
-the tools provided. Campaigns and chatbot flows you create or edit always \
+the tools provided. You also have read-only lookup tools (list_templates, \
+search_contacts, list_campaigns, list_chatbots) - always use these to find \
+real ids yourself instead of asking the user to supply an id or guessing \
+one; only ask the user to choose between real options you looked up. \
+Campaigns and chatbot flows you create or edit always \
 stay in draft state - you cannot and must not attempt to start/launch a \
 campaign, publish a chatbot flow, or send any real messages; a human \
 always reviews and clicks "Start"/"Publish" themselves. Chatbot flow step \
@@ -58,6 +62,50 @@ TOOLS = [
                 "description": {"type": "string"},
             },
             "required": ["campaign_id"],
+        },
+    },
+    {
+        "name": "list_templates",
+        "description": "List available contact.centre.template records (id, name, channel) to pick a template_id from.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "channel": {"type": "string", "enum": ["whatsapp", "sms", "email"],
+                            "description": "Optional filter to only this channel's templates"},
+            },
+        },
+    },
+    {
+        "name": "search_contacts",
+        "description": "Search contact.centre.contact records by name or phone number to find contact_ids.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Name or phone number to search for"},
+                "limit": {"type": "integer", "default": 20},
+            },
+        },
+    },
+    {
+        "name": "list_campaigns",
+        "description": "List existing campaigns (id, name, state, channel) to find a campaign_id to update.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Optional name search"},
+                "limit": {"type": "integer", "default": 20},
+            },
+        },
+    },
+    {
+        "name": "list_chatbots",
+        "description": "List existing chatbot flows (id, name, channel, status) to find a chatbot_id to update.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Optional name search"},
+                "limit": {"type": "integer", "default": 20},
+            },
         },
     },
     {
@@ -212,6 +260,10 @@ class ContactCentreAiChat(models.Model):
         handlers = {
             "create_campaign": self._tool_create_campaign,
             "update_campaign": self._tool_update_campaign,
+            "list_templates": self._tool_list_templates,
+            "search_contacts": self._tool_search_contacts,
+            "list_campaigns": self._tool_list_campaigns,
+            "list_chatbots": self._tool_list_chatbots,
             "create_chatbot_flow": self._tool_create_chatbot_flow,
             "update_chatbot_flow": self._tool_update_chatbot_flow,
         }
@@ -259,6 +311,37 @@ class ContactCentreAiChat(models.Model):
             vals["description"] = args["description"]
         campaign.write(vals)
         return {"campaign_id": campaign.id, "updated_fields": list(vals.keys())}
+
+    def _tool_list_templates(self, args):
+        domain = [("channel", "=", args["channel"])] if args.get("channel") else []
+        templates = self.env["contact.centre.template"].search(domain, limit=50)
+        return {"templates": [
+            {"id": t.id, "name": t.name, "channel": t.channel} for t in templates
+        ]}
+
+    def _tool_search_contacts(self, args):
+        domain = []
+        query = args.get("query")
+        if query:
+            domain = ["|", ("name", "ilike", query), ("phone_number", "ilike", query)]
+        contacts = self.env["contact.centre.contact"].search(domain, limit=args.get("limit") or 20)
+        return {"contacts": [
+            {"id": c.id, "name": c.name, "phone_number": c.phone_number} for c in contacts
+        ]}
+
+    def _tool_list_campaigns(self, args):
+        domain = [("name", "ilike", args["query"])] if args.get("query") else []
+        campaigns = self.env["contact.centre.campaign"].search(domain, limit=args.get("limit") or 20)
+        return {"campaigns": [
+            {"id": c.id, "name": c.name, "state": c.state, "channel": c.channel} for c in campaigns
+        ]}
+
+    def _tool_list_chatbots(self, args):
+        domain = [("name", "ilike", args["query"])] if args.get("query") else []
+        chatbots = self.env["whatsapp.chatbot"].search(domain, limit=args.get("limit") or 20)
+        return {"chatbots": [
+            {"id": c.id, "name": c.name, "channel": c.channel, "status": c.status} for c in chatbots
+        ]}
 
     def _tool_create_chatbot_flow(self, args):
         chatbot = self.env["whatsapp.chatbot"].create({

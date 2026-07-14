@@ -23,6 +23,8 @@ export class ContactCentreAiOps extends Component {
             actions: [],
             composerText: "",
             sending: false,
+            renamingSessionId: false,
+            renameText: "",
         });
 
         this.composerRef = useRef("aiOpsComposer");
@@ -49,6 +51,43 @@ export class ContactCentreAiOps extends Component {
             );
         } finally {
             this.state.loadingSessions = false;
+        }
+    }
+
+    startRename(session, ev) {
+        ev.stopPropagation();
+        this.state.renamingSessionId = session.id;
+        this.state.renameText = session.name;
+    }
+
+    onRenameInput(ev) {
+        this.state.renameText = ev.target.value;
+    }
+
+    async saveRename(sessionId, ev) {
+        ev.stopPropagation();
+        const name = this.state.renameText.trim();
+        this.state.renamingSessionId = false;
+        if (!name) {
+            return;
+        }
+        await this.orm.write("contact.centre.ai.chat", [sessionId], { name });
+        await this.loadSessions();
+        if (this.state.selectedSessionId === sessionId) {
+            this.state.selectedSession = this.state.sessions.find((s) => s.id === sessionId) || false;
+        }
+    }
+
+    cancelRename(ev) {
+        ev.stopPropagation();
+        this.state.renamingSessionId = false;
+    }
+
+    onRenameKeydown(sessionId, ev) {
+        if (ev.key === "Enter") {
+            this.saveRename(sessionId, ev);
+        } else if (ev.key === "Escape") {
+            this.cancelRename(ev);
         }
     }
 
