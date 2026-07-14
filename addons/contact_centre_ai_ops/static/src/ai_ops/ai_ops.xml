@@ -70,9 +70,11 @@
                             <div class="d-flex mb-2"
                                  t-att-class="message.role === 'user' ? 'justify-content-end' : 'justify-content-start'">
                                 <div class="o_cc_aiops_bubble p-2"
-                                     t-att-class="message.role === 'user' ? 'bg-primary text-white' : 'bg-light'"
-                                     style="white-space: pre-wrap;">
-                                    <t t-esc="message.content"/>
+                                     t-att-class="message.role === 'user' ? 'bg-primary text-white' : 'bg-light'">
+                                    <t t-if="message.role === 'user'">
+                                        <span style="white-space: pre-wrap;"><t t-esc="message.content"/></span>
+                                    </t>
+                                    <div t-else="" class="o_cc_aiops_markdown" t-out="renderMarkdown(message.content)"/>
                                 </div>
                             </div>
                         </t>

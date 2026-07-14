@@ -1,9 +1,69 @@
 /** @odoo-module **/
 
-import { Component, useState, useRef, useEffect, onWillStart } from "@odoo/owl";
+import { Component, useState, useRef, useEffect, onWillStart, markup } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
+
+// ── Markdown → HTML ──────────────────────────────────────────────────────
+// Minimal renderer for the AI's own replies (headings, bold/italic, inline
+// and fenced code, and numbered/bulleted lists) - covers what the model
+// actually produces without pulling in a markdown library. Escapes first
+// so the model's own text can never inject markup.
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
+function renderInlineMarkdown(text) {
+    let s = text;
+    s = s.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+    s = s.replace(/(^|[^_])_([^_\n]+)_(?!_)/g, "$1<em>$2</em>");
+    return s;
+}
+
+function renderMarkdownBlock(block) {
+    const lines = block.split("\n");
+    const headerMatch = lines.length === 1 && block.match(/^(#{1,6})\s+(.*)$/);
+    if (headerMatch) {
+        const level = Math.min(headerMatch[1].length + 2, 6); // keep headings small inside a chat bubble
+        return `<h${level}>${renderInlineMarkdown(headerMatch[2])}</h${level}>`;
+    }
+    if (lines.every((l) => /^\s*\d+\.\s+/.test(l))) {
+        const items = lines.map((l) => `<li>${renderInlineMarkdown(l.replace(/^\s*\d+\.\s+/, ""))}</li>`).join("");
+        return `<ol>${items}</ol>`;
+    }
+    if (lines.every((l) => /^\s*[-*]\s+/.test(l))) {
+        const items = lines.map((l) => `<li>${renderInlineMarkdown(l.replace(/^\s*[-*]\s+/, ""))}</li>`).join("");
+        return `<ul>${items}</ul>`;
+    }
+    return `<p>${lines.map(renderInlineMarkdown).join("<br>")}</p>`;
+}
+
+function markdownToHtml(text) {
+    if (!text) {
+        return "";
+    }
+    const escaped = escapeHtml(text);
+    // Pull fenced code blocks out first so their contents skip inline
+    // formatting and blank-line splitting, then splice back in at the end.
+    const codeBlocks = [];
+    const withPlaceholders = escaped.replace(/```(?:\w+)?\n?([\s\S]*?)```/g, (_match, code) => {
+        const index = codeBlocks.length;
+        codeBlocks.push(`<pre class="o_cc_aiops_md_code"><code>${code.replace(/\n$/, "")}</code></pre>`);
+        return ` CODEBLOCK${index} `;
+    });
+    const html = withPlaceholders
+        .split(/\n{2,}/)
+        .map(renderMarkdownBlock)
+        .join("")
+        .replace(/ CODEBLOCK(\d+) /g, (_match, i) => codeBlocks[Number(i)]);
+    return html;
+}
 
 export class ContactCentreAiOps extends Component {
     static template = "contact_centre_ai_ops.AiOps";
@@ -147,6 +207,13 @@ export class ContactCentreAiOps extends Component {
     // context, not window), so this wraps it for use in t-esc.
     formatToolJson(value) {
         return JSON.stringify(value, null, 2);
+    }
+
+    // markup() tells Owl's t-out to render this as HTML rather than
+    // escaping it - safe here because markdownToHtml() escapes the raw
+    // text before adding any tags.
+    renderMarkdown(text) {
+        return markup(markdownToHtml(text));
     }
 
     // -------------------------------------------------------------------------

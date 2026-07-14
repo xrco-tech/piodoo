@@ -69,6 +69,46 @@
         border-radius: 12px;
     }
 
+    .o_cc_aiops_markdown {
+        > *:first-child { margin-top: 0; }
+        > *:last-child { margin-bottom: 0; }
+
+        p { margin: 0 0 0.5rem; white-space: pre-wrap; }
+
+        h1, h2, h3, h4, h5, h6 {
+            margin: 0.5rem 0 0.35rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        ul, ol {
+            margin: 0 0 0.5rem;
+            padding-left: 1.25rem;
+        }
+        li { margin-bottom: 0.15rem; }
+
+        code {
+            background: rgba(0, 0, 0, 0.06);
+            border-radius: 3px;
+            padding: 0.1rem 0.3rem;
+            font-size: 0.85em;
+        }
+    }
+
+    .o_cc_aiops_md_code {
+        background: rgba(0, 0, 0, 0.06);
+        border-radius: 6px;
+        padding: 0.5rem 0.65rem;
+        margin: 0 0 0.5rem;
+        overflow-x: auto;
+
+        code {
+            background: none;
+            padding: 0;
+            font-size: 0.85em;
+        }
+    }
+
     .o_cc_aiops_composer {
         resize: none;
         overflow-y: auto;
