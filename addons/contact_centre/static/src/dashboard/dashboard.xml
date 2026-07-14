@@ -225,6 +225,40 @@
                     </div>
 
                 </div><!-- /row -->
+
+                <!-- ── Custom Cards (AI Copilot / user-configured) ──────── -->
+                <div t-if="state.customCards.length" class="row g-4 mt-1">
+                    <t t-foreach="state.customCards" t-as="card" t-key="card.id">
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card h-100 border-0 shadow-sm o_cc_card"
+                                 t-on-click="() => this.openCustomCard(card)">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div>
+                                            <p class="o_cc_label"><t t-esc="card.name"/></p>
+                                            <h2 class="o_cc_main_stat">
+                                                <t t-esc="card.value === null ? '—' : card.value"/>
+                                            </h2>
+                                        </div>
+                                        <div class="o_cc_icon_wrap" t-att-class="`o_cc_icon_${card.color || 'primary'}`">
+                                            <i t-att-class="`fa ${card.icon || 'fa-bar-chart'}`"/>
+                                        </div>
+                                    </div>
+                                    <div t-if="card.breakdown and card.breakdown.length" class="d-flex flex-wrap gap-2">
+                                        <t t-foreach="card.breakdown" t-as="b" t-key="b.label">
+                                            <span class="badge text-bg-light border">
+                                                <t t-esc="b.label"/>: <t t-esc="b.count"/>
+                                            </span>
+                                        </t>
+                                    </div>
+                                    <div t-if="card.value === null" class="o_cc_sub text-muted">
+                                        Couldn't load this card
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
             </div><!-- /loaded -->
         </div>
     </t>

@@ -43,6 +43,7 @@ Features:
         'views/contact_centre_script_views.xml',
         'views/contact_centre_automation_views.xml',
         'views/contact_centre_chatbot_views.xml',
+        'views/contact_centre_dashboard_card_views.xml',
         'views/whatsapp_config_views.xml',
         'views/sms_config_views.xml',
         'views/email_config_views.xml',

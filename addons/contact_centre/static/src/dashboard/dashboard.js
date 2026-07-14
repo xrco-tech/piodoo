@@ -22,6 +22,7 @@ export class ContactCentreDashboard extends Component {
             channels: [],
             conversationStates: { open: 0, pending: 0, resolved: 0 },
             responseTime: { avg_seconds: null, sample_size: 0 },
+            customCards: [],
         });
 
         onWillStart(() => this._loadData());
@@ -122,6 +123,18 @@ export class ContactCentreDashboard extends Component {
                 // Ignore — response time is a nice-to-have
             }
 
+            let customCards = [];
+            try {
+                const cardDefs = await this.orm.searchRead(
+                    "contact.centre.dashboard.card", [["active", "=", true]],
+                    ["name", "model_name", "metric_type", "domain", "group_by_field", "icon", "color"],
+                    { order: "sequence asc" }
+                );
+                customCards = await Promise.all(cardDefs.map((card) => this._loadCustomCard(card)));
+            } catch (_e) {
+                // contact_centre_ai_ops's dashboard-card model may not exist on older deployments
+            }
+
             Object.assign(this.state, {
                 loading: false,
                 contacts: { total: totalContacts, new_this_month: newContacts },
@@ -131,11 +144,37 @@ export class ContactCentreDashboard extends Component {
                 channels,
                 conversationStates,
                 responseTime,
+                customCards,
             });
         } catch (err) {
             console.error("[Contact Centre] Dashboard load error:", err);
             this.state.loading = false;
         }
+    }
+
+    // A bad card (invalid group_by_field, malformed domain, etc.) only
+    // fails its own value — never breaks the rest of the dashboard load.
+    async _loadCustomCard(card) {
+        let value = null;
+        let breakdown = [];
+        try {
+            const domain = card.domain || [];
+            if (card.metric_type === "group_by" && card.group_by_field) {
+                const groups = await this.orm.readGroup(
+                    card.model_name, domain, [card.group_by_field], [card.group_by_field]
+                );
+                breakdown = groups.map((g) => ({
+                    label: g[card.group_by_field] || "(none)",
+                    count: g[`${card.group_by_field}_count`],
+                }));
+                value = breakdown.reduce((sum, b) => sum + b.count, 0);
+            } else {
+                value = await this.orm.searchCount(card.model_name, domain);
+            }
+        } catch (_e) {
+            value = null;
+        }
+        return { ...card, value, breakdown };
     }
 
     // -------------------------------------------------------------------------
@@ -201,6 +240,10 @@ export class ContactCentreDashboard extends Component {
         this._doWindowAction("Inbound Messages", "contact.centre.message", [
             ["direction", "=", "inbound"],
         ]);
+    }
+
+    openCustomCard(card) {
+        this._doWindowAction(card.name, card.model_name, card.domain || []);
     }
 
     formatResponseTime() {

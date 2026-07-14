@@ -7,6 +7,7 @@ from . import contact_centre_script
 from . import contact_centre_automation
 from . import contact_centre_template
 from . import contact_centre_chatbot
+from . import contact_centre_dashboard_card
 from . import whatsapp_config
 from . import sms_config
 from . import email_config

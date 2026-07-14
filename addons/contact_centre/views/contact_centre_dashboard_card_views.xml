@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_contact_centre_dashboard_card_list" model="ir.ui.view">
+            <field name="name">contact.centre.dashboard.card.list</field>
+            <field name="model">contact.centre.dashboard.card</field>
+            <field name="arch" type="xml">
+                <list string="Dashboard Cards">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="model_name"/>
+                    <field name="metric_type"/>
+                    <field name="group_by_field" optional="show"/>
+                    <field name="color"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_contact_centre_dashboard_card_form" model="ir.ui.view">
+            <field name="name">contact.centre.dashboard.card.form</field>
+            <field name="model">contact.centre.dashboard.card</field>
+            <field name="arch" type="xml">
+                <form string="Dashboard Card">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="active"/>
+                                <field name="sequence"/>
+                                <field name="model_name"/>
+                            </group>
+                            <group>
+                                <field name="metric_type"/>
+                                <field name="group_by_field" invisible="metric_type != 'group_by'"/>
+                                <field name="icon"/>
+                                <field name="color"/>
+                            </group>
+                        </group>
+                        <group string="Domain">
+                            <field name="domain" nolabel="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_contact_centre_dashboard_card" model="ir.actions.act_window">
+            <field name="name">Dashboard Cards</field>
+            <field name="res_model">contact.centre.dashboard.card</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

@@ -289,5 +289,12 @@
                   action="action_email_template"
                   sequence="20"/>
 
+        <!-- Configuration > Dashboard Cards -->
+        <menuitem id="menu_contact_centre_config_dashboard_cards"
+                  name="Dashboard Cards"
+                  parent="menu_contact_centre_config"
+                  action="action_contact_centre_dashboard_card"
+                  sequence="55"/>
+
     </data>
 </odoo>

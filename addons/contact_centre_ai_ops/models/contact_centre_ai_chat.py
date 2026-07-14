@@ -14,14 +14,25 @@ ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 ANTHROPIC_VERSION = "2023-06-01"
 MAX_TOOL_ITERATIONS = 5
 
+# Mirrors contact.centre.dashboard.card's own Selection field - the model
+# enforces this too, this is just so the tool schema's enum matches.
+DASHBOARD_CARD_MODELS = [
+    "contact.centre.contact", "contact.centre.message", "contact.centre.campaign",
+    "whatsapp.chatbot", "contact.centre.chatbot.session", "whatsapp.call.log",
+]
+
 SYSTEM_PROMPT = """You are an AI Copilot inside a contact-centre Odoo app. \
-You can create and update marketing/support campaigns, and create/extend \
-linear (non-branching) WhatsApp chatbot flows, on the user's behalf using \
-the tools provided. You also have read-only lookup tools (list_templates, \
-search_contacts, list_campaigns, list_chatbots) - always use these to find \
-real ids yourself instead of asking the user to supply an id or guessing \
-one; only ask the user to choose between real options you looked up. \
-Campaigns and chatbot flows you create or edit always \
+You can create and update marketing/support campaigns, create/extend \
+linear (non-branching) WhatsApp chatbot flows, and create/update/delete \
+custom dashboard cards, on the user's behalf using the tools provided. \
+You also have read-only lookup tools (list_templates, search_contacts, \
+list_campaigns, list_chatbots) - always use these to find real ids \
+yourself instead of asking the user to supply an id or guessing one; \
+only ask the user to choose between real options you looked up. \
+Dashboard cards may only target these models: contact.centre.contact, \
+contact.centre.message, contact.centre.campaign, whatsapp.chatbot, \
+contact.centre.chatbot.session, whatsapp.call.log - no other model may \
+be used. Campaigns and chatbot flows you create or edit always \
 stay in draft state - you cannot and must not attempt to start/launch a \
 campaign, publish a chatbot flow, or send any real messages; a human \
 always reviews and clicks "Start"/"Publish" themselves. Chatbot flow step \
@@ -162,6 +173,51 @@ TOOLS = [
             "required": ["chatbot_id"],
         },
     },
+    {
+        "name": "create_dashboard_card",
+        "description": "Add a new custom metric card to the Contact Centre dashboard.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Card label"},
+                "model_name": {"type": "string", "enum": DASHBOARD_CARD_MODELS},
+                "metric_type": {"type": "string", "enum": ["count", "group_by"], "default": "count"},
+                "domain": {"type": "array", "description": "Odoo domain as a list, e.g. [[\"channel\",\"=\",\"whatsapp\"]]"},
+                "group_by_field": {"type": "string", "description": "Required when metric_type is group_by"},
+                "icon": {"type": "string", "description": "FontAwesome class, e.g. fa-comments"},
+                "color": {"type": "string", "enum": ["primary", "info", "warning", "success", "danger"]},
+            },
+            "required": ["name", "model_name"],
+        },
+    },
+    {
+        "name": "update_dashboard_card",
+        "description": "Update an existing custom dashboard card's fields.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "card_id": {"type": "integer"},
+                "name": {"type": "string"},
+                "model_name": {"type": "string", "enum": DASHBOARD_CARD_MODELS},
+                "metric_type": {"type": "string", "enum": ["count", "group_by"]},
+                "domain": {"type": "array"},
+                "group_by_field": {"type": "string"},
+                "icon": {"type": "string"},
+                "color": {"type": "string", "enum": ["primary", "info", "warning", "success", "danger"]},
+                "active": {"type": "boolean"},
+            },
+            "required": ["card_id"],
+        },
+    },
+    {
+        "name": "delete_dashboard_card",
+        "description": "Delete a custom dashboard card.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"card_id": {"type": "integer"}},
+            "required": ["card_id"],
+        },
+    },
 ]
 
 
@@ -266,6 +322,9 @@ class ContactCentreAiChat(models.Model):
             "list_chatbots": self._tool_list_chatbots,
             "create_chatbot_flow": self._tool_create_chatbot_flow,
             "update_chatbot_flow": self._tool_update_chatbot_flow,
+            "create_dashboard_card": self._tool_create_dashboard_card,
+            "update_dashboard_card": self._tool_update_dashboard_card,
+            "delete_dashboard_card": self._tool_delete_dashboard_card,
         }
         handler = handlers.get(name)
         if not handler:
@@ -405,6 +464,36 @@ class ContactCentreAiChat(models.Model):
                 next_sequence += 10
 
         return {"chatbot_id": chatbot.id, "updated_fields": list(vals.keys()), "added_step_ids": added_step_ids}
+
+    def _tool_create_dashboard_card(self, args):
+        vals = {
+            "name": args["name"],
+            "model_name": args["model_name"],
+        }
+        for key in ("metric_type", "domain", "group_by_field", "icon", "color"):
+            if args.get(key) is not None:
+                vals[key] = args[key]
+        card = self.env["contact.centre.dashboard.card"].create(vals)
+        return {"card_id": card.id, "name": card.name}
+
+    def _tool_update_dashboard_card(self, args):
+        card = self.env["contact.centre.dashboard.card"].browse(args["card_id"])
+        if not card.exists():
+            return {"error": f"Dashboard card {args['card_id']} not found"}
+        vals = {}
+        for key in ("name", "model_name", "metric_type", "domain", "group_by_field", "icon", "color", "active"):
+            if key in args:
+                vals[key] = args[key]
+        card.write(vals)
+        return {"card_id": card.id, "updated_fields": list(vals.keys())}
+
+    def _tool_delete_dashboard_card(self, args):
+        card = self.env["contact.centre.dashboard.card"].browse(args["card_id"])
+        if not card.exists():
+            return {"error": f"Dashboard card {args['card_id']} not found"}
+        name = card.name
+        card.unlink()
+        return {"deleted_card_id": args["card_id"], "name": name}
 
 
 class ContactCentreAiChatMessage(models.Model):
