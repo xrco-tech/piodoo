@@ -25,16 +25,28 @@ DASHBOARD_CARD_MODELS = [
 SYSTEM_PROMPT = """You are an AI Copilot inside a contact-centre Odoo app. \
 You can create and update marketing/support campaigns, create/extend \
 linear (non-branching) WhatsApp chatbot flows, create/update contacts \
-and message templates, create/update WhatsApp call teams and inbound \
-call-routing rules, and create/update/delete custom dashboard cards, on \
-the user's behalf using the tools provided. Every tool runs with the \
+and message templates, create/update native WhatsApp Business templates, \
+create/update WhatsApp call teams and inbound call-routing rules, and \
+create/update/delete custom dashboard cards, on the user's behalf using \
+the tools provided. contact.centre.template (list_templates/create_template) \
+and whatsapp.template (list_whatsapp_templates/create_whatsapp_template) \
+are two different, unrelated things - the former is a plain-text note \
+stored only in this app, the latter is a real Meta-approved WhatsApp \
+Business template; if the user just says "template" without specifying, \
+ask which one they mean rather than guessing. Templates you create via \
+create_whatsapp_template are saved locally only (status stays PENDING \
+without ever reaching Meta) - you cannot and must not submit a template \
+to Meta for approval; a human always does that explicitly in the UI. \
+Once a template has actually been submitted to Meta, update_whatsapp_template \
+will refuse to touch it - tell the user to create a new template instead \
+of trying to work around that. Every tool runs with the \
 permissions of the person chatting with you, not an administrator - if \
 a tool fails with a permission/access error, that means this user \
 genuinely doesn't have that access in Odoo; tell them plainly rather \
 than implying it's a bug, and don't suggest workarounds to bypass it. \
-You also have read-only lookup tools (list_templates, search_contacts, \
-list_contact_categories, list_campaigns, list_chatbots, list_call_teams, \
-list_call_routing_rules, list_messages, list_call_logs, \
+You also have read-only lookup tools (list_templates, list_whatsapp_templates, \
+search_contacts, list_contact_categories, list_campaigns, list_chatbots, \
+list_call_teams, list_call_routing_rules, list_messages, list_call_logs, \
 list_chatbot_sessions) - always use these to find real ids yourself \
 instead of asking the user to supply an id or guessing one; only ask the \
 user to choose between real options you looked up. search_contacts can \
@@ -346,6 +358,85 @@ TOOLS = [
         },
     },
     {
+        "name": "list_whatsapp_templates",
+        "description": "List native WhatsApp Business templates (whatsapp.template - the ones Meta actually sees, not contact.centre.template) with their approval status.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Optional name search"},
+                "status": {"type": "string", "enum": ["PENDING", "APPROVED", "REJECTED", "PAUSED", "PENDING_DELETION", "DISABLED"]},
+                "limit": {"type": "integer", "default": 20},
+            },
+        },
+    },
+    {
+        "name": "create_whatsapp_template",
+        "description": (
+            "Create a new native WhatsApp Business template (whatsapp.template). This only "
+            "saves it locally in PENDING status - it is NOT sent to Meta for approval. "
+            "Image/video/document headers aren't supported here (they need a media handle "
+            "uploaded through the UI first); only a plain TEXT header is available via this tool."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Lowercase letters, numbers, and underscores only, e.g. order_confirmation"},
+                "language": {"type": "string", "default": "en", "description": "ISO 639 language code"},
+                "category": {"type": "string", "enum": ["AUTHENTICATION", "UTILITY", "MARKETING"], "default": "UTILITY"},
+                "body": {"type": "string", "description": "Message body; use {{1}}, {{2}}, etc. for variables"},
+                "header_text": {"type": "string", "description": "Optional plain text header"},
+                "footer": {"type": "string", "description": "Optional footer, max 60 characters"},
+                "buttons": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "button_type": {"type": "string", "enum": ["QUICK_REPLY", "URL", "PHONE_NUMBER"]},
+                            "text": {"type": "string", "description": "Max 25 characters"},
+                            "url": {"type": "string", "description": "Required when button_type is URL"},
+                            "phone_number": {"type": "string", "description": "Required when button_type is PHONE_NUMBER"},
+                        },
+                        "required": ["button_type", "text"],
+                    },
+                },
+                "description": {"type": "string", "description": "Internal notes, not sent to Meta"},
+            },
+            "required": ["name", "category", "body"],
+        },
+    },
+    {
+        "name": "update_whatsapp_template",
+        "description": "Update an existing whatsapp.template. Refuses to edit a template that has already been submitted to Meta (once submitted, Meta owns that template's identity) - create a new one instead.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "template_id": {"type": "integer"},
+                "name": {"type": "string"},
+                "language": {"type": "string"},
+                "category": {"type": "string", "enum": ["AUTHENTICATION", "UTILITY", "MARKETING"]},
+                "body": {"type": "string"},
+                "header_text": {"type": "string"},
+                "footer": {"type": "string"},
+                "buttons": {
+                    "type": "array",
+                    "description": "Replaces all existing buttons on this template",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "button_type": {"type": "string", "enum": ["QUICK_REPLY", "URL", "PHONE_NUMBER"]},
+                            "text": {"type": "string"},
+                            "url": {"type": "string"},
+                            "phone_number": {"type": "string"},
+                        },
+                        "required": ["button_type", "text"],
+                    },
+                },
+                "description": {"type": "string"},
+            },
+            "required": ["template_id"],
+        },
+    },
+    {
         "name": "create_chatbot_flow",
         "description": (
             "Create a new linear (non-branching) chatbot flow: an ordered sequence of "
@@ -561,6 +652,9 @@ class ContactCentreAiChat(models.Model):
             "list_messages": self._tool_list_messages,
             "list_call_logs": self._tool_list_call_logs,
             "list_chatbot_sessions": self._tool_list_chatbot_sessions,
+            "list_whatsapp_templates": self._tool_list_whatsapp_templates,
+            "create_whatsapp_template": self._tool_create_whatsapp_template,
+            "update_whatsapp_template": self._tool_update_whatsapp_template,
             "create_chatbot_flow": self._tool_create_chatbot_flow,
             "update_chatbot_flow": self._tool_update_chatbot_flow,
             "create_dashboard_card": self._tool_create_dashboard_card,
@@ -838,6 +932,75 @@ class ContactCentreAiChat(models.Model):
              "current_step": s.current_step_id.name if s.current_step_id else None}
             for s in sessions
         ]}
+
+    def _tool_list_whatsapp_templates(self, args):
+        domain = []
+        if args.get("query"):
+            domain.append(("name", "ilike", args["query"]))
+        if args.get("status"):
+            domain.append(("status", "=", args["status"]))
+        templates = self.env["whatsapp.template"].search(domain, limit=args.get("limit") or 20)
+        return {"templates": [
+            {"id": t.id, "name": t.name, "language": t.language, "category": t.category,
+             "status": t.status, "submitted_to_meta": bool(t.template_id_meta)}
+            for t in templates
+        ]}
+
+    def _tool_create_whatsapp_template(self, args):
+        if not re.match(r"^[a-z0-9_]+$", args["name"]):
+            return {"error": "Template name must be lowercase letters, numbers, and underscores only"}
+        vals = {
+            "name": args["name"],
+            "language": args.get("language") or "en",
+            "category": args["category"],
+            "body": args["body"],
+        }
+        if args.get("header_text"):
+            vals["header_type"] = "TEXT"
+            vals["header_text"] = args["header_text"]
+        if args.get("footer"):
+            vals["footer"] = args["footer"]
+        if args.get("description"):
+            vals["description"] = args["description"]
+        template = self.env["whatsapp.template"].create(vals)
+        if args.get("buttons"):
+            self._write_whatsapp_template_buttons(template, args["buttons"])
+        return {"template_id": template.id, "name": template.name, "status": template.status}
+
+    def _tool_update_whatsapp_template(self, args):
+        template = self.env["whatsapp.template"].browse(args["template_id"])
+        if not template.exists():
+            return {"error": f"Template {args['template_id']} not found"}
+        if template.template_id_meta:
+            return {"error": "This template was already submitted to Meta and can't be edited here - create a new template instead"}
+        if "name" in args and not re.match(r"^[a-z0-9_]+$", args["name"]):
+            return {"error": "Template name must be lowercase letters, numbers, and underscores only"}
+        vals = {}
+        for key in ("name", "language", "category", "body", "footer", "description"):
+            if key in args:
+                vals[key] = args[key]
+        if "header_text" in args:
+            vals["header_type"] = "TEXT"
+            vals["header_text"] = args["header_text"]
+        if vals:
+            template.write(vals)
+        if "buttons" in args:
+            self._write_whatsapp_template_buttons(template, args["buttons"], replace=True)
+        return {"template_id": template.id, "updated_fields": list(vals.keys())}
+
+    def _write_whatsapp_template_buttons(self, template, buttons, replace=False):
+        if replace:
+            template.button_ids.unlink()
+        Button = self.env["whatsapp.template.button"]
+        for i, b in enumerate(buttons):
+            Button.create({
+                "template_id": template.id,
+                "sequence": (i + 1) * 10,
+                "button_type": b["button_type"],
+                "text": b["text"],
+                "url": b.get("url"),
+                "phone_number": b.get("phone_number"),
+            })
 
     def _tool_create_chatbot_flow(self, args):
         chatbot = self.env["whatsapp.chatbot"].create({
