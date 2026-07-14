@@ -80,6 +80,15 @@
                         </t>
                         <div t-if="state.sending" class="text-muted small">AI Copilot is thinking…</div>
                     </div>
+                    <div t-if="lastAssistantSuggestions.length" class="o_cc_aiops_suggestions d-flex flex-wrap gap-2 px-2 pt-2">
+                        <t t-foreach="lastAssistantSuggestions" t-as="suggestion" t-key="suggestion">
+                            <button type="button" class="btn btn-sm btn-outline-primary o_cc_aiops_suggestion_chip"
+                                    t-on-click="() => this.sendSuggestion(suggestion)"
+                                    t-att-disabled="state.sending">
+                                <t t-esc="suggestion"/>
+                            </button>
+                        </t>
+                    </div>
                     <div class="border-top p-2 d-flex gap-2 align-items-end">
                         <textarea class="form-control form-control-sm o_cc_aiops_composer" rows="1"
                                   t-ref="aiOpsComposer"

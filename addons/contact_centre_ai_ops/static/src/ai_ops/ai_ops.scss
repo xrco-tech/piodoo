@@ -115,6 +115,12 @@
         max-height: 12rem;
     }
 
+    .o_cc_aiops_suggestion_chip {
+        border-radius: 999px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
     // ── Right: actions taken ─────────────────────────────────────────────
     .o_cc_aiops_side {
         width: 380px;

@@ -185,7 +185,7 @@ export class ContactCentreAiOps extends Component {
             this.state.messages = await this.orm.searchRead(
                 "contact.centre.ai.chat.message",
                 [["session_id", "=", sessionId]],
-                ["role", "content"],
+                ["role", "content", "suggestions"],
                 { order: "create_date asc", limit: 500 }
             );
         } finally {
@@ -242,6 +242,27 @@ export class ContactCentreAiOps extends Component {
             return;
         }
         el.scrollTop = el.scrollHeight;
+    }
+
+    // Quick-reply chips for the AI's most recent message, when it ended
+    // its turn with a <<suggestions>>[...]<<end>> tag (parsed server-side
+    // into the suggestions field). Empty once the user's own message
+    // becomes the latest one, so chips naturally disappear after use.
+    get lastAssistantSuggestions() {
+        const messages = this.state.messages;
+        if (!messages.length) {
+            return [];
+        }
+        const last = messages[messages.length - 1];
+        return last.role === "assistant" && last.suggestions ? last.suggestions : [];
+    }
+
+    async sendSuggestion(text) {
+        if (!text || this.state.sending) {
+            return;
+        }
+        this.state.composerText = text;
+        await this.sendMessage();
     }
 
     async sendMessage() {

@@ -15,6 +15,11 @@ ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 ANTHROPIC_VERSION = "2023-06-01"
 MAX_TOOL_ITERATIONS = 5
 
+# Trailing tag the model can emit to offer quick-reply chips, e.g.
+# <<suggestions>>["Yes, create it", "No template needed"]<<end>>
+# Parsed out and stored separately - never shown to the user as raw text.
+SUGGESTIONS_RE = re.compile(r"<<suggestions>>(\[.*?\])<<end>>", re.S)
+
 # Mirrors contact.centre.dashboard.card's own Selection field - the model
 # enforces this too, this is just so the tool schema's enum matches.
 DASHBOARD_CARD_MODELS = [
@@ -74,7 +79,21 @@ letters, numbers, spaces, and these punctuation marks: - . , & / + $ ( ) \
 ! ? : — no emoji or other characters, or the tool call will fail. If a \
 tool call fails (e.g. the user doesn't have permission, or an id doesn't \
 exist), explain the failure plainly rather than retrying blindly. Keep \
-replies short and practical."""
+replies short and practical.
+
+When your reply ends on a genuine fork in the conversation - a yes/no \
+confirmation, or a choice between a small number of real options you \
+just looked up - end your message with a quick-reply tag so the user \
+can tap instead of typing: <<suggestions>>["short option 1", "short \
+option 2"]<<end>>. Rules: 2-4 options, each a few words written as \
+something the user would say (e.g. "Yes, create it", not "Create it? \
+Yes"), valid JSON array of strings, and this must be the very last \
+thing in your message with nothing after it - it's stripped before the \
+user sees it, so don't also restate the same options as a numbered list \
+in your prose right above it. Only add it when there's an actual \
+decision point; most replies (a status update, an error explanation, a \
+tool result) don't need one - never attach it just to keep the \
+conversation going."""
 
 TOOLS = [
     {
@@ -568,7 +587,29 @@ class ContactCentreAiChat(models.Model):
 
         messages = [{"role": m.role, "content": m.content} for m in self.message_ids]
         final_text = self._run_tool_loop(api_key, messages)
-        Message.create({"session_id": self.id, "role": "assistant", "content": final_text})
+        clean_text, suggestions = self._extract_suggestions(final_text)
+        Message.create({
+            "session_id": self.id, "role": "assistant",
+            "content": clean_text, "suggestions": suggestions,
+        })
+
+    def _extract_suggestions(self, text):
+        """Split a trailing <<suggestions>>[...]<<end>> tag off the model's
+        reply. Always strips the tag from the visible text even if the JSON
+        inside turns out malformed, so a formatting slip never leaks raw
+        markup into the chat."""
+        match = SUGGESTIONS_RE.search(text or "")
+        if not match:
+            return text, None
+        clean_text = (text[:match.start()] + text[match.end():]).strip()
+        try:
+            suggestions = json.loads(match.group(1))
+        except (json.JSONDecodeError, ValueError):
+            return clean_text, None
+        if not isinstance(suggestions, list):
+            return clean_text, None
+        suggestions = [s.strip() for s in suggestions if isinstance(s, str) and s.strip()][:4]
+        return clean_text, suggestions or None
 
     def _run_tool_loop(self, api_key, messages):
         self.ensure_one()
@@ -1104,6 +1145,7 @@ class ContactCentreAiChatMessage(models.Model):
     session_id = fields.Many2one("contact.centre.ai.chat", required=True, ondelete="cascade", index=True)
     role = fields.Selection([("user", "User"), ("assistant", "Assistant")], required=True)
     content = fields.Text(required=True)
+    suggestions = fields.Json()
 
 
 class ContactCentreAiChatAction(models.Model):
