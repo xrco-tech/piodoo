@@ -33,11 +33,20 @@ a tool fails with a permission/access error, that means this user \
 genuinely doesn't have that access in Odoo; tell them plainly rather \
 than implying it's a bug, and don't suggest workarounds to bypass it. \
 You also have read-only lookup tools (list_templates, search_contacts, \
-list_campaigns, list_chatbots, list_call_teams, list_call_routing_rules, \
-list_messages, list_call_logs, list_chatbot_sessions) - always use these \
-to find real ids yourself instead of asking the user to supply an id or \
-guessing one; only ask the user to choose between real options you \
-looked up. Message history (list_messages), call logs (list_call_logs), \
+list_contact_categories, list_campaigns, list_chatbots, list_call_teams, \
+list_call_routing_rules, list_messages, list_call_logs, \
+list_chatbot_sessions) - always use these to find real ids yourself \
+instead of asking the user to supply an id or guessing one; only ask the \
+user to choose between real options you looked up. search_contacts can \
+filter by name, phone, and/or tag/category (use list_contact_categories \
+first if you're not sure of the exact category name/spelling, e.g. the \
+user says "vendors" but the real tag is "Vendor"). Some matching \
+partners won't have a contact_id yet (contact_id comes back null) - \
+that just means nobody has messaged them before, not that the search \
+failed; call create_contacts_from_partners on those partner_ids to get \
+real contact_ids before adding them to a campaign, and briefly tell the \
+user you're doing this rather than silently creating records. Message \
+history (list_messages), call logs (list_call_logs), \
 and chatbot sessions (list_chatbot_sessions) are read-only audit trails \
 - there are no tools to create, edit, or delete records in these, and \
 there never will be; if asked, explain that conversation/call history \
@@ -101,13 +110,48 @@ TOOLS = [
     },
     {
         "name": "search_contacts",
-        "description": "Search contact.centre.contact records by name or phone number to find contact_ids.",
+        "description": (
+            "Search Odoo partners by name, phone number, and/or tag/category (e.g. 'Vendor', "
+            "'Desk Manufacturers' - use list_contact_categories to find real category names). "
+            "Each result includes contact_id: this is null when the partner has no "
+            "contact.centre.contact record yet (common for partners never synced from a "
+            "campaign/chatbot/purchase flow) - call create_contacts_from_partners on those "
+            "partner_ids before adding them to a campaign, since campaigns need a contact_id, "
+            "not a partner_id."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "query": {"type": "string", "description": "Name or phone number to search for"},
+                "category": {"type": "string", "description": "Tag/category name to filter by, e.g. 'Vendor' or 'Desk Manufacturers'"},
                 "limit": {"type": "integer", "default": 20},
             },
+        },
+    },
+    {
+        "name": "list_contact_categories",
+        "description": "List available partner tags/categories (e.g. Vendor, Desk Manufacturers) to use with search_contacts' category filter.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Optional name search"},
+            },
+        },
+    },
+    {
+        "name": "create_contacts_from_partners",
+        "description": (
+            "Find-or-create contact.centre.contact records for existing Odoo partners (e.g. "
+            "vendors/customers found via search_contacts whose contact_id came back null), so "
+            "they can be added to a campaign's contact_ids."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "partner_ids": {"type": "array", "items": {"type": "integer"},
+                                 "description": "res.partner ids, from search_contacts' partner_id field"},
+            },
+            "required": ["partner_ids"],
         },
     },
     {
@@ -500,6 +544,8 @@ class ContactCentreAiChat(models.Model):
             "update_campaign": self._tool_update_campaign,
             "list_templates": self._tool_list_templates,
             "search_contacts": self._tool_search_contacts,
+            "list_contact_categories": self._tool_list_contact_categories,
+            "create_contacts_from_partners": self._tool_create_contacts_from_partners,
             "list_campaigns": self._tool_list_campaigns,
             "list_chatbots": self._tool_list_chatbots,
             "create_contact": self._tool_create_contact,
@@ -574,14 +620,49 @@ class ContactCentreAiChat(models.Model):
         ]}
 
     def _tool_search_contacts(self, args):
+        Partner = self.env["res.partner"]
         domain = []
         query = args.get("query")
+        category = args.get("category")
         if query:
-            domain = ["|", ("name", "ilike", query), ("phone_number", "ilike", query)]
-        contacts = self.env["contact.centre.contact"].search(domain, limit=args.get("limit") or 20)
+            domain += ["|", "|", ("name", "ilike", query), ("phone", "ilike", query), ("mobile", "ilike", query)]
+        if category:
+            domain.append(("category_id.name", "ilike", category))
+        partners = Partner.search(domain, limit=args.get("limit") or 20)
+        contacts_by_partner = {
+            c.partner_id.id: c.id
+            for c in self.env["contact.centre.contact"].search([("partner_id", "in", partners.ids)])
+        }
         return {"contacts": [
-            {"id": c.id, "name": c.name, "phone_number": c.phone_number} for c in contacts
+            {
+                "partner_id": p.id,
+                "contact_id": contacts_by_partner.get(p.id),
+                "name": p.name,
+                "phone_number": p.mobile or p.phone,
+                "categories": p.category_id.mapped("name"),
+            }
+            for p in partners
         ]}
+
+    def _tool_list_contact_categories(self, args):
+        domain = [("name", "ilike", args["query"])] if args.get("query") else []
+        categories = self.env["res.partner.category"].search(domain, limit=50)
+        return {"categories": [{"id": c.id, "name": c.name} for c in categories]}
+
+    def _tool_create_contacts_from_partners(self, args):
+        partner_ids = args["partner_ids"]
+        Partner = self.env["res.partner"].browse(partner_ids)
+        missing = set(partner_ids) - set(Partner.exists().ids)
+        if missing:
+            return {"error": f"Partner ids not found: {sorted(missing)}"}
+        Contact = self.env["contact.centre.contact"]
+        results = []
+        for partner in Partner:
+            contact = Contact.search([("partner_id", "=", partner.id)], limit=1)
+            if not contact:
+                contact = Contact.create({"partner_id": partner.id})
+            results.append({"partner_id": partner.id, "contact_id": contact.id, "name": contact.name})
+        return {"contacts": results}
 
     def _tool_list_campaigns(self, args):
         domain = [("name", "ilike", args["query"])] if args.get("query") else []
