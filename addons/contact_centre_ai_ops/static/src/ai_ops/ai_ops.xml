@@ -64,7 +64,7 @@
                     </div>
                 </t>
                 <t t-else="">
-                    <div class="flex-grow-1 overflow-auto p-3">
+                    <div class="flex-grow-1 overflow-auto p-3" t-ref="aiOpsThread">
                         <div t-if="state.loadingMessages" class="text-muted">Loading…</div>
                         <t t-foreach="state.messages" t-as="message" t-key="message.id">
                             <div class="d-flex mb-2"

@@ -35,6 +35,12 @@ export class ContactCentreAiOps extends Component {
             () => [this.state.composerText]
         );
 
+        this.threadRef = useRef("aiOpsThread");
+        useEffect(
+            () => this._scrollThreadToBottom(),
+            () => [this.state.messages]
+        );
+
         onWillStart(() => this.loadSessions());
     }
 
@@ -158,6 +164,17 @@ export class ContactCentreAiOps extends Component {
         }
         el.style.height = "auto";
         el.style.height = `${el.scrollHeight}px`;
+    }
+
+    // Runs whenever state.messages gets a new array reference - covers
+    // selecting a chat, sending a message (optimistic echo), and the
+    // AI's reply landing, all in one place.
+    _scrollThreadToBottom() {
+        const el = this.threadRef.el;
+        if (!el) {
+            return;
+        }
+        el.scrollTop = el.scrollHeight;
     }
 
     async sendMessage() {
