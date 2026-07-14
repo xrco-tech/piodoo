@@ -15,13 +15,17 @@ ANTHROPIC_VERSION = "2023-06-01"
 MAX_TOOL_ITERATIONS = 5
 
 SYSTEM_PROMPT = """You are an AI Copilot inside a contact-centre Odoo app. \
-You can create and update marketing/support campaigns on the user's behalf \
-using the tools provided. Campaigns you create or edit always stay in \
-draft state - you cannot and must not attempt to start/launch a campaign \
-or send any real messages; a human always reviews and clicks "Start" \
-themselves. If a tool call fails (e.g. the user doesn't have permission, \
-or an id doesn't exist), explain the failure plainly rather than retrying \
-blindly. Keep replies short and practical."""
+You can create and update marketing/support campaigns, and create/extend \
+linear (non-branching) WhatsApp chatbot flows, on the user's behalf using \
+the tools provided. Campaigns and chatbot flows you create or edit always \
+stay in draft state - you cannot and must not attempt to start/launch a \
+campaign, publish a chatbot flow, or send any real messages; a human \
+always reviews and clicks "Start"/"Publish" themselves. Chatbot flow step \
+names may only contain letters, numbers, spaces, and these punctuation \
+marks: - . , & / + $ ( ) ! ? : — no emoji or other characters, or the \
+tool call will fail. If a tool call fails (e.g. the user doesn't have \
+permission, or an id doesn't exist), explain the failure plainly rather \
+than retrying blindly. Keep replies short and practical."""
 
 TOOLS = [
     {
@@ -54,6 +58,60 @@ TOOLS = [
                 "description": {"type": "string"},
             },
             "required": ["campaign_id"],
+        },
+    },
+    {
+        "name": "create_chatbot_flow",
+        "description": (
+            "Create a new linear (non-branching) chatbot flow: an ordered sequence of "
+            "plain-text messages sent one after another automatically when triggered. "
+            "Not for flows that need to wait for customer replies or branch on answers."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Chatbot flow name"},
+                "channel": {"type": "string", "enum": ["whatsapp", "sms", "email", "voice"], "default": "whatsapp"},
+                "steps": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Short internal label for this step"},
+                            "body": {"type": "string", "description": "The message text to send"},
+                        },
+                        "required": ["name", "body"],
+                    },
+                },
+            },
+            "required": ["name", "steps"],
+        },
+    },
+    {
+        "name": "update_chatbot_flow",
+        "description": (
+            "Rename an existing chatbot flow and/or append more message steps to the "
+            "end of its linear sequence. Cannot insert, remove, or branch steps."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "chatbot_id": {"type": "integer"},
+                "name": {"type": "string"},
+                "append_steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "body": {"type": "string"},
+                        },
+                        "required": ["name", "body"],
+                    },
+                },
+            },
+            "required": ["chatbot_id"],
         },
     },
 ]
@@ -154,6 +212,8 @@ class ContactCentreAiChat(models.Model):
         handlers = {
             "create_campaign": self._tool_create_campaign,
             "update_campaign": self._tool_update_campaign,
+            "create_chatbot_flow": self._tool_create_chatbot_flow,
+            "update_chatbot_flow": self._tool_update_chatbot_flow,
         }
         handler = handlers.get(name)
         if not handler:
@@ -199,6 +259,69 @@ class ContactCentreAiChat(models.Model):
             vals["description"] = args["description"]
         campaign.write(vals)
         return {"campaign_id": campaign.id, "updated_fields": list(vals.keys())}
+
+    def _tool_create_chatbot_flow(self, args):
+        chatbot = self.env["whatsapp.chatbot"].create({
+            "name": args["name"],
+            "channel": args.get("channel", "whatsapp"),
+        })
+        Step = self.env["whatsapp.chatbot.step"]
+        parent_id = False
+        step_ids = []
+        for i, step_def in enumerate(args["steps"]):
+            step = Step.create({
+                "chatbot_id": chatbot.id,
+                "name": step_def["name"],
+                "step_type": "message",
+                "body_plain": step_def["body"],
+                "parent_id": parent_id,
+                "sequence": (i + 1) * 10,
+            })
+            step_ids.append(step.id)
+            parent_id = step.id
+        return {"chatbot_id": chatbot.id, "name": chatbot.name, "status": chatbot.status, "step_ids": step_ids}
+
+    def _tool_update_chatbot_flow(self, args):
+        chatbot = self.env["whatsapp.chatbot"].browse(args["chatbot_id"])
+        if not chatbot.exists():
+            return {"error": f"Chatbot {args['chatbot_id']} not found"}
+
+        vals = {}
+        if "name" in args:
+            vals["name"] = args["name"]
+        if vals:
+            chatbot.write(vals)
+
+        added_step_ids = []
+        if args.get("append_steps"):
+            Step = self.env["whatsapp.chatbot.step"]
+            current = Step.search(
+                [("chatbot_id", "=", chatbot.id), ("parent_id", "=", False)],
+                order="sequence asc", limit=1,
+            )
+            next_sequence = 10
+            parent_id = False
+            if current:
+                # Flows this tool creates are always a strict single-child
+                # chain, so following child_ids[0] safely finds the current end.
+                while current.child_ids:
+                    current = current.child_ids.sorted(key=lambda s: (s.sequence, s.id))[0]
+                parent_id = current.id
+                next_sequence = (current.sequence or 10) + 10
+            for step_def in args["append_steps"]:
+                step = Step.create({
+                    "chatbot_id": chatbot.id,
+                    "name": step_def["name"],
+                    "step_type": "message",
+                    "body_plain": step_def["body"],
+                    "parent_id": parent_id,
+                    "sequence": next_sequence,
+                })
+                added_step_ids.append(step.id)
+                parent_id = step.id
+                next_sequence += 10
+
+        return {"chatbot_id": chatbot.id, "updated_fields": list(vals.keys()), "added_step_ids": added_step_ids}
 
 
 class ContactCentreAiChatMessage(models.Model):
