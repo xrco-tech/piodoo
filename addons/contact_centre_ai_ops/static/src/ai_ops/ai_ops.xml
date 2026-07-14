@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="contact_centre_ai_ops.AiOps">
+        <div class="o_action o_cc_aiops d-flex flex-row" style="height: 100%;">
+
+            <!-- ── Left: chat session list ──────────────────────────── -->
+            <div class="o_cc_aiops_list d-flex flex-column">
+                <div class="o_cc_aiops_pane_header d-flex justify-content-between align-items-center">
+                    <span>Chats</span>
+                    <button class="btn btn-sm btn-primary" t-on-click="createNewChat">+ New Chat</button>
+                </div>
+                <div class="flex-grow-1 overflow-auto">
+                    <div t-if="state.loadingSessions" class="p-3 text-muted">Loading…</div>
+                    <t t-foreach="state.sessions" t-as="session" t-key="session.id">
+                        <div class="p-2 border-bottom o_cc_aiops_session"
+                             t-att-class="{'o_cc_aiops_session_selected': session.id === state.selectedSessionId}"
+                             t-on-click="() => this.selectSession(session.id)"
+                             style="cursor:pointer;">
+                            <strong><t t-esc="session.name"/></strong>
+                            <div class="text-muted small"><t t-esc="session.write_date"/></div>
+                        </div>
+                    </t>
+                    <div t-if="!state.loadingSessions and !state.sessions.length" class="p-3 text-muted">
+                        No chats yet — start one above
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Center: chat transcript + composer ───────────────── -->
+            <div class="o_cc_aiops_thread flex-grow-1 d-flex flex-column">
+                <div class="o_cc_aiops_pane_header">
+                    <t t-if="state.selectedSession"><t t-esc="state.selectedSession.name"/></t>
+                    <t t-else="">AI Copilot</t>
+                </div>
+                <t t-if="!state.selectedSessionId">
+                    <div class="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
+                        Start a new chat or select one on the left
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="flex-grow-1 overflow-auto p-3">
+                        <div t-if="state.loadingMessages" class="text-muted">Loading…</div>
+                        <t t-foreach="state.messages" t-as="message" t-key="message.id">
+                            <div class="d-flex mb-2"
+                                 t-att-class="message.role === 'user' ? 'justify-content-end' : 'justify-content-start'">
+                                <div class="o_cc_aiops_bubble p-2"
+                                     t-att-class="message.role === 'user' ? 'bg-primary text-white' : 'bg-light'"
+                                     style="white-space: pre-wrap;">
+                                    <t t-esc="message.content"/>
+                                </div>
+                            </div>
+                        </t>
+                        <div t-if="state.sending" class="text-muted small">AI Copilot is thinking…</div>
+                    </div>
+                    <div class="border-top p-2 d-flex gap-2 align-items-end">
+                        <textarea class="form-control form-control-sm o_cc_aiops_composer" rows="1"
+                                  t-ref="aiOpsComposer"
+                                  t-att-value="state.composerText"
+                                  t-on-input="onComposerInput"
+                                  placeholder="Ask the AI Copilot to draft or update a campaign..."/>
+                        <button class="btn btn-primary btn-sm" t-on-click="sendMessage" t-att-disabled="state.sending">
+                            Send
+                        </button>
+                    </div>
+                </t>
+            </div>
+
+            <!-- ── Right: Actions Taken ─────────────────────────────── -->
+            <div class="o_cc_aiops_side d-flex flex-column overflow-auto">
+                <div class="o_cc_aiops_pane_header">Actions Taken</div>
+                <t t-if="!state.selectedSessionId">
+                    <div class="p-3 text-muted small">
+                        Tool calls the AI makes in this chat will show up here
+                    </div>
+                </t>
+                <t t-else="">
+                    <div t-if="!state.actions.length" class="p-3 text-muted small">
+                        No actions taken yet in this chat
+                    </div>
+                    <t t-foreach="state.actions" t-as="action" t-key="action.id">
+                        <div class="o_cc_aiops_side_section">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong><t t-esc="action.tool_name"/></strong>
+                                <span class="badge" t-att-class="action.success ? 'text-bg-success' : 'text-bg-danger'">
+                                    <t t-esc="action.success ? 'success' : 'failed'"/>
+                                </span>
+                            </div>
+                            <pre class="small mb-1 o_cc_aiops_json"><t t-esc="JSON.stringify(action.tool_input)"/></pre>
+                            <pre class="small mb-0 o_cc_aiops_json text-muted"><t t-esc="JSON.stringify(action.tool_result)"/></pre>
+                        </div>
+                    </t>
+                </t>
+            </div>
+        </div>
+    </t>
+
+</templates>

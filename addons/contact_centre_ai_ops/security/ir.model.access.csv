@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_contact_centre_ai_chat_manager,contact_centre.ai.chat.manager,model_contact_centre_ai_chat,contact_centre.group_contact_centre_manager,1,1,1,1
+access_contact_centre_ai_chat_message_manager,contact_centre.ai.chat.message.manager,model_contact_centre_ai_chat_message,contact_centre.group_contact_centre_manager,1,1,1,1
+access_contact_centre_ai_chat_action_manager,contact_centre.ai.chat.action.manager,model_contact_centre_ai_chat_action,contact_centre.group_contact_centre_manager,1,1,1,0
