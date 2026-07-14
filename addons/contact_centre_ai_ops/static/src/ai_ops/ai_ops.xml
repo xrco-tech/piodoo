@@ -106,8 +106,8 @@
                                     <t t-esc="action.success ? 'success' : 'failed'"/>
                                 </span>
                             </div>
-                            <pre class="small mb-1 o_cc_aiops_json"><t t-esc="JSON.stringify(action.tool_input)"/></pre>
-                            <pre class="small mb-0 o_cc_aiops_json text-muted"><t t-esc="JSON.stringify(action.tool_result)"/></pre>
+                            <pre class="small mb-1 o_cc_aiops_json"><t t-esc="formatToolJson(action.tool_input)"/></pre>
+                            <pre class="small mb-0 o_cc_aiops_json text-muted"><t t-esc="formatToolJson(action.tool_result)"/></pre>
                         </div>
                     </t>
                 </t>

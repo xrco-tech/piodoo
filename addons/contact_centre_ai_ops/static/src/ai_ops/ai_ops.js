@@ -126,6 +126,13 @@ export class ContactCentreAiOps extends Component {
         );
     }
 
+    // Templates can't reference the global JSON object directly (Owl's
+    // expression compiler resolves bare identifiers against the component
+    // context, not window), so this wraps it for use in t-esc.
+    formatToolJson(value) {
+        return JSON.stringify(value, null, 2);
+    }
+
     // -------------------------------------------------------------------------
     // Composer
     // -------------------------------------------------------------------------
