@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 
 import requests
 
@@ -23,24 +24,36 @@ DASHBOARD_CARD_MODELS = [
 
 SYSTEM_PROMPT = """You are an AI Copilot inside a contact-centre Odoo app. \
 You can create and update marketing/support campaigns, create/extend \
-linear (non-branching) WhatsApp chatbot flows, and create/update/delete \
-custom dashboard cards, on the user's behalf using the tools provided. \
+linear (non-branching) WhatsApp chatbot flows, create/update contacts \
+and message templates, create/update WhatsApp call teams and inbound \
+call-routing rules, and create/update/delete custom dashboard cards, on \
+the user's behalf using the tools provided. Every tool runs with the \
+permissions of the person chatting with you, not an administrator - if \
+a tool fails with a permission/access error, that means this user \
+genuinely doesn't have that access in Odoo; tell them plainly rather \
+than implying it's a bug, and don't suggest workarounds to bypass it. \
 You also have read-only lookup tools (list_templates, search_contacts, \
-list_campaigns, list_chatbots) - always use these to find real ids \
-yourself instead of asking the user to supply an id or guessing one; \
-only ask the user to choose between real options you looked up. \
-Dashboard cards may only target these models: contact.centre.contact, \
-contact.centre.message, contact.centre.campaign, whatsapp.chatbot, \
-contact.centre.chatbot.session, whatsapp.call.log - no other model may \
-be used. Campaigns and chatbot flows you create or edit always \
-stay in draft state - you cannot and must not attempt to start/launch a \
-campaign, publish a chatbot flow, or send any real messages; a human \
-always reviews and clicks "Start"/"Publish" themselves. Chatbot flow step \
-names may only contain letters, numbers, spaces, and these punctuation \
-marks: - . , & / + $ ( ) ! ? : — no emoji or other characters, or the \
-tool call will fail. If a tool call fails (e.g. the user doesn't have \
-permission, or an id doesn't exist), explain the failure plainly rather \
-than retrying blindly. Keep replies short and practical."""
+list_campaigns, list_chatbots, list_call_teams, list_call_routing_rules, \
+list_messages, list_call_logs, list_chatbot_sessions) - always use these \
+to find real ids yourself instead of asking the user to supply an id or \
+guessing one; only ask the user to choose between real options you \
+looked up. Message history (list_messages), call logs (list_call_logs), \
+and chatbot sessions (list_chatbot_sessions) are read-only audit trails \
+- there are no tools to create, edit, or delete records in these, and \
+there never will be; if asked, explain that conversation/call history \
+can't be edited via the AI Copilot. Dashboard cards may only target \
+these models: contact.centre.contact, contact.centre.message, \
+contact.centre.campaign, whatsapp.chatbot, contact.centre.chatbot.session, \
+whatsapp.call.log - no other model may be used. Campaigns and chatbot \
+flows you create or edit always stay in draft state - you cannot and \
+must not attempt to start/launch a campaign, publish a chatbot flow, or \
+send any real messages; a human always reviews and clicks \
+"Start"/"Publish" themselves. Chatbot flow step names may only contain \
+letters, numbers, spaces, and these punctuation marks: - . , & / + $ ( ) \
+! ? : — no emoji or other characters, or the tool call will fail. If a \
+tool call fails (e.g. the user doesn't have permission, or an id doesn't \
+exist), explain the failure plainly rather than retrying blindly. Keep \
+replies short and practical."""
 
 TOOLS = [
     {
@@ -115,6 +128,175 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "query": {"type": "string", "description": "Optional name search"},
+                "limit": {"type": "integer", "default": 20},
+            },
+        },
+    },
+    {
+        "name": "create_contact",
+        "description": "Create a new contact.centre.contact (finds/reuses an existing partner by phone number if one already exists).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "phone_number": {"type": "string", "description": "Phone number, used to find or create the underlying partner"},
+                "name": {"type": "string", "description": "Optional contact name"},
+                "email": {"type": "string", "description": "Optional email address"},
+            },
+            "required": ["phone_number"],
+        },
+    },
+    {
+        "name": "update_contact",
+        "description": "Update an existing contact's name, phone number, or email.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "contact_id": {"type": "integer"},
+                "name": {"type": "string"},
+                "phone_number": {"type": "string"},
+                "email": {"type": "string"},
+            },
+            "required": ["contact_id"],
+        },
+    },
+    {
+        "name": "create_template",
+        "description": "Create a new contact.centre.template message template.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "channel": {"type": "string", "enum": ["whatsapp", "sms", "email"]},
+                "body_text": {"type": "string"},
+                "notes": {"type": "string"},
+            },
+            "required": ["name", "channel", "body_text"],
+        },
+    },
+    {
+        "name": "update_template",
+        "description": "Update an existing message template's fields.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "template_id": {"type": "integer"},
+                "name": {"type": "string"},
+                "channel": {"type": "string", "enum": ["whatsapp", "sms", "email"]},
+                "body_text": {"type": "string"},
+                "notes": {"type": "string"},
+                "active": {"type": "boolean"},
+            },
+            "required": ["template_id"],
+        },
+    },
+    {
+        "name": "list_call_teams",
+        "description": "List WhatsApp call teams (id, name, member_count) to find a team_id.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Optional name search"},
+                "limit": {"type": "integer", "default": 20},
+            },
+        },
+    },
+    {
+        "name": "create_call_team",
+        "description": "Create a new WhatsApp call team (a named queue of agents). Does not manage team membership.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "update_call_team",
+        "description": "Update an existing call team's name, description, or active state.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "team_id": {"type": "integer"},
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "active": {"type": "boolean"},
+            },
+            "required": ["team_id"],
+        },
+    },
+    {
+        "name": "list_call_routing_rules",
+        "description": "List inbound call routing rules (id, name, sequence, caller_pattern, team names) to find a rule_id.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Optional name search"},
+                "limit": {"type": "integer", "default": 20},
+            },
+        },
+    },
+    {
+        "name": "create_call_routing_rule",
+        "description": "Create a new inbound call routing rule that sends matching calls to one or more call teams.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "team_ids": {"type": "array", "items": {"type": "integer"}, "description": "whatsapp.call.team ids, from list_call_teams"},
+                "caller_pattern": {"type": "string", "description": "Optional regex on the caller's number, e.g. ^\\+27"},
+                "sequence": {"type": "integer", "description": "Lower runs first; default 10"},
+            },
+            "required": ["name", "team_ids"],
+        },
+    },
+    {
+        "name": "update_call_routing_rule",
+        "description": "Update an existing call routing rule's fields.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "rule_id": {"type": "integer"},
+                "name": {"type": "string"},
+                "team_ids": {"type": "array", "items": {"type": "integer"}},
+                "caller_pattern": {"type": "string"},
+                "sequence": {"type": "integer"},
+                "active": {"type": "boolean"},
+            },
+            "required": ["rule_id"],
+        },
+    },
+    {
+        "name": "list_messages",
+        "description": "Read-only: list WhatsApp/SMS/email conversation history for a contact.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "contact_id": {"type": "integer", "description": "Optional contact.centre.contact id to filter to"},
+                "channel": {"type": "string", "enum": ["whatsapp", "sms", "email"]},
+                "limit": {"type": "integer", "default": 20},
+            },
+        },
+    },
+    {
+        "name": "list_call_logs",
+        "description": "Read-only: list WhatsApp call history, optionally filtered by caller/callee number or contact name.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Optional number or contact-name search"},
+                "limit": {"type": "integer", "default": 20},
+            },
+        },
+    },
+    {
+        "name": "list_chatbot_sessions",
+        "description": "Read-only: list contact-centre chatbot conversation sessions (state, current step) for a contact.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "contact_id": {"type": "integer", "description": "Optional contact.centre.contact id to filter to"},
                 "limit": {"type": "integer", "default": 20},
             },
         },
@@ -320,6 +502,19 @@ class ContactCentreAiChat(models.Model):
             "search_contacts": self._tool_search_contacts,
             "list_campaigns": self._tool_list_campaigns,
             "list_chatbots": self._tool_list_chatbots,
+            "create_contact": self._tool_create_contact,
+            "update_contact": self._tool_update_contact,
+            "create_template": self._tool_create_template,
+            "update_template": self._tool_update_template,
+            "list_call_teams": self._tool_list_call_teams,
+            "create_call_team": self._tool_create_call_team,
+            "update_call_team": self._tool_update_call_team,
+            "list_call_routing_rules": self._tool_list_call_routing_rules,
+            "create_call_routing_rule": self._tool_create_call_routing_rule,
+            "update_call_routing_rule": self._tool_update_call_routing_rule,
+            "list_messages": self._tool_list_messages,
+            "list_call_logs": self._tool_list_call_logs,
+            "list_chatbot_sessions": self._tool_list_chatbot_sessions,
             "create_chatbot_flow": self._tool_create_chatbot_flow,
             "update_chatbot_flow": self._tool_update_chatbot_flow,
             "create_dashboard_card": self._tool_create_dashboard_card,
@@ -400,6 +595,167 @@ class ContactCentreAiChat(models.Model):
         chatbots = self.env["whatsapp.chatbot"].search(domain, limit=args.get("limit") or 20)
         return {"chatbots": [
             {"id": c.id, "name": c.name, "channel": c.channel, "status": c.status} for c in chatbots
+        ]}
+
+    def _tool_create_contact(self, args):
+        phone = args["phone_number"]
+        clean = re.sub(r"\D", "", phone or "")
+        Partner = self.env["res.partner"]
+        partner = Partner.browse()
+        if clean:
+            partner = Partner.search(
+                ["|", ("phone", "ilike", clean), ("mobile", "ilike", clean)], limit=1)
+        if not partner:
+            partner = Partner.create({
+                "name": args.get("name") or phone,
+                "mobile": phone,
+                "is_company": False,
+            })
+        else:
+            partner_vals = {}
+            if args.get("name"):
+                partner_vals["name"] = args["name"]
+            if partner_vals:
+                partner.write(partner_vals)
+        if args.get("email"):
+            partner.write({"email": args["email"]})
+        contact = self.env["contact.centre.contact"].search([("partner_id", "=", partner.id)], limit=1)
+        if not contact:
+            contact = self.env["contact.centre.contact"].create({"partner_id": partner.id})
+        return {"contact_id": contact.id, "name": contact.name, "phone_number": contact.phone_number}
+
+    def _tool_update_contact(self, args):
+        contact = self.env["contact.centre.contact"].browse(args["contact_id"])
+        if not contact.exists():
+            return {"error": f"Contact {args['contact_id']} not found"}
+        vals = {}
+        for key in ("name", "phone_number", "email"):
+            if key in args:
+                vals[key] = args[key]
+        contact.write(vals)
+        return {"contact_id": contact.id, "updated_fields": list(vals.keys())}
+
+    def _tool_create_template(self, args):
+        vals = {
+            "name": args["name"],
+            "channel": args["channel"],
+            "body_text": args["body_text"],
+        }
+        if args.get("notes"):
+            vals["notes"] = args["notes"]
+        template = self.env["contact.centre.template"].create(vals)
+        return {"template_id": template.id, "name": template.name}
+
+    def _tool_update_template(self, args):
+        template = self.env["contact.centre.template"].browse(args["template_id"])
+        if not template.exists():
+            return {"error": f"Template {args['template_id']} not found"}
+        vals = {}
+        for key in ("name", "channel", "body_text", "notes", "active"):
+            if key in args:
+                vals[key] = args[key]
+        template.write(vals)
+        return {"template_id": template.id, "updated_fields": list(vals.keys())}
+
+    def _tool_list_call_teams(self, args):
+        domain = [("name", "ilike", args["query"])] if args.get("query") else []
+        teams = self.env["whatsapp.call.team"].search(domain, limit=args.get("limit") or 20)
+        return {"teams": [
+            {"id": t.id, "name": t.name, "active": t.active, "member_count": t.member_count} for t in teams
+        ]}
+
+    def _tool_create_call_team(self, args):
+        vals = {"name": args["name"]}
+        if args.get("description"):
+            vals["description"] = args["description"]
+        team = self.env["whatsapp.call.team"].create(vals)
+        return {"team_id": team.id, "name": team.name}
+
+    def _tool_update_call_team(self, args):
+        team = self.env["whatsapp.call.team"].browse(args["team_id"])
+        if not team.exists():
+            return {"error": f"Call team {args['team_id']} not found"}
+        vals = {}
+        for key in ("name", "description", "active"):
+            if key in args:
+                vals[key] = args[key]
+        team.write(vals)
+        return {"team_id": team.id, "updated_fields": list(vals.keys())}
+
+    def _tool_list_call_routing_rules(self, args):
+        domain = [("name", "ilike", args["query"])] if args.get("query") else []
+        rules = self.env["whatsapp.call.routing.rule"].search(domain, limit=args.get("limit") or 20)
+        return {"rules": [
+            {"id": r.id, "name": r.name, "sequence": r.sequence, "active": r.active,
+             "caller_pattern": r.caller_pattern, "team_ids": r.team_ids.ids,
+             "team_names": r.team_ids.mapped("name")} for r in rules
+        ]}
+
+    def _tool_create_call_routing_rule(self, args):
+        vals = {
+            "name": args["name"],
+            "team_ids": [(6, 0, args["team_ids"])],
+        }
+        if args.get("caller_pattern"):
+            vals["caller_pattern"] = args["caller_pattern"]
+        if args.get("sequence") is not None:
+            vals["sequence"] = args["sequence"]
+        rule = self.env["whatsapp.call.routing.rule"].create(vals)
+        return {"rule_id": rule.id, "name": rule.name}
+
+    def _tool_update_call_routing_rule(self, args):
+        rule = self.env["whatsapp.call.routing.rule"].browse(args["rule_id"])
+        if not rule.exists():
+            return {"error": f"Routing rule {args['rule_id']} not found"}
+        vals = {}
+        if "name" in args:
+            vals["name"] = args["name"]
+        if "team_ids" in args:
+            vals["team_ids"] = [(6, 0, args["team_ids"])]
+        if "caller_pattern" in args:
+            vals["caller_pattern"] = args["caller_pattern"]
+        if "sequence" in args:
+            vals["sequence"] = args["sequence"]
+        if "active" in args:
+            vals["active"] = args["active"]
+        rule.write(vals)
+        return {"rule_id": rule.id, "updated_fields": list(vals.keys())}
+
+    def _tool_list_messages(self, args):
+        domain = []
+        if args.get("contact_id"):
+            domain.append(("contact_id", "=", args["contact_id"]))
+        if args.get("channel"):
+            domain.append(("channel", "=", args["channel"]))
+        messages = self.env["contact.centre.message"].search(domain, limit=args.get("limit") or 20)
+        return {"messages": [
+            {"id": m.id, "contact_id": m.contact_id.id, "channel": m.channel, "direction": m.direction,
+             "status": m.status, "body_text": m.body_text, "message_timestamp": str(m.message_timestamp)}
+            for m in messages
+        ]}
+
+    def _tool_list_call_logs(self, args):
+        domain = []
+        query = args.get("query")
+        if query:
+            domain = ["|", "|", ("from_number", "ilike", query),
+                      ("to_number", "ilike", query), ("partner_id.name", "ilike", query)]
+        logs = self.env["whatsapp.call.log"].search(domain, limit=args.get("limit") or 20)
+        return {"call_logs": [
+            {"id": c.id, "contact_display": c.contact_display, "call_direction": c.call_direction,
+             "call_status": c.call_status, "duration_display": c.duration_display,
+             "call_timestamp": str(c.call_timestamp)} for c in logs
+        ]}
+
+    def _tool_list_chatbot_sessions(self, args):
+        domain = [("contact_id", "=", args["contact_id"])] if args.get("contact_id") else []
+        sessions = self.env["contact.centre.chatbot.session"].search(
+            domain, limit=args.get("limit") or 20, order="id desc")
+        return {"sessions": [
+            {"id": s.id, "contact_id": s.contact_id.id, "chatbot_name": s.chatbot_id.name,
+             "channel": s.channel, "state": s.state,
+             "current_step": s.current_step_id.name if s.current_step_id else None}
+            for s in sessions
         ]}
 
     def _tool_create_chatbot_flow(self, args):
