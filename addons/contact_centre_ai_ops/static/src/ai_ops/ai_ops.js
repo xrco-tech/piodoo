@@ -25,6 +25,8 @@ export class ContactCentreAiOps extends Component {
             sending: false,
             renamingSessionId: false,
             renameText: "",
+            leftCollapsed: false,
+            rightCollapsed: false,
         });
 
         this.composerRef = useRef("aiOpsComposer");
@@ -89,6 +91,14 @@ export class ContactCentreAiOps extends Component {
         } else if (ev.key === "Escape") {
             this.cancelRename(ev);
         }
+    }
+
+    toggleLeftPane() {
+        this.state.leftCollapsed = !this.state.leftCollapsed;
+    }
+
+    toggleRightPane() {
+        this.state.rightCollapsed = !this.state.rightCollapsed;
     }
 
     async createNewChat() {

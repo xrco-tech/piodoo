@@ -5,12 +5,17 @@
         <div class="o_action o_cc_aiops d-flex flex-row" style="height: 100%;">
 
             <!-- ── Left: chat session list ──────────────────────────── -->
-            <div class="o_cc_aiops_list d-flex flex-column">
+            <div class="o_cc_aiops_list d-flex flex-column" t-att-class="{'o_cc_aiops_pane_collapsed': state.leftCollapsed}">
                 <div class="o_cc_aiops_pane_header d-flex justify-content-between align-items-center">
-                    <span>Chats</span>
-                    <button class="btn btn-sm btn-primary" t-on-click="createNewChat">+ New Chat</button>
+                    <span t-if="!state.leftCollapsed">Chats</span>
+                    <button t-if="!state.leftCollapsed" class="btn btn-sm btn-primary" t-on-click="createNewChat">+ New Chat</button>
+                    <button class="btn btn-sm btn-link p-0 o_cc_aiops_collapse_btn"
+                            t-on-click="toggleLeftPane"
+                            t-attf-title="#{state.leftCollapsed ? 'Expand' : 'Collapse'} chat list">
+                        <i t-att-class="state.leftCollapsed ? 'fa fa-angle-right' : 'fa fa-angle-left'"/>
+                    </button>
                 </div>
-                <div class="flex-grow-1 overflow-auto">
+                <div class="flex-grow-1 overflow-auto" t-if="!state.leftCollapsed">
                     <div t-if="state.loadingSessions" class="p-3 text-muted">Loading…</div>
                     <t t-foreach="state.sessions" t-as="session" t-key="session.id">
                         <div class="p-2 border-bottom o_cc_aiops_session"
@@ -87,28 +92,37 @@
             </div>
 
             <!-- ── Right: Actions Taken ─────────────────────────────── -->
-            <div class="o_cc_aiops_side d-flex flex-column overflow-auto">
-                <div class="o_cc_aiops_pane_header">Actions Taken</div>
-                <t t-if="!state.selectedSessionId">
-                    <div class="p-3 text-muted small">
-                        Tool calls the AI makes in this chat will show up here
-                    </div>
-                </t>
-                <t t-else="">
-                    <div t-if="!state.actions.length" class="p-3 text-muted small">
-                        No actions taken yet in this chat
-                    </div>
-                    <t t-foreach="state.actions" t-as="action" t-key="action.id">
-                        <div class="o_cc_aiops_side_section">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <strong><t t-esc="action.tool_name"/></strong>
-                                <span class="badge" t-att-class="action.success ? 'text-bg-success' : 'text-bg-danger'">
-                                    <t t-esc="action.success ? 'success' : 'failed'"/>
-                                </span>
-                            </div>
-                            <pre class="small mb-1 o_cc_aiops_json"><t t-esc="formatToolJson(action.tool_input)"/></pre>
-                            <pre class="small mb-0 o_cc_aiops_json text-muted"><t t-esc="formatToolJson(action.tool_result)"/></pre>
+            <div class="o_cc_aiops_side d-flex flex-column overflow-auto" t-att-class="{'o_cc_aiops_pane_collapsed': state.rightCollapsed}">
+                <div class="o_cc_aiops_pane_header d-flex justify-content-between align-items-center">
+                    <span t-if="!state.rightCollapsed">Actions Taken</span>
+                    <button class="btn btn-sm btn-link p-0 o_cc_aiops_collapse_btn"
+                            t-on-click="toggleRightPane"
+                            t-attf-title="#{state.rightCollapsed ? 'Expand' : 'Collapse'} actions panel">
+                        <i t-att-class="state.rightCollapsed ? 'fa fa-angle-left' : 'fa fa-angle-right'"/>
+                    </button>
+                </div>
+                <t t-if="!state.rightCollapsed">
+                    <t t-if="!state.selectedSessionId">
+                        <div class="p-3 text-muted small">
+                            Tool calls the AI makes in this chat will show up here
                         </div>
+                    </t>
+                    <t t-else="">
+                        <div t-if="!state.actions.length" class="p-3 text-muted small">
+                            No actions taken yet in this chat
+                        </div>
+                        <t t-foreach="state.actions" t-as="action" t-key="action.id">
+                            <div class="o_cc_aiops_side_section">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong><t t-esc="action.tool_name"/></strong>
+                                    <span class="badge" t-att-class="action.success ? 'text-bg-success' : 'text-bg-danger'">
+                                        <t t-esc="action.success ? 'success' : 'failed'"/>
+                                    </span>
+                                </div>
+                                <pre class="small mb-1 o_cc_aiops_json"><t t-esc="formatToolJson(action.tool_input)"/></pre>
+                                <pre class="small mb-0 o_cc_aiops_json text-muted"><t t-esc="formatToolJson(action.tool_result)"/></pre>
+                            </div>
+                        </t>
                     </t>
                 </t>
             </div>

@@ -13,6 +13,31 @@
         flex-shrink: 0;
     }
 
+    // ── Collapsible left/right panes ────────────────────────────────────
+    .o_cc_aiops_list,
+    .o_cc_aiops_side {
+        transition: width 0.15s ease, min-width 0.15s ease;
+    }
+
+    .o_cc_aiops_pane_collapsed {
+        width: 44px !important;
+        min-width: 44px !important;
+
+        .o_cc_aiops_pane_header {
+            padding: 0.75rem 0;
+            justify-content: center !important;
+        }
+    }
+
+    .o_cc_aiops_collapse_btn {
+        color: var(--o-gray-600, #6c757d);
+        line-height: 1;
+
+        &:hover {
+            color: var(--bs-primary, #0d6efd);
+        }
+    }
+
     // ── Left: session list ────────────────────────────────────────────
     .o_cc_aiops_list {
         width: 280px;
