@@ -318,6 +318,11 @@ export class ContactCentreAiOps extends Component {
                 tag: "comm_whatsapp_chatbot.chatbot_flow",
                 name: chatbot ? `Flow — ${chatbot.name}` : "Flow",
                 target: "new",
+                // Normally opened as a full-page navigation (no target set),
+                // so its Device/Simulator panel assumes full viewport width.
+                // Without this the dialog defaults to a narrower size and
+                // that panel's content gets clipped.
+                context: { dialog_size: "extra-large" },
                 params: {
                     chatbot_id: target.resId,
                     chatbot_name: chatbot ? chatbot.name : "",
