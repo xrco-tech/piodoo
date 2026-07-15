@@ -38,7 +38,10 @@
     overflow: hidden;
     flex-direction: column;
 }
-.o_ccw_widget.o_ccw_open .o_ccw_panel { display: flex; }
+/* widget.js toggles o_ccw_open on the panel itself (panelEl), not on the
+   root .o_ccw_widget - a descendant-combinator selector here would never
+   match, leaving the panel permanently display:none regardless of state. */
+.o_ccw_panel.o_ccw_open { display: flex; }
 
 /* Header */
 .o_ccw_header {
