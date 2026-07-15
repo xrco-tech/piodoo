@@ -117,6 +117,8 @@ export class ChatbotFlowAction extends Component {
 
         this.chatbotId   = this.props.action.params?.chatbot_id;
         this.canvasRef   = useRef("canvas");
+        this.propsPanelRef = useRef("propsPanel");
+        this._panelResizeCleanup = null;
         this._tree         = [];
         this._flat         = [];
         this._msgCounts    = {};
@@ -172,6 +174,44 @@ export class ChatbotFlowAction extends Component {
             }
         });
         onWillUnmount(() => window.removeEventListener("resize", this._onResize));
+        onWillUnmount(() => { if (this._panelResizeCleanup) this._panelResizeCleanup(); });
+    }
+
+    // ── Right-panel resize ──────────────────────────────────────────────────────
+    // Drag the handle between canvas and panel to resize it manually. A manual
+    // width is set as an inline style, which naturally overrides whatever
+    // width the CSS (default 210px, 320px for Simulator, or the Device tab's
+    // per-device auto-sizing) would otherwise apply - it sticks until the
+    // dialog is reopened.
+    _onPanelResizeStart(ev) {
+        ev.preventDefault();
+        const panelEl = this.propsPanelRef.el;
+        const bodyEl = panelEl?.closest(".o_chatbot_flow_body");
+        if (!panelEl || !bodyEl) {
+            return;
+        }
+        const startX = ev.clientX;
+        const startWidth = panelEl.getBoundingClientRect().width;
+        const maxWidth = bodyEl.getBoundingClientRect().width * 0.85;
+        // The panel's own width transition (for the sim/device auto-sizing)
+        // would otherwise fight the drag, making it lag behind the cursor.
+        panelEl.style.transition = "none";
+        const onMove = (moveEv) => {
+            // Panel sits to the right of the resizer, so dragging left
+            // (negative clientX delta) should grow it.
+            const delta = startX - moveEv.clientX;
+            const newWidth = Math.min(Math.max(startWidth + delta, 210), maxWidth);
+            panelEl.style.width = `${newWidth}px`;
+        };
+        const onUp = () => {
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+            panelEl.style.transition = "";
+            this._panelResizeCleanup = null;
+        };
+        this._panelResizeCleanup = onUp;
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", onUp);
     }
 
     // ── Data ─────────────────────────────────────────────────────────────────

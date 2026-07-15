@@ -1,5 +1,18 @@
 /* WA chatbot device simulator — device frames wrapping the widget iframe. */
 
+/* comm_whatsapp_chatbot's .o_chatbot_flow_props only widens itself for its
+   own .o_flow_sim (built-in Simulator tab) - it doesn't know about this
+   Device tab at all, so without these it stays at the 210px default
+   regardless of how wide the device frame below actually is. Sized to each
+   device's frame width (see .o_wa_device_* below) plus this file's own
+   .o_wa_device_sim 20px side padding, with some headroom. A manual drag
+   (see comm_whatsapp_chatbot's .o_flow_panel_resizer) overrides these via
+   inline style, which naturally wins over any stylesheet rule. */
+.o_chatbot_flow_props:has(.o_wa_device_iphone)  { width: 460px; }
+.o_chatbot_flow_props:has(.o_wa_device_pixel)   { width: 460px; }
+.o_chatbot_flow_props:has(.o_wa_device_ipad)    { width: 900px; }
+.o_chatbot_flow_props:has(.o_wa_device_desktop) { width: 1060px; }
+
 .o_wa_device_sim {
     display: flex;
     flex-direction: column;

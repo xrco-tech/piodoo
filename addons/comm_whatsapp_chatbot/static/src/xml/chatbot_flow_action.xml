@@ -48,8 +48,14 @@
                     <div t-else="" class="o_chatbot_flow_canvas" t-ref="canvas"/>
                 </div>
 
+                <!-- Drag handle to manually resize the properties panel -->
+                <div class="o_flow_panel_resizer"
+                     t-if="!state.loading and state.panelVisible"
+                     t-on-mousedown="_onPanelResizeStart"/>
+
                 <!-- Properties panel -->
-                <div t-att-class="'o_chatbot_flow_props' + (state.panelVisible ? '' : ' o_chatbot_flow_props_collapsed')"
+                <div t-ref="propsPanel"
+                     t-att-class="'o_chatbot_flow_props' + (state.panelVisible ? '' : ' o_chatbot_flow_props_collapsed')"
                      t-if="!state.loading">
                     <!-- Tab switcher: Properties | Simulator -->
                     <div class="o_flow_panel_tabs">
