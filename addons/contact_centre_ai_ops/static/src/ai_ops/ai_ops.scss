@@ -191,3 +191,13 @@
         padding: 0.4rem;
     }
 }
+
+// The flow designer (comm_whatsapp_chatbot.chatbot_flow) is normally a
+// full-page navigation, so its Device/Simulator panel assumes full viewport
+// width. Opened from the AI Copilot as a dialog, even Bootstrap's widest
+// built-in size (xl, ~1140-1320px) isn't enough - this rule lives outside
+// .o_cc_aiops because the dialog is portalled to the document root, not
+// rendered inside this component's own DOM.
+.modal-dialog:has(.o_chatbot_flow_action) {
+    max-width: 95vw;
+}
