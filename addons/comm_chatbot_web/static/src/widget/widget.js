@@ -22,6 +22,11 @@
         personaName: "",
         personaMobile: "",
         storageKey: "comm_chatbot_web_token",
+        // Lets a channel-specific embed page (e.g. comm_whatsapp_chatbot_web)
+        // point session calls at its own controller/model instead of the
+        // generic comm.bot one, and rename the id param it expects.
+        endpointPrefix: "/comm_chatbot_web",
+        botIdKey: "bot_id",
     }, window.COMM_CHATBOT_WEB || {});
 
     if (!CFG.botId) {
@@ -67,8 +72,8 @@
         state.loading = true;
         render();
         try {
-            const data = await rpc("/comm_chatbot_web/session/start", {
-                bot_id: CFG.botId,
+            const data = await rpc(CFG.endpointPrefix + "/session/start", {
+                [CFG.botIdKey]: CFG.botId,
                 referer: window.location.href,
                 user_agent: navigator.userAgent,
                 preview: CFG.preview,
@@ -94,7 +99,7 @@
         state.loading = true;
         render();
         try {
-            const data = await rpc("/comm_chatbot_web/session/message", {
+            const data = await rpc(CFG.endpointPrefix + "/session/message", {
                 token: state.token,
                 body: body,
                 option_value: optionValue,
