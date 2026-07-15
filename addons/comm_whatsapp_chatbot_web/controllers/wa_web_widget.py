@@ -214,6 +214,15 @@ _EMBED_TEMPLATE = """<!DOCTYPE html>
             position: static; width: 100%; height: 100%; border-radius: 0;
             box-shadow: none;
         }}
+        /* .o_ccw_panel has its own fixed 380x560px size normally (the
+           floating-bubble chat window) - without overriding it too, it
+           stays that fixed size anchored in a corner instead of filling
+           the frame, which is why it looked identical and undersized on
+           every device regardless of the frame's actual dimensions. */
+        body.o_ccw_fullscreen .o_ccw_panel {{
+            position: static; width: 100%; height: 100%; max-height: none;
+            border-radius: 0; box-shadow: none;
+        }}
         body.o_ccw_fullscreen .o_ccw_bubble {{ display: none; }}
     </style>
 </head>

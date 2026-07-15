@@ -266,13 +266,21 @@ _EMBED_TEMPLATE = """<!DOCTYPE html>
     <title>{bot_name}</title>
     <link rel="stylesheet" href="/comm_chatbot_web/widget.css"/>
     <style>
-        html, body {{ margin: 0; padding: 0; height: 100%%; }}
+        html, body {{ margin: 0; padding: 0; height: 100%; }}
         body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                 Roboto, sans-serif; background: #f4f4f6; }}
-        /* When embedded fullscreen, take the whole viewport */
+        /* When embedded fullscreen, take the whole viewport. Both the
+           wrapper AND the panel need this - .o_ccw_panel has its own
+           fixed 380x560px size normally (the floating-bubble chat
+           window), so without overriding it too, it stays that fixed
+           size anchored in a corner instead of filling the frame. */
         body.o_ccw_fullscreen .o_ccw_widget {{
-            position: static; width: 100%%; height: 100%%; border-radius: 0;
+            position: static; width: 100%; height: 100%; border-radius: 0;
             box-shadow: none;
+        }}
+        body.o_ccw_fullscreen .o_ccw_panel {{
+            position: static; width: 100%; height: 100%; max-height: none;
+            border-radius: 0; box-shadow: none;
         }}
         body.o_ccw_fullscreen .o_ccw_bubble {{ display: none; }}
     </style>
