@@ -2103,9 +2103,15 @@ class WhatsAppChatbotMessage(models.Model):
                 
                 # Auto-advance: only for non-question steps (message, set_variable, etc.)
                 # Question/interactive steps wait for user input — never auto-advance them.
-                WAIT_FOR_INPUT = {'question_text', 'question_interactive'}
+                # startswith('question_') covers all ten question_* types (numeric, phone,
+                # email, date, document, image, video, audio, text, interactive) - a
+                # hardcoded {'question_text', 'question_interactive'} set here previously
+                # missed the other eight, so e.g. a Question (Numeric) step would fire its
+                # prompt and immediately auto-advance without ever waiting for an answer,
+                # silently leaving that variable unset for the rest of the flow. Matches
+                # the same startswith('question_') check _sim_walk already uses.
                 children = step.child_ids.sorted(key=lambda s: (s.sequence, s.id))
-                if step.step_type not in WAIT_FOR_INPUT and len(children) == 1:
+                if not step.step_type.startswith('question_') and len(children) == 1:
                     child = children[0]
                     if child.step_type == 'jump_to_flow':
                         _logger.info(f"Auto-advancing to jump step: {child.name} (ID: {child.id})")
