@@ -207,11 +207,11 @@ _EMBED_TEMPLATE = """<!DOCTYPE html>
     <title>{chatbot_name}</title>
     <link rel="stylesheet" href="/comm_chatbot_web/widget.css"/>
     <style>
-        html, body {{ margin: 0; padding: 0; height: 100%%; }}
+        html, body {{ margin: 0; padding: 0; height: 100%; }}
         body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                 Roboto, sans-serif; background: #f4f4f6; }}
         body.o_ccw_fullscreen .o_ccw_widget {{
-            position: static; width: 100%%; height: 100%%; border-radius: 0;
+            position: static; width: 100%; height: 100%; border-radius: 0;
             box-shadow: none;
         }}
         body.o_ccw_fullscreen .o_ccw_bubble {{ display: none; }}

@@ -34,8 +34,11 @@ patch(ChatbotFlowAction.prototype, {
     },
 
     _waDeviceEmbedUrl() {
-        const chatbotId = this.state.chatbotId || this.state.chatbot_id
-                          || (this.props.action.context.active_id || 0);
+        // The base widget keeps the chatbot id as a plain instance property
+        // (this.chatbotId, set in setup() from action params), not in
+        // reactive state - this previously always fell through to 0 and
+        // returned "", leaving the iframe with no src at all (blank frame).
+        const chatbotId = this.chatbotId || this.props.action.context?.active_id || 0;
         if (!chatbotId) return "";
         return `/comm_whatsapp_chatbot_web/embed/${chatbotId}?preview=1&_ts=${Date.now()}`;
     },
