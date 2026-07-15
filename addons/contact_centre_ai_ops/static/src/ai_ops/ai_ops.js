@@ -296,10 +296,33 @@ export class ContactCentreAiOps extends Component {
         return { model: mapping.model, resId };
     }
 
+    getActionRecordLabel(action) {
+        const target = this.getActionRecordTarget(action);
+        return target && target.model === "whatsapp.chatbot" ? "View flow" : "View record";
+    }
+
     async openActionRecord(action, ev) {
         ev.stopPropagation(); // don't also trigger the row's collapse/expand toggle
         const target = this.getActionRecordTarget(action);
         if (!target) {
+            return;
+        }
+        if (target.model === "whatsapp.chatbot") {
+            // The chatbot's own "Flow" smart button opens this same OWL flow
+            // designer (comm_whatsapp_chatbot.chatbot_flow) instead of the
+            // plain form - match that so a newly-created flow opens straight
+            // into something useful rather than a mostly-empty record form.
+            const [chatbot] = await this.orm.read("whatsapp.chatbot", [target.resId], ["name"]);
+            await this.action.doAction({
+                type: "ir.actions.client",
+                tag: "comm_whatsapp_chatbot.chatbot_flow",
+                name: chatbot ? `Flow — ${chatbot.name}` : "Flow",
+                target: "new",
+                params: {
+                    chatbot_id: target.resId,
+                    chatbot_name: chatbot ? chatbot.name : "",
+                },
+            });
             return;
         }
         await this.action.doAction({

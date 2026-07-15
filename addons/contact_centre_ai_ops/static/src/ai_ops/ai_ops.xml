@@ -132,7 +132,7 @@
                                         <button type="button" t-if="getActionRecordTarget(action)"
                                                 class="btn btn-sm btn-link p-0 o_cc_aiops_record_link"
                                                 t-on-click="(ev) => this.openActionRecord(action, ev)">
-                                            <i class="fa fa-external-link"/> View record
+                                            <i class="fa fa-external-link"/> <t t-esc="getActionRecordLabel(action)"/>
                                         </button>
                                     </div>
                                     <span class="badge" t-att-class="action.success ? 'text-bg-success' : 'text-bg-danger'">
