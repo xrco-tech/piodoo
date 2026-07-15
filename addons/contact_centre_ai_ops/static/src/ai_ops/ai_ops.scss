@@ -146,6 +146,15 @@
         }
     }
 
+    .o_cc_aiops_record_link {
+        font-size: 0.8rem;
+        white-space: nowrap;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+
     .o_cc_aiops_json {
         white-space: pre-wrap;
         word-break: break-all;

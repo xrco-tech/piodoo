@@ -65,6 +65,29 @@ function markdownToHtml(text) {
     return html;
 }
 
+// Maps a create/update tool's name to the model + result key holding the
+// touched record's id, so the Actions Taken panel can offer a "View record"
+// link. Deliberately excludes delete_dashboard_card (nothing left to view)
+// and create_contacts_from_partners (returns multiple contacts, not one).
+const ACTION_RECORD_MAP = {
+    create_campaign: { model: "contact.centre.campaign", key: "campaign_id" },
+    update_campaign: { model: "contact.centre.campaign", key: "campaign_id" },
+    create_contact: { model: "contact.centre.contact", key: "contact_id" },
+    update_contact: { model: "contact.centre.contact", key: "contact_id" },
+    create_template: { model: "contact.centre.template", key: "template_id" },
+    update_template: { model: "contact.centre.template", key: "template_id" },
+    create_whatsapp_template: { model: "whatsapp.template", key: "template_id" },
+    update_whatsapp_template: { model: "whatsapp.template", key: "template_id" },
+    create_call_team: { model: "whatsapp.call.team", key: "team_id" },
+    update_call_team: { model: "whatsapp.call.team", key: "team_id" },
+    create_call_routing_rule: { model: "whatsapp.call.routing.rule", key: "rule_id" },
+    update_call_routing_rule: { model: "whatsapp.call.routing.rule", key: "rule_id" },
+    create_chatbot_flow: { model: "whatsapp.chatbot", key: "chatbot_id" },
+    update_chatbot_flow: { model: "whatsapp.chatbot", key: "chatbot_id" },
+    create_dashboard_card: { model: "contact.centre.dashboard.card", key: "card_id" },
+    update_dashboard_card: { model: "contact.centre.dashboard.card", key: "card_id" },
+};
+
 export class ContactCentreAiOps extends Component {
     static template = "contact_centre_ai_ops.AiOps";
     static props = { ...standardActionServiceProps };
@@ -72,6 +95,7 @@ export class ContactCentreAiOps extends Component {
     setup() {
         this.orm = useService("orm");
         this.notification = useService("notification");
+        this.action = useService("action");
 
         this.state = useState({
             loadingSessions: true,
@@ -207,6 +231,39 @@ export class ContactCentreAiOps extends Component {
 
     toggleAction(action) {
         action.expanded = !action.expanded;
+    }
+
+    // null when this action isn't a mapped create/update, failed, or the
+    // expected id key is missing from tool_result - t-if in the template
+    // just checks truthiness, so returning null cleanly hides the link.
+    getActionRecordTarget(action) {
+        if (!action.success) {
+            return null;
+        }
+        const mapping = ACTION_RECORD_MAP[action.tool_name];
+        if (!mapping) {
+            return null;
+        }
+        const resId = action.tool_result && action.tool_result[mapping.key];
+        if (typeof resId !== "number") {
+            return null;
+        }
+        return { model: mapping.model, resId };
+    }
+
+    async openActionRecord(action, ev) {
+        ev.stopPropagation(); // don't also trigger the row's collapse/expand toggle
+        const target = this.getActionRecordTarget(action);
+        if (!target) {
+            return;
+        }
+        await this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: target.model,
+            res_id: target.resId,
+            views: [[false, "form"]],
+            target: "new",
+        });
     }
 
     // Templates can't reference the global JSON object directly (Owl's

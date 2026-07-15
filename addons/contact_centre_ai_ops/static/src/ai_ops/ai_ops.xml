@@ -129,6 +129,11 @@
                                     <div class="d-flex align-items-center gap-1">
                                         <i class="fa text-muted" t-att-class="action.expanded ? 'fa-angle-down' : 'fa-angle-right'"/>
                                         <strong><t t-esc="action.tool_name"/></strong>
+                                        <button type="button" t-if="getActionRecordTarget(action)"
+                                                class="btn btn-sm btn-link p-0 o_cc_aiops_record_link"
+                                                t-on-click="(ev) => this.openActionRecord(action, ev)">
+                                            <i class="fa fa-external-link"/> View record
+                                        </button>
                                     </div>
                                     <span class="badge" t-att-class="action.success ? 'text-bg-success' : 'text-bg-danger'">
                                         <t t-esc="action.success ? 'success' : 'failed'"/>
