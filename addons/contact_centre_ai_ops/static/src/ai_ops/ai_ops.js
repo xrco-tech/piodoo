@@ -26,8 +26,53 @@ function renderInlineMarkdown(text) {
     return s;
 }
 
+function splitTableRow(line) {
+    let trimmed = line.trim();
+    if (trimmed.startsWith("|")) {
+        trimmed = trimmed.slice(1);
+    }
+    if (trimmed.endsWith("|")) {
+        trimmed = trimmed.slice(0, -1);
+    }
+    return trimmed.split("|").map((cell) => cell.trim());
+}
+
+function isTableSeparatorRow(line) {
+    const cells = splitTableRow(line);
+    return cells.length > 0 && cells.every((c) => /^:?-+:?$/.test(c));
+}
+
+function tableCellAlign(separatorCell) {
+    const left = separatorCell.startsWith(":");
+    const right = separatorCell.endsWith(":");
+    if (left && right) {
+        return "center";
+    }
+    return right ? "right" : left ? "left" : null;
+}
+
+function renderMarkdownTable(lines) {
+    const header = splitTableRow(lines[0]);
+    const aligns = splitTableRow(lines[1]).map(tableCellAlign);
+    const cellTag = (tag, cell, i) => {
+        const align = aligns[i];
+        const style = align ? ` style="text-align:${align}"` : "";
+        return `<${tag}${style}>${renderInlineMarkdown(cell)}</${tag}>`;
+    };
+    const headHtml = header.map((cell, i) => cellTag("th", cell, i)).join("");
+    const bodyHtml = lines.slice(2).map((line) => {
+        const cells = splitTableRow(line);
+        return `<tr>${cells.map((cell, i) => cellTag("td", cell, i)).join("")}</tr>`;
+    }).join("");
+    return `<div class="o_cc_aiops_md_table_wrap"><table class="o_cc_aiops_md_table">`
+        + `<thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+}
+
 function renderMarkdownBlock(block) {
     const lines = block.split("\n");
+    if (lines.length >= 2 && lines[0].includes("|") && isTableSeparatorRow(lines[1])) {
+        return renderMarkdownTable(lines);
+    }
     const headerMatch = lines.length === 1 && block.match(/^(#{1,6})\s+(.*)$/);
     if (headerMatch) {
         const level = Math.min(headerMatch[1].length + 2, 6); // keep headings small inside a chat bubble

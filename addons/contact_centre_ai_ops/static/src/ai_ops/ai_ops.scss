@@ -109,6 +109,34 @@
         }
     }
 
+    .o_cc_aiops_md_table_wrap {
+        // Tables can easily be wider than the bubble (max-width: 70%) -
+        // scroll inside their own box rather than forcing the bubble wider.
+        overflow-x: auto;
+        margin: 0 0 0.5rem;
+    }
+
+    .o_cc_aiops_md_table {
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        white-space: nowrap;
+
+        th, td {
+            border: 1px solid var(--o-gray-300, #dee2e6);
+            padding: 0.3rem 0.55rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(0, 0, 0, 0.04);
+            font-weight: 600;
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.02);
+        }
+    }
+
     .o_cc_aiops_composer {
         resize: none;
         overflow-y: auto;
