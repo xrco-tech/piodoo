@@ -6,7 +6,12 @@
 
             <!-- ── Left: conversation list ──────────────────────────── -->
             <div class="o_cc_inbox_list d-flex flex-column" t-if="state.showLeftPane">
-                <div class="o_cc_inbox_pane_header">Conversations</div>
+                <div class="o_cc_inbox_pane_header">
+                    <t t-if="campaignId">
+                        <i class="fa fa-bullhorn me-1 text-muted" title="Scoped to a campaign"/><t t-esc="campaignName"/>
+                    </t>
+                    <t t-else="">Conversations</t>
+                </div>
                 <div class="p-2 border-bottom">
                     <input type="text" class="form-control form-control-sm" placeholder="Search name, phone, email..."
                            t-att-value="state.searchQuery" t-on-input="onSearchInput"/>

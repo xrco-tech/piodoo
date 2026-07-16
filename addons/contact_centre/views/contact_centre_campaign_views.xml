@@ -46,6 +46,13 @@
                     <sheet>
                         <div class="oe_button_box" name="button_box">
                             <button class="oe_stat_button" type="object"
+                                    name="action_open_workspace" icon="fa-comments">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">Open</span>
+                                    <span class="o_stat_text">Workspace</span>
+                                </div>
+                            </button>
+                            <button class="oe_stat_button" type="object"
                                     name="action_view_contacts" icon="fa-users">
                                 <field name="contact_count" widget="statinfo" string="Contacts"/>
                             </button>

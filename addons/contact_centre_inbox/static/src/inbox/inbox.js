@@ -21,6 +21,13 @@ export class ContactCentreInbox extends Component {
         this.busService = useService("bus_service");
         this.notification = useService("notification");
 
+        // Set when opened via a campaign's "Open Workspace" smart button
+        // (contact.centre.campaign.action_open_workspace) - plain instance
+        // fields, not state, since they're fixed for the lifetime of this
+        // component instance and never change after mount.
+        this.campaignId = this.props.action.params?.campaign_id || false;
+        this.campaignName = this.props.action.params?.campaign_name || "";
+
         this.state = useState({
             loadingContacts: true,
             contacts: [],
@@ -73,6 +80,9 @@ export class ContactCentreInbox extends Component {
     async loadContacts() {
         this.state.loadingContacts = true;
         let domain = this.state.stateFilter ? [["state", "=", this.state.stateFilter]] : [];
+        if (this.campaignId) {
+            domain = domain.concat([["campaign_ids", "in", [this.campaignId]]]);
+        }
         const term = this.state.searchQuery.trim();
         if (term) {
             domain = domain.concat([

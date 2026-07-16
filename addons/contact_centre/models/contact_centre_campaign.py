@@ -178,6 +178,21 @@ class ContactCentreCampaign(models.Model):
             },
         }
 
+    def action_open_workspace(self):
+        """Open the unified Inbox pre-filtered to this campaign's contacts -
+        same 3-pane conversation list/thread/copilot view as the main Inbox,
+        just scoped. See contact_centre_inbox's ContactCentreInbox component."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'contact_centre_inbox',
+            'name': f'Campaign: {self.name}',
+            'params': {
+                'campaign_id': self.id,
+                'campaign_name': self.name,
+            },
+        }
+
     def action_view_sent(self):
         self.ensure_one()
         return {
