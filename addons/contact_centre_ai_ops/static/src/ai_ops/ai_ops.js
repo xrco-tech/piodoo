@@ -4,6 +4,7 @@ import { Component, useState, useRef, useEffect, onWillStart, markup } from "@od
 import { useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
+import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 
 // ── Markdown → HTML ──────────────────────────────────────────────────────
 // Minimal renderer for the AI's own replies (headings, bold/italic, inline
@@ -133,6 +134,25 @@ const ACTION_RECORD_MAP = {
     update_dashboard_card: { model: "contact.centre.dashboard.card", key: "card_id" },
 };
 
+// Models that have a second, richer view worth offering as an explicit
+// choice before opening anything - name/method identify how to fetch that
+// view's action (an ORM call reusing the record's own smart-button method,
+// so this always stays in sync with whatever that button actually opens).
+const RECORD_VIEW_CHOICES = {
+    "contact.centre.campaign": {
+        title: "Open Campaign",
+        body: "How would you like to view this campaign?",
+        workspaceLabel: "Open Workspace",
+        method: "action_open_workspace",
+    },
+    "whatsapp.chatbot": {
+        title: "Open Chatbot",
+        body: "How would you like to view this chatbot flow?",
+        workspaceLabel: "Flow Designer",
+        method: "action_view_step_hierarchy",
+    },
+};
+
 export class ContactCentreAiOps extends Component {
     static template = "contact_centre_ai_ops.AiOps";
     static props = { ...standardActionServiceProps };
@@ -141,6 +161,7 @@ export class ContactCentreAiOps extends Component {
         this.orm = useService("orm");
         this.notification = useService("notification");
         this.action = useService("action");
+        this.dialog = useService("dialog");
 
         this.state = useState({
             loadingSessions: true,
@@ -307,29 +328,38 @@ export class ContactCentreAiOps extends Component {
         if (!target) {
             return;
         }
-        if (target.model === "whatsapp.chatbot") {
-            // The chatbot's own "Flow" smart button opens this same OWL flow
-            // designer (comm_whatsapp_chatbot.chatbot_flow) instead of the
-            // plain form - match that so a newly-created flow opens straight
-            // into something useful rather than a mostly-empty record form.
-            const [chatbot] = await this.orm.read("whatsapp.chatbot", [target.resId], ["name"]);
-            await this.action.doAction({
-                type: "ir.actions.client",
-                tag: "comm_whatsapp_chatbot.chatbot_flow",
-                name: chatbot ? `Flow — ${chatbot.name}` : "Flow",
-                target: "new",
-                // Normally opened as a full-page navigation (no target set),
-                // so its Device/Simulator panel assumes full viewport width.
-                // Without this the dialog defaults to a narrower size and
-                // that panel's content gets clipped.
-                context: { dialog_size: "extra-large" },
-                params: {
-                    chatbot_id: target.resId,
-                    chatbot_name: chatbot ? chatbot.name : "",
-                },
-            });
+        const choice = RECORD_VIEW_CHOICES[target.model];
+        if (!choice) {
+            await this._openRecordFormView(target);
             return;
         }
+        this.dialog.add(ConfirmationDialog, {
+            title: choice.title,
+            body: choice.body,
+            confirmLabel: choice.workspaceLabel,
+            cancelLabel: "Form View",
+            confirm: () => this._openRecordWorkspace(target, choice),
+            cancel: () => this._openRecordFormView(target),
+            // Explicit no-op so dismissing (Escape/X) opens nothing, rather
+            // than falling back to the cancel action (ConfirmationDialog's
+            // default when no dismiss handler is given).
+            dismiss: () => {},
+        });
+    }
+
+    async _openRecordWorkspace(target, choice) {
+        const action = await this.orm.call(target.model, choice.method, [[target.resId]]);
+        await this.action.doAction({
+            ...action,
+            target: "new",
+            // The chatbot flow designer is normally a full-page navigation,
+            // so its Device/Simulator panel assumes full viewport width and
+            // gets clipped at the dialog's default size without this.
+            context: { ...(action.context || {}), dialog_size: "extra-large" },
+        });
+    }
+
+    async _openRecordFormView(target) {
         await this.action.doAction({
             type: "ir.actions.act_window",
             res_model: target.model,
