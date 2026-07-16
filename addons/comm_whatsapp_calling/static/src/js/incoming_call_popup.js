@@ -148,7 +148,7 @@ const waCallService = {
             });
             const scriptHint = payload.suggested_chatbot_id
                 ? `<div style="font-size:12px;color:#25D366;margin-top:8px;">
-                       <i class="fa fa-list-alt me-1"/>Suggested script: ${escapeHtml(payload.suggested_chatbot_name || "")}
+                       <i class="fa fa-list-alt me-1"></i>Suggested script: ${escapeHtml(payload.suggested_chatbot_name || "")}
                    </div>`
                 : "";
             wrap.innerHTML = `
@@ -190,7 +190,7 @@ const waCallService = {
                 <span>${escapeHtml(payload.partner_name || "In call")}</span>
                 <button data-action="transfer" title="Transfer to team"
                         style="background:#4a6cf7;color:#fff;border:none;border-radius:999px;width:28px;height:28px;font-weight:700;cursor:pointer;">
-                    <i class="fa fa-random"/>
+                    <i class="fa fa-random"></i>
                 </button>
                 <button data-action="hangup" style="background:#dc2626;color:#fff;border:none;border-radius:999px;width:28px;height:28px;font-weight:700;cursor:pointer;">✕</button>
                 <style>@keyframes wa-pulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,0.7);}70%{box-shadow:0 0 0 10px rgba(37,211,102,0);}100%{box-shadow:0 0 0 0 rgba(37,211,102,0);}}</style>
@@ -230,7 +230,7 @@ const waCallService = {
             wrap.innerHTML = `
                 <div style="padding:14px 16px;">
                     <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:#4a6cf7;font-weight:700;margin-bottom:6px;">
-                        <i class="fa fa-random me-1"/>Call transfer request
+                        <i class="fa fa-random me-1"></i>Call transfer request
                     </div>
                     <div style="font-size:14px;color:#9ca3af;margin-bottom:4px;">
                         ${escapeHtml(payload.transferred_from_name || "Someone")}
@@ -385,7 +385,7 @@ const waCallService = {
             panel.innerHTML = `
                 <div style="padding:10px 14px;border-bottom:1px solid #1f2937;display:flex;justify-content:space-between;align-items:center;">
                     <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#25D366;font-weight:700;">
-                        <i class="fa fa-list-alt me-1"/>${escapeHtml(scriptSession.chatbotName)}
+                        <i class="fa fa-list-alt me-1"></i>${escapeHtml(scriptSession.chatbotName)}
                     </div>
                     <button data-action="close" style="background:none;border:none;color:#9ca3af;font-size:16px;cursor:pointer;">×</button>
                 </div>
