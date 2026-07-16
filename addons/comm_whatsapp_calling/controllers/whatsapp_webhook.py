@@ -171,6 +171,31 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
         if call_log.call_status == "ringing":
             self._send_ringing_notification(call_log)
 
+    def _resolve_suggested_voice_script(self, partner):
+        """If this caller belongs to a campaign with a linked voice script,
+        return (chatbot_id, chatbot_name) for the ringing popup to suggest -
+        else (False, ""). contact_centre is an optional layer on top of this
+        module (not a manifest dependency), so this checks the model exists
+        rather than importing it, and never raises into the call flow."""
+        if not partner or "contact.centre.contact" not in request.env:
+            return False, ""
+        try:
+            contact = request.env["contact.centre.contact"].sudo().search(
+                [("partner_id", "=", partner.id)], limit=1)
+            if not contact:
+                return False, ""
+            campaign = request.env["contact.centre.campaign"].sudo().search([
+                ("contact_ids", "in", [contact.id]),
+                ("voice_chatbot_id", "!=", False),
+            ], order="id desc", limit=1)
+            if campaign:
+                return campaign.voice_chatbot_id.id, campaign.voice_chatbot_id.name
+        except Exception as e:
+            _logger.warning(
+                "comm_whatsapp_calling: could not resolve suggested voice script: %s", e
+            )
+        return False, ""
+
     def _send_ringing_notification(self, call_log):
         """Notify connected users of an incoming (ringing) WhatsApp call via bus."""
         try:
@@ -178,6 +203,7 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 return
             partner = call_log.partner_id
             partner_name = partner.name if partner else call_log.from_number or "Unknown"
+            suggested_chatbot_id, suggested_chatbot_name = self._resolve_suggested_voice_script(partner)
             payload = {
                 "type": "whatsapp_incoming_call",
                 "call_log_id": call_log.id,
@@ -193,6 +219,10 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 # build a real RTCPeerConnection the moment the user
                 # clicks Accept — no round-trip needed to fetch it.
                 "sdp_offer": call_log.sdp_offer or "",
+                # Set only when this caller belongs to a campaign with a
+                # linked voice script - see _resolve_suggested_voice_script.
+                "suggested_chatbot_id": suggested_chatbot_id,
+                "suggested_chatbot_name": suggested_chatbot_name,
             }
             # Routing rules first — a matching rule narrows the ring to
             # a specific agent set. When no rule matches (or the match

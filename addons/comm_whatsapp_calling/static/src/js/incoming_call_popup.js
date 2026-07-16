@@ -25,6 +25,7 @@ import { registry } from "@web/core/registry";
 
 const POPUP_ID = "comm_whatsapp_calling_incoming_popup";
 const HUD_ID = "comm_whatsapp_calling_call_hud";
+const SCRIPT_PANEL_ID = "comm_whatsapp_calling_script_panel";
 const AUDIO_ID = "comm_whatsapp_calling_remote_audio";
 const LOG_TAG = "[wa-call]";
 
@@ -116,6 +117,9 @@ const waCallService = {
 
         // One active call at a time. Key = call_log_id.
         let activeCall = null;
+        // { sessionId, chatbotName, bubbles, terminated } while a suggested
+        // voice script is being followed for the current accepted call.
+        let scriptSession = null;
 
         function notify(message, type) {
             try {
@@ -142,6 +146,11 @@ const waCallService = {
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
+            const scriptHint = payload.suggested_chatbot_id
+                ? `<div style="font-size:12px;color:#25D366;margin-top:8px;">
+                       <i class="fa fa-list-alt me-1"/>Suggested script: ${escapeHtml(payload.suggested_chatbot_name || "")}
+                   </div>`
+                : "";
             wrap.innerHTML = `
                 <div style="padding:14px 16px;">
                     <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:#25D366;font-weight:700;margin-bottom:6px;">
@@ -149,6 +158,7 @@ const waCallService = {
                     </div>
                     <div style="font-size:15px;font-weight:600;">${escapeHtml(payload.partner_name || "Unknown")}</div>
                     <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
+                    ${scriptHint}
                 </div>
                 <div style="display:flex;gap:8px;padding:0 16px 14px;">
                     <button data-action="decline" style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Decline</button>
@@ -343,6 +353,134 @@ const waCallService = {
             if (hud) hud.remove();
         }
 
+        // ── Suggested voice script (accepted inbound calls only) ────
+        // Mirrors contact_centre_inbox's VoiceScriptPanel (same /voice/*
+        // endpoints) as plain DOM instead of an OWL component - this
+        // service floats outside any view's component tree (a call can
+        // ring in from anywhere in the app), and comm_whatsapp_calling
+        // doesn't depend on contact_centre_inbox, so it can't import that
+        // component directly.
+        function hideScriptPanel() {
+            const el = document.getElementById(SCRIPT_PANEL_ID);
+            if (el) el.remove();
+        }
+
+        function renderScriptPanel() {
+            if (!scriptSession) return;
+            hideScriptPanel();
+            const panel = document.createElement("div");
+            panel.id = SCRIPT_PANEL_ID;
+            Object.assign(panel.style, {
+                position: "fixed", top: "80px", right: "20px",
+                width: "340px", maxHeight: "60vh", display: "flex", flexDirection: "column",
+                background: "#111827", color: "#fff", borderRadius: "12px",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.35)", zIndex: "10000",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            const bubblesHtml = scriptSession.bubbles.map((b) => `
+                <div style="background:#1f2937;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;white-space:pre-wrap;">
+                    ${escapeHtml(b.body || "")}
+                </div>
+            `).join("");
+            panel.innerHTML = `
+                <div style="padding:10px 14px;border-bottom:1px solid #1f2937;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#25D366;font-weight:700;">
+                        <i class="fa fa-list-alt me-1"/>${escapeHtml(scriptSession.chatbotName)}
+                    </div>
+                    <button data-action="close" style="background:none;border:none;color:#9ca3af;font-size:16px;cursor:pointer;">×</button>
+                </div>
+                <div style="padding:10px 14px;overflow-y:auto;flex:1;">
+                    ${bubblesHtml}
+                    ${scriptSession.loading ? '<div style="font-size:12px;color:#9ca3af;">Loading next step…</div>' : ""}
+                </div>
+                ${scriptSession.terminated
+                    ? '<div style="padding:10px 14px;color:#25D366;font-size:12px;">Script complete.</div>'
+                    : `<div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid #1f2937;">
+                           <input data-role="input" type="text" placeholder="Customer's answer…"
+                                  style="flex:1;background:#1f2937;border:1px solid #374151;border-radius:6px;color:#fff;padding:6px 8px;font-size:13px;"/>
+                           <button data-action="send" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:0 12px;font-weight:700;cursor:pointer;">Send</button>
+                       </div>`
+                }
+            `;
+            panel.querySelector("[data-action=close]").addEventListener("click", () => endVoiceScript());
+            const sendBtn = panel.querySelector("[data-action=send]");
+            const input = panel.querySelector("[data-role=input]");
+            if (sendBtn && input) {
+                const submit = () => {
+                    const text = input.value.trim();
+                    if (text) sendScriptTurn(text);
+                };
+                sendBtn.addEventListener("click", submit);
+                input.addEventListener("keydown", (ev) => {
+                    if (ev.key === "Enter") submit();
+                });
+            }
+            document.body.appendChild(panel);
+        }
+
+        async function startVoiceScript(payload) {
+            scriptSession = {
+                sessionId: null, chatbotName: payload.suggested_chatbot_name || "Voice script",
+                bubbles: [], terminated: false, loading: true,
+            };
+            renderScriptPanel();
+            try {
+                const result = await callRpc("/voice/start", {
+                    chatbot_id: payload.suggested_chatbot_id,
+                    contact_details: { name: payload.partner_name, mobile: payload.from_number },
+                });
+                if (!scriptSession) return; // call ended while starting
+                if (result?.error || !result?.session_id) {
+                    throw new Error(result?.error || "No session id returned");
+                }
+                scriptSession.sessionId = result.session_id;
+                await sendScriptTurn(null);
+            } catch (err) {
+                warn("voice script start failed:", err);
+                notify("Could not start the suggested script: " + (err?.message || err), "warning");
+                scriptSession = null;
+                hideScriptPanel();
+            }
+        }
+
+        async function sendScriptTurn(userInput) {
+            if (!scriptSession || !scriptSession.sessionId) return;
+            scriptSession.loading = true;
+            renderScriptPanel();
+            try {
+                const data = await callRpc("/voice/turn", {
+                    session_id: scriptSession.sessionId,
+                    user_input: userInput,
+                    initial_variables: {},
+                });
+                if (!scriptSession) return; // call ended mid-turn
+                scriptSession.bubbles = scriptSession.bubbles.concat(data.bubbles || []);
+                scriptSession.terminated = !!data.terminate;
+            } catch (err) {
+                warn("voice script turn failed:", err);
+                notify("Script error — the turn failed to advance.", "danger");
+            } finally {
+                if (scriptSession) {
+                    scriptSession.loading = false;
+                    renderScriptPanel();
+                }
+            }
+        }
+
+        async function endVoiceScript() {
+            const session = scriptSession;
+            scriptSession = null;
+            hideScriptPanel();
+            if (session?.sessionId) {
+                try {
+                    await callRpc("/voice/end", { session_id: session.sessionId });
+                } catch (e) {
+                    // Best-effort — the call itself still ends via hangupActive below.
+                }
+            }
+            hangupActive();
+        }
+
         async function acceptCall(payload) {
             if (!payload || !payload.call_log_id || !payload.sdp_offer) {
                 notify("Cannot accept: missing SDP offer.", "danger");
@@ -403,6 +541,9 @@ const waCallService = {
                 }
                 notify("Call connected.", "success");
                 showHud(payload);
+                if (payload.suggested_chatbot_id) {
+                    startVoiceScript(payload);
+                }
             } catch (err) {
                 warn("accept failed:", err);
                 notify("Accept failed: " + (err?.message || err), "danger");
@@ -432,6 +573,19 @@ const waCallService = {
             if (audio) audio.srcObject = null;
             activeCall = null;
             hideHud();
+            // Call ended via some other path (HUD hangup, remote hung up,
+            // connection failure) while a script was in progress - end that
+            // session too rather than leaving it dangling server-side.
+            // endVoiceScript() itself calls hangupActive() (which re-enters
+            // here), so this must clear scriptSession first to avoid a loop.
+            if (scriptSession) {
+                const session = scriptSession;
+                scriptSession = null;
+                hideScriptPanel();
+                if (session.sessionId) {
+                    callRpc("/voice/end", { session_id: session.sessionId }).catch(() => {});
+                }
+            }
             if (!userInitiated) notify("Call ended.", "info");
         }
 

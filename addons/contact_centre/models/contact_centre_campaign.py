@@ -58,6 +58,16 @@ class ContactCentreCampaign(models.Model):
         'contact.centre.script',
         'Agent Script',
     )
+    voice_chatbot_id = fields.Many2one(
+        'whatsapp.chatbot',
+        'Suggested Voice Script',
+        domain="[('channel', '=', 'voice')]",
+        help="Voice chatbot flow (comm_whatsapp_calling has no automated "
+             "call-answering - this is a script for a human agent to follow). "
+             "When an inbound call rings from a contact in this campaign, "
+             "the ringing notification suggests this script and, once "
+             "accepted, the agent's script panel opens on it automatically.",
+    )
     automation_ids = fields.One2many(
         'contact.centre.automation',
         'campaign_id',

@@ -79,6 +79,7 @@
                                 <field name="channel"/>
                                 <field name="template_id"/>
                                 <field name="script_id"/>
+                                <field name="voice_chatbot_id"/>
                             </group>
                             <group>
                                 <field name="date_start"/>
