@@ -53,8 +53,8 @@ const THEMES = {
     },
 };
 function getStoredTheme() {
-    try { return localStorage.getItem(THEME_STORAGE_KEY) === "light" ? "light" : "dark"; }
-    catch (e) { return "dark"; }
+    try { return localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light"; }
+    catch (e) { return "light"; }
 }
 function setStoredTheme(t) {
     try { localStorage.setItem(THEME_STORAGE_KEY, t); } catch (e) {}
