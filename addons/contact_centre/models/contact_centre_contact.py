@@ -36,7 +36,18 @@ class ContactCentreContact(models.Model):
         store=True,
         readonly=False,
     )
-    last_contact_date = fields.Datetime('Last Contact Date')
+    # Computed (not manually written) so it can never drift out of sync -
+    # it used to be set by hand in contact.centre.message's create()
+    # override, which only covered brand-new messages: an existing
+    # message getting updated (e.g. a call's message record patched when
+    # the call ends) never refreshed it, and an out-of-order create could
+    # silently overwrite a newer value with an older one. message_timestamp
+    # already unifies both channels - _sync_whatsapp_call sets it from
+    # call_timestamp - so this one field covers "most recent call or
+    # message" for free.
+    last_contact_date = fields.Datetime(
+        'Last Contact Date', compute='_compute_last_contact_date', store=True, index=True,
+    )
     tag_ids = fields.Many2many(
         'contact.centre.tag',
         'contact_centre_contact_tag_rel',
@@ -58,6 +69,13 @@ class ContactCentreContact(models.Model):
     )
     message_count = fields.Integer('Message Count', compute='_compute_message_count')
     campaign_count = fields.Integer('Campaign Count', compute='_compute_campaign_count')
+
+    @api.depends('centre_message_ids.message_timestamp')
+    def _compute_last_contact_date(self):
+        for contact in self:
+            contact.last_contact_date = max(
+                contact.centre_message_ids.mapped('message_timestamp'), default=False
+            )
 
     @api.depends('centre_message_ids')
     def _compute_message_count(self):

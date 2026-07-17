@@ -69,11 +69,11 @@ class ContactCentreMessage(models.Model):
         for vals in vals_list:
             if not vals.get('name') or vals['name'] == '/':
                 vals['name'] = self.env['ir.sequence'].next_by_code('contact.centre.message') or '/'
-        records = super().create(vals_list)
-        # Update last contact date on the contact
-        for record in records:
-            record.contact_id.write({'last_contact_date': record.message_timestamp})
-        return records
+        # contact.centre.contact.last_contact_date is a computed field
+        # (@api.depends centre_message_ids.message_timestamp) - no manual
+        # write needed here, and this way it also stays correct if an
+        # existing message's timestamp is ever updated after creation.
+        return super().create(vals_list)
 
     @api.model
     def get_response_time_stats(self, days=30):
