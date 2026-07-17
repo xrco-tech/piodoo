@@ -477,36 +477,50 @@ const waCallService = {
             const modal = document.createElement("div");
             modal.id = "wa_transfer_picker";
             Object.assign(modal.style, {
-                position: "fixed", top: "60px", right: "20px",
-                width: "320px", background: c.card, color: c.text,
-                borderRadius: "12px",
-                boxShadow: c.shadow,
+                position: "fixed", top: "20px", right: "20px",
+                width: "280px", background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
             const rows = teams.map(t =>
                 `<button data-team="${t.id}"
                          ${t.available_count === 0 ? "disabled" : ""}
-                         style="display:block;width:100%;text-align:left;
-                                padding:10px 14px;background:transparent;
+                         style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+                                padding:10px 16px;background:transparent;
                                 border:none;border-top:1px solid ${c.border};
                                 color:${c.text};cursor:${t.available_count ? "pointer" : "default"};
                                 opacity:${t.available_count ? "1" : "0.5"};">
-                    <div style="font-weight:600;">${escapeHtml(t.name)}</div>
-                    <div style="font-size:11px;color:${c.textMuted};">
-                        ${t.available_count} of ${t.member_count} available
-                    </div>
+                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
+                        <i class="fa fa-users" style="font-size:13px;color:${c.textMuted};"></i>
+                    </span>
+                    <span>
+                        <div style="font-weight:600;font-size:13px;">${escapeHtml(t.name)}</div>
+                        <div style="font-size:11px;color:${c.textMuted};">
+                            ${t.available_count} of ${t.member_count} available
+                        </div>
+                    </span>
                 </button>`
             ).join("");
             modal.innerHTML = `
-                <div style="padding:12px 14px;font-size:12px;text-transform:uppercase;color:${c.textMuted};letter-spacing:0.4px;display:flex;justify-content:space-between;align-items:center;">
-                    <span>Transfer to team</span>
-                    <button data-action="close" style="background:none;border:none;color:${c.textMuted};font-size:18px;cursor:pointer;">×</button>
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-random me-1"></i>Transfer to Team
+                    </div>
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="Close"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                    </div>
                 </div>
                 ${rows}
             `;
             modal.querySelector("[data-action=close]")
                  .addEventListener("click", () => modal.remove());
+            wireThemeToggle(modal, () => openTransferPicker(callLogId));
             modal.querySelectorAll("[data-team]").forEach(btn => {
                 if (btn.disabled) return;
                 btn.addEventListener("click", async () => {
@@ -557,31 +571,43 @@ const waCallService = {
             const modal = document.createElement("div");
             modal.id = "wa_script_picker";
             Object.assign(modal.style, {
-                position: "fixed", top: "60px", right: "20px",
-                width: "320px", background: c.card, color: c.text,
-                borderRadius: "12px",
-                boxShadow: c.shadow,
+                position: "fixed", top: "20px", right: "20px",
+                width: "280px", background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
             const rows = chatbots.map((cb) =>
                 `<button data-chatbot="${cb.id}"
-                         style="display:block;width:100%;text-align:left;
-                                padding:10px 14px;background:transparent;
+                         style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+                                padding:10px 16px;background:transparent;
                                 border:none;border-top:1px solid ${c.border};
                                 color:${c.text};cursor:pointer;">
-                    <div style="font-weight:600;">${escapeHtml(cb.name)}</div>
+                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
+                        <i class="fa fa-list-alt" style="font-size:13px;color:${c.textMuted};"></i>
+                    </span>
+                    <span style="font-weight:600;font-size:13px;">${escapeHtml(cb.name)}</span>
                 </button>`
             ).join("");
             modal.innerHTML = `
-                <div style="padding:12px 14px;font-size:12px;text-transform:uppercase;color:${c.textMuted};letter-spacing:0.4px;display:flex;justify-content:space-between;align-items:center;">
-                    <span>${scriptSession ? "Change" : "Start"} voice script</span>
-                    <button data-action="close" style="background:none;border:none;color:${c.textMuted};font-size:18px;cursor:pointer;">×</button>
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-list-alt me-1"></i>${scriptSession ? "Change" : "Start"} Voice Script
+                    </div>
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="Close"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                    </div>
                 </div>
                 ${rows}
             `;
             modal.querySelector("[data-action=close]")
                  .addEventListener("click", () => modal.remove());
+            wireThemeToggle(modal, () => openScriptPicker());
             modal.querySelectorAll("[data-chatbot]").forEach((btn) => {
                 btn.addEventListener("click", () => {
                     const chatbotId = +btn.dataset.chatbot;
