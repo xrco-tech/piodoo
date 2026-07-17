@@ -758,6 +758,103 @@ const waCallService = {
             document.body.appendChild(modal);
         }
 
+        // ── Phone-number lookups (dial pad "Add to campaign" / "History") ──
+        function normalizeDigits(s) {
+            return String(s || "").replace(/[^0-9]/g, "");
+        }
+
+        async function resolveContactForNumber(rawNumber) {
+            const digits = normalizeDigits(rawNumber);
+            if (!digits) return null;
+            // Match on the last 9 digits so formatting differences
+            // (missing "+", country code, spaces) don't break the lookup.
+            const suffix = digits.slice(-9);
+            try {
+                const contacts = await orm.searchRead(
+                    "contact.centre.contact",
+                    [["phone_number", "ilike", suffix]],
+                    ["id", "partner_id"],
+                    { limit: 1 },
+                );
+                return contacts[0] || null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function showCallHistory(rawNumber) {
+            const digits = normalizeDigits(rawNumber);
+            if (!digits) {
+                notify("Enter a number first.", "warning");
+                return;
+            }
+            const suffix = digits.slice(-9);
+            let logs = [];
+            try {
+                logs = await orm.searchRead(
+                    "whatsapp.call.log",
+                    ["|", ["from_number", "ilike", suffix], ["to_number", "ilike", suffix]],
+                    ["call_direction", "call_status", "call_timestamp", "duration_display", "is_missed"],
+                    { limit: 20, order: "call_timestamp desc" },
+                );
+            } catch (err) {
+                notify("Could not load call history: " + (err?.message || err), "danger");
+                return;
+            }
+            const existing = document.getElementById("wa_call_history");
+            if (existing) existing.remove();
+
+            const c = colors();
+            const modal = document.createElement("div");
+            modal.id = "wa_call_history";
+            Object.assign(modal.style, {
+                position: "fixed", top: "20px", right: "20px",
+                width: "300px", maxHeight: "70vh", display: "flex", flexDirection: "column",
+                background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
+                zIndex: "10001", overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            const rowsHtml = logs.length ? logs.map((l) => {
+                const dirIcon = l.call_direction === "incoming" ? "fa-arrow-down" : "fa-arrow-up";
+                const dirColor = l.is_missed ? c.danger : c.textMuted;
+                const label = l.call_direction === "incoming"
+                    ? (l.is_missed ? "Missed call" : "Incoming call")
+                    : "Outgoing call";
+                const when = l.call_timestamp ? String(l.call_timestamp).slice(0, 16) : "";
+                return `<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid ${c.border};">
+                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
+                        <i class="fa ${dirIcon}" style="font-size:12px;color:${dirColor};"></i>
+                    </span>
+                    <span style="flex:1;min-width:0;">
+                        <div style="font-weight:600;font-size:13px;color:${dirColor};">${label}</div>
+                        <div style="font-size:11px;color:${c.textMuted};">${escapeHtml(when)}</div>
+                    </span>
+                    <span style="font-size:11px;color:${c.textMuted};">${escapeHtml(l.duration_display || "")}</span>
+                </div>`;
+            }).join("") : `<div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">No call history for this number.</div>`;
+            modal.innerHTML = `
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;flex:none;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-history me-1"></i>Call History
+                    </div>
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="Close"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                    </div>
+                </div>
+                <div style="overflow-y:auto;flex:1;">${rowsHtml}</div>
+            `;
+            modal.querySelector("[data-action=close]")
+                 .addEventListener("click", () => modal.remove());
+            wireThemeToggle(modal, () => showCallHistory(rawNumber));
+            document.body.appendChild(modal);
+        }
+
         async function switchVoiceScript(chatbotId, chatbotName) {
             if (!activeCall) return;
             if (scriptSession?.sessionId) {
@@ -1070,7 +1167,7 @@ const waCallService = {
         }
 
         // ── Outbound dial ─────────────────────────────────────────────
-        async function dialCall({ toNumber, accountId, partnerName, partnerId, chatbotId }) {
+        async function dialCall({ toNumber, accountId, partnerName, partnerId, chatbotId, chatbotName }) {
             if (!toNumber) {
                 notify("Enter a phone number to dial.", "warning");
                 return;
@@ -1087,6 +1184,8 @@ const waCallService = {
                 partnerName: partnerName || toNumber,
                 fromNumber: toNumber,
                 partnerId: partnerId || null,
+                chatbotId: chatbotId || null,
+                chatbotName: chatbotName || "",
                 startTime: null, muted: false,
             };
             activeCall = call;
@@ -1176,6 +1275,14 @@ const waCallService = {
                     from_number:  activeCall.fromNumber,
                     partner_id:   activeCall.partnerId,
                 });
+                if (activeCall.chatbotId) {
+                    startVoiceScript({
+                        suggested_chatbot_id:   activeCall.chatbotId,
+                        suggested_chatbot_name: activeCall.chatbotName,
+                        partner_name:           activeCall.partnerName,
+                        from_number:            activeCall.fromNumber,
+                    });
+                }
             } catch (err) {
                 warn("setRemoteDescription failed:", err);
                 notify("Media negotiation failed.", "danger");
@@ -1238,6 +1345,16 @@ const waCallService = {
                     ${escapeHtml((a.phone_number || a.name) + (a.is_default ? " (default)" : ""))}
                  </option>`
             ).join("");
+            // Chosen via the "Voice Script" shortcut below — kept outside
+            // any re-render so picking a script doesn't clear the number
+            // the agent already typed.
+            let selectedChatbotId = null;
+            let selectedChatbotName = "";
+            const shortcuts = shortcutsRowHtml([
+                iconBtn("script", "fa-list-alt", "Choose voice script"),
+                iconBtn("add-campaign", "fa-bullhorn", "Add to campaign"),
+                iconBtn("history", "fa-history", "Call history"),
+            ]);
             wrap.innerHTML = `
                 <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
                     <div style="font-size:13px;font-weight:600;">
@@ -1252,7 +1369,7 @@ const waCallService = {
                                 style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
                     </div>
                 </div>
-                <div style="padding:18px 16px;text-align:center;">
+                <div style="padding:18px 16px 6px;text-align:center;">
                     <div style="width:64px;height:64px;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
                         <i class="fa fa-phone" style="font-size:24px;color:${c.textMuted};"></i>
                     </div>
@@ -1262,8 +1379,12 @@ const waCallService = {
                     </select>` : ""}
                     <input data-role="number" type="tel" placeholder="+27600000000"
                            style="width:100%;box-sizing:border-box;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:9px 10px;font-size:14px;text-align:center;"/>
+                    <div data-role="script-hint" style="display:none;font-size:11px;color:${c.accent};margin-top:8px;">
+                        <i class="fa fa-list-alt me-1"></i><span data-role="script-hint-text"></span>
+                    </div>
                 </div>
-                <div style="display:flex;justify-content:center;padding:6px 16px 20px;">
+                ${shortcuts}
+                <div style="display:flex;justify-content:center;padding:14px 16px 20px;">
                     <button data-action="dial" title="Call"
                             style="width:52px;height:52px;border-radius:50%;background:${c.accent};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
                         <i class="fa fa-phone"></i>
@@ -1272,6 +1393,8 @@ const waCallService = {
             `;
             const numberInput = wrap.querySelector("[data-role=number]");
             const accountSelect = wrap.querySelector("[data-role=account]");
+            const scriptHint = wrap.querySelector("[data-role=script-hint]");
+            const scriptHintText = wrap.querySelector("[data-role=script-hint-text]");
             const dial = async () => {
                 const to = (numberInput.value || "").trim();
                 if (!to) {
@@ -1280,11 +1403,39 @@ const waCallService = {
                 }
                 const accountId = accountSelect ? +accountSelect.value : selectedAccountId;
                 hideDialPad();
-                await dialCall({ toNumber: to, accountId: accountId || null });
+                await dialCall({
+                    toNumber: to, accountId: accountId || null,
+                    chatbotId: selectedChatbotId || null, chatbotName: selectedChatbotName,
+                });
             };
             wrap.querySelector("[data-action=dial]").addEventListener("click", dial);
             numberInput.addEventListener("keydown", (ev) => { if (ev.key === "Enter") dial(); });
             wrap.querySelector("[data-action=close]").addEventListener("click", () => hideDialPad());
+            wrap.querySelector("[data-action=script]").addEventListener("click", () => {
+                showChatbotPicker("Choose Voice Script", (chatbotId, chatbotName) => {
+                    selectedChatbotId = chatbotId;
+                    selectedChatbotName = chatbotName;
+                    scriptHintText.textContent = chatbotName;
+                    scriptHint.style.display = "block";
+                });
+            });
+            wrap.querySelector("[data-action=add-campaign]").addEventListener("click", async () => {
+                const to = (numberInput.value || "").trim();
+                if (!to) {
+                    notify("Enter a number first.", "warning");
+                    return;
+                }
+                const contact = await resolveContactForNumber(to);
+                if (!contact) {
+                    notify("No matching contact found for this number.", "warning");
+                    return;
+                }
+                showCampaignPicker(contact.partner_id ? contact.partner_id[0] : false);
+            });
+            wrap.querySelector("[data-action=history]").addEventListener("click", () => {
+                const to = (numberInput.value || "").trim();
+                showCallHistory(to);
+            });
             wireThemeToggle(wrap, () => openDialPad());
             document.body.appendChild(wrap);
             numberInput.focus();
