@@ -1004,16 +1004,109 @@ const waCallService = {
             return !!activeCall;
         }
 
+        // ── Dial pad (opened from the systray phone icon) ───────────
+        // Same VoIP-card look as the incoming popup/HUD, driven by the
+        // same theme system, so it's light-by-default like the rest.
+        const DIALPAD_ID = "comm_whatsapp_calling_dialpad";
+
+        function hideDialPad() {
+            const el = document.getElementById(DIALPAD_ID);
+            if (el) el.remove();
+        }
+
+        async function openDialPad() {
+            if (activeCall) {
+                notify("Another call is in progress.", "warning");
+                return;
+            }
+            hideDialPad();
+            const c = colors();
+            let accounts = [];
+            let selectedAccountId = null;
+            try {
+                const result = await callRpc("/whatsapp/call/accounts", {});
+                accounts = result?.accounts || [];
+                selectedAccountId = result?.default_id || (accounts[0] && accounts[0].id) || null;
+            } catch (e) {
+                warn("account fetch failed:", e);
+            }
+
+            const wrap = document.createElement("div");
+            wrap.id = DIALPAD_ID;
+            Object.assign(wrap.style, {
+                position: "fixed", top: "20px", right: "20px",
+                width: "280px", background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
+                zIndex: "10000", overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            const accountOptions = accounts.map((a) =>
+                `<option value="${a.id}" ${a.id === selectedAccountId ? "selected" : ""}>
+                    ${escapeHtml((a.phone_number || a.name) + (a.is_default ? " (default)" : ""))}
+                 </option>`
+            ).join("");
+            wrap.innerHTML = `
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-whatsapp me-1"></i>New Call
+                    </div>
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="Close"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                    </div>
+                </div>
+                <div style="padding:18px 16px;text-align:center;">
+                    <div style="width:64px;height:64px;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                        <i class="fa fa-phone" style="font-size:24px;color:${c.textMuted};"></i>
+                    </div>
+                    ${accounts.length > 1 ? `
+                    <select data-role="account" style="width:100%;box-sizing:border-box;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:7px 8px;font-size:12px;margin-bottom:10px;">
+                        ${accountOptions}
+                    </select>` : ""}
+                    <input data-role="number" type="tel" placeholder="+27600000000"
+                           style="width:100%;box-sizing:border-box;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:9px 10px;font-size:14px;text-align:center;"/>
+                </div>
+                <div style="display:flex;justify-content:center;padding:6px 16px 20px;">
+                    <button data-action="dial" title="Call"
+                            style="width:52px;height:52px;border-radius:50%;background:${c.accent};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
+                        <i class="fa fa-phone"></i>
+                    </button>
+                </div>
+            `;
+            const numberInput = wrap.querySelector("[data-role=number]");
+            const accountSelect = wrap.querySelector("[data-role=account]");
+            const dial = async () => {
+                const to = (numberInput.value || "").trim();
+                if (!to) {
+                    notify("Enter a number to dial.", "warning");
+                    return;
+                }
+                const accountId = accountSelect ? +accountSelect.value : selectedAccountId;
+                hideDialPad();
+                await dialCall({ toNumber: to, accountId: accountId || null });
+            };
+            wrap.querySelector("[data-action=dial]").addEventListener("click", dial);
+            numberInput.addEventListener("keydown", (ev) => { if (ev.key === "Enter") dial(); });
+            wrap.querySelector("[data-action=close]").addEventListener("click", () => hideDialPad());
+            wireThemeToggle(wrap, () => openDialPad());
+            document.body.appendChild(wrap);
+            numberInput.focus();
+        }
+
         // Public API for other components (systray, res.partner button,
         // Agent Workspace, etc.).
-        env.services.comm_whatsapp_calling = { dialCall, hangupActive, isActive };
+        env.services.comm_whatsapp_calling = { dialCall, hangupActive, isActive, openDialPad };
 
         // ── Bus wiring ────────────────────────────────────────────────
         try {
             log("bus_service keys:", Object.keys(bus_service));
             if (typeof bus_service.subscribe !== "function") {
                 warn("bus_service.subscribe is not a function — API changed?");
-                return { dialCall, hangupActive, isActive };
+                return { dialCall, hangupActive, isActive, openDialPad };
             }
             bus_service.subscribe("whatsapp_incoming_call", (payload) => {
                 log("bus event received:", payload?.type, "id:", payload?.call_log_id);
@@ -1074,7 +1167,7 @@ const waCallService = {
             warn("bus subscribe failed:", e && e.message ? e.message : e);
         }
 
-        return { dialCall, hangupActive, isActive };
+        return { dialCall, hangupActive, isActive, openDialPad };
     },
 };
 

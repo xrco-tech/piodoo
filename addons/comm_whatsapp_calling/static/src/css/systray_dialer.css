@@ -8,32 +8,3 @@
     border-radius: 6px;
 }
 .o_wa_dialer_btn:hover { background: rgba(255,255,255,0.12); }
-.o_wa_dialer_open .o_wa_dialer_btn {
-    background: #25D366; color: #fff;
-}
-.o_wa_dialer_panel {
-    display: flex; gap: 6px;
-    background: #111827; padding: 6px;
-    border-radius: 8px; margin-left: 4px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-}
-.o_wa_dialer_input {
-    background: #fff; border: 1px solid #d1d5db;
-    border-radius: 6px; padding: 6px 10px;
-    font-size: 13px; width: 160px;
-    outline: none;
-}
-.o_wa_dialer_account {
-    background: #fff; border: 1px solid #d1d5db;
-    border-radius: 6px; padding: 6px 8px;
-    font-size: 12px; max-width: 150px;
-    outline: none; cursor: pointer;
-}
-.o_wa_dialer_input:focus { border-color: #25D366; }
-.o_wa_dialer_go {
-    background: #25D366; color: #fff; border: none;
-    border-radius: 6px; padding: 6px 12px;
-    font-size: 12px; font-weight: 700; cursor: pointer;
-}
-.o_wa_dialer_go:hover:not([disabled]) { background: #1ebe5b; }
-.o_wa_dialer_go[disabled] { opacity: 0.6; cursor: default; }

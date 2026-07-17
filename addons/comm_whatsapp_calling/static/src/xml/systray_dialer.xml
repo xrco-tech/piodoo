@@ -1,32 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="comm_whatsapp_calling.SystrayDialer">
-        <div class="o_wa_dialer" t-att-class="state.expanded ? 'o_wa_dialer_open' : ''">
+        <div class="o_wa_dialer">
             <button class="o_wa_dialer_btn" title="Call WhatsApp number"
-                    t-on-click="_toggle">
+                    t-on-click="_openDialPad">
                 <i class="fa fa-phone"/>
             </button>
-            <div class="o_wa_dialer_panel" t-if="state.expanded">
-                <!-- Account picker — only when multiple WABAs are configured. -->
-                <select t-if="hasMultipleAccounts"
-                        class="o_wa_dialer_account"
-                        t-model.number="state.selectedAccountId"
-                        title="Which number to call from">
-                    <t t-foreach="state.accounts" t-as="acc" t-key="acc.id">
-                        <option t-att-value="acc.id"
-                                t-esc="(acc.phone_number || acc.name) + (acc.is_default ? ' (default)' : '')"/>
-                    </t>
-                </select>
-                <input type="tel" class="o_wa_dialer_input"
-                       placeholder="+27600000000"
-                       t-model="state.toNumber"
-                       t-on-keydown="_onKeydown"/>
-                <button class="o_wa_dialer_go" t-on-click="_dial"
-                        t-att-disabled="state.dialing">
-                    <t t-if="state.dialing">…</t>
-                    <t t-else="">Call</t>
-                </button>
-            </div>
         </div>
     </t>
 </templates>
