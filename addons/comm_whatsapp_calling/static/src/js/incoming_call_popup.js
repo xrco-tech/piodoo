@@ -782,25 +782,71 @@ const waCallService = {
             }
         }
 
-        async function showCallHistory(rawNumber) {
-            const digits = normalizeDigits(rawNumber);
-            if (!digits) {
-                notify("Enter a number first.", "warning");
+        // Resolves the "other party" of a call log row and places a call
+        // to them immediately — used by both History and Contacts rows.
+        async function callFromLog(l) {
+            const toNumber = l.call_direction === "incoming" ? l.from_number : l.to_number;
+            if (!toNumber) {
+                notify("This call has no reachable number.", "warning");
                 return;
             }
-            const suffix = digits.slice(-9);
-            let logs = [];
-            try {
-                logs = await orm.searchRead(
-                    "whatsapp.call.log",
-                    ["|", ["from_number", "ilike", suffix], ["to_number", "ilike", suffix]],
-                    ["call_direction", "call_status", "call_timestamp", "duration_display", "is_missed"],
-                    { limit: 20, order: "call_timestamp desc" },
-                );
-            } catch (err) {
-                notify("Could not load call history: " + (err?.message || err), "danger");
-                return;
+            await dialCall({
+                toNumber,
+                partnerId:   l.partner_id ? l.partner_id[0] : null,
+                partnerName: l.contact_display || toNumber,
+            });
+        }
+
+        async function fetchCallHistory(term) {
+            const domain = [];
+            const t = (term || "").trim();
+            if (t) {
+                const digits = normalizeDigits(t);
+                const numberTerm = digits.length >= 3 ? digits.slice(-9) : t;
+                domain.push("|", "|",
+                    ["from_number", "ilike", numberTerm],
+                    ["to_number", "ilike", numberTerm],
+                    ["partner_id.name", "ilike", t]);
             }
+            return orm.searchRead(
+                "whatsapp.call.log", domain,
+                ["call_direction", "call_status", "call_timestamp", "duration_display",
+                 "is_missed", "from_number", "to_number", "partner_id", "contact_display"],
+                { limit: 50, order: "call_timestamp desc" },
+            );
+        }
+
+        function callHistoryRowsHtml(c, logs, emptyLabel) {
+            if (!logs.length) {
+                return `<div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">${escapeHtml(emptyLabel)}</div>`;
+            }
+            return logs.map((l, i) => {
+                const dirIcon = l.call_direction === "incoming" ? "fa-arrow-down" : "fa-arrow-up";
+                const dirColor = l.is_missed ? c.danger : c.textMuted;
+                const label = l.call_direction === "incoming"
+                    ? (l.is_missed ? "Missed call" : "Incoming call")
+                    : "Outgoing call";
+                const who = l.contact_display
+                    || (l.call_direction === "incoming" ? l.from_number : l.to_number)
+                    || "Unknown";
+                const when = l.call_timestamp ? String(l.call_timestamp).slice(0, 16) : "";
+                return `<button data-row="${i}"
+                         style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+                                padding:10px 16px;background:transparent;border:none;
+                                border-top:1px solid ${c.border};color:${c.text};cursor:pointer;">
+                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
+                        <i class="fa ${dirIcon}" style="font-size:12px;color:${dirColor};"></i>
+                    </span>
+                    <span style="flex:1;min-width:0;">
+                        <div style="font-weight:600;font-size:13px;color:${c.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(who)}</div>
+                        <div style="font-size:11px;color:${dirColor};">${label} · ${escapeHtml(when)}</div>
+                    </span>
+                    <span style="font-size:11px;color:${c.textMuted};flex:none;">${escapeHtml(l.duration_display || "")}</span>
+                </button>`;
+            }).join("");
+        }
+
+        async function showCallHistory() {
             const existing = document.getElementById("wa_call_history");
             if (existing) existing.remove();
 
@@ -815,24 +861,6 @@ const waCallService = {
                 zIndex: "10001", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
-            const rowsHtml = logs.length ? logs.map((l) => {
-                const dirIcon = l.call_direction === "incoming" ? "fa-arrow-down" : "fa-arrow-up";
-                const dirColor = l.is_missed ? c.danger : c.textMuted;
-                const label = l.call_direction === "incoming"
-                    ? (l.is_missed ? "Missed call" : "Incoming call")
-                    : "Outgoing call";
-                const when = l.call_timestamp ? String(l.call_timestamp).slice(0, 16) : "";
-                return `<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid ${c.border};">
-                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
-                        <i class="fa ${dirIcon}" style="font-size:12px;color:${dirColor};"></i>
-                    </span>
-                    <span style="flex:1;min-width:0;">
-                        <div style="font-weight:600;font-size:13px;color:${dirColor};">${label}</div>
-                        <div style="font-size:11px;color:${c.textMuted};">${escapeHtml(when)}</div>
-                    </span>
-                    <span style="font-size:11px;color:${c.textMuted};">${escapeHtml(l.duration_display || "")}</span>
-                </div>`;
-            }).join("") : `<div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">No call history for this number.</div>`;
             modal.innerHTML = `
                 <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;flex:none;">
                     <div style="font-size:13px;font-weight:600;">
@@ -847,12 +875,151 @@ const waCallService = {
                                 style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
                     </div>
                 </div>
-                <div style="overflow-y:auto;flex:1;">${rowsHtml}</div>
+                <div style="padding:10px 14px;flex:none;">
+                    <input data-role="search" type="text" placeholder="Search name or number…"
+                           style="width:100%;box-sizing:border-box;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:7px 10px;font-size:13px;"/>
+                </div>
+                <div data-role="rows" style="overflow-y:auto;flex:1;">
+                    <div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">Loading…</div>
+                </div>
             `;
             modal.querySelector("[data-action=close]")
                  .addEventListener("click", () => modal.remove());
-            wireThemeToggle(modal, () => showCallHistory(rawNumber));
+            wireThemeToggle(modal, () => showCallHistory());
             document.body.appendChild(modal);
+
+            const rowsEl = modal.querySelector("[data-role=rows]");
+            const searchInput = modal.querySelector("[data-role=search]");
+            let currentLogs = [];
+            let debounceId = null;
+
+            async function refresh(term) {
+                let logs;
+                try {
+                    logs = await fetchCallHistory(term);
+                } catch (err) {
+                    rowsEl.innerHTML = `<div style="padding:20px 16px;color:${c.danger};font-size:13px;text-align:center;">Could not load call history.</div>`;
+                    return;
+                }
+                if (!document.body.contains(modal)) return; // closed while awaiting
+                currentLogs = logs;
+                rowsEl.innerHTML = callHistoryRowsHtml(c, logs, term ? "No matching calls." : "No call history yet.");
+                rowsEl.querySelectorAll("[data-row]").forEach((btn) => {
+                    btn.addEventListener("click", async () => {
+                        const log = currentLogs[+btn.dataset.row];
+                        modal.remove();
+                        if (log) await callFromLog(log);
+                    });
+                });
+            }
+
+            searchInput.addEventListener("input", () => {
+                clearTimeout(debounceId);
+                debounceId = setTimeout(() => refresh(searchInput.value), 300);
+            });
+            refresh("");
+        }
+
+        // ── Contacts (dial pad "Contacts" shortcut) ──────────────────
+        async function showContactsPicker() {
+            const existing = document.getElementById("wa_contacts_picker");
+            if (existing) existing.remove();
+
+            const c = colors();
+            const modal = document.createElement("div");
+            modal.id = "wa_contacts_picker";
+            Object.assign(modal.style, {
+                position: "fixed", top: "20px", right: "20px",
+                width: "300px", maxHeight: "70vh", display: "flex", flexDirection: "column",
+                background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
+                zIndex: "10001", overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            modal.innerHTML = `
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;flex:none;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-address-book me-1"></i>Contacts
+                    </div>
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="Close"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                    </div>
+                </div>
+                <div style="padding:10px 14px;flex:none;">
+                    <input data-role="search" type="text" placeholder="Search contacts…"
+                           style="width:100%;box-sizing:border-box;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:7px 10px;font-size:13px;"/>
+                </div>
+                <div data-role="rows" style="overflow-y:auto;flex:1;">
+                    <div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">Loading…</div>
+                </div>
+            `;
+            modal.querySelector("[data-action=close]")
+                 .addEventListener("click", () => modal.remove());
+            wireThemeToggle(modal, () => showContactsPicker());
+            document.body.appendChild(modal);
+
+            const rowsEl = modal.querySelector("[data-role=rows]");
+            const searchInput = modal.querySelector("[data-role=search]");
+            let currentContacts = [];
+            let debounceId = null;
+
+            async function refresh(term) {
+                const t = (term || "").trim();
+                const domain = t
+                    ? ["|", ["name", "ilike", t], ["phone_number", "ilike", t]]
+                    : [];
+                let contacts;
+                try {
+                    contacts = await orm.searchRead(
+                        "contact.centre.contact", domain,
+                        ["name", "phone_number", "partner_id"],
+                        { limit: 50, order: "name" },
+                    );
+                } catch (err) {
+                    rowsEl.innerHTML = `<div style="padding:20px 16px;color:${c.danger};font-size:13px;text-align:center;">Could not load contacts.</div>`;
+                    return;
+                }
+                if (!document.body.contains(modal)) return;
+                currentContacts = contacts.filter((ct) => ct.phone_number);
+                rowsEl.innerHTML = currentContacts.length ? currentContacts.map((ct, i) => `
+                    <button data-row="${i}"
+                            style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+                                   padding:10px 16px;background:transparent;border:none;
+                                   border-top:1px solid ${c.border};color:${c.text};cursor:pointer;">
+                        <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
+                            <i class="fa fa-user" style="font-size:13px;color:${c.textMuted};"></i>
+                        </span>
+                        <span style="flex:1;min-width:0;">
+                            <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(ct.name || ct.phone_number)}</div>
+                            <div style="font-size:11px;color:${c.textMuted};">${escapeHtml(ct.phone_number)}</div>
+                        </span>
+                        <i class="fa fa-phone" style="font-size:13px;color:${c.accent};flex:none;"></i>
+                    </button>
+                `).join("") : `<div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">${t ? "No matching contacts." : "No contacts yet."}</div>`;
+                rowsEl.querySelectorAll("[data-row]").forEach((btn) => {
+                    btn.addEventListener("click", async () => {
+                        const ct = currentContacts[+btn.dataset.row];
+                        modal.remove();
+                        if (!ct) return;
+                        await dialCall({
+                            toNumber:    ct.phone_number,
+                            partnerId:   ct.partner_id ? ct.partner_id[0] : null,
+                            partnerName: ct.name || ct.phone_number,
+                        });
+                    });
+                });
+            }
+
+            searchInput.addEventListener("input", () => {
+                clearTimeout(debounceId);
+                debounceId = setTimeout(() => refresh(searchInput.value), 300);
+            });
+            refresh("");
         }
 
         async function switchVoiceScript(chatbotId, chatbotName) {
@@ -1354,6 +1521,7 @@ const waCallService = {
                 iconBtn("script", "fa-list-alt", "Choose voice script"),
                 iconBtn("add-campaign", "fa-bullhorn", "Add to campaign"),
                 iconBtn("history", "fa-history", "Call history"),
+                iconBtn("contacts", "fa-address-book", "Contacts"),
             ]);
             wrap.innerHTML = `
                 <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
@@ -1433,8 +1601,10 @@ const waCallService = {
                 showCampaignPicker(contact.partner_id ? contact.partner_id[0] : false);
             });
             wrap.querySelector("[data-action=history]").addEventListener("click", () => {
-                const to = (numberInput.value || "").trim();
-                showCallHistory(to);
+                showCallHistory();
+            });
+            wrap.querySelector("[data-action=contacts]").addEventListener("click", () => {
+                showContactsPicker();
             });
             wireThemeToggle(wrap, () => openDialPad());
             document.body.appendChild(wrap);
