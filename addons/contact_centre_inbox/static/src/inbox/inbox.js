@@ -97,7 +97,11 @@ export class ContactCentreInbox extends Component {
                 "contact.centre.contact",
                 domain,
                 ["name", "phone_number", "state", "last_contact_date", "partner_id"],
-                { order: "last_contact_date desc", limit: 200 }
+                // "nulls last" matters here: Postgres defaults DESC sorts to
+                // NULLS FIRST, so without it every contact with zero message/
+                // call history would rank above ones with real recent
+                // engagement, not below.
+                { order: "last_contact_date desc nulls last", limit: 200 }
             );
         } finally {
             this.state.loadingContacts = false;
