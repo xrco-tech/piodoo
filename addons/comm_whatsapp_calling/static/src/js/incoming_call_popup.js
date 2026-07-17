@@ -34,6 +34,32 @@ const ICE_SERVERS = [
     { urls: "stun:stun1.l.google.com:19302" },
 ];
 
+// ── Theme ────────────────────────────────────────────────────────────
+// Persisted per-browser (not per-user record) since this is a purely
+// visual preference for floating widgets that live outside any view.
+const THEME_STORAGE_KEY = "comm_whatsapp_calling_theme";
+const THEMES = {
+    dark: {
+        card: "#111827", cardAlt: "#1f2937", text: "#fff", textMuted: "#9ca3af",
+        border: "#1f2937", accent: "#25D366", primary: "#4a6cf7", danger: "#dc2626",
+        inputBg: "#1f2937", inputBorder: "#374151",
+        shadow: "0 10px 30px rgba(0,0,0,0.35)", shadowSm: "0 6px 18px rgba(0,0,0,0.25)",
+    },
+    light: {
+        card: "#ffffff", cardAlt: "#f3f4f6", text: "#111827", textMuted: "#6b7280",
+        border: "#e5e7eb", accent: "#128C7E", primary: "#4a6cf7", danger: "#dc2626",
+        inputBg: "#f9fafb", inputBorder: "#d1d5db",
+        shadow: "0 10px 30px rgba(0,0,0,0.15)", shadowSm: "0 6px 18px rgba(0,0,0,0.12)",
+    },
+};
+function getStoredTheme() {
+    try { return localStorage.getItem(THEME_STORAGE_KEY) === "light" ? "light" : "dark"; }
+    catch (e) { return "dark"; }
+}
+function setStoredTheme(t) {
+    try { localStorage.setItem(THEME_STORAGE_KEY, t); } catch (e) {}
+}
+
 function log(...args) {
     try { console.log(LOG_TAG, ...args); } catch (e) {}
 }
@@ -111,8 +137,8 @@ function ensureRemoteAudioEl() {
 // ── Service ──────────────────────────────────────────────────────────
 
 const waCallService = {
-    dependencies: ["bus_service", "notification"],
-    start(env, { bus_service, notification }) {
+    dependencies: ["bus_service", "notification", "orm", "action"],
+    start(env, { bus_service, notification, orm, action }) {
         log("service starting");
 
         // One active call at a time. Key = call_log_id.
@@ -120,6 +146,25 @@ const waCallService = {
         // { sessionId, chatbotName, bubbles, terminated } while a suggested
         // voice script is being followed for the current accepted call.
         let scriptSession = null;
+        let theme = getStoredTheme();
+        function colors() { return THEMES[theme]; }
+        function themeToggleHtml() {
+            const c = colors();
+            return `<button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                        style="background:none;border:none;color:${c.textMuted};font-size:13px;cursor:pointer;padding:2px 4px;line-height:1;">
+                        <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                    </button>`;
+        }
+        function wireThemeToggle(root, rerender) {
+            const btn = root.querySelector('[data-action="theme-toggle"]');
+            if (btn) {
+                btn.addEventListener("click", () => {
+                    theme = theme === "dark" ? "light" : "dark";
+                    setStoredTheme(theme);
+                    rerender();
+                });
+            }
+        }
 
         function notify(message, type) {
             try {
@@ -136,69 +181,103 @@ const waCallService = {
 
         function showPopup(payload) {
             hidePopup();
+            const c = colors();
             const wrap = document.createElement("div");
             wrap.id = POPUP_ID;
             wrap.dataset.callLogId = payload.call_log_id;
             Object.assign(wrap.style, {
                 position: "fixed", top: "20px", right: "20px",
-                width: "340px", background: "#111827", color: "#fff",
-                borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                width: "340px", background: c.card, color: c.text,
+                borderRadius: "12px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
             const scriptHint = payload.suggested_chatbot_id
-                ? `<div style="font-size:12px;color:#25D366;margin-top:8px;">
+                ? `<div style="font-size:12px;color:${c.accent};margin-top:8px;">
                        <i class="fa fa-list-alt me-1"></i>Suggested script: ${escapeHtml(payload.suggested_chatbot_name || "")}
+                   </div>`
+                : "";
+            const inboxLink = payload.partner_id
+                ? `<div style="margin-top:8px;">
+                       <button data-action="view-inbox" style="background:none;border:none;color:${c.primary};font-size:12px;cursor:pointer;padding:0;">
+                           <i class="fa fa-inbox me-1"></i>View in Inbox
+                       </button>
                    </div>`
                 : "";
             wrap.innerHTML = `
                 <div style="padding:14px 16px;">
-                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:#25D366;font-weight:700;margin-bottom:6px;">
-                        📞 Incoming WhatsApp call
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:${c.accent};font-weight:700;">
+                            📞 Incoming WhatsApp call
+                        </div>
+                        ${themeToggleHtml()}
                     </div>
                     <div style="font-size:15px;font-weight:600;">${escapeHtml(payload.partner_name || "Unknown")}</div>
-                    <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
+                    <div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
                     ${scriptHint}
+                    ${inboxLink}
                 </div>
                 <div style="display:flex;gap:8px;padding:0 16px 14px;">
-                    <button data-action="decline" style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Decline</button>
-                    <button data-action="accept" style="flex:1;background:#25D366;color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Accept</button>
+                    <button data-action="decline" style="flex:1;background:${c.danger};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Decline</button>
+                    <button data-action="accept" style="flex:1;background:${c.accent};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Accept</button>
                 </div>
             `;
             wrap.querySelector("[data-action=decline]").addEventListener("click", () => declineCall(payload.call_log_id));
             wrap.querySelector("[data-action=accept]").addEventListener("click", () => acceptCall(payload));
+            const inboxBtn = wrap.querySelector("[data-action=view-inbox]");
+            if (inboxBtn) {
+                inboxBtn.addEventListener("click", () => openContactInboxFor(payload.partner_id));
+            }
+            wireThemeToggle(wrap, () => showPopup(payload));
             document.body.appendChild(wrap);
         }
 
         function showHud(payload) {
             const existing = document.getElementById(HUD_ID);
             if (existing) existing.remove();
+            const c = colors();
             const hud = document.createElement("div");
             hud.id = HUD_ID;
             Object.assign(hud.style, {
                 position: "fixed", top: "20px", right: "20px",
-                background: "#111827", color: "#fff",
+                background: c.card, color: c.text,
                 padding: "10px 14px", borderRadius: "999px",
-                boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
+                boxShadow: c.shadowSm,
                 display: "flex", alignItems: "center", gap: "10px",
                 zIndex: "10000",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                 fontSize: "13px", fontWeight: "600",
             });
+            const iconBtnStyle = (bg) =>
+                `background:${bg};color:#fff;border:none;border-radius:999px;width:28px;height:28px;font-weight:700;cursor:pointer;`;
             hud.innerHTML = `
-                <span style="width:8px;height:8px;background:#25D366;border-radius:50%;animation:wa-pulse 1.4s infinite;"></span>
+                <span style="width:8px;height:8px;background:${c.accent};border-radius:50%;animation:wa-pulse 1.4s infinite;"></span>
                 <span>${escapeHtml(payload.partner_name || "In call")}</span>
-                <button data-action="transfer" title="Transfer to team"
-                        style="background:#4a6cf7;color:#fff;border:none;border-radius:999px;width:28px;height:28px;font-weight:700;cursor:pointer;">
+                ${payload.partner_id ? `
+                <button data-action="view-inbox" title="View in Inbox" style="${iconBtnStyle(c.cardAlt)}">
+                    <i class="fa fa-inbox"></i>
+                </button>` : ""}
+                <button data-action="script" title="Start/change voice script" style="${iconBtnStyle(c.cardAlt)}">
+                    <i class="fa fa-list-alt"></i>
+                </button>
+                ${themeToggleHtml()}
+                <button data-action="transfer" title="Transfer to team" style="${iconBtnStyle(c.primary)}">
                     <i class="fa fa-random"></i>
                 </button>
-                <button data-action="hangup" style="background:#dc2626;color:#fff;border:none;border-radius:999px;width:28px;height:28px;font-weight:700;cursor:pointer;">✕</button>
+                <button data-action="hangup" title="Hang up" style="${iconBtnStyle(c.danger)}">✕</button>
                 <style>@keyframes wa-pulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,0.7);}70%{box-shadow:0 0 0 10px rgba(37,211,102,0);}100%{box-shadow:0 0 0 0 rgba(37,211,102,0);}}</style>
             `;
             hud.querySelector("[data-action=hangup]")
                 .addEventListener("click", () => hangupCall(payload.call_log_id));
             hud.querySelector("[data-action=transfer]")
                 .addEventListener("click", () => openTransferPicker(payload.call_log_id));
+            hud.querySelector("[data-action=script]")
+                .addEventListener("click", () => openScriptPicker());
+            const inboxBtn = hud.querySelector("[data-action=view-inbox]");
+            if (inboxBtn) {
+                inboxBtn.addEventListener("click", () => openContactInboxFor(payload.partner_id));
+            }
+            wireThemeToggle(hud, () => showHud(payload));
             document.body.appendChild(hud);
         }
 
@@ -216,32 +295,33 @@ const waCallService = {
             const existing = document.getElementById(TRANSFER_POPUP_ID);
             if (existing) existing.remove();
 
+            const c = colors();
             const wrap = document.createElement("div");
             wrap.id = TRANSFER_POPUP_ID;
             wrap.dataset.sourceCallLogId = payload.source_call_log_id;
             Object.assign(wrap.style, {
                 position: "fixed", top: "20px", right: "20px",
-                width: "340px", background: "#111827", color: "#fff",
+                width: "340px", background: c.card, color: c.text,
                 borderRadius: "12px",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
             wrap.innerHTML = `
                 <div style="padding:14px 16px;">
-                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:#4a6cf7;font-weight:700;margin-bottom:6px;">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:${c.primary};font-weight:700;margin-bottom:6px;">
                         <i class="fa fa-random me-1"></i>Call transfer request
                     </div>
-                    <div style="font-size:14px;color:#9ca3af;margin-bottom:4px;">
+                    <div style="font-size:14px;color:${c.textMuted};margin-bottom:4px;">
                         ${escapeHtml(payload.transferred_from_name || "Someone")}
                         is transferring a call
                     </div>
                     <div style="font-size:15px;font-weight:600;">${escapeHtml(payload.partner_name || "Caller")}</div>
-                    <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
+                    <div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
                 </div>
                 <div style="display:flex;gap:8px;padding:0 16px 14px;">
-                    <button data-action="decline" style="flex:1;background:#374151;color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Decline</button>
-                    <button data-action="accept" style="flex:1;background:#25D366;color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Call back</button>
+                    <button data-action="decline" style="flex:1;background:${c.cardAlt};color:${c.text};border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Decline</button>
+                    <button data-action="accept" style="flex:1;background:${c.accent};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Call back</button>
                 </div>
             `;
             wrap.querySelector("[data-action=decline]").addEventListener("click", () => wrap.remove());
@@ -290,13 +370,14 @@ const waCallService = {
             const existing = document.getElementById("wa_transfer_picker");
             if (existing) existing.remove();
 
+            const c = colors();
             const modal = document.createElement("div");
             modal.id = "wa_transfer_picker";
             Object.assign(modal.style, {
                 position: "fixed", top: "60px", right: "20px",
-                width: "320px", background: "#111827", color: "#fff",
+                width: "320px", background: c.card, color: c.text,
                 borderRadius: "12px",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
@@ -305,19 +386,19 @@ const waCallService = {
                          ${t.available_count === 0 ? "disabled" : ""}
                          style="display:block;width:100%;text-align:left;
                                 padding:10px 14px;background:transparent;
-                                border:none;border-top:1px solid #1f2937;
-                                color:#fff;cursor:${t.available_count ? "pointer" : "default"};
+                                border:none;border-top:1px solid ${c.border};
+                                color:${c.text};cursor:${t.available_count ? "pointer" : "default"};
                                 opacity:${t.available_count ? "1" : "0.5"};">
                     <div style="font-weight:600;">${escapeHtml(t.name)}</div>
-                    <div style="font-size:11px;color:#9ca3af;">
+                    <div style="font-size:11px;color:${c.textMuted};">
                         ${t.available_count} of ${t.member_count} available
                     </div>
                 </button>`
             ).join("");
             modal.innerHTML = `
-                <div style="padding:12px 14px;font-size:12px;text-transform:uppercase;color:#9ca3af;letter-spacing:0.4px;display:flex;justify-content:space-between;align-items:center;">
+                <div style="padding:12px 14px;font-size:12px;text-transform:uppercase;color:${c.textMuted};letter-spacing:0.4px;display:flex;justify-content:space-between;align-items:center;">
                     <span>Transfer to team</span>
-                    <button data-action="close" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;">×</button>
+                    <button data-action="close" style="background:none;border:none;color:${c.textMuted};font-size:18px;cursor:pointer;">×</button>
                 </div>
                 ${rows}
             `;
@@ -348,6 +429,114 @@ const waCallService = {
             document.body.appendChild(modal);
         }
 
+        // ── Voice script picker (start or switch mid-call) ──────────
+        async function openScriptPicker() {
+            if (!activeCall) return;
+            let chatbots = [];
+            try {
+                chatbots = await orm.searchRead(
+                    "whatsapp.chatbot",
+                    [["channel", "=", "voice"], ["status", "=", "published"]],
+                    ["name"],
+                );
+            } catch (err) {
+                notify("Could not load voice scripts: " + (err?.message || err), "danger");
+                return;
+            }
+            if (!chatbots.length) {
+                notify("No published voice scripts available.", "warning");
+                return;
+            }
+            const existing = document.getElementById("wa_script_picker");
+            if (existing) existing.remove();
+
+            const c = colors();
+            const modal = document.createElement("div");
+            modal.id = "wa_script_picker";
+            Object.assign(modal.style, {
+                position: "fixed", top: "60px", right: "20px",
+                width: "320px", background: c.card, color: c.text,
+                borderRadius: "12px",
+                boxShadow: c.shadow,
+                zIndex: "10001", overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            const rows = chatbots.map((cb) =>
+                `<button data-chatbot="${cb.id}"
+                         style="display:block;width:100%;text-align:left;
+                                padding:10px 14px;background:transparent;
+                                border:none;border-top:1px solid ${c.border};
+                                color:${c.text};cursor:pointer;">
+                    <div style="font-weight:600;">${escapeHtml(cb.name)}</div>
+                </button>`
+            ).join("");
+            modal.innerHTML = `
+                <div style="padding:12px 14px;font-size:12px;text-transform:uppercase;color:${c.textMuted};letter-spacing:0.4px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>${scriptSession ? "Change" : "Start"} voice script</span>
+                    <button data-action="close" style="background:none;border:none;color:${c.textMuted};font-size:18px;cursor:pointer;">×</button>
+                </div>
+                ${rows}
+            `;
+            modal.querySelector("[data-action=close]")
+                 .addEventListener("click", () => modal.remove());
+            modal.querySelectorAll("[data-chatbot]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const chatbotId = +btn.dataset.chatbot;
+                    const chatbot = chatbots.find((cb) => cb.id === chatbotId);
+                    modal.remove();
+                    switchVoiceScript(chatbotId, chatbot ? chatbot.name : "Voice script");
+                });
+            });
+            document.body.appendChild(modal);
+        }
+
+        async function switchVoiceScript(chatbotId, chatbotName) {
+            if (!activeCall) return;
+            if (scriptSession?.sessionId) {
+                try {
+                    await callRpc("/voice/end", { session_id: scriptSession.sessionId });
+                } catch (e) {
+                    // Best-effort — proceeding to start the new one regardless.
+                }
+            }
+            scriptSession = null;
+            hideScriptPanel();
+            await startVoiceScript({
+                suggested_chatbot_id: chatbotId,
+                suggested_chatbot_name: chatbotName,
+                partner_name: activeCall.partnerName,
+                from_number: activeCall.fromNumber,
+            });
+        }
+
+        // ── Jump to the caller's conversation in the Inbox ──────────
+        async function openContactInboxFor(partnerId) {
+            if (!partnerId) {
+                notify("No linked contact for this call.", "warning");
+                return;
+            }
+            let contacts = [];
+            try {
+                contacts = await orm.searchRead(
+                    "contact.centre.contact", [["partner_id", "=", partnerId]], ["id"], { limit: 1 },
+                );
+            } catch (err) {
+                notify("Could not open the Inbox: " + (err?.message || err), "danger");
+                return;
+            }
+            if (!contacts.length) {
+                notify("This caller doesn't have a contact-centre record yet.", "warning");
+                return;
+            }
+            action.doAction({
+                type: "ir.actions.client",
+                tag: "contact_centre_inbox",
+                target: "new",
+                context: { dialog_size: "extra-large" },
+                params: { contact_id: contacts[0].id },
+            });
+        }
+
         function hideHud() {
             const hud = document.getElementById(HUD_ID);
             if (hud) hud.remove();
@@ -368,41 +557,50 @@ const waCallService = {
         function renderScriptPanel() {
             if (!scriptSession) return;
             hideScriptPanel();
+            const c = colors();
             const panel = document.createElement("div");
             panel.id = SCRIPT_PANEL_ID;
             Object.assign(panel.style, {
                 position: "fixed", top: "80px", right: "20px",
                 width: "340px", maxHeight: "60vh", display: "flex", flexDirection: "column",
-                background: "#111827", color: "#fff", borderRadius: "12px",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.35)", zIndex: "10000",
+                background: c.card, color: c.text, borderRadius: "12px",
+                boxShadow: c.shadow, zIndex: "10000",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
             const bubblesHtml = scriptSession.bubbles.map((b) => `
-                <div style="background:#1f2937;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;white-space:pre-wrap;">
+                <div style="background:${c.cardAlt};border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;white-space:pre-wrap;">
                     ${escapeHtml(b.body || "")}
                 </div>
             `).join("");
             panel.innerHTML = `
-                <div style="padding:10px 14px;border-bottom:1px solid #1f2937;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#25D366;font-weight:700;">
+                <div style="padding:10px 14px;border-bottom:1px solid ${c.border};display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:${c.accent};font-weight:700;">
                         <i class="fa fa-list-alt me-1"></i>${escapeHtml(scriptSession.chatbotName)}
                     </div>
-                    <button data-action="close" style="background:none;border:none;color:#9ca3af;font-size:16px;cursor:pointer;">×</button>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button data-action="change-script" title="Change script" style="background:none;border:none;color:${c.textMuted};font-size:13px;cursor:pointer;">
+                            <i class="fa fa-exchange"></i>
+                        </button>
+                        ${themeToggleHtml()}
+                        <button data-action="close" style="background:none;border:none;color:${c.textMuted};font-size:16px;cursor:pointer;">×</button>
+                    </div>
                 </div>
                 <div style="padding:10px 14px;overflow-y:auto;flex:1;">
                     ${bubblesHtml}
-                    ${scriptSession.loading ? '<div style="font-size:12px;color:#9ca3af;">Loading next step…</div>' : ""}
+                    ${scriptSession.loading ? `<div style="font-size:12px;color:${c.textMuted};">Loading next step…</div>` : ""}
                 </div>
                 ${scriptSession.terminated
-                    ? '<div style="padding:10px 14px;color:#25D366;font-size:12px;">Script complete.</div>'
-                    : `<div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid #1f2937;">
+                    ? `<div style="padding:10px 14px;color:${c.accent};font-size:12px;">Script complete.</div>`
+                    : `<div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid ${c.border};">
                            <input data-role="input" type="text" placeholder="Customer's answer…"
-                                  style="flex:1;background:#1f2937;border:1px solid #374151;border-radius:6px;color:#fff;padding:6px 8px;font-size:13px;"/>
-                           <button data-action="send" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:0 12px;font-weight:700;cursor:pointer;">Send</button>
+                                  style="flex:1;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:6px 8px;font-size:13px;"/>
+                           <button data-action="send" style="background:${c.accent};color:#fff;border:none;border-radius:6px;padding:0 12px;font-weight:700;cursor:pointer;">Send</button>
                        </div>`
                 }
             `;
             panel.querySelector("[data-action=close]").addEventListener("click", () => endVoiceScript());
+            panel.querySelector("[data-action=change-script]").addEventListener("click", () => openScriptPicker());
+            wireThemeToggle(panel, () => renderScriptPanel());
             const sendBtn = panel.querySelector("[data-action=send]");
             const input = panel.querySelector("[data-role=input]");
             if (sendBtn && input) {
@@ -496,6 +694,9 @@ const waCallService = {
             const call = {
                 id: payload.call_log_id,
                 pc: null, localStream: null, remoteStream: null,
+                partnerName: payload.partner_name || payload.from_number,
+                fromNumber: payload.from_number,
+                partnerId: payload.partner_id || null,
             };
             activeCall = call;
 
@@ -605,6 +806,8 @@ const waCallService = {
                 id: null, pc: null, localStream: null,
                 remoteStream: null, direction: "outgoing",
                 partnerName: partnerName || toNumber,
+                fromNumber: toNumber,
+                partnerId: partnerId || null,
             };
             activeCall = call;
 
@@ -658,6 +861,7 @@ const waCallService = {
                 showHud({
                     call_log_id:  call.id,
                     partner_name: `Calling ${partnerName || toNumber}…`,
+                    partner_id:   call.partnerId,
                 });
                 notify("Ringing…", "info");
                 // Now wait for the whatsapp_outbound_answered bus event
@@ -687,6 +891,7 @@ const waCallService = {
                 showHud({
                     call_log_id:  activeCall.id,
                     partner_name: activeCall.partnerName || "In call",
+                    partner_id:   activeCall.partnerId,
                 });
             } catch (err) {
                 warn("setRemoteDescription failed:", err);
