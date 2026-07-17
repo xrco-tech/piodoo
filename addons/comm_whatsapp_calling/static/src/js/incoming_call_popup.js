@@ -174,6 +174,24 @@ const waCallService = {
                 });
             }
         }
+        // Small circular icon button used in every widget's "Shortcuts" row.
+        function iconBtn(action, icon, title, extra = "") {
+            const c = colors();
+            return `<button data-action="${action}" title="${escapeHtml(title)}"
+                         style="width:40px;height:40px;border-radius:50%;background:${c.cardAlt};color:${c.text};
+                                border:none;font-size:15px;cursor:pointer;${extra}">
+                        <i class="fa ${icon}"></i>
+                    </button>`;
+        }
+        function shortcutsRowHtml(rows) {
+            const c = colors();
+            return `
+                <div style="padding:12px 16px 4px;">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Shortcuts</div>
+                    <div style="display:flex;gap:10px;">${rows.filter(Boolean).join("")}</div>
+                </div>
+            `;
+        }
 
         function notify(message, type) {
             try {
@@ -206,13 +224,11 @@ const waCallService = {
                        <i class="fa fa-list-alt me-1"></i>${escapeHtml(payload.suggested_chatbot_name || "")}
                    </div>`
                 : "";
-            const inboxLink = payload.partner_id
-                ? `<div style="margin-top:6px;">
-                       <button data-action="view-inbox" style="background:none;border:none;color:${c.primary};font-size:11px;cursor:pointer;padding:0;">
-                           <i class="fa fa-inbox me-1"></i>View in Inbox
-                       </button>
-                   </div>`
-                : "";
+            const shortcuts = shortcutsRowHtml([
+                payload.partner_id ? iconBtn("view-inbox", "fa-inbox", "View in Inbox") : "",
+                iconBtn("change-script", "fa-list-alt", "Choose voice script"),
+                payload.partner_id ? iconBtn("add-campaign", "fa-bullhorn", "Add to campaign") : "",
+            ]);
             wrap.innerHTML = `
                 <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
                     <div style="font-size:13px;font-weight:600;">
@@ -235,8 +251,8 @@ const waCallService = {
                     <div style="font-size:16px;font-weight:700;">${escapeHtml(payload.partner_name || "Unknown")}</div>
                     <div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
                     ${scriptHint}
-                    ${inboxLink}
                 </div>
+                ${shortcuts}
                 <div style="display:flex;justify-content:center;gap:36px;padding:18px 16px 22px;">
                     <button data-action="decline" title="Decline"
                             style="width:52px;height:52px;border-radius:50%;background:${c.danger};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
@@ -254,6 +270,14 @@ const waCallService = {
             const inboxBtn = wrap.querySelector("[data-action=view-inbox]");
             if (inboxBtn) {
                 inboxBtn.addEventListener("click", () => openContactInboxFor(payload.partner_id));
+            }
+            const changeScriptBtn = wrap.querySelector("[data-action=change-script]");
+            if (changeScriptBtn) {
+                changeScriptBtn.addEventListener("click", () => pickScriptForPopup(payload));
+            }
+            const addCampaignBtn = wrap.querySelector("[data-action=add-campaign]");
+            if (addCampaignBtn) {
+                addCampaignBtn.addEventListener("click", () => showCampaignPicker(payload.partner_id));
             }
             wireThemeToggle(wrap, () => showPopup(payload));
             document.body.appendChild(wrap);
@@ -296,18 +320,13 @@ const waCallService = {
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
-            const iconBtn = (action, icon, title, extra = "") =>
-                `<button data-action="${action}" title="${escapeHtml(title)}"
-                         style="width:40px;height:40px;border-radius:50%;background:${c.cardAlt};color:${c.text};
-                                border:none;font-size:15px;cursor:pointer;${extra}">
-                    <i class="fa ${icon}"></i>
-                </button>`;
-            const shortcutsRow = [
+            const shortcuts = shortcutsRowHtml([
                 payload.partner_id ? iconBtn("view-inbox", "fa-inbox", "View in Inbox") : "",
                 iconBtn("script", "fa-list-alt", scriptSession ? "Change voice script" : "Start voice script"),
+                payload.partner_id ? iconBtn("add-campaign", "fa-bullhorn", "Add to campaign") : "",
                 iconBtn("theme-toggle", theme === "dark" ? "fa-sun-o" : "fa-moon-o",
                          `Switch to ${theme === "dark" ? "light" : "dark"} theme`),
-            ].filter(Boolean).join("");
+            ]);
             hud.innerHTML = `
                 <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
                     <div style="font-size:13px;font-weight:600;">
@@ -326,10 +345,7 @@ const waCallService = {
                     </div>
                     ${payload.from_number ? `<div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number)}</div>` : ""}
                 </div>
-                <div style="padding:12px 16px 4px;">
-                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Shortcuts</div>
-                    <div style="display:flex;gap:10px;">${shortcutsRow}</div>
-                </div>
+                ${shortcuts}
                 <div style="padding:14px 16px 6px;border-top:1px solid ${c.border};margin-top:8px;">
                     <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Call</div>
                     <div style="display:flex;gap:10px;">
@@ -354,6 +370,10 @@ const waCallService = {
             const inboxBtn = hud.querySelector("[data-action=view-inbox]");
             if (inboxBtn) {
                 inboxBtn.addEventListener("click", () => openContactInboxFor(payload.partner_id));
+            }
+            const addCampaignBtn = hud.querySelector("[data-action=add-campaign]");
+            if (addCampaignBtn) {
+                addCampaignBtn.addEventListener("click", () => showCampaignPicker(payload.partner_id));
             }
             const muteBtn = hud.querySelector("[data-action=mute]");
             if (muteBtn) {
@@ -547,8 +567,10 @@ const waCallService = {
         }
 
         // ── Voice script picker (start or switch mid-call) ──────────
-        async function openScriptPicker() {
-            if (!activeCall) return;
+        // Generic themed list picker used for both the mid-call "change
+        // script" flow and the pre-accept "choose script" flow on the
+        // incoming popup — onSelect(chatbotId, chatbotName) fires on click.
+        async function showChatbotPicker(title, onSelect) {
             let chatbots = [];
             try {
                 chatbots = await orm.searchRead(
@@ -592,7 +614,7 @@ const waCallService = {
             modal.innerHTML = `
                 <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
                     <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-list-alt me-1"></i>${scriptSession ? "Change" : "Start"} Voice Script
+                        <i class="fa fa-list-alt me-1"></i>${escapeHtml(title)}
                     </div>
                     <div style="display:flex;align-items:center;gap:2px;">
                         <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
@@ -607,13 +629,130 @@ const waCallService = {
             `;
             modal.querySelector("[data-action=close]")
                  .addEventListener("click", () => modal.remove());
-            wireThemeToggle(modal, () => openScriptPicker());
+            wireThemeToggle(modal, () => showChatbotPicker(title, onSelect));
             modal.querySelectorAll("[data-chatbot]").forEach((btn) => {
                 btn.addEventListener("click", () => {
                     const chatbotId = +btn.dataset.chatbot;
                     const chatbot = chatbots.find((cb) => cb.id === chatbotId);
                     modal.remove();
-                    switchVoiceScript(chatbotId, chatbot ? chatbot.name : "Voice script");
+                    onSelect(chatbotId, chatbot ? chatbot.name : "Voice script");
+                });
+            });
+            document.body.appendChild(modal);
+        }
+
+        async function openScriptPicker() {
+            if (!activeCall) return;
+            await showChatbotPicker(
+                scriptSession ? "Change Voice Script" : "Start Voice Script",
+                (chatbotId, chatbotName) => switchVoiceScript(chatbotId, chatbotName)
+            );
+        }
+
+        // Pre-accept: let the agent override which script will run once
+        // they answer, before the call (and any voice session) exists yet.
+        async function pickScriptForPopup(payload) {
+            await showChatbotPicker("Choose Voice Script", (chatbotId, chatbotName) => {
+                payload.suggested_chatbot_id = chatbotId;
+                payload.suggested_chatbot_name = chatbotName;
+                showPopup(payload);
+            });
+        }
+
+        // ── Add caller to a campaign (popup + HUD "Shortcuts") ──────
+        async function showCampaignPicker(partnerId) {
+            if (!partnerId) {
+                notify("No linked contact for this call.", "warning");
+                return;
+            }
+            let contacts = [];
+            try {
+                contacts = await orm.searchRead(
+                    "contact.centre.contact", [["partner_id", "=", partnerId]],
+                    ["id", "campaign_ids"], { limit: 1 },
+                );
+            } catch (err) {
+                notify("Could not load the contact: " + (err?.message || err), "danger");
+                return;
+            }
+            if (!contacts.length) {
+                notify("This caller doesn't have a contact-centre record yet.", "warning");
+                return;
+            }
+            const contact = contacts[0];
+            let campaigns = [];
+            try {
+                campaigns = await orm.searchRead("contact.centre.campaign", [], ["name"]);
+            } catch (err) {
+                notify("Could not load campaigns: " + (err?.message || err), "danger");
+                return;
+            }
+            if (!campaigns.length) {
+                notify("No campaigns configured.", "warning");
+                return;
+            }
+            const existing = document.getElementById("wa_campaign_picker");
+            if (existing) existing.remove();
+
+            const c = colors();
+            const modal = document.createElement("div");
+            modal.id = "wa_campaign_picker";
+            Object.assign(modal.style, {
+                position: "fixed", top: "20px", right: "20px",
+                width: "280px", background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
+                zIndex: "10001", overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            const already = new Set(contact.campaign_ids || []);
+            const rows = campaigns.map((camp) => {
+                const isIn = already.has(camp.id);
+                return `<button data-campaign="${camp.id}" ${isIn ? "disabled" : ""}
+                         style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+                                padding:10px 16px;background:transparent;
+                                border:none;border-top:1px solid ${c.border};
+                                color:${c.text};cursor:${isIn ? "default" : "pointer"};
+                                opacity:${isIn ? "0.5" : "1"};">
+                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
+                        <i class="fa fa-bullhorn" style="font-size:13px;color:${c.textMuted};"></i>
+                    </span>
+                    <span style="font-weight:600;font-size:13px;">
+                        ${escapeHtml(camp.name)}${isIn ? " (added)" : ""}
+                    </span>
+                </button>`;
+            }).join("");
+            modal.innerHTML = `
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-bullhorn me-1"></i>Add to Campaign
+                    </div>
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="Close"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                    </div>
+                </div>
+                ${rows}
+            `;
+            modal.querySelector("[data-action=close]")
+                 .addEventListener("click", () => modal.remove());
+            wireThemeToggle(modal, () => showCampaignPicker(partnerId));
+            modal.querySelectorAll("[data-campaign]").forEach((btn) => {
+                if (btn.disabled) return;
+                btn.addEventListener("click", async () => {
+                    const campaignId = +btn.dataset.campaign;
+                    modal.remove();
+                    try {
+                        await orm.write("contact.centre.contact", [contact.id], {
+                            campaign_ids: [[4, campaignId]],
+                        });
+                        notify("Added to campaign.", "success");
+                    } catch (err) {
+                        notify("Could not add to campaign: " + (err?.message || err), "danger");
+                    }
                 });
             });
             document.body.appendChild(modal);
@@ -691,10 +830,13 @@ const waCallService = {
             const panel = document.createElement("div");
             panel.id = SCRIPT_PANEL_ID;
             Object.assign(panel.style, {
-                position: "fixed", top: "80px", right: "20px",
-                width: "340px", maxHeight: "60vh", display: "flex", flexDirection: "column",
-                background: c.card, color: c.text, borderRadius: "12px",
-                boxShadow: c.shadow, zIndex: "10000",
+                // Sits to the left of the HUD (280px wide + 20px gaps)
+                // rather than stacked under it, so it doesn't collide with
+                // the HUD's own height changing as call state changes.
+                position: "fixed", top: "20px", right: "320px",
+                width: "340px", maxHeight: "80vh", display: "flex", flexDirection: "column",
+                background: c.card, color: c.text, borderRadius: "10px",
+                boxShadow: c.shadow, zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
             const bubblesHtml = scriptSession.bubbles.map((b) => `
@@ -703,16 +845,21 @@ const waCallService = {
                 </div>
             `).join("");
             panel.innerHTML = `
-                <div style="padding:10px 14px;border-bottom:1px solid ${c.border};display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:${c.accent};font-weight:700;">
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">
                         <i class="fa fa-list-alt me-1"></i>${escapeHtml(scriptSession.chatbotName)}
                     </div>
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <button data-action="change-script" title="Change script" style="background:none;border:none;color:${c.textMuted};font-size:13px;cursor:pointer;">
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="change-script" title="Change script"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:13px;cursor:pointer;padding:4px;line-height:1;">
                             <i class="fa fa-exchange"></i>
                         </button>
-                        ${themeToggleHtml()}
-                        <button data-action="close" style="background:none;border:none;color:${c.textMuted};font-size:16px;cursor:pointer;">×</button>
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="End script"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
                     </div>
                 </div>
                 <div style="padding:10px 14px;overflow-y:auto;flex:1;">
