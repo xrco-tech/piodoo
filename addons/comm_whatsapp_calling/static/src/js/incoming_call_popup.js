@@ -187,42 +187,60 @@ const waCallService = {
             wrap.dataset.callLogId = payload.call_log_id;
             Object.assign(wrap.style, {
                 position: "fixed", top: "20px", right: "20px",
-                width: "340px", background: c.card, color: c.text,
-                borderRadius: "12px", boxShadow: c.shadow,
+                width: "280px", background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
             const scriptHint = payload.suggested_chatbot_id
-                ? `<div style="font-size:12px;color:${c.accent};margin-top:8px;">
-                       <i class="fa fa-list-alt me-1"></i>Suggested script: ${escapeHtml(payload.suggested_chatbot_name || "")}
+                ? `<div style="font-size:11px;color:${c.accent};margin-top:10px;">
+                       <i class="fa fa-list-alt me-1"></i>${escapeHtml(payload.suggested_chatbot_name || "")}
                    </div>`
                 : "";
             const inboxLink = payload.partner_id
-                ? `<div style="margin-top:8px;">
-                       <button data-action="view-inbox" style="background:none;border:none;color:${c.primary};font-size:12px;cursor:pointer;padding:0;">
+                ? `<div style="margin-top:6px;">
+                       <button data-action="view-inbox" style="background:none;border:none;color:${c.primary};font-size:11px;cursor:pointer;padding:0;">
                            <i class="fa fa-inbox me-1"></i>View in Inbox
                        </button>
                    </div>`
                 : "";
             wrap.innerHTML = `
-                <div style="padding:14px 16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:${c.accent};font-weight:700;">
-                            📞 Incoming WhatsApp call
-                        </div>
-                        ${themeToggleHtml()}
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-whatsapp me-1"></i>WhatsApp Call
                     </div>
-                    <div style="font-size:15px;font-weight:600;">${escapeHtml(payload.partner_name || "Unknown")}</div>
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="Decline"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                    </div>
+                </div>
+                <div style="padding:18px 16px 6px;text-align:center;">
+                    <div style="font-size:12px;color:${c.textMuted};">Incoming call from...</div>
+                    <div style="width:64px;height:64px;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;margin:12px auto;">
+                        <i class="fa fa-user" style="font-size:26px;color:${c.textMuted};"></i>
+                    </div>
+                    <div style="font-size:16px;font-weight:700;">${escapeHtml(payload.partner_name || "Unknown")}</div>
                     <div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
                     ${scriptHint}
                     ${inboxLink}
                 </div>
-                <div style="display:flex;gap:8px;padding:0 16px 14px;">
-                    <button data-action="decline" style="flex:1;background:${c.danger};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Decline</button>
-                    <button data-action="accept" style="flex:1;background:${c.accent};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Accept</button>
+                <div style="display:flex;justify-content:center;gap:36px;padding:18px 16px 22px;">
+                    <button data-action="decline" title="Decline"
+                            style="width:52px;height:52px;border-radius:50%;background:${c.danger};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
+                        <i class="fa fa-phone" style="transform:rotate(135deg);display:inline-block;"></i>
+                    </button>
+                    <button data-action="accept" title="Accept"
+                            style="width:52px;height:52px;border-radius:50%;background:${c.accent};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
+                        <i class="fa fa-phone"></i>
+                    </button>
                 </div>
             `;
             wrap.querySelector("[data-action=decline]").addEventListener("click", () => declineCall(payload.call_log_id));
+            wrap.querySelector("[data-action=close]").addEventListener("click", () => declineCall(payload.call_log_id));
             wrap.querySelector("[data-action=accept]").addEventListener("click", () => acceptCall(payload));
             const inboxBtn = wrap.querySelector("[data-action=view-inbox]");
             if (inboxBtn) {
