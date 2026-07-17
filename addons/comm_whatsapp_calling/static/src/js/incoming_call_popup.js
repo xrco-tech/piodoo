@@ -384,32 +384,51 @@ const waCallService = {
             wrap.dataset.sourceCallLogId = payload.source_call_log_id;
             Object.assign(wrap.style, {
                 position: "fixed", top: "20px", right: "20px",
-                width: "340px", background: c.card, color: c.text,
-                borderRadius: "12px",
-                boxShadow: c.shadow,
+                width: "280px", background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
+            const remove = () => wrap.remove();
             wrap.innerHTML = `
-                <div style="padding:14px 16px;">
-                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:${c.primary};font-weight:700;margin-bottom:6px;">
-                        <i class="fa fa-random me-1"></i>Call transfer request
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-random me-1"></i>Call Transfer
                     </div>
-                    <div style="font-size:14px;color:${c.textMuted};margin-bottom:4px;">
-                        ${escapeHtml(payload.transferred_from_name || "Someone")}
-                        is transferring a call
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="Decline"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
                     </div>
-                    <div style="font-size:15px;font-weight:600;">${escapeHtml(payload.partner_name || "Caller")}</div>
+                </div>
+                <div style="padding:18px 16px 6px;text-align:center;">
+                    <div style="font-size:12px;color:${c.textMuted};">
+                        Transferred by ${escapeHtml(payload.transferred_from_name || "Someone")}
+                    </div>
+                    <div style="width:64px;height:64px;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;margin:12px auto;">
+                        <i class="fa fa-user" style="font-size:26px;color:${c.textMuted};"></i>
+                    </div>
+                    <div style="font-size:16px;font-weight:700;">${escapeHtml(payload.partner_name || "Caller")}</div>
                     <div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
                 </div>
-                <div style="display:flex;gap:8px;padding:0 16px 14px;">
-                    <button data-action="decline" style="flex:1;background:${c.cardAlt};color:${c.text};border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Decline</button>
-                    <button data-action="accept" style="flex:1;background:${c.accent};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Call back</button>
+                <div style="display:flex;justify-content:center;gap:36px;padding:18px 16px 22px;">
+                    <button data-action="decline" title="Decline"
+                            style="width:52px;height:52px;border-radius:50%;background:${c.danger};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
+                        <i class="fa fa-phone" style="transform:rotate(135deg);display:inline-block;"></i>
+                    </button>
+                    <button data-action="accept" title="Call back"
+                            style="width:52px;height:52px;border-radius:50%;background:${c.accent};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
+                        <i class="fa fa-phone"></i>
+                    </button>
                 </div>
             `;
-            wrap.querySelector("[data-action=decline]").addEventListener("click", () => wrap.remove());
+            wrap.querySelector("[data-action=decline]").addEventListener("click", remove);
+            wrap.querySelector("[data-action=close]").addEventListener("click", remove);
             wrap.querySelector("[data-action=accept]").addEventListener("click", async () => {
-                wrap.remove();
+                remove();
                 // Dial the customer back via the standard outbound path.
                 // The new call log will get transferred_from_call_log_id
                 // via a follow-up write from server side (not yet — cold
@@ -422,6 +441,7 @@ const waCallService = {
                     accountId:   payload.account_id || null,
                 });
             });
+            wireThemeToggle(wrap, () => showTransferRequestPopup(payload));
             document.body.appendChild(wrap);
 
             // If the transfer request stales (someone else accepted the
