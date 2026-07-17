@@ -61,6 +61,15 @@ export class ContactCentreInbox extends Component {
             () => [this.state.composerText]
         );
 
+        this.threadRef = useRef("thread");
+        // Runs whenever state.messages gets a new array reference - covers
+        // selecting a conversation, sending a reply, and a new inbound
+        // message arriving over the bus, all in one place.
+        useEffect(
+            () => this._scrollThreadToBottom(),
+            () => [this.state.messages]
+        );
+
         this._onBusNotification = this._onBusNotification.bind(this);
         this.debouncedLoadContacts = useDebounced(() => this.loadContacts(), 300);
 
@@ -172,6 +181,14 @@ export class ContactCentreInbox extends Component {
         }
         el.style.height = "auto";
         el.style.height = `${el.scrollHeight}px`;
+    }
+
+    _scrollThreadToBottom() {
+        const el = this.threadRef.el;
+        if (!el) {
+            return;
+        }
+        el.scrollTop = el.scrollHeight;
     }
 
     insertSuggestedReply() {
