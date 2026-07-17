@@ -42,13 +42,13 @@ const THEMES = {
     dark: {
         card: "#111827", cardAlt: "#1f2937", text: "#fff", textMuted: "#9ca3af",
         border: "#1f2937", accent: "#25D366", primary: "#4a6cf7", danger: "#dc2626",
-        inputBg: "#1f2937", inputBorder: "#374151",
+        inputBg: "#1f2937", inputBorder: "#374151", callBg: "rgba(37,211,102,0.15)",
         shadow: "0 10px 30px rgba(0,0,0,0.35)", shadowSm: "0 6px 18px rgba(0,0,0,0.25)",
     },
     light: {
         card: "#ffffff", cardAlt: "#f3f4f6", text: "#111827", textMuted: "#6b7280",
         border: "#e5e7eb", accent: "#128C7E", primary: "#4a6cf7", danger: "#dc2626",
-        inputBg: "#f9fafb", inputBorder: "#d1d5db",
+        inputBg: "#f9fafb", inputBorder: "#d1d5db", callBg: "#d9ead3",
         shadow: "0 10px 30px rgba(0,0,0,0.15)", shadowSm: "0 6px 18px rgba(0,0,0,0.12)",
     },
 };
@@ -71,6 +71,13 @@ function escapeHtml(s) {
     return String(s ?? "")
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function formatDuration(ms) {
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function callRpc(url, params = {}) {
@@ -146,6 +153,8 @@ const waCallService = {
         // { sessionId, chatbotName, bubbles, terminated } while a suggested
         // voice script is being followed for the current accepted call.
         let scriptSession = null;
+        // Ticks the HUD's "In call for: mm:ss" label once a second.
+        let hudTimerId = null;
         let theme = getStoredTheme();
         function colors() { return THEMES[theme]; }
         function themeToggleHtml() {
@@ -250,43 +259,94 @@ const waCallService = {
             document.body.appendChild(wrap);
         }
 
+        function stopHudTimer() {
+            if (hudTimerId) {
+                clearInterval(hudTimerId);
+                hudTimerId = null;
+            }
+        }
+
+        function startHudTimer() {
+            stopHudTimer();
+            hudTimerId = setInterval(() => {
+                const el = document.querySelector(`#${HUD_ID} [data-role=duration]`);
+                if (!el || !activeCall || !activeCall.startTime) return;
+                el.textContent = `In call for: ${formatDuration(Date.now() - activeCall.startTime)}`;
+            }, 1000);
+        }
+
+        function toggleMute() {
+            if (!activeCall || !activeCall.localStream) return;
+            activeCall.muted = !activeCall.muted;
+            activeCall.localStream.getAudioTracks().forEach((t) => { t.enabled = !activeCall.muted; });
+        }
+
         function showHud(payload) {
             const existing = document.getElementById(HUD_ID);
             if (existing) existing.remove();
             const c = colors();
+            const connected = !!(activeCall && activeCall.startTime);
+            const muted = !!(activeCall && activeCall.muted);
             const hud = document.createElement("div");
             hud.id = HUD_ID;
             Object.assign(hud.style, {
                 position: "fixed", top: "20px", right: "20px",
-                background: c.card, color: c.text,
-                padding: "10px 14px", borderRadius: "999px",
-                boxShadow: c.shadowSm,
-                display: "flex", alignItems: "center", gap: "10px",
-                zIndex: "10000",
+                width: "280px", background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
+                zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                fontSize: "13px", fontWeight: "600",
             });
-            const iconBtnStyle = (bg) =>
-                `background:${bg};color:#fff;border:none;border-radius:999px;width:28px;height:28px;font-weight:700;cursor:pointer;`;
+            const iconBtn = (action, icon, title, extra = "") =>
+                `<button data-action="${action}" title="${escapeHtml(title)}"
+                         style="width:40px;height:40px;border-radius:50%;background:${c.cardAlt};color:${c.text};
+                                border:none;font-size:15px;cursor:pointer;${extra}">
+                    <i class="fa ${icon}"></i>
+                </button>`;
+            const shortcutsRow = [
+                payload.partner_id ? iconBtn("view-inbox", "fa-inbox", "View in Inbox") : "",
+                iconBtn("script", "fa-list-alt", scriptSession ? "Change voice script" : "Start voice script"),
+                iconBtn("theme-toggle", theme === "dark" ? "fa-sun-o" : "fa-moon-o",
+                         `Switch to ${theme === "dark" ? "light" : "dark"} theme`),
+            ].filter(Boolean).join("");
             hud.innerHTML = `
-                <span style="width:8px;height:8px;background:${c.accent};border-radius:50%;animation:wa-pulse 1.4s infinite;"></span>
-                <span>${escapeHtml(payload.partner_name || "In call")}</span>
-                ${payload.partner_id ? `
-                <button data-action="view-inbox" title="View in Inbox" style="${iconBtnStyle(c.cardAlt)}">
-                    <i class="fa fa-inbox"></i>
-                </button>` : ""}
-                <button data-action="script" title="Start/change voice script" style="${iconBtnStyle(c.cardAlt)}">
-                    <i class="fa fa-list-alt"></i>
-                </button>
-                ${themeToggleHtml()}
-                <button data-action="transfer" title="Transfer to team" style="${iconBtnStyle(c.primary)}">
-                    <i class="fa fa-random"></i>
-                </button>
-                <button data-action="hangup" title="Hang up" style="${iconBtnStyle(c.danger)}">✕</button>
-                <style>@keyframes wa-pulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,0.7);}70%{box-shadow:0 0 0 10px rgba(37,211,102,0);}100%{box-shadow:0 0 0 0 rgba(37,211,102,0);}}</style>
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-whatsapp me-1"></i>WhatsApp Call
+                    </div>
+                    <button data-action="hangup" title="Hang up"
+                            style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                </div>
+                <div style="background:${c.callBg};padding:16px;text-align:center;">
+                    <div style="width:64px;height:64px;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;margin:0 auto 10px;overflow:hidden;">
+                        <i class="fa fa-user" style="font-size:26px;color:${c.textMuted};"></i>
+                    </div>
+                    <div style="font-size:16px;font-weight:700;color:${c.text};">${escapeHtml(payload.partner_name || "In call")}</div>
+                    <div data-role="duration" style="font-size:12px;color:${c.accent};font-weight:600;margin-top:2px;">
+                        ${connected ? `In call for: ${formatDuration(Date.now() - activeCall.startTime)}` : "Calling…"}
+                    </div>
+                    ${payload.from_number ? `<div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number)}</div>` : ""}
+                </div>
+                <div style="padding:12px 16px 4px;">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Shortcuts</div>
+                    <div style="display:flex;gap:10px;">${shortcutsRow}</div>
+                </div>
+                <div style="padding:14px 16px 6px;border-top:1px solid ${c.border};margin-top:8px;">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Call</div>
+                    <div style="display:flex;gap:10px;">
+                        ${iconBtn("transfer", "fa-random", "Transfer to team")}
+                        ${iconBtn("mute", muted ? "fa-microphone-slash" : "fa-microphone", muted ? "Unmute" : "Mute",
+                                  muted ? `background:${c.danger};color:#fff;` : "")}
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:center;padding:16px;">
+                    <button data-action="hangup" title="Hang up"
+                            style="width:52px;height:52px;border-radius:50%;background:${c.danger};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
+                        <i class="fa fa-phone" style="transform:rotate(135deg);display:inline-block;"></i>
+                    </button>
+                </div>
             `;
-            hud.querySelector("[data-action=hangup]")
-                .addEventListener("click", () => hangupCall(payload.call_log_id));
+            hud.querySelectorAll("[data-action=hangup]").forEach((btn) =>
+                btn.addEventListener("click", () => hangupCall(payload.call_log_id)));
             hud.querySelector("[data-action=transfer]")
                 .addEventListener("click", () => openTransferPicker(payload.call_log_id));
             hud.querySelector("[data-action=script]")
@@ -295,8 +355,13 @@ const waCallService = {
             if (inboxBtn) {
                 inboxBtn.addEventListener("click", () => openContactInboxFor(payload.partner_id));
             }
+            const muteBtn = hud.querySelector("[data-action=mute]");
+            if (muteBtn) {
+                muteBtn.addEventListener("click", () => { toggleMute(); showHud(payload); });
+            }
             wireThemeToggle(hud, () => showHud(payload));
             document.body.appendChild(hud);
+            if (connected) startHudTimer();
         }
 
         // ── Transfer request popup (target agent side) ─────────────
@@ -556,6 +621,7 @@ const waCallService = {
         }
 
         function hideHud() {
+            stopHudTimer();
             const hud = document.getElementById(HUD_ID);
             if (hud) hud.remove();
         }
@@ -715,6 +781,7 @@ const waCallService = {
                 partnerName: payload.partner_name || payload.from_number,
                 fromNumber: payload.from_number,
                 partnerId: payload.partner_id || null,
+                startTime: null, muted: false,
             };
             activeCall = call;
 
@@ -759,6 +826,7 @@ const waCallService = {
                     throw new Error(result?.error || "Accept failed");
                 }
                 notify("Call connected.", "success");
+                call.startTime = Date.now();
                 showHud(payload);
                 if (payload.suggested_chatbot_id) {
                     startVoiceScript(payload);
@@ -826,6 +894,7 @@ const waCallService = {
                 partnerName: partnerName || toNumber,
                 fromNumber: toNumber,
                 partnerId: partnerId || null,
+                startTime: null, muted: false,
             };
             activeCall = call;
 
@@ -878,7 +947,8 @@ const waCallService = {
                 call.id = result.call_log_id;
                 showHud({
                     call_log_id:  call.id,
-                    partner_name: `Calling ${partnerName || toNumber}…`,
+                    partner_name: call.partnerName,
+                    from_number:  call.fromNumber,
                     partner_id:   call.partnerId,
                 });
                 notify("Ringing…", "info");
@@ -906,9 +976,11 @@ const waCallService = {
                 });
                 log("outbound remote description set — audio should establish");
                 notify("Connected.", "success");
+                activeCall.startTime = Date.now();
                 showHud({
                     call_log_id:  activeCall.id,
                     partner_name: activeCall.partnerName || "In call",
+                    from_number:  activeCall.fromNumber,
                     partner_id:   activeCall.partnerId,
                 });
             } catch (err) {
