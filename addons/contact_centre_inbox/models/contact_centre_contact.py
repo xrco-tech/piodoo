@@ -29,9 +29,11 @@ class ContactCentreContact(models.Model):
             _logger.warning("Inbox: contact %s has no phone number, skipping WA reply.", self.id)
             return False
 
+        account = self.env['comm.whatsapp.account'].sudo().get_default()
         result = self.env['whatsapp.message'].sudo().send_whatsapp_message(
             recipient_phone=phone,
             message_text=body,
+            account=account,
         )
         success = isinstance(result, dict) and result.get('success', False)
         status = 'sent' if success else 'failed'

@@ -216,9 +216,11 @@ class ContactCentreChatbot(models.Model):
         if not phone:
             return
         try:
+            account = self.env['comm.whatsapp.account'].sudo().get_default()
             self.env['whatsapp.message'].sudo().send_whatsapp_message(
                 recipient_phone=phone,
                 message_text=text,
+                account=account,
             )
         except Exception as e:
             _logger.error("Failed to send WhatsApp chatbot reply: %s", e)

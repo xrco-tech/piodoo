@@ -103,9 +103,11 @@ class ContactCentreAutomation(models.Model):
                              self.name, contact.id)
             return
 
+        account = self.env['comm.whatsapp.account'].sudo().get_default()
         result = self.env['whatsapp.message'].sudo().send_whatsapp_message(
             recipient_phone=phone,
             message_text=body,
+            account=account,
         )
         success = isinstance(result, dict) and result.get('success', False)
         status = 'sent' if success else 'failed'
