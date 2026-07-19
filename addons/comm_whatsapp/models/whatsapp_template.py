@@ -338,15 +338,26 @@ class WhatsAppTemplate(models.Model):
                         header_component['example'] = {'header_handle': [self.header_media_handle]}
                 components.append(header_component)
             
-            # Body component
+            # Body component. A body written with {{customer_name}}-style
+            # named placeholders needs Meta's named parameter_format
+            # (body_text_named_params); the older {{1}}, {{2}}.. numbered
+            # style keeps using the positional body_text example.
             body_component = {
                 'type': 'BODY',
                 'text': self.body,
             }
-            # Extract example parameters from body placeholders
-            example_params = self._extract_example_params()
-            if example_params:
-                body_component['example'] = {'body_text': [example_params]}
+            named_params = self._extract_named_params()
+            if named_params:
+                body_component['example'] = {
+                    'body_text_named_params': [
+                        {'param_name': p, 'example': f'Example {p}'}
+                        for p in named_params
+                    ]
+                }
+            else:
+                example_params = self._extract_example_params()
+                if example_params:
+                    body_component['example'] = {'body_text': [example_params]}
             components.append(body_component)
             
             # Footer component
@@ -430,7 +441,9 @@ class WhatsAppTemplate(models.Model):
                 'category': self.category,
                 'components': components
             }
-            
+            if named_params:
+                payload['parameter_format'] = 'named'
+
             # API endpoint - Use business account ID, not phone number ID
             # According to Meta docs: POST /v18.0/{whatsapp-business-account-id}/message_templates
             url = f"https://graph.facebook.com/v18.0/{business_account_id}/message_templates"
@@ -514,6 +527,21 @@ class WhatsAppTemplate(models.Model):
         for i in range(1, len(placeholders) + 1):
             examples.append(f"Example {i}")
         return examples
+
+    def _extract_named_params(self):
+        """Named {{param_name}} placeholders from the body, in the order
+        they first appear — Meta's newer named parameter_format, as
+        opposed to the numbered {{1}}, {{2}}.. style _extract_example_params
+        handles. A body mixing both styles isn't valid on Meta's side;
+        this only recognizes non-numeric names."""
+        if not self.body:
+            return []
+        seen = []
+        for m in re.finditer(r'\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}', self.body):
+            name = m.group(1)
+            if name not in seen:
+                seen.append(name)
+        return seen
 
     def action_fetch_from_meta(self):
         """
@@ -786,12 +814,20 @@ class WhatsAppTemplate(models.Model):
             }
         }
 
-    def _send_simple(self, to_number):
-        """Send this template to `to_number` with no body parameters —
-        for system-triggered sends (e.g. the WhatsApp calling widget's
-        "send a call permission request" prompt) that don't go through
-        the interactive wizard. Returns {'success': True} or
-        {'success': False, 'error': <message>}."""
+    def _send_simple(self, to_number, variables=None):
+        """Send this template to `to_number` — for system-triggered sends
+        (e.g. the WhatsApp calling widget's "send a call permission
+        request" prompt) that don't go through the interactive wizard.
+
+        `variables` is an optional {param_name: value} dict used to fill
+        named-format body placeholders (see _extract_named_params); any
+        named placeholder with no supplied value falls back to a generic
+        word rather than failing the send outright. Templates with no
+        named placeholders (the older {{1}}, {{2}}.. style, or no body
+        parameters at all) ignore `variables` and send as-is.
+
+        Returns {'success': True} or {'success': False, 'error': <message>}.
+        """
         self.ensure_one()
         if self.status != 'APPROVED':
             return {'success': False,
@@ -813,15 +849,31 @@ class WhatsAppTemplate(models.Model):
         if not recipient:
             return {'success': False, 'error': "Missing recipient number."}
 
+        template_payload = {
+            'name': self.name,
+            'language': {'code': self.language},
+        }
+        named_params = self._extract_named_params()
+        if named_params:
+            variables = variables or {}
+            template_payload['components'] = [{
+                'type': 'body',
+                'parameters': [
+                    {
+                        'type': 'text',
+                        'parameter_name': p,
+                        'text': str(variables.get(p) or 'there'),
+                    }
+                    for p in named_params
+                ],
+            }]
+
         payload = {
             'messaging_product': 'whatsapp',
             'recipient_type': 'individual',
             'to': recipient,
             'type': 'template',
-            'template': {
-                'name': self.name,
-                'language': {'code': self.language},
-            },
+            'template': template_payload,
         }
         url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
         headers = {

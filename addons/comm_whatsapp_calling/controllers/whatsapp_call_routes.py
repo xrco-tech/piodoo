@@ -230,7 +230,8 @@ class WhatsappCallRoutes(http.Controller):
         "/whatsapp/call/request_permission",
         type="json", auth="user", methods=["POST"],
     )
-    def request_call_permission(self, to_number=None, account_id=None, **kwargs):
+    def request_call_permission(self, to_number=None, account_id=None,
+                                 partner_name=None, **kwargs):
         """Send the business's call-permission-request WhatsApp template
         to a recipient — offered to the agent right after a dial fails
         with Meta's "No approved call permission from the recipient"
@@ -254,7 +255,17 @@ class WhatsappCallRoutes(http.Controller):
         if not template:
             return {"success": False, "error": "template_missing"}
 
-        return template._send_simple(to_number)
+        # Best-effort: if the body has exactly one named placeholder,
+        # assume it's meant for the recipient's name. Multiple named
+        # placeholders have no reliable mapping from just a phone number
+        # and a display name, so they fall back to _send_simple's
+        # generic "there" per-parameter default instead of guessing.
+        variables = {}
+        named_params = template._extract_named_params()
+        if len(named_params) == 1 and partner_name:
+            variables[named_params[0]] = partner_name
+
+        return template._send_simple(to_number, variables=variables)
 
     @http.route(
         "/whatsapp/call/answer/<int:call_log_id>",

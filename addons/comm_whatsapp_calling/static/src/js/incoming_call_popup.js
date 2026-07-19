@@ -1383,6 +1383,7 @@ const waCallService = {
                 try {
                     const result = await callRpc("/whatsapp/call/request_permission", {
                         to_number: toNumber, account_id: accountId || null,
+                        partner_name: partnerName || null,
                     });
                     if (result?.success) {
                         notify("Call permission request sent. Ask them to accept it in WhatsApp, then try calling again.", "success");
