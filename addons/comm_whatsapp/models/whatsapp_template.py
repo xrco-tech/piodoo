@@ -735,6 +735,69 @@ class WhatsAppTemplate(models.Model):
             }
         }
 
+    def _send_simple(self, to_number):
+        """Send this template to `to_number` with no body parameters —
+        for system-triggered sends (e.g. the WhatsApp calling widget's
+        "send a call permission request" prompt) that don't go through
+        the interactive wizard. Returns {'success': True} or
+        {'success': False, 'error': <message>}."""
+        self.ensure_one()
+        if self.status != 'APPROVED':
+            return {'success': False,
+                    'error': f"Template '{self.name}' is not approved "
+                             f"(status: {self.status})."}
+
+        access_token, _biz_id, _src = self._resolve_meta_creds()
+        phone_number_id = (
+            self.account_id.phone_number_id if self.account_id
+            else self.env['ir.config_parameter'].sudo().get_param(
+                'comm_whatsapp.phone_number_id')
+        )
+        if not access_token or not phone_number_id:
+            return {'success': False,
+                    'error': "WhatsApp isn't configured (missing access "
+                             "token or phone number)."}
+
+        recipient = re.sub(r'[^0-9]', '', to_number or '')
+        if not recipient:
+            return {'success': False, 'error': "Missing recipient number."}
+
+        payload = {
+            'messaging_product': 'whatsapp',
+            'recipient_type': 'individual',
+            'to': recipient,
+            'type': 'template',
+            'template': {
+                'name': self.name,
+                'language': {'code': self.language},
+            },
+        }
+        url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        }
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=15)
+            if r.ok:
+                self.write({
+                    'usage_count': self.usage_count + 1,
+                    'last_used': fields.Datetime.now(),
+                })
+                return {'success': True}
+            try:
+                error_message = (r.json() or {}).get('error', {}).get('message', r.text)
+            except Exception:
+                error_message = r.text[:200] if r.text else f"HTTP {r.status_code}"
+            _logger.error(
+                "comm_whatsapp: template '%s' send failed (%s): %s",
+                self.name, r.status_code, error_message,
+            )
+            return {'success': False, 'error': error_message}
+        except Exception as e:
+            _logger.error("comm_whatsapp: template '%s' send error: %s", self.name, e)
+            return {'success': False, 'error': str(e)}
+
 
 class WhatsAppTemplateButton(models.Model):
     _name = 'whatsapp.template.button'

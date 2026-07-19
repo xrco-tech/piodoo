@@ -227,6 +227,36 @@ class WhatsappCallRoutes(http.Controller):
         }
 
     @http.route(
+        "/whatsapp/call/request_permission",
+        type="json", auth="user", methods=["POST"],
+    )
+    def request_call_permission(self, to_number=None, account_id=None, **kwargs):
+        """Send the business's call-permission-request WhatsApp template
+        to a recipient — offered to the agent right after a dial fails
+        with Meta's "No approved call permission from the recipient"
+        error. Looks for a whatsapp.template literally named
+        "call_permission_request" (case-insensitive) that Meta has
+        approved; {"success": False, "error": "template_missing"} when
+        none exists, so the UI can show an actionable message instead
+        of silently failing."""
+        if not to_number:
+            return {"success": False, "error": "Missing recipient number."}
+
+        Template = request.env["whatsapp.template"].sudo()
+        domain = [("name", "=ilike", "call_permission_request"),
+                  ("status", "=", "APPROVED")]
+        template = Template.browse()
+        if account_id:
+            template = Template.search(
+                domain + [("account_id", "=", int(account_id))], limit=1)
+        if not template:
+            template = Template.search(domain, limit=1)
+        if not template:
+            return {"success": False, "error": "template_missing"}
+
+        return template._send_simple(to_number)
+
+    @http.route(
         "/whatsapp/call/answer/<int:call_log_id>",
         type="json",
         auth="user",

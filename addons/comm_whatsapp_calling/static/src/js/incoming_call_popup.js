@@ -1333,6 +1333,72 @@ const waCallService = {
             if (!userInitiated) notify("Call ended.", "info");
         }
 
+        // ── Call permission request (offered after a "no permission"
+        // dial failure) ──────────────────────────────────────────────
+        async function offerCallPermissionRequest(toNumber, accountId, partnerName) {
+            const existing = document.getElementById("wa_call_permission_prompt");
+            if (existing) existing.remove();
+            const c = colors();
+            const wrap = document.createElement("div");
+            wrap.id = "wa_call_permission_prompt";
+            Object.assign(wrap.style, {
+                position: "fixed", top: "20px", right: "20px",
+                width: "280px", background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow,
+                zIndex: "10001", overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            wrap.innerHTML = `
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;">
+                        <i class="fa fa-shield me-1"></i>Call Permission Needed
+                    </div>
+                    <div style="display:flex;align-items:center;gap:2px;">
+                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
+                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
+                        </button>
+                        <button data-action="close" title="Dismiss"
+                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                    </div>
+                </div>
+                <div style="padding:16px;">
+                    <div style="font-size:13px;color:${c.text};line-height:1.4;">
+                        ${escapeHtml(partnerName || toNumber)} hasn't granted this number permission to call them on WhatsApp yet.
+                    </div>
+                    <div style="font-size:12px;color:${c.textMuted};margin-top:8px;">
+                        Send a call permission request so they can approve it, then try calling again.
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;padding:0 16px 16px;">
+                    <button data-action="dismiss" style="flex:1;background:${c.cardAlt};color:${c.text};border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Dismiss</button>
+                    <button data-action="send" style="flex:1;background:${c.accent};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Send Request</button>
+                </div>
+            `;
+            wrap.querySelector("[data-action=close]").addEventListener("click", () => wrap.remove());
+            wrap.querySelector("[data-action=dismiss]").addEventListener("click", () => wrap.remove());
+            wrap.querySelector("[data-action=send]").addEventListener("click", async () => {
+                wrap.remove();
+                notify("Sending call permission request…", "info");
+                try {
+                    const result = await callRpc("/whatsapp/call/request_permission", {
+                        to_number: toNumber, account_id: accountId || null,
+                    });
+                    if (result?.success) {
+                        notify("Call permission request sent. Ask them to accept it in WhatsApp, then try calling again.", "success");
+                    } else if (result?.error === "template_missing") {
+                        notify("Call permission not granted by user. Ensure that the call permission template is available and try again.", "danger");
+                    } else {
+                        notify("Failed to send permission request: " + (result?.error || "Unknown error"), "danger");
+                    }
+                } catch (err) {
+                    notify("Failed to send permission request: " + (err?.message || err), "danger");
+                }
+            });
+            wireThemeToggle(wrap, () => offerCallPermissionRequest(toNumber, accountId, partnerName));
+            document.body.appendChild(wrap);
+        }
+
         // ── Outbound dial ─────────────────────────────────────────────
         async function dialCall({ toNumber, accountId, partnerName, partnerId, chatbotId, chatbotName }) {
             if (!toNumber) {
@@ -1415,8 +1481,12 @@ const waCallService = {
                 // to deliver the SDP answer.
             } catch (err) {
                 warn("dial failed:", err);
-                notify("Dial failed: " + (err?.message || err), "danger");
+                const message = err?.message || String(err);
+                notify("Dial failed: " + message, "danger");
                 teardownCall(false);
+                if (/no approved call permission/i.test(message)) {
+                    offerCallPermissionRequest(toNumber, accountId, partnerName);
+                }
             }
         }
 
