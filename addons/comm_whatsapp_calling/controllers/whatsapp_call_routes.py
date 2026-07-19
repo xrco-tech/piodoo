@@ -260,10 +260,14 @@ class WhatsappCallRoutes(http.Controller):
         # placeholders have no reliable mapping from just a phone number
         # and a display name, so they fall back to _send_simple's
         # generic "there" per-parameter default instead of guessing.
+        # `_default` covers the older numbered {{1}}, {{2}}.. style the
+        # same way, since those slots have no per-placeholder name at all.
         variables = {}
         named_params = template._extract_named_params()
         if len(named_params) == 1 and partner_name:
             variables[named_params[0]] = partner_name
+        if partner_name:
+            variables['_default'] = partner_name
 
         return template._send_simple(to_number, variables=variables)
 

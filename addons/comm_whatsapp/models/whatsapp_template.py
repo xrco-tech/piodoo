@@ -823,12 +823,14 @@ class WhatsAppTemplate(models.Model):
         (e.g. the WhatsApp calling widget's "send a call permission
         request" prompt) that don't go through the interactive wizard.
 
-        `variables` is an optional {param_name: value} dict used to fill
-        named-format body placeholders (see _extract_named_params); any
-        named placeholder with no supplied value falls back to a generic
-        word rather than failing the send outright. Templates with no
-        named placeholders (the older {{1}}, {{2}}.. style, or no body
-        parameters at all) ignore `variables` and send as-is.
+        `variables` is an optional dict used to fill body placeholders:
+        for a named-format body (see _extract_named_params), keys match
+        each {{param_name}}; for the older numbered {{1}}, {{2}}.. style,
+        every slot gets `variables['_default']` instead, since there's no
+        per-placeholder name to key by. Any placeholder with no supplied
+        value falls back to a generic word rather than failing the send
+        outright. Templates with no body placeholders at all ignore
+        `variables` and send as-is.
 
         Returns {'success': True} or {'success': False, 'error': <message>}.
         """
@@ -857,9 +859,9 @@ class WhatsAppTemplate(models.Model):
             'name': self.name,
             'language': {'code': self.language},
         }
+        variables = variables or {}
         named_params = self._extract_named_params()
         if named_params:
-            variables = variables or {}
             template_payload['components'] = [{
                 'type': 'body',
                 'parameters': [
@@ -871,6 +873,22 @@ class WhatsAppTemplate(models.Model):
                     for p in named_params
                 ],
             }]
+        else:
+            # Older {{1}}, {{2}}.. numbered placeholders still need their
+            # slots filled at send time, or Meta rejects the send with a
+            # parameter-count mismatch — there's just no per-placeholder
+            # name to key variables by, so every slot gets the same
+            # caller-supplied fallback (e.g. the recipient's display name).
+            positional_count = len(re.findall(r'\{\{(\d+)\}\}', self.body or ''))
+            if positional_count:
+                fallback_value = str(variables.get('_default') or 'there')
+                template_payload['components'] = [{
+                    'type': 'body',
+                    'parameters': [
+                        {'type': 'text', 'text': fallback_value}
+                        for _ in range(positional_count)
+                    ],
+                }]
 
         payload = {
             'messaging_product': 'whatsapp',
