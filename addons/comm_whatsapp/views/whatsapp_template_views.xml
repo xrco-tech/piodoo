@@ -203,6 +203,7 @@
                                 <field name="name" placeholder="template_name_lowercase"/>
                                 <field name="language"/>
                                 <field name="category"/>
+                                <field name="is_call_permission_request"/>
                                 <field name="account_id"
                                        options="{'no_create': True, 'no_quick_create': True}"/>
                                 <field name="template_id_meta" readonly="1"/>

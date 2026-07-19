@@ -60,7 +60,20 @@ class WhatsAppTemplate(models.Model):
     # Buttons
     button_ids = fields.One2many('whatsapp.template.button', 'template_id', string='Buttons',
                                 help='Template buttons (quick reply, URL, phone number)')
-    
+
+    # Call permission request — a distinct Meta component type (not a
+    # button) that renders Meta's own native accept/decline calling UI.
+    # Mutually exclusive with button_ids: Meta rejects a template that
+    # combines call_permission_request with other interactive components.
+    is_call_permission_request = fields.Boolean(
+        string='Call Permission Request',
+        help="Adds Meta's call_permission_request component, letting the "
+             "recipient grant this business permission to call them on "
+             "WhatsApp directly from the message. Category must be "
+             "UTILITY or MARKETING, and the template cannot also have "
+             "buttons.",
+    )
+
     # Flow integration
     flow_id = fields.Many2one('whatsapp.flow', string='Flow', 
                              help='WhatsApp Flow to attach to this template (for interactive experiences)')
@@ -283,9 +296,36 @@ class WhatsAppTemplate(models.Model):
                     }
                 }
             
+            if self.is_call_permission_request:
+                if self.category not in ('UTILITY', 'MARKETING'):
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {
+                            'title': 'Error',
+                            'message': 'Call permission request templates must be '
+                                       'categorized as Utility or Marketing.',
+                            'type': 'danger',
+                            'sticky': True,
+                        }
+                    }
+                if self.button_ids:
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {
+                            'title': 'Error',
+                            'message': 'Call permission request templates cannot '
+                                       'also have buttons — Meta rejects the '
+                                       'combination. Remove the buttons first.',
+                            'type': 'danger',
+                            'sticky': True,
+                        }
+                    }
+
             # Build template components
             components = []
-            
+
             # Header component
             if self.header_type:
                 header_component = {'type': 'HEADER'}
@@ -315,9 +355,15 @@ class WhatsAppTemplate(models.Model):
                     'type': 'FOOTER',
                     'text': self.footer
                 })
-            
+
+            # Call permission request component — mutually exclusive with
+            # buttons (enforced above), so this is the only interactive
+            # component when enabled.
+            if self.is_call_permission_request:
+                components.append({'type': 'call_permission_request'})
+
             # Button components (group all buttons into one BUTTONS component)
-            if self.button_ids:
+            if self.button_ids and not self.is_call_permission_request:
                 buttons_list = []
                 for button in self.button_ids:
                     if button.button_type == 'QUICK_REPLY':
@@ -541,12 +587,15 @@ class WhatsAppTemplate(models.Model):
                     header_type = False
                     header_text = ''
                     buttons_data = []
-                    
+                    is_call_permission_request = False
+
                     for component in components:
                         if component.get('type') == 'BODY':
                             body_text = component.get('text', '')
                         elif component.get('type') == 'FOOTER':
                             footer_text = component.get('text', '')
+                        elif component.get('type') == 'call_permission_request':
+                            is_call_permission_request = True
                         elif component.get('type') == 'HEADER':
                             header_format = component.get('format')
                             if header_format == 'TEXT':
@@ -613,6 +662,7 @@ class WhatsAppTemplate(models.Model):
                             'footer': footer_text,
                             'header_type': header_type,
                             'header_text': header_text,
+                            'is_call_permission_request': is_call_permission_request,
                         })
                         template.write(vals)
                         
@@ -652,6 +702,7 @@ class WhatsAppTemplate(models.Model):
                             'footer': footer_text,
                             'header_type': header_type,
                             'header_text': header_text,
+                            'is_call_permission_request': is_call_permission_request,
                         })
                         template = self.create(vals)
                         
