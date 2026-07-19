@@ -371,7 +371,7 @@ class WhatsAppTemplate(models.Model):
             # buttons (enforced above), so this is the only interactive
             # component when enabled.
             if self.is_call_permission_request:
-                components.append({'type': 'call_permission_request'})
+                components.append({'type': 'CALL_PERMISSION_REQUEST'})
 
             # Button components (group all buttons into one BUTTONS component)
             if self.button_ids and not self.is_call_permission_request:
@@ -622,7 +622,11 @@ class WhatsAppTemplate(models.Model):
                             body_text = component.get('text', '')
                         elif component.get('type') == 'FOOTER':
                             footer_text = component.get('text', '')
-                        elif component.get('type') == 'call_permission_request':
+                        elif (component.get('type') or '').upper() == 'CALL_PERMISSION_REQUEST':
+                            # Meta echoes this back uppercase on fetch even
+                            # though it's submitted lowercase — same as
+                            # BODY/HEADER/FOOTER, just easy to miss since
+                            # this component type is much newer than those.
                             is_call_permission_request = True
                         elif component.get('type') == 'HEADER':
                             header_format = component.get('format')
