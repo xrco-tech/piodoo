@@ -214,10 +214,12 @@ class WhatsappCallRoutes(http.Controller):
         if chatbot_id and "chatbot_id" in Log._fields:
             vals["chatbot_id"] = chatbot_id
         call_log = Log.create(vals)
-        meta_call_id = call_log.action_connect(sdp_offer, to_number)
-        if not meta_call_id:
+        connect_result = call_log.action_connect(sdp_offer, to_number)
+        if not connect_result.get("success"):
             call_log.write({"call_status": "ended"})
-            return {"success": False, "error": "Meta rejected the connect."}
+            return {"success": False,
+                    "error": connect_result.get("error") or "Meta rejected the connect."}
+        meta_call_id = connect_result.get("meta_call_id")
         return {
             "success":       True,
             "call_log_id":   call_log.id,

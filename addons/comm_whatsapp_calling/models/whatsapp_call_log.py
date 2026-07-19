@@ -490,6 +490,24 @@ class WhatsappCallLog(models.Model):
             self._broadcast_call_taken("declined")
         return res
 
+    @staticmethod
+    def _parse_meta_error(response):
+        """Extract a human-readable message from a Meta Graph API error
+        response so the agent sees the real reason (e.g. "No approved
+        call permission from the recipient") instead of a generic
+        "Meta rejected the connect." — falls back to the raw body when
+        the JSON shape doesn't match what Meta normally sends."""
+        try:
+            data = response.json() or {}
+            err = data.get("error") or {}
+            return (
+                err.get("error_user_msg")
+                or err.get("message")
+                or response.text[:200]
+            )
+        except Exception:
+            return response.text[:200] if response.text else f"HTTP {response.status_code}"
+
     def action_connect(self, sdp_offer, to_number):
         """Initiate an outbound WhatsApp call. The browser has already
         created an RTCPeerConnection, captured the user's mic, and built
@@ -497,26 +515,31 @@ class WhatsappCallLog(models.Model):
         action=connect. Meta places the call to `to_number`; when the
         recipient picks up, Meta fires a webhook with the answer SDP.
 
-        Returns the Meta call_id when Meta accepted the offer, else None.
+        Returns {"success": True, "meta_call_id": ...} when Meta accepted
+        the offer, else {"success": False, "error": <reason>} — the error
+        is Meta's own message when available, so the UI can show the
+        agent why the call was actually rejected.
         """
         self.ensure_one()
         if not sdp_offer:
             _logger.warning(
                 "comm_whatsapp_calling: connect refused — missing sdp_offer"
             )
-            return None
+            return {"success": False, "error": "Missing SDP offer from the browser."}
         if not to_number:
             _logger.warning(
                 "comm_whatsapp_calling: connect refused — missing to_number"
             )
-            return None
+            return {"success": False, "error": "Missing recipient number."}
         token, phone_number_id = self._get_comm_whatsapp_config()
         if not token or not phone_number_id:
             _logger.warning(
                 "comm_whatsapp_calling: connect refused — missing "
                 "access_token or phone_number_id."
             )
-            return None
+            return {"success": False,
+                    "error": "WhatsApp calling isn't configured "
+                             "(missing access token or phone number)."}
         url = f"https://graph.facebook.com/{META_GRAPH_VERSION}/{phone_number_id}/calls"
         payload = {
             "messaging_product": "whatsapp",
@@ -549,15 +572,16 @@ class WhatsappCallLog(models.Model):
                 # response back to the browser by milliseconds) can find
                 # the log by its Meta call_id.
                 self.env.cr.commit()
-                return meta_call_id or True
+                return {"success": True, "meta_call_id": meta_call_id or True}
+            error_message = self._parse_meta_error(r)
             _logger.error(
                 "comm_whatsapp_calling: connect failed (%s): %s",
                 r.status_code, r.text[:400],
             )
-            return None
+            return {"success": False, "error": error_message}
         except Exception as e:
             _logger.error("comm_whatsapp_calling: connect error: %s", e)
-            return None
+            return {"success": False, "error": str(e)}
 
     def action_hangup(self):
         """End an already-answered call. Meta uses `terminate` for this
