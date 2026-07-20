@@ -102,3 +102,28 @@ class ContactCentreContact(models.Model):
             existing.write(vals)
         else:
             Message.create(vals)
+
+    @api.model
+    def _backfill_missed_call_mislabeling(self):
+        """One-shot correction for calls that were actually answered but
+        got permanently mislabeled "Missed call" in the Inbox.
+
+        Root cause (fixed alongside this in comm_whatsapp_calling's
+        action_hangup): hanging up an answered call unconditionally
+        overwrote call_status from "answered" to the generic "ended",
+        and is_missed treats "ended" as never-picked-up. The original
+        "answered" marker is gone by the time we get here, so duration
+        > 0 or an attached recording stand in as proof the call was
+        genuinely answered (both are impossible unless it connected).
+        """
+        CallLog = self.env["whatsapp.call.log"].sudo()
+        mislabeled = CallLog.search([
+            ("call_direction", "=", "incoming"),
+            ("call_status", "=", "ended"),
+        ])
+        truly_answered = mislabeled.filtered(lambda c: c.duration > 0 or c.recording_ids)
+        if not truly_answered:
+            return
+        truly_answered.write({"call_status": "answered"})
+        for call_log in truly_answered:
+            self._sync_whatsapp_call(call_log)

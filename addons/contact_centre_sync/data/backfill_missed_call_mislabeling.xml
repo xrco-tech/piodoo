@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- One-shot correction for calls mislabeled "Missed call" by a
+             now-fixed bug in comm_whatsapp_calling's action_hangup.
+             noupdate=1 keeps this from re-running on every future
+             upgrade; it runs once when this file is first loaded. -->
+        <function model="contact.centre.contact" name="_backfill_missed_call_mislabeling"/>
+    </data>
+</odoo>

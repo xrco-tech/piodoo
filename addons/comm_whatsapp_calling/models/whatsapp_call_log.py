@@ -671,10 +671,19 @@ class WhatsappCallLog(models.Model):
 
     def action_hangup(self):
         """End an already-answered call. Meta uses `terminate` for this
-        (not `reject`, which is only valid while ringing)."""
+        (not `reject`, which is only valid while ringing).
+
+        This is also the path used to hang up a call that was actually
+        answered (see /whatsapp/call/decline routing), so — mirroring
+        the same guard already applied on the webhook-driven path in
+        _update_call_log — don't overwrite "answered" with the generic
+        "ended". is_missed treats "ended" as never-picked-up, so
+        clobbering it here made every agent-hung-up call display as a
+        missed call regardless of how long it actually ran."""
         self.ensure_one()
         res = self._send_call_action_to_meta("terminate")
         if res:
-            self.write({"call_status": "ended"})
+            if self.call_status not in ("answered", "declined"):
+                self.write({"call_status": "ended"})
             self._broadcast_call_taken("terminated")
         return res
