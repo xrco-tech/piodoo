@@ -101,6 +101,9 @@
                                         <t t-esc="message.message_timestamp"/>
                                     </div>
                                     <div style="white-space: pre-wrap;"><t t-esc="message.body_text"/></div>
+                                    <audio t-if="message.call_recording_id" controls="controls" preload="none"
+                                           class="mt-1" style="max-width: 260px; height: 32px; display: block;"
+                                           t-att-src="'/whatsapp/call/recording/' + message.call_recording_id[0]"/>
                                     <div class="small opacity-75" t-if="message.direction === 'outbound'">
                                         <t t-esc="message.status"/>
                                     </div>

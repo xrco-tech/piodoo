@@ -129,7 +129,8 @@ export class ContactCentreInbox extends Component {
             this.state.messages = await this.orm.searchRead(
                 "contact.centre.message",
                 [["contact_id", "=", contactId]],
-                ["channel", "direction", "body_text", "status", "message_timestamp", "message_type"],
+                ["channel", "direction", "body_text", "status", "message_timestamp", "message_type",
+                 "call_recording_id"],
                 { order: "message_timestamp asc", limit: 200 }
             );
             const lastSendable = [...this.state.messages].reverse().find(
