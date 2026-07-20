@@ -28,7 +28,10 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
         if self.env.context.get('default_template_id'):
             template = self.env['whatsapp.template'].browse(self.env.context['default_template_id'])
             res['template_id'] = template.id
-            res['phone_number_id'] = self.env['ir.config_parameter'].sudo().get_param('comm_whatsapp.phone_number_id')
+            res['phone_number_id'] = (
+                template.account_id.phone_number_id if template.account_id
+                else self.env['ir.config_parameter'].sudo().get_param('comm_whatsapp.phone_number_id')
+            )
             
             # Create parameter records for placeholders
             import re
@@ -78,11 +81,11 @@ class WhatsAppTemplateSendWizard(models.TransientModel):
             }
         
         try:
-            # Get access token
-            IrConfigParameter = self.env['ir.config_parameter'].sudo()
-            access_token = IrConfigParameter.get_param('comm_whatsapp.access_token') or \
-                          IrConfigParameter.get_param('comm_whatsapp.long_lived_token')
-            
+            # Get access token — prefer the template's own WABA account
+            # over the legacy system parameters, which go stale and were
+            # the cause of repeated "Authentication Error" sends.
+            access_token, _biz_id, _src = self.template_id._resolve_meta_creds()
+
             if not access_token:
                 return {
                     'type': 'ir.actions.client',
