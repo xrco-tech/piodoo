@@ -332,6 +332,7 @@ const waCallService = {
                 call.mediaRecorder = recorder;
                 call.recordedChunks = chunks;
                 call.recording = true;
+                call.recordingStartedAt = Date.now();
                 notify("Recording this call.", "info");
                 return true;
             } catch (err) {
@@ -346,6 +347,7 @@ const waCallService = {
             const recorder = call.mediaRecorder;
             const chunks = call.recordedChunks || [];
             const audioCtx = call.audioContext;
+            const startedAt = call.recordingStartedAt;
             call.mediaRecorder = null;
             call.recording = false;
 
@@ -356,9 +358,11 @@ const waCallService = {
             try { audioCtx && audioCtx.close(); } catch (e) {}
 
             if (!chunks.length || !call.id) return;
+            const durationSeconds = startedAt ? Math.round((Date.now() - startedAt) / 1000) : 0;
             const blob = new Blob(chunks, { type: "audio/webm" });
             const form = new FormData();
             form.append("recording", blob, "call_recording.webm");
+            form.append("duration", String(durationSeconds));
             try {
                 await fetch(`/whatsapp/call/upload_recording/${call.id}`, {
                     method: "POST", credentials: "same-origin", body: form,
@@ -1336,6 +1340,7 @@ const waCallService = {
                 partnerId: payload.partner_id || null,
                 startTime: null, muted: false,
                 recording: false, mediaRecorder: null, recordedChunks: [], audioContext: null,
+                recordingStartedAt: null,
             };
             activeCall = call;
 
@@ -1525,6 +1530,7 @@ const waCallService = {
                 chatbotName: chatbotName || "",
                 startTime: null, muted: false,
                 recording: false, mediaRecorder: null, recordedChunks: [], audioContext: null,
+                recordingStartedAt: null,
             };
             activeCall = call;
 

@@ -17,6 +17,9 @@ class ContactCentreMessage(models.Model):
     call_recording_id = fields.Many2one(
         "ir.attachment", compute="_compute_call_recording_id", store=False,
     )
+    call_recording_duration = fields.Char(
+        related="call_recording_id.recording_duration_display", string="Recording Length",
+    )
 
     @api.depends("whatsapp_call_log_id.recording_ids")
     def _compute_call_recording_id(self):

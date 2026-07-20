@@ -101,9 +101,14 @@
                                         <t t-esc="message.message_timestamp"/>
                                     </div>
                                     <div style="white-space: pre-wrap;"><t t-esc="message.body_text"/></div>
-                                    <audio t-if="message.call_recording_id" controls="controls" preload="none"
-                                           class="mt-1" style="max-width: 260px; height: 32px; display: block;"
-                                           t-att-src="'/whatsapp/call/recording/' + message.call_recording_id[0]"/>
+                                    <div t-if="message.call_recording_id" class="mt-1 d-flex align-items-center">
+                                        <audio controls="controls" preload="none"
+                                               style="max-width: 260px; height: 32px; display: block;"
+                                               t-att-src="'/whatsapp/call/recording/' + message.call_recording_id[0]"/>
+                                        <span t-if="message.call_recording_duration" class="small opacity-75 ms-1">
+                                            <t t-esc="message.call_recording_duration"/>
+                                        </span>
+                                    </div>
                                     <div class="small opacity-75" t-if="message.direction === 'outbound'">
                                         <t t-esc="message.status"/>
                                     </div>

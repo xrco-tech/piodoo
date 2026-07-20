@@ -295,6 +295,15 @@ class WhatsappCallRoutes(http.Controller):
         if not data:
             return request.make_json_response({"success": False, "error": "Empty recording"}, status=400)
 
+        # The browser is the only party that knows how long the
+        # MediaRecorder session actually ran — sent alongside the file
+        # as a plain form field.
+        duration_raw = request.httprequest.form.get("duration")
+        try:
+            duration_seconds = max(0, int(float(duration_raw))) if duration_raw else 0
+        except (TypeError, ValueError):
+            duration_seconds = 0
+
         attachment = request.env["ir.attachment"].sudo().create({
             "name": f"call_recording_{call_log.call_id or call_log.id}.webm",
             "res_model": "whatsapp.call.log",
@@ -303,6 +312,7 @@ class WhatsappCallRoutes(http.Controller):
             "type": "binary",
             "datas": base64.b64encode(data),
             "mimetype": audio_file.mimetype or "audio/webm",
+            "recording_duration": duration_seconds,
         })
         _logger.info(
             "comm_whatsapp_calling: stored recording (%d bytes) for call %s as attachment %s",

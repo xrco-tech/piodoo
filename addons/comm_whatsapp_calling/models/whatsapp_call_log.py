@@ -93,10 +93,14 @@ class WhatsappCallLog(models.Model):
                     f'<a href="{src}?download=1" style="margin-left:10px;">Download</a>'
                     if can_download else ""
                 )
+                duration_label = (
+                    f'<span style="margin-left:10px;color:#6b7280;">{att.recording_duration_display}</span>'
+                    if att.recording_duration_display else ""
+                )
                 parts.append(
                     f'<div style="margin-bottom:10px;display:flex;align-items:center;">'
                     f'<audio controls preload="none" src="{src}" style="max-width:420px;"></audio>'
-                    f"{download_link}</div>"
+                    f"{duration_label}{download_link}</div>"
                 )
             rec.recording_player_html = Markup("".join(parts))
 
