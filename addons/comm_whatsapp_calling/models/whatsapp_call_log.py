@@ -4,7 +4,9 @@ import json
 import logging
 import time
 import requests
-from odoo import api, fields, models
+from markupsafe import Markup
+from odoo import _, api, fields, models
+from odoo.exceptions import AccessError
 
 _logger = logging.getLogger(__name__)
 
@@ -61,11 +63,52 @@ class WhatsappCallLog(models.Model):
     has_recording = fields.Boolean(
         string="Recorded", compute="_compute_has_recording", store=False,
     )
+    # Rendered instead of exposing recording_ids directly on the form —
+    # a plain many2many_binary widget would give every reader its own
+    # generic download/delete controls, defeating the whole point of
+    # gating those two actions to Call Recording Managers. This plays
+    # inline for anyone who can read the call (via the streaming route
+    # below) and only includes a Download link for managers.
+    recording_player_html = fields.Html(
+        string="Recording", compute="_compute_recording_player_html", sanitize=False,
+    )
 
     @api.depends("recording_ids")
     def _compute_has_recording(self):
         for rec in self:
             rec.has_recording = bool(rec.recording_ids)
+
+    @api.depends("recording_ids")
+    def _compute_recording_player_html(self):
+        can_download = self.env.user.has_group(
+            "comm_whatsapp_calling.group_whatsapp_call_recording_manager")
+        for rec in self:
+            if not rec.recording_ids:
+                rec.recording_player_html = False
+                continue
+            parts = []
+            for att in rec.recording_ids:
+                src = f"/whatsapp/call/recording/{att.id}"
+                download_link = (
+                    f'<a href="{src}?download=1" style="margin-left:10px;">Download</a>'
+                    if can_download else ""
+                )
+                parts.append(
+                    f'<div style="margin-bottom:10px;display:flex;align-items:center;">'
+                    f'<audio controls preload="none" src="{src}" style="max-width:420px;"></audio>'
+                    f"{download_link}</div>"
+                )
+            rec.recording_player_html = Markup("".join(parts))
+
+    def action_delete_recordings(self):
+        """Explicit, checked delete — the button is also hidden from
+        non-managers via the view's groups= attribute, but this method
+        is the actual enforcement point regardless of how it's called."""
+        if not self.env.user.has_group(
+                "comm_whatsapp_calling.group_whatsapp_call_recording_manager"):
+            raise AccessError(_("Only a Call Recording Manager can delete call recordings."))
+        for rec in self:
+            rec.recording_ids.sudo().unlink()
 
     @api.model
     def _cron_purge_old_recordings(self, retention_days=90):

@@ -176,8 +176,11 @@
                         <notebook>
                             <page string="Recording" name="recording"
                                   invisible="not has_recording">
-                                <field name="recording_ids" nolabel="1"
-                                       widget="many2many_binary"/>
+                                <field name="recording_player_html" widget="html" nolabel="1"/>
+                                <button name="action_delete_recordings" type="object"
+                                        string="Delete Recording" class="btn-danger" icon="fa-trash"
+                                        confirm="Permanently delete this call's recording(s)?"
+                                        groups="comm_whatsapp_calling.group_whatsapp_call_recording_manager"/>
                             </page>
                             <page string="SDP (debug)" name="sdp"
                                   invisible="not sdp_offer and not sdp_answer">

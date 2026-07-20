@@ -1001,7 +1001,10 @@ const waCallService = {
                 rowsEl.querySelectorAll("[data-play]").forEach((btn) => {
                     btn.addEventListener("click", (ev) => {
                         ev.stopPropagation();
-                        window.open(`/web/content/${btn.dataset.play}`, "_blank");
+                        // Dedicated streaming route, not /web/content — plays
+                        // inline for anyone who can read the call; download
+                        // stays gated to Call Recording Managers server-side.
+                        window.open(`/whatsapp/call/recording/${btn.dataset.play}`, "_blank");
                     });
                 });
             }

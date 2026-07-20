@@ -311,6 +311,47 @@ class WhatsappCallRoutes(http.Controller):
         return request.make_json_response({"success": True, "attachment_id": attachment.id})
 
     @http.route(
+        "/whatsapp/call/recording/<int:attachment_id>",
+        type="http", auth="user", methods=["GET"],
+    )
+    def stream_recording(self, attachment_id, download=None, **kwargs):
+        """Serve a call recording for inline playback (the default —
+        anyone who can read the underlying call log may listen) or as a
+        forced download (?download=1 — Call Recording Managers only).
+        This is a dedicated route rather than Odoo's generic /web/content
+        specifically so download can be gated independently of read."""
+        attachment = request.env["ir.attachment"].sudo().browse(attachment_id)
+        if (not attachment.exists()
+                or attachment.res_model != "whatsapp.call.log"
+                or attachment.res_field != "recording_ids"):
+            return request.not_found()
+
+        # search() (not sudo) so this genuinely reflects what the
+        # requesting user can see, not just that the id is valid.
+        visible = request.env["whatsapp.call.log"].search(
+            [("id", "=", attachment.res_id)], limit=1)
+        if not visible:
+            return request.not_found()
+
+        want_download = bool(download)
+        if want_download and not request.env.user.has_group(
+                "comm_whatsapp_calling.group_whatsapp_call_recording_manager"):
+            return request.make_json_response(
+                {"error": "Downloading recordings requires Call Recording Manager rights."},
+                status=403,
+            )
+
+        data = base64.b64decode(attachment.datas or b"")
+        disposition = "attachment" if want_download else "inline"
+        headers = [
+            ("Content-Type", attachment.mimetype or "audio/webm"),
+            ("Content-Length", str(len(data))),
+            ("Content-Disposition", f'{disposition}; filename="{attachment.name}"'),
+            ("Cache-Control", "private, max-age=0"),
+        ]
+        return request.make_response(data, headers=headers)
+
+    @http.route(
         "/whatsapp/call/answer/<int:call_log_id>",
         type="json",
         auth="user",

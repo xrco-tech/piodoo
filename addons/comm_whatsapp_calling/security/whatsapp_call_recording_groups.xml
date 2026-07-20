@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Everyone with call-log read access (base.group_user, see
+             ir.model.access.csv) can already listen to a recording —
+             this group only gates the two elevated actions: forcing a
+             download, and deleting a recording. Deliberately separate
+             from base.group_system so this right can be handed out
+             without full Settings/Administrator access. -->
+        <record id="group_whatsapp_call_recording_manager" model="res.groups">
+            <field name="name">Call Recording Manager</field>
+            <field name="category_id" ref="base.module_category_tools"/>
+            <field name="comment">Can download and delete WhatsApp call recordings. Everyone else can only play them back in Odoo.</field>
+        </record>
+    </data>
+</odoo>
