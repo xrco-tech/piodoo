@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import base64
 import logging
 from odoo import fields, http
 from odoo.http import request
@@ -270,6 +271,44 @@ class WhatsappCallRoutes(http.Controller):
             variables['_default'] = partner_name
 
         return template._send_simple(to_number, variables=variables)
+
+    @http.route(
+        "/whatsapp/call/upload_recording/<int:call_log_id>",
+        type="http", auth="user", methods=["POST"], csrf=False,
+    )
+    def upload_recording(self, call_log_id, **kwargs):
+        """Store a browser-recorded call as an attachment on its call
+        log. WhatsApp calls are end-to-end encrypted between the browser
+        and Meta, so there's no server-side recording to fetch — the
+        browser mixes and records both audio tracks itself (see
+        incoming_call_popup.js) and posts the result here as multipart
+        form data under the "recording" field."""
+        call_log = request.env["whatsapp.call.log"].sudo().browse(call_log_id)
+        if not call_log.exists():
+            return request.make_json_response({"success": False, "error": "Call not found"}, status=404)
+
+        audio_file = request.httprequest.files.get("recording")
+        if not audio_file:
+            return request.make_json_response({"success": False, "error": "Missing recording file"}, status=400)
+
+        data = audio_file.read()
+        if not data:
+            return request.make_json_response({"success": False, "error": "Empty recording"}, status=400)
+
+        attachment = request.env["ir.attachment"].sudo().create({
+            "name": f"call_recording_{call_log.call_id or call_log.id}.webm",
+            "res_model": "whatsapp.call.log",
+            "res_id": call_log.id,
+            "res_field": "recording_ids",
+            "type": "binary",
+            "datas": base64.b64encode(data),
+            "mimetype": audio_file.mimetype or "audio/webm",
+        })
+        _logger.info(
+            "comm_whatsapp_calling: stored recording (%d bytes) for call %s as attachment %s",
+            len(data), call_log_id, attachment.id,
+        )
+        return request.make_json_response({"success": True, "attachment_id": attachment.id})
 
     @http.route(
         "/whatsapp/call/answer/<int:call_log_id>",

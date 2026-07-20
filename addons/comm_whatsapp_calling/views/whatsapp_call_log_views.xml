@@ -76,6 +76,7 @@
                            decoration-danger="call_status == 'failed'"/>
                     <field name="duration_display" string="Duration"/>
                     <field name="is_missed" invisible="1"/>
+                    <field name="has_recording" string="Recorded"/>
                     <field name="day_bucket" optional="hide"/>
                     <button name="action_return_call" type="object"
                             icon="fa-phone" title="Call back"
@@ -169,9 +170,15 @@
                                 <field name="duration_display" string="Duration"/>
                                 <field name="is_missed" readonly="1"/>
                                 <field name="meta_phone_number_id" optional="hide"/>
+                                <field name="has_recording" invisible="1"/>
                             </group>
                         </group>
                         <notebook>
+                            <page string="Recording" name="recording"
+                                  invisible="not has_recording">
+                                <field name="recording_ids" nolabel="1"
+                                       widget="many2many_binary"/>
+                            </page>
                             <page string="SDP (debug)" name="sdp"
                                   invisible="not sdp_offer and not sdp_answer">
                                 <field name="sdp_offer" nolabel="1" readonly="1"

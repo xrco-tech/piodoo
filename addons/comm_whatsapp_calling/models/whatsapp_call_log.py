@@ -43,6 +43,49 @@ class WhatsappCallLog(models.Model):
     end_timestamp = fields.Datetime("End Time", readonly=True)
     duration = fields.Integer("Duration (seconds)", readonly=True)
 
+    # ── Recording ─────────────────────────────────────────────────────
+    # WhatsApp calls are end-to-end encrypted between the browser and
+    # Meta, so there's nothing server-side to record — the browser
+    # itself mixes and records both audio tracks, then uploads the
+    # result here as a plain attachment (see the /whatsapp/call/
+    # upload_recording route and static/src/js/incoming_call_popup.js).
+    # res_field distinguishes these from any other future attachment
+    # type on this model so the purge cron only ever touches recordings.
+    recording_ids = fields.One2many(
+        "ir.attachment", "res_id", string="Recordings",
+        domain=lambda self: [
+            ("res_model", "=", "whatsapp.call.log"),
+            ("res_field", "=", "recording_ids"),
+        ],
+    )
+    has_recording = fields.Boolean(
+        string="Recorded", compute="_compute_has_recording", store=False,
+    )
+
+    @api.depends("recording_ids")
+    def _compute_has_recording(self):
+        for rec in self:
+            rec.has_recording = bool(rec.recording_ids)
+
+    @api.model
+    def _cron_purge_old_recordings(self, retention_days=90):
+        """Delete recording attachments older than `retention_days` —
+        opt-in per-call recording, kept only for a bounded window so
+        storage doesn't grow unbounded."""
+        from datetime import timedelta
+        cutoff = fields.Datetime.now() - timedelta(days=retention_days)
+        stale = self.env["ir.attachment"].sudo().search([
+            ("res_model", "=", "whatsapp.call.log"),
+            ("res_field", "=", "recording_ids"),
+            ("create_date", "<", cutoff),
+        ])
+        if stale:
+            _logger.info(
+                "comm_whatsapp_calling: purging %d call recording(s) older than %d days",
+                len(stale), retention_days,
+            )
+            stale.unlink()
+
     # ── Display / reporting helpers ─────────────────────────────────
     # Human-readable "1m 34s" / "45s" for the list view. Char so we
     # don't lose the formatting to i18n.

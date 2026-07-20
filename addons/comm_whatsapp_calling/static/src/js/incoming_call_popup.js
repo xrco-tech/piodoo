@@ -305,12 +305,87 @@ const waCallService = {
             activeCall.localStream.getAudioTracks().forEach((t) => { t.enabled = !activeCall.muted; });
         }
 
+        // ── Recording (client-side — WhatsApp calls are end-to-end
+        // encrypted between the browser and Meta, so there's nothing
+        // server-side to record; the browser mixes both live audio
+        // tracks itself and uploads the result once the call ends). ──
+        function startRecording(call) {
+            if (!call || !call.localStream || !call.remoteStream) {
+                notify("Recording needs both sides of the call connected first.", "warning");
+                return false;
+            }
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const audioCtx = new AudioCtx();
+                const dest = audioCtx.createMediaStreamDestination();
+                audioCtx.createMediaStreamSource(call.localStream).connect(dest);
+                audioCtx.createMediaStreamSource(call.remoteStream).connect(dest);
+
+                const chunks = [];
+                const recorder = new MediaRecorder(dest.stream);
+                recorder.ondataavailable = (ev) => {
+                    if (ev.data && ev.data.size) chunks.push(ev.data);
+                };
+                recorder.start();
+
+                call.audioContext = audioCtx;
+                call.mediaRecorder = recorder;
+                call.recordedChunks = chunks;
+                call.recording = true;
+                notify("Recording this call.", "info");
+                return true;
+            } catch (err) {
+                warn("startRecording failed:", err);
+                notify("Could not start recording: " + (err?.message || err), "danger");
+                return false;
+            }
+        }
+
+        async function stopRecordingAndUpload(call) {
+            if (!call || !call.mediaRecorder) return;
+            const recorder = call.mediaRecorder;
+            const chunks = call.recordedChunks || [];
+            const audioCtx = call.audioContext;
+            call.mediaRecorder = null;
+            call.recording = false;
+
+            await new Promise((resolve) => {
+                recorder.addEventListener("stop", resolve, { once: true });
+                try { recorder.stop(); } catch (e) { resolve(); }
+            });
+            try { audioCtx && audioCtx.close(); } catch (e) {}
+
+            if (!chunks.length || !call.id) return;
+            const blob = new Blob(chunks, { type: "audio/webm" });
+            const form = new FormData();
+            form.append("recording", blob, "call_recording.webm");
+            try {
+                await fetch(`/whatsapp/call/upload_recording/${call.id}`, {
+                    method: "POST", credentials: "same-origin", body: form,
+                });
+                log("recording uploaded for call", call.id);
+            } catch (err) {
+                warn("recording upload failed:", err);
+                notify("Could not save the recording.", "warning");
+            }
+        }
+
+        async function toggleRecording() {
+            if (!activeCall) return;
+            if (activeCall.recording) {
+                await stopRecordingAndUpload(activeCall);
+            } else {
+                startRecording(activeCall);
+            }
+        }
+
         function showHud(payload) {
             const existing = document.getElementById(HUD_ID);
             if (existing) existing.remove();
             const c = colors();
             const connected = !!(activeCall && activeCall.startTime);
             const muted = !!(activeCall && activeCall.muted);
+            const recording = !!(activeCall && activeCall.recording);
             const hud = document.createElement("div");
             hud.id = HUD_ID;
             Object.assign(hud.style, {
@@ -352,6 +427,8 @@ const waCallService = {
                         ${iconBtn("transfer", "fa-random", "Transfer to team")}
                         ${iconBtn("mute", muted ? "fa-microphone-slash" : "fa-microphone", muted ? "Unmute" : "Mute",
                                   muted ? `background:${c.danger};color:#fff;` : "")}
+                        ${connected ? iconBtn("record", "fa-circle", recording ? "Stop recording" : "Record this call",
+                                  recording ? `background:${c.danger};color:#fff;` : "") : ""}
                     </div>
                 </div>
                 <div style="display:flex;justify-content:center;padding:16px;">
@@ -378,6 +455,10 @@ const waCallService = {
             const muteBtn = hud.querySelector("[data-action=mute]");
             if (muteBtn) {
                 muteBtn.addEventListener("click", () => { toggleMute(); showHud(payload); });
+            }
+            const recordBtn = hud.querySelector("[data-action=record]");
+            if (recordBtn) {
+                recordBtn.addEventListener("click", async () => { await toggleRecording(); showHud(payload); });
             }
             wireThemeToggle(hud, () => showHud(payload));
             document.body.appendChild(hud);
@@ -811,7 +892,8 @@ const waCallService = {
             return orm.searchRead(
                 "whatsapp.call.log", domain,
                 ["call_direction", "call_status", "call_timestamp", "duration_display",
-                 "is_missed", "from_number", "to_number", "partner_id", "contact_display"],
+                 "is_missed", "from_number", "to_number", "partner_id", "contact_display",
+                 "has_recording", "recording_ids"],
                 { limit: 50, order: "call_timestamp desc" },
             );
         }
@@ -830,9 +912,10 @@ const waCallService = {
                     || (l.call_direction === "incoming" ? l.from_number : l.to_number)
                     || "Unknown";
                 const when = l.call_timestamp ? String(l.call_timestamp).slice(0, 16) : "";
-                return `<button data-row="${i}"
+                const recordingId = l.has_recording && l.recording_ids && l.recording_ids[0];
+                return `<div data-row="${i}"
                          style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-                                padding:10px 16px;background:transparent;border:none;
+                                padding:10px 16px;background:transparent;
                                 border-top:1px solid ${c.border};color:${c.text};cursor:pointer;">
                     <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
                         <i class="fa ${dirIcon}" style="font-size:12px;color:${dirColor};"></i>
@@ -842,7 +925,11 @@ const waCallService = {
                         <div style="font-size:11px;color:${dirColor};">${label} · ${escapeHtml(when)}</div>
                     </span>
                     <span style="font-size:11px;color:${c.textMuted};flex:none;">${escapeHtml(l.duration_display || "")}</span>
-                </button>`;
+                    ${recordingId ? `<button data-play="${recordingId}" title="Play recording"
+                            style="background:none;border:none;color:${c.accent};font-size:14px;cursor:pointer;padding:2px 4px;flex:none;">
+                            <i class="fa fa-headphones"></i>
+                        </button>` : ""}
+                </div>`;
             }).join("");
         }
 
@@ -904,11 +991,17 @@ const waCallService = {
                 if (!document.body.contains(modal)) return; // closed while awaiting
                 currentLogs = logs;
                 rowsEl.innerHTML = callHistoryRowsHtml(c, logs, term ? "No matching calls." : "No call history yet.");
-                rowsEl.querySelectorAll("[data-row]").forEach((btn) => {
-                    btn.addEventListener("click", async () => {
-                        const log = currentLogs[+btn.dataset.row];
+                rowsEl.querySelectorAll("[data-row]").forEach((row) => {
+                    row.addEventListener("click", async () => {
+                        const log = currentLogs[+row.dataset.row];
                         modal.remove();
                         if (log) await callFromLog(log);
+                    });
+                });
+                rowsEl.querySelectorAll("[data-play]").forEach((btn) => {
+                    btn.addEventListener("click", (ev) => {
+                        ev.stopPropagation();
+                        window.open(`/web/content/${btn.dataset.play}`, "_blank");
                     });
                 });
             }
@@ -1239,6 +1332,7 @@ const waCallService = {
                 fromNumber: payload.from_number,
                 partnerId: payload.partner_id || null,
                 startTime: null, muted: false,
+                recording: false, mediaRecorder: null, recordedChunks: [], audioContext: null,
             };
             activeCall = call;
 
@@ -1309,6 +1403,12 @@ const waCallService = {
 
         function teardownCall(userInitiated) {
             if (!activeCall) return;
+            if (activeCall.recording) {
+                // Fire-and-forget: don't block teardown on the upload,
+                // and the call object is captured by reference so this
+                // still has its streams even after activeCall is nulled.
+                stopRecordingAndUpload(activeCall);
+            }
             try { activeCall.pc?.close(); } catch (e) {}
             try {
                 activeCall.localStream?.getTracks().forEach((t) => t.stop());
@@ -1421,6 +1521,7 @@ const waCallService = {
                 chatbotId: chatbotId || null,
                 chatbotName: chatbotName || "",
                 startTime: null, muted: false,
+                recording: false, mediaRecorder: null, recordedChunks: [], audioContext: null,
             };
             activeCall = call;
 
