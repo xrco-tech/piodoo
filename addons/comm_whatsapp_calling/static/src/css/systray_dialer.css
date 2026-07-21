@@ -3,8 +3,18 @@
     position: relative; margin-right: 4px;
 }
 .o_wa_dialer_btn {
-    background: transparent; border: none; color: #fff;
+    background: transparent; border: none; color: #25D366;
     font-size: 15px; padding: 6px 10px; cursor: pointer;
     border-radius: 6px;
 }
-.o_wa_dialer_btn:hover { background: rgba(255,255,255,0.12); }
+.o_wa_dialer_btn:hover { background: rgba(37,211,102,0.15); }
+/*
+ * !important because the navbar's glass theme tints every .fa icon
+ * uniformly (see systray_presence.css for the same issue) — a plain
+ * color rule loses to that; a more specific selector + !important
+ * of our own wins it back.
+ */
+.o_wa_dialer_btn,
+.o_wa_dialer_btn .fa {
+    color: #25D366 !important;
+}
