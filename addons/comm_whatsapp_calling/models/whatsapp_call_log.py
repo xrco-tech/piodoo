@@ -271,14 +271,15 @@ class WhatsappCallLog(models.Model):
         (the outer `entry`, which has no `metadata` key, instead of
         `value`) — meta_phone_number_id was always empty for them.
         _compute_account_id is a stored field, so existing rows won't
-        pick up the code fix (nor its to_number fallback) on their own;
-        touching to_number re-triggers it for anything still blank."""
+        pick up the code fix (nor its to_number fallback) on their own —
+        call the compute directly rather than rewriting to_number to its
+        own value, which the ORM treats as a no-op and never dispatches
+        to dependents."""
         rows = self.sudo().search([
             ("call_direction", "=", "incoming"),
             ("account_id", "=", False),
         ])
-        for r in rows:
-            r.to_number = r.to_number
+        rows._compute_account_id()
 
     def action_return_call(self):
         """Fire an outbound call to whichever party isn't us — for a
