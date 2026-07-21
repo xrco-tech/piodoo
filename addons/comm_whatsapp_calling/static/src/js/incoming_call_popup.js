@@ -239,6 +239,30 @@ const waCallService = {
             }
         }
 
+        // Closes `el` on a click anywhere outside it, mirroring how
+        // Discuss's own pickers/dropdowns behave. Only wired onto plain
+        // "menu" widgets with no destructive dismiss consequence — the
+        // incoming-call popup and active-call HUD are deliberately left
+        // out (dismissing them would strand a still-ringing/still-live
+        // call with no UI to act on it), and so is the voice-script
+        // panel (its own close button ends the call outright, so an
+        // accidental outside click must never reach that same path).
+        function wireOutsideClickClose(el) {
+            const handler = (ev) => {
+                if (!document.body.contains(el)) {
+                    document.removeEventListener("pointerdown", handler, true);
+                    return;
+                }
+                if (el.contains(ev.target)) return;
+                document.removeEventListener("pointerdown", handler, true);
+                el.remove();
+            };
+            // Deferred so the click that opened this widget (already
+            // dispatched by the time this runs) isn't also the one that
+            // immediately closes it.
+            setTimeout(() => document.addEventListener("pointerdown", handler, true), 0);
+        }
+
         function notify(message, type) {
             try {
                 notification.add(message, { type: type || "info" });
@@ -707,6 +731,7 @@ const waCallService = {
             });
             wireThemeToggle(wrap, () => showTransferRequestPopup(payload));
             document.body.appendChild(wrap);
+            wireOutsideClickClose(wrap);
 
             // If the transfer request stales (someone else accepted the
             // source call ended, etc.), auto-remove after 60s.
@@ -809,6 +834,7 @@ const waCallService = {
                 });
             });
             document.body.appendChild(modal);
+            wireOutsideClickClose(modal);
         }
 
         // ── Voice script picker (start or switch mid-call) ──────────
@@ -883,6 +909,7 @@ const waCallService = {
                 });
             });
             document.body.appendChild(modal);
+            wireOutsideClickClose(modal);
         }
 
         async function openScriptPicker() {
@@ -999,6 +1026,7 @@ const waCallService = {
                 });
             });
             document.body.appendChild(modal);
+            wireOutsideClickClose(modal);
         }
 
         // ── Phone-number lookups (dial pad "Add to campaign" / "History") ──
@@ -1135,6 +1163,7 @@ const waCallService = {
             wireCloseOrBack(modal, onBack);
             wireThemeToggle(modal, () => showCallHistory(onBack));
             document.body.appendChild(modal);
+            wireOutsideClickClose(modal);
 
             const rowsEl = modal.querySelector("[data-role=rows]");
             const searchInput = modal.querySelector("[data-role=search]");
@@ -1218,6 +1247,7 @@ const waCallService = {
             wireCloseOrBack(modal, onBack);
             wireThemeToggle(modal, () => showContactsPicker(onBack));
             document.body.appendChild(modal);
+            wireOutsideClickClose(modal);
 
             const rowsEl = modal.querySelector("[data-role=rows]");
             const searchInput = modal.querySelector("[data-role=search]");
@@ -1664,6 +1694,7 @@ const waCallService = {
             });
             wireThemeToggle(wrap, () => offerCallPermissionRequest(toNumber, accountId, partnerName));
             document.body.appendChild(wrap);
+            wireOutsideClickClose(wrap);
         }
 
         // ── Outbound dial ─────────────────────────────────────────────
@@ -1963,6 +1994,7 @@ const waCallService = {
             });
             wireThemeToggle(wrap, () => openDialPad());
             document.body.appendChild(wrap);
+            wireOutsideClickClose(wrap);
             numberInput.focus();
         }
 
