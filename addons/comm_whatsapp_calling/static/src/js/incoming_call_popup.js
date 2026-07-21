@@ -201,7 +201,116 @@ const waCallService = {
             }
         }
 
+        // ── Ringing (audio + tab-title flash + desktop notification) ──
+        // So the agent notices an incoming call even from a different
+        // browser tab or a different window entirely, not just when
+        // this Odoo tab happens to already be focused.
+        let ringAudioCtx = null;
+        let ringIntervalId = null;
+        let titleFlashIntervalId = null;
+        let originalTitle = null;
+        let ringNotification = null;
+
+        function playRingTone() {
+            try {
+                if (!ringAudioCtx) return;
+                const now = ringAudioCtx.currentTime;
+                // Two-burst "brring" pattern, roughly like a classic phone ring.
+                [0, 0.35].forEach((offset) => {
+                    const osc = ringAudioCtx.createOscillator();
+                    const gain = ringAudioCtx.createGain();
+                    osc.type = "sine";
+                    osc.frequency.value = 950;
+                    gain.gain.setValueAtTime(0, now + offset);
+                    gain.gain.linearRampToValueAtTime(0.25, now + offset + 0.02);
+                    gain.gain.linearRampToValueAtTime(0, now + offset + 0.3);
+                    osc.connect(gain);
+                    gain.connect(ringAudioCtx.destination);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + 0.32);
+                });
+            } catch (e) {
+                warn("playRingTone failed:", e);
+            }
+        }
+
+        function startRinging(payload) {
+            try {
+                if (!ringAudioCtx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    ringAudioCtx = new AudioCtx();
+                }
+                // Background tabs can leave a freshly-created context
+                // suspended until a gesture resumes it — worth trying
+                // every time rather than assuming it's already running.
+                if (ringAudioCtx.state === "suspended") {
+                    ringAudioCtx.resume().catch(() => {});
+                }
+                if (!ringIntervalId) {
+                    playRingTone();
+                    ringIntervalId = setInterval(playRingTone, 2000);
+                }
+            } catch (e) {
+                warn("startRinging audio failed:", e);
+            }
+
+            if (!titleFlashIntervalId) {
+                originalTitle = document.title;
+                const ringTitle = `📞 ${payload?.partner_name || "Incoming call"}…`;
+                let flashOn = false;
+                titleFlashIntervalId = setInterval(() => {
+                    document.title = flashOn ? originalTitle : ringTitle;
+                    flashOn = !flashOn;
+                }, 1000);
+            }
+
+            // Desktop notification only when this tab isn't the one the
+            // agent is looking at — the on-screen popup already covers
+            // the focused-tab case.
+            if (document.hidden && typeof Notification !== "undefined") {
+                const show = () => {
+                    try {
+                        ringNotification = new Notification("Incoming WhatsApp call", {
+                            body: payload?.partner_name || payload?.from_number || "Unknown caller",
+                            tag: "wa-incoming-call",
+                        });
+                        ringNotification.onclick = () => {
+                            window.focus();
+                            if (ringNotification) ringNotification.close();
+                        };
+                    } catch (e) { /* notifications not available — ignore */ }
+                };
+                if (Notification.permission === "granted") {
+                    show();
+                } else if (Notification.permission === "default") {
+                    Notification.requestPermission().then((perm) => {
+                        if (perm === "granted") show();
+                    }).catch(() => {});
+                }
+            }
+        }
+
+        function stopRinging() {
+            if (ringIntervalId) {
+                clearInterval(ringIntervalId);
+                ringIntervalId = null;
+            }
+            if (titleFlashIntervalId) {
+                clearInterval(titleFlashIntervalId);
+                titleFlashIntervalId = null;
+                if (originalTitle !== null) {
+                    document.title = originalTitle;
+                    originalTitle = null;
+                }
+            }
+            if (ringNotification) {
+                try { ringNotification.close(); } catch (e) {}
+                ringNotification = null;
+            }
+        }
+
         function hidePopup() {
+            stopRinging();
             const el = document.getElementById(POPUP_ID);
             if (el) el.remove();
         }
@@ -281,6 +390,7 @@ const waCallService = {
             }
             wireThemeToggle(wrap, () => showPopup(payload));
             document.body.appendChild(wrap);
+            startRinging(payload);
         }
 
         function stopHudTimer() {
@@ -1838,7 +1948,7 @@ const waCallService = {
                     const el = document.getElementById(POPUP_ID);
                     if (el && +el.dataset.callLogId === payload.call_log_id) {
                         log("call taken elsewhere, hiding popup:", payload);
-                        el.remove();
+                        hidePopup();
                     }
                 }
 
