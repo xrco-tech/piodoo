@@ -193,6 +193,27 @@ const waCallService = {
             `;
         }
 
+        // Anchors every floating call widget near the systray phone icon
+        // that triggers it, instead of a fixed top-right corner far from
+        // it. These widgets live in document.body, not in the icon's own
+        // component tree, so CSS anchoring (position:absolute under the
+        // button, like the presence dropdown uses) isn't available here —
+        // this needs real viewport math. `extraRight` shifts further left
+        // (e.g. the script panel sitting beside the HUD instead of on
+        // top of it).
+        function anchorTopRight(extraRight = 0) {
+            const icon = document.querySelector(".o_wa_dialer_btn")
+                || document.querySelector(".o_wa_calls_systray");
+            if (icon) {
+                const r = icon.getBoundingClientRect();
+                return {
+                    top: Math.round(r.bottom + 8),
+                    right: Math.round(window.innerWidth - r.right) + extraRight,
+                };
+            }
+            return { top: 20, right: 20 + extraRight };
+        }
+
         function notify(message, type) {
             try {
                 notification.add(message, { type: type || "info" });
@@ -321,8 +342,9 @@ const waCallService = {
             const wrap = document.createElement("div");
             wrap.id = POPUP_ID;
             wrap.dataset.callLogId = payload.call_log_id;
+            const anchor = anchorTopRight();
             Object.assign(wrap.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "280px", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
@@ -502,8 +524,9 @@ const waCallService = {
             const recording = !!(activeCall && activeCall.recording);
             const hud = document.createElement("div");
             hud.id = HUD_ID;
+            const anchor = anchorTopRight();
             Object.assign(hud.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "280px", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
@@ -597,8 +620,9 @@ const waCallService = {
             const wrap = document.createElement("div");
             wrap.id = TRANSFER_POPUP_ID;
             wrap.dataset.sourceCallLogId = payload.source_call_log_id;
+            const anchor = anchorTopRight();
             Object.assign(wrap.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "280px", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
@@ -691,8 +715,9 @@ const waCallService = {
             const c = colors();
             const modal = document.createElement("div");
             modal.id = "wa_transfer_picker";
+            const anchor = anchorTopRight();
             Object.assign(modal.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "280px", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
@@ -787,8 +812,9 @@ const waCallService = {
             const c = colors();
             const modal = document.createElement("div");
             modal.id = "wa_script_picker";
+            const anchor = anchorTopRight();
             Object.assign(modal.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "280px", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
@@ -892,8 +918,9 @@ const waCallService = {
             const c = colors();
             const modal = document.createElement("div");
             modal.id = "wa_campaign_picker";
+            const anchor = anchorTopRight();
             Object.assign(modal.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "280px", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
@@ -1054,8 +1081,9 @@ const waCallService = {
             const c = colors();
             const modal = document.createElement("div");
             modal.id = "wa_call_history";
+            const anchor = anchorTopRight();
             Object.assign(modal.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "300px", maxHeight: "70vh", display: "flex", flexDirection: "column",
                 background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
@@ -1138,8 +1166,9 @@ const waCallService = {
             const c = colors();
             const modal = document.createElement("div");
             modal.id = "wa_contacts_picker";
+            const anchor = anchorTopRight();
             Object.assign(modal.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "300px", maxHeight: "70vh", display: "flex", flexDirection: "column",
                 background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
@@ -1303,11 +1332,12 @@ const waCallService = {
             const c = colors();
             const panel = document.createElement("div");
             panel.id = SCRIPT_PANEL_ID;
+            const anchor = anchorTopRight(300);
             Object.assign(panel.style, {
-                // Sits to the left of the HUD (280px wide + 20px gaps)
+                // Sits to the left of the HUD (280px wide + 20px gap)
                 // rather than stacked under it, so it doesn't collide with
                 // the HUD's own height changing as call state changes.
-                position: "fixed", top: "20px", right: "320px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "340px", maxHeight: "80vh", display: "flex", flexDirection: "column",
                 background: c.card, color: c.text, borderRadius: "10px",
                 boxShadow: c.shadow, zIndex: "10000", overflow: "hidden",
@@ -1559,8 +1589,9 @@ const waCallService = {
             const c = colors();
             const wrap = document.createElement("div");
             wrap.id = "wa_call_permission_prompt";
+            const anchor = anchorTopRight();
             Object.assign(wrap.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "280px", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
@@ -1806,8 +1837,9 @@ const waCallService = {
 
             const wrap = document.createElement("div");
             wrap.id = DIALPAD_ID;
+            const anchor = anchorTopRight();
             Object.assign(wrap.style, {
-                position: "fixed", top: "20px", right: "20px",
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
                 width: "280px", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
