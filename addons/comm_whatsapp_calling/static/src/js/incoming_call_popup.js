@@ -1084,7 +1084,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(modal.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "300px", maxHeight: "70vh", display: "flex", flexDirection: "column",
+                width: "280px", maxHeight: "70vh", display: "flex", flexDirection: "column",
                 background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
@@ -1169,7 +1169,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(modal.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "300px", maxHeight: "70vh", display: "flex", flexDirection: "column",
+                width: "280px", maxHeight: "70vh", display: "flex", flexDirection: "column",
                 background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
