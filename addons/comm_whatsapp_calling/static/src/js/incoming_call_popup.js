@@ -188,7 +188,7 @@ const waCallService = {
             return `
                 <div style="padding:12px 16px 4px;">
                     <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Shortcuts</div>
-                    <div style="display:flex;gap:10px;">${rows.filter(Boolean).join("")}</div>
+                    <div style="display:flex;gap:10px;justify-content:center;">${rows.filter(Boolean).join("")}</div>
                 </div>
             `;
         }
