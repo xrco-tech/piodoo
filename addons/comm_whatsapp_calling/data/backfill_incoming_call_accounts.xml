@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- One-shot backfill: incoming calls never got account_id
+             resolved because the webhook handler passed the wrong
+             object down (see _process_call_event's value_data param
+             and _compute_account_id's to_number fallback). Re-touches
+             to_number on existing blank rows so the stored compute
+             re-runs. noupdate=1 keeps this from firing again on upgrade. -->
+        <function model="whatsapp.call.log" name="_backfill_incoming_call_accounts"/>
+    </data>
+</odoo>

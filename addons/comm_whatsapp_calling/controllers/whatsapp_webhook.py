@@ -54,7 +54,7 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 value = change.get("value", {})
                 for call_data in value.get("calls", []):
                     try:
-                        self._process_call_event(call_data, entry)
+                        self._process_call_event(call_data, value)
                     except Exception as e:
                         _logger.error(
                             "comm_whatsapp_calling: process_call_event error: %s",
@@ -68,7 +68,13 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             )
         return super()._handle_webhook_event()
 
-    def _process_call_event(self, call_data, entry_data):
+    def _process_call_event(self, call_data, value_data):
+        """`value_data` is the webhook's `changes[].value` object — the
+        same level comm_whatsapp's message handler reads `metadata` and
+        `phone_number_id` from (see whatsapp_auth.py). It used to be
+        called with the outer `entry` object instead, which has no
+        `metadata` key at all, so meta_phone_number_id (and therefore
+        whatsapp.call.log.account_id) never resolved for inbound calls."""
         call_id = call_data.get("id")
         if not call_id:
             _logger.warning("comm_whatsapp_calling: call event without id: %s", call_data)
@@ -112,7 +118,7 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
         existing = CallLog.search([("call_id", "=", call_id)], limit=1)
 
         if existing:
-            metadata = entry_data.get("metadata", {}) or call_data.get("metadata", {})
+            metadata = value_data.get("metadata", {}) or call_data.get("metadata", {})
             update_vals = {}
             if metadata.get("phone_number_id") and not existing.meta_phone_number_id:
                 update_vals["meta_phone_number_id"] = str(metadata["phone_number_id"])
@@ -141,7 +147,7 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
         # Create new call log
         from_number = call_data.get("from", "")
         to_number = call_data.get("to", "")
-        metadata = entry_data.get("metadata", {}) or call_data.get("metadata", {})
+        metadata = value_data.get("metadata", {}) or call_data.get("metadata", {})
         meta_phone_number_id = metadata.get("phone_number_id")
         phone_number_id = meta_phone_number_id or to_number
         direction = "incoming" if call_data.get("direction") == "USER_INITIATED" else "outgoing"

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import time
 import requests
 from markupsafe import Markup
@@ -263,6 +264,22 @@ class WhatsappCallLog(models.Model):
         for r in rows:
             r.call_timestamp = r.create_date
 
+    @api.model
+    def _backfill_incoming_call_accounts(self):
+        """Data-load hook: incoming calls never got account_id resolved
+        because _process_call_event was passed the wrong webhook object
+        (the outer `entry`, which has no `metadata` key, instead of
+        `value`) — meta_phone_number_id was always empty for them.
+        _compute_account_id is a stored field, so existing rows won't
+        pick up the code fix (nor its to_number fallback) on their own;
+        touching to_number re-triggers it for anything still blank."""
+        rows = self.sudo().search([
+            ("call_direction", "=", "incoming"),
+            ("account_id", "=", False),
+        ])
+        for r in rows:
+            r.to_number = r.to_number
+
     def action_return_call(self):
         """Fire an outbound call to whichever party isn't us — for a
         missed inbound that's the caller's from_number, for an outbound
@@ -326,7 +343,7 @@ class WhatsappCallLog(models.Model):
         help="Team the transfer request was sent to.",
     )
 
-    @api.depends("meta_phone_number_id")
+    @api.depends("meta_phone_number_id", "to_number")
     def _compute_account_id(self):
         Account = self.env["comm.whatsapp.account"].sudo()
         cache = {}
@@ -337,11 +354,24 @@ class WhatsappCallLog(models.Model):
             if rec.account_id:
                 continue
             pnid = rec.meta_phone_number_id
-            if not pnid:
+            if pnid:
+                if pnid not in cache:
+                    cache[pnid] = Account.find_for_phone_number_id(pnid)
+                rec.account_id = cache[pnid]
                 continue
-            if pnid not in cache:
-                cache[pnid] = Account.find_for_phone_number_id(pnid)
-            rec.account_id = cache[pnid]
+            # Fallback for inbound calls whose webhook event didn't carry
+            # metadata.phone_number_id (not every "calls" event includes
+            # it) — for an incoming call, "to" is the business's own
+            # number, which should match an account's phone_number once
+            # formatting differences (+, spaces) are stripped.
+            if rec.call_direction == "incoming" and rec.to_number:
+                digits = re.sub(r"[^0-9]", "", rec.to_number)
+                key = ("to_number", digits)
+                if key not in cache:
+                    cache[key] = Account.search([("active", "=", True)]).filtered(
+                        lambda a: re.sub(r"[^0-9]", "", a.phone_number or "") == digits
+                    )[:1]
+                rec.account_id = cache[key]
 
     def _get_comm_whatsapp_config(self):
         """

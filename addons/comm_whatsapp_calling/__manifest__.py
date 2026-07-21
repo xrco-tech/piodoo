@@ -32,6 +32,7 @@ See WHATSAPP_CALLING_PLAN.md for Meta API details and WebRTC options.
         'views/res_partner_views.xml',
         'data/backfill_outbound_timestamps.xml',
         'data/purge_recordings_cron.xml',
+        'data/backfill_incoming_call_accounts.xml',
     ],
     'assets': {
         'web.assets_backend': [
