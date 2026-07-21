@@ -2,6 +2,7 @@
     display: inline-flex;
     align-items: center;
     margin-right: 4px;
+    position: relative;
 }
 .o_wa_presence_btn {
     background: transparent; border: none; color: #fff;
@@ -13,6 +14,47 @@
 .o_wa_presence_btn:hover { background: rgba(255,255,255,0.12); }
 .o_wa_presence_btn .fa { font-size: 12px; }
 .o_wa_presence_label { line-height: 1; }
+.o_wa_presence_caret { font-size: 10px; opacity: 0.7; }
 @media (max-width: 900px) {
     .o_wa_presence_label { display: none; }
 }
+
+/*
+ * Same backdrop-filter trap as the calls dropdown (see
+ * systray_whatsapp_calls.css) — home-theme's .o_main_navbar glass
+ * effect traps fixed-position descendants under the action manager.
+ * Toggled via body.o_wa_presence_dropdown_open (see JS).
+ */
+body.o_wa_presence_dropdown_open .o_main_navbar,
+body.o_wa_presence_dropdown_open .o_main_navbar::before,
+body.o_wa_presence_dropdown_open .o_main_navbar::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+.o_wa_presence_dropdown {
+    width: 200px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    padding: 4px 0;
+}
+.o_wa_presence_dropdown_item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: #111827;
+}
+.o_wa_presence_dropdown_item:hover { background: #f7f7f7; }
+.o_wa_presence_dropdown_item_active { font-weight: 600; }
+.o_wa_presence_dropdown_item .fa:first-child { font-size: 12px; width: 14px; text-align: center; }
+.o_wa_presence_dropdown_check { margin-left: auto; color: #25D366; font-size: 12px; }

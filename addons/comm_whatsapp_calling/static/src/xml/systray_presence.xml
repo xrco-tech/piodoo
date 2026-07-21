@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="comm_whatsapp_calling.SystrayPresence">
-        <div class="o_wa_presence" t-att-title="'Call presence: ' + cfg.label + ' (click to cycle)'">
-            <button class="o_wa_presence_btn" t-on-click="_cycle">
+        <div class="o_wa_presence" data-wa-presence-root="1">
+            <button class="o_wa_presence_btn" t-on-click="onToggleClick"
+                    t-att-title="'Call presence: ' + cfg.label">
                 <i t-att-class="'fa ' + cfg.icon"
                    t-att-style="'color: ' + cfg.color + ';'"/>
                 <span class="o_wa_presence_label" t-esc="cfg.label"/>
+                <i class="fa fa-caret-down o_wa_presence_caret"/>
             </button>
+
+            <div t-if="state.open"
+                 class="o_wa_presence_dropdown"
+                 t-att-style="dropdownLayerStyle()"
+                 t-on-click="onDropdownClick">
+                <t t-foreach="states" t-as="s" t-key="s.key">
+                    <button type="button" class="o_wa_presence_dropdown_item"
+                            t-att-class="s.active ? 'o_wa_presence_dropdown_item_active' : ''"
+                            t-att-data-presence="s.key"
+                            t-on-click="onSelect">
+                        <i t-att-class="'fa ' + s.icon"
+                           t-att-style="'color: ' + s.color + ';'"/>
+                        <span t-esc="s.label"/>
+                        <i t-if="s.active" class="fa fa-check o_wa_presence_dropdown_check"/>
+                    </button>
+                </t>
+            </div>
         </div>
     </t>
 </templates>
