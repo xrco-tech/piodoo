@@ -64,6 +64,11 @@ class WhatsAppSystrayPresence extends Component {
     }
 
     async _cycle() {
+        // Piggyback on this click (a real user gesture — browsers ignore
+        // requestPermission() called any other way, e.g. from the bus
+        // event when a call actually rings in) to ask for desktop
+        // notification permission before the agent ever needs it.
+        this.env.services.comm_whatsapp_calling?.ensureNotificationPermission?.();
         const ix = STATES.indexOf(this.state.status);
         const next = STATES[(ix + 1) % STATES.length];
         const previous = this.state.status;

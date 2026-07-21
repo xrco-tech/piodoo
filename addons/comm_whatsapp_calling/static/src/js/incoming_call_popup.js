@@ -1762,6 +1762,21 @@ const waCallService = {
             return !!activeCall;
         }
 
+        // Browsers only honour Notification.requestPermission() when it's
+        // called from within a genuine user gesture — calling it from the
+        // whatsapp_incoming_call bus handler (startRinging) is too late,
+        // since a bus event isn't a gesture and the browser silently
+        // no-ops the prompt instead of showing it. Exposed so systray
+        // components can call this from an actual click handler (presence
+        // toggle, dial-pad icon) long before any call ever rings in.
+        function ensureNotificationPermission() {
+            try {
+                if (typeof Notification !== "undefined" && Notification.permission === "default") {
+                    Notification.requestPermission().catch(() => {});
+                }
+            } catch (e) { /* Notifications not available — ignore */ }
+        }
+
         // ── Dial pad (opened from the systray phone icon) ───────────
         // Same VoIP-card look as the incoming popup/HUD, driven by the
         // same theme system, so it's light-by-default like the rest.
@@ -1904,14 +1919,14 @@ const waCallService = {
 
         // Public API for other components (systray, res.partner button,
         // Agent Workspace, etc.).
-        env.services.comm_whatsapp_calling = { dialCall, hangupActive, isActive, openDialPad };
+        env.services.comm_whatsapp_calling = { dialCall, hangupActive, isActive, openDialPad, ensureNotificationPermission };
 
         // ── Bus wiring ────────────────────────────────────────────────
         try {
             log("bus_service keys:", Object.keys(bus_service));
             if (typeof bus_service.subscribe !== "function") {
                 warn("bus_service.subscribe is not a function — API changed?");
-                return { dialCall, hangupActive, isActive, openDialPad };
+                return { dialCall, hangupActive, isActive, openDialPad, ensureNotificationPermission };
             }
             bus_service.subscribe("whatsapp_incoming_call", (payload) => {
                 log("bus event received:", payload?.type, "id:", payload?.call_log_id);
@@ -1972,7 +1987,7 @@ const waCallService = {
             warn("bus subscribe failed:", e && e.message ? e.message : e);
         }
 
-        return { dialCall, hangupActive, isActive, openDialPad };
+        return { dialCall, hangupActive, isActive, openDialPad, ensureNotificationPermission };
     },
 };
 

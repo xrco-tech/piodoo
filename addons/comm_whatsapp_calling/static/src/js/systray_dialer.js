@@ -25,6 +25,11 @@ class WhatsAppSystrayDialer extends Component {
                 "Calling service not available.", { type: "danger" });
             return;
         }
+        // Real click gesture — a good opportunity to ask for desktop
+        // notification permission before the agent ever needs it (see
+        // ensureNotificationPermission's own comment for why this can't
+        // just be requested when a call actually rings in).
+        svc.ensureNotificationPermission?.();
         svc.openDialPad();
     }
 }
