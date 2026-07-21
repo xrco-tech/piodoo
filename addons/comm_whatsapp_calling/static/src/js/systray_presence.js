@@ -6,46 +6,41 @@
  * Away and DND users are skipped when the inbound webhook broadcasts a
  * ringing event, so their browsers stay quiet.
  *
- * Positioning/outside-click/backdrop-filter workaround mirrors
- * systray_whatsapp_calls.js's dropdown — see that file's comments for
- * why the fixed-position panel needs the body-class toggle.
+ * The dropdown panel is a plain CSS-anchored child (position:absolute
+ * under the button) rather than the viewport-computed position:fixed
+ * panel systray_whatsapp_calls.js uses — that one needs JS math because
+ * its panel is meant to align with a badge that can sit anywhere in a
+ * wider icon cluster; this one only ever needs to hang directly under
+ * its own button, so plain CSS does it with nothing to get out of sync.
+ * It still needs the same backdrop-filter workaround (see CSS) since
+ * home-theme's .o_main_navbar glass effect traps any descendant that's
+ * meant to paint above it, positioned or not.
  */
 
-import { Component, useState, onWillStart, onMounted, onWillUnmount, onPatched } from "@odoo/owl";
+import { Component, useState, onMounted, onWillStart, onWillUnmount } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
 const STATES = ["available", "away", "dnd"];
 const CFG = {
-    available: { icon: "fa-circle",       color: "#25D366", label: "Available" },
-    away:      { icon: "fa-circle-o",     color: "#f59e0b", label: "Away" },
-    dnd:       { icon: "fa-minus-circle", color: "#dc2626", label: "Do not disturb" },
+    available: { icon: "fa-circle",       cls: "o_wa_status_available", label: "Available" },
+    away:      { icon: "fa-circle-o",     cls: "o_wa_status_away",      label: "Away" },
+    dnd:       { icon: "fa-minus-circle", cls: "o_wa_status_dnd",       label: "Do not disturb" },
 };
 
 class WhatsAppSystrayPresence extends Component {
     static template = "comm_whatsapp_calling.SystrayPresence";
     static props = {};
-    static DROPDOWN_LAYER_Z = 12000;
 
     setup() {
         this.notification = useService("notification");
-        this.state = useState({ status: "available", open: false, dropdownPos: null });
+        this.state = useState({ status: "available", open: false });
 
         this._onAway = (ev) => {
             if (!this.state.open || !this.el) return;
             if (ev.button !== 0 && ev.button !== undefined) return;
             if (this._eventIsInsideUi(ev)) return;
             this._close();
-        };
-        this._repositionScheduled = false;
-        this._onReposition = () => {
-            if (!this.state.open) return;
-            if (this._repositionScheduled) return;
-            this._repositionScheduled = true;
-            requestAnimationFrame(() => {
-                this._repositionScheduled = false;
-                this._syncDropdownViewport();
-            });
         };
 
         onWillStart(async () => {
@@ -59,17 +54,10 @@ class WhatsAppSystrayPresence extends Component {
 
         onMounted(() => {
             window.addEventListener("pointerdown", this._onAway, true);
-            window.addEventListener("scroll", this._onReposition, true);
-            window.addEventListener("resize", this._onReposition);
         });
         onWillUnmount(() => {
             window.removeEventListener("pointerdown", this._onAway, true);
-            window.removeEventListener("scroll", this._onReposition, true);
-            window.removeEventListener("resize", this._onReposition);
             this._setBodyDropdownOpen(false);
-        });
-        onPatched(() => {
-            if (this.state.open) this._syncDropdownViewport();
         });
     }
 
@@ -121,33 +109,8 @@ class WhatsAppSystrayPresence extends Component {
         return false;
     }
 
-    _presenceBtnEl() {
-        return this.el?.querySelector(".o_wa_presence_btn") || this.el;
-    }
-
-    _syncDropdownViewport() {
-        const anchor = this._presenceBtnEl();
-        if (!anchor) return;
-        const r = anchor.getBoundingClientRect();
-        const doc = document.documentElement;
-        const top = Math.round(r.bottom + 6);
-        const right = Math.round(doc.clientWidth - r.right);
-        const prev = this.state.dropdownPos;
-        if (prev && prev.top === top && prev.right === right) return;
-        this.state.dropdownPos = { top, right };
-    }
-
-    dropdownLayerStyle() {
-        if (!this.state.open) return "";
-        const p = this.state.dropdownPos;
-        const top = p?.top ?? 52;
-        const right = p?.right ?? 12;
-        return `position:fixed;top:${top}px;right:${right}px;left:auto;z-index:${WhatsAppSystrayPresence.DROPDOWN_LAYER_Z};`;
-    }
-
     _close() {
         this.state.open = false;
-        this.state.dropdownPos = null;
         this._setBodyDropdownOpen(false);
     }
 
@@ -163,7 +126,6 @@ class WhatsAppSystrayPresence extends Component {
             this._close();
             return;
         }
-        this._syncDropdownViewport();
         this.state.open = true;
         this._setBodyDropdownOpen(true);
     }

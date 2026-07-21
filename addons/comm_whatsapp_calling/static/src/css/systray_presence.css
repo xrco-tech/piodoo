@@ -22,8 +22,8 @@
 /*
  * Same backdrop-filter trap as the calls dropdown (see
  * systray_whatsapp_calls.css) — home-theme's .o_main_navbar glass
- * effect traps fixed-position descendants under the action manager.
- * Toggled via body.o_wa_presence_dropdown_open (see JS).
+ * effect traps descendants meant to paint above it, positioned or
+ * not. Toggled via body.o_wa_presence_dropdown_open (see JS).
  */
 body.o_wa_presence_dropdown_open .o_main_navbar,
 body.o_wa_presence_dropdown_open .o_main_navbar::before,
@@ -33,6 +33,10 @@ body.o_wa_presence_dropdown_open .o_main_navbar::after {
 }
 
 .o_wa_presence_dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
     width: 200px;
     background: #fff;
     border: 1px solid rgba(0, 0, 0, 0.08);
@@ -40,6 +44,7 @@ body.o_wa_presence_dropdown_open .o_main_navbar::after {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     overflow: hidden;
     padding: 4px 0;
+    z-index: 12000;
 }
 .o_wa_presence_dropdown_item {
     display: flex;
@@ -58,3 +63,17 @@ body.o_wa_presence_dropdown_open .o_main_navbar::after {
 .o_wa_presence_dropdown_item_active { font-weight: 600; }
 .o_wa_presence_dropdown_item .fa:first-child { font-size: 12px; width: 14px; text-align: center; }
 .o_wa_presence_dropdown_check { margin-left: auto; color: #25D366; font-size: 12px; }
+
+/*
+ * Explicit, !important-guarded status colors. Some navbar glass themes
+ * tint every .fa icon uniformly (for a consistent frosted look), which
+ * would otherwise flatten these to one color regardless of the class
+ * they'd get without !important — this wins because it's both more
+ * specific and !important itself.
+ */
+.o_wa_presence_btn .fa.o_wa_status_available,
+.o_wa_presence_dropdown_item .fa.o_wa_status_available { color: #25D366 !important; }
+.o_wa_presence_btn .fa.o_wa_status_away,
+.o_wa_presence_dropdown_item .fa.o_wa_status_away { color: #f59e0b !important; }
+.o_wa_presence_btn .fa.o_wa_status_dnd,
+.o_wa_presence_dropdown_item .fa.o_wa_status_dnd { color: #dc2626 !important; }
