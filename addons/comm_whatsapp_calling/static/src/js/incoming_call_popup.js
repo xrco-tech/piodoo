@@ -214,6 +214,31 @@ const waCallService = {
             return { top: 20, right: 20 + extraRight };
         }
 
+        // Close "×" or back "←" for pickers reachable both directly and
+        // as a step from another widget (e.g. via the dial pad's
+        // shortcuts). When `onBack` is given, the button returns to
+        // that widget instead of closing the whole call-widget stack —
+        // otherwise it reads as "cancel" when it's really "previous
+        // screen".
+        function closeOrBackButtonHtml(onBack) {
+            return onBack
+                ? `<button data-action="back" title="Back"
+                        style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:14px;cursor:pointer;padding:4px 6px;line-height:1;">
+                        <i class="fa fa-arrow-left"></i>
+                   </button>`
+                : `<button data-action="close" title="Close"
+                        style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>`;
+        }
+        function wireCloseOrBack(modal, onBack) {
+            if (onBack) {
+                modal.querySelector("[data-action=back]")
+                     .addEventListener("click", () => { modal.remove(); onBack(); });
+            } else {
+                modal.querySelector("[data-action=close]")
+                     .addEventListener("click", () => modal.remove());
+            }
+        }
+
         function notify(message, type) {
             try {
                 notification.add(message, { type: type || "info" });
@@ -790,7 +815,7 @@ const waCallService = {
         // Generic themed list picker used for both the mid-call "change
         // script" flow and the pre-accept "choose script" flow on the
         // incoming popup — onSelect(chatbotId, chatbotName) fires on click.
-        async function showChatbotPicker(title, onSelect) {
+        async function showChatbotPicker(title, onSelect, onBack) {
             let chatbots = [];
             try {
                 chatbots = await orm.searchRead(
@@ -842,15 +867,13 @@ const waCallService = {
                                 style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
                             <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
                         </button>
-                        <button data-action="close" title="Close"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                        ${closeOrBackButtonHtml(onBack)}
                     </div>
                 </div>
                 ${rows}
             `;
-            modal.querySelector("[data-action=close]")
-                 .addEventListener("click", () => modal.remove());
-            wireThemeToggle(modal, () => showChatbotPicker(title, onSelect));
+            wireCloseOrBack(modal, onBack);
+            wireThemeToggle(modal, () => showChatbotPicker(title, onSelect, onBack));
             modal.querySelectorAll("[data-chatbot]").forEach((btn) => {
                 btn.addEventListener("click", () => {
                     const chatbotId = +btn.dataset.chatbot;
@@ -881,7 +904,7 @@ const waCallService = {
         }
 
         // ── Add caller to a campaign (popup + HUD "Shortcuts") ──────
-        async function showCampaignPicker(partnerId) {
+        async function showCampaignPicker(partnerId, onBack) {
             if (!partnerId) {
                 notify("No linked contact for this call.", "warning");
                 return;
@@ -953,15 +976,13 @@ const waCallService = {
                                 style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
                             <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
                         </button>
-                        <button data-action="close" title="Close"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                        ${closeOrBackButtonHtml(onBack)}
                     </div>
                 </div>
                 ${rows}
             `;
-            modal.querySelector("[data-action=close]")
-                 .addEventListener("click", () => modal.remove());
-            wireThemeToggle(modal, () => showCampaignPicker(partnerId));
+            wireCloseOrBack(modal, onBack);
+            wireThemeToggle(modal, () => showCampaignPicker(partnerId, onBack));
             modal.querySelectorAll("[data-campaign]").forEach((btn) => {
                 if (btn.disabled) return;
                 btn.addEventListener("click", async () => {
@@ -1074,7 +1095,7 @@ const waCallService = {
             }).join("");
         }
 
-        async function showCallHistory() {
+        async function showCallHistory(onBack) {
             const existing = document.getElementById("wa_call_history");
             if (existing) existing.remove();
 
@@ -1100,8 +1121,7 @@ const waCallService = {
                                 style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
                             <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
                         </button>
-                        <button data-action="close" title="Close"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                        ${closeOrBackButtonHtml(onBack)}
                     </div>
                 </div>
                 <div style="padding:10px 14px;flex:none;">
@@ -1112,9 +1132,8 @@ const waCallService = {
                     <div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">Loading…</div>
                 </div>
             `;
-            modal.querySelector("[data-action=close]")
-                 .addEventListener("click", () => modal.remove());
-            wireThemeToggle(modal, () => showCallHistory());
+            wireCloseOrBack(modal, onBack);
+            wireThemeToggle(modal, () => showCallHistory(onBack));
             document.body.appendChild(modal);
 
             const rowsEl = modal.querySelector("[data-role=rows]");
@@ -1159,7 +1178,7 @@ const waCallService = {
         }
 
         // ── Contacts (dial pad "Contacts" shortcut) ──────────────────
-        async function showContactsPicker() {
+        async function showContactsPicker(onBack) {
             const existing = document.getElementById("wa_contacts_picker");
             if (existing) existing.remove();
 
@@ -1185,8 +1204,7 @@ const waCallService = {
                                 style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
                             <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
                         </button>
-                        <button data-action="close" title="Close"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                        ${closeOrBackButtonHtml(onBack)}
                     </div>
                 </div>
                 <div style="padding:10px 14px;flex:none;">
@@ -1197,9 +1215,8 @@ const waCallService = {
                     <div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">Loading…</div>
                 </div>
             `;
-            modal.querySelector("[data-action=close]")
-                 .addEventListener("click", () => modal.remove());
-            wireThemeToggle(modal, () => showContactsPicker());
+            wireCloseOrBack(modal, onBack);
+            wireThemeToggle(modal, () => showContactsPicker(onBack));
             document.body.appendChild(modal);
 
             const rowsEl = modal.querySelector("[data-role=rows]");
@@ -1923,7 +1940,7 @@ const waCallService = {
                     selectedChatbotName = chatbotName;
                     scriptHintText.textContent = chatbotName;
                     scriptHint.style.display = "block";
-                });
+                }, () => openDialPad());
             });
             wrap.querySelector("[data-action=add-campaign]").addEventListener("click", async () => {
                 const to = (numberInput.value || "").trim();
@@ -1936,13 +1953,13 @@ const waCallService = {
                     notify("No matching contact found for this number.", "warning");
                     return;
                 }
-                showCampaignPicker(contact.partner_id ? contact.partner_id[0] : false);
+                showCampaignPicker(contact.partner_id ? contact.partner_id[0] : false, () => openDialPad());
             });
             wrap.querySelector("[data-action=history]").addEventListener("click", () => {
-                showCallHistory();
+                showCallHistory(() => openDialPad());
             });
             wrap.querySelector("[data-action=contacts]").addEventListener("click", () => {
-                showContactsPicker();
+                showContactsPicker(() => openDialPad());
             });
             wireThemeToggle(wrap, () => openDialPad());
             document.body.appendChild(wrap);
