@@ -37,15 +37,12 @@ See WHATSAPP_CALLING_PLAN.md for Meta API details and WebRTC options.
     'assets': {
         'web.assets_backend': [
             'comm_whatsapp_calling/static/src/css/incoming_call_popup.css',
-            'comm_whatsapp_calling/static/src/css/systray_whatsapp_calls.css',
             'comm_whatsapp_calling/static/src/css/systray_dialer.css',
             'comm_whatsapp_calling/static/src/css/systray_presence.css',
             'comm_whatsapp_calling/static/src/css/call_log_kanban.css',
-            'comm_whatsapp_calling/static/src/xml/systray_whatsapp_calls.xml',
             'comm_whatsapp_calling/static/src/xml/systray_dialer.xml',
             'comm_whatsapp_calling/static/src/xml/systray_presence.xml',
             'comm_whatsapp_calling/static/src/js/incoming_call_popup.js',
-            'comm_whatsapp_calling/static/src/js/systray_whatsapp_calls.js',
             'comm_whatsapp_calling/static/src/js/systray_dialer.js',
             'comm_whatsapp_calling/static/src/js/systray_presence.js',
             'comm_whatsapp_calling/static/src/js/dial_action.js',
