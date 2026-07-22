@@ -4,7 +4,10 @@
 }
 .o_wa_dialer_btn {
     background: transparent; border: none; color: #25D366;
-    font-size: 15px; padding: 6px 10px; cursor: pointer;
+    /* Matches .o_wa_calls_icon (the other phone-badge icon) rather
+       than the old 15px, which rendered visibly larger than every
+       other systray icon once it stopped blending into the navbar. */
+    font-size: 1.1rem; padding: 6px 10px; cursor: pointer;
     border-radius: 6px;
 }
 .o_wa_dialer_btn:hover { background: rgba(37,211,102,0.15); }
