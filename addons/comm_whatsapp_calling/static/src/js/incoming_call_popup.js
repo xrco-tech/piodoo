@@ -486,6 +486,39 @@ const waCallService = {
             activeCall.localStream.getAudioTracks().forEach((t) => { t.enabled = !activeCall.muted; });
         }
 
+        // `activeCall` is a one-at-a-time module singleton, cleared only
+        // by teardownCall() — which the existing onconnectionstatechange
+        // handlers only trigger on "failed"/"closed". "disconnected" is
+        // a valid, transient ICE state (common after a brief network
+        // blip) that can persist indefinitely without ever escalating to
+        // "failed", especially on flaky mobile networks — left
+        // unwatched, that leaves activeCall stuck, silently blocking
+        // every future dial/accept on this tab until a manual refresh.
+        // Give it a grace period to self-recover (normal per WebRTC
+        // guidance), then force a teardown if it never does. Uses
+        // addEventListener (not the onconnectionstatechange property) so
+        // this coexists with each call site's own handler instead of
+        // replacing it.
+        function watchForStuckConnection(pc) {
+            const GRACE_MS = 12000;
+            let timer = null;
+            pc.addEventListener("connectionstatechange", () => {
+                if (pc.connectionState === "disconnected") {
+                    if (timer) return;
+                    timer = setTimeout(() => {
+                        timer = null;
+                        if (pc.connectionState === "disconnected" && activeCall?.pc === pc) {
+                            warn("connection stuck in 'disconnected' for", GRACE_MS, "ms — forcing teardown");
+                            teardownCall(false);
+                        }
+                    }, GRACE_MS);
+                } else if (timer) {
+                    clearTimeout(timer);
+                    timer = null;
+                }
+            });
+        }
+
         // ── Recording (client-side — WhatsApp calls are end-to-end
         // encrypted between the browser and Meta, so there's nothing
         // server-side to record; the browser mixes both live audio
@@ -1546,6 +1579,7 @@ const waCallService = {
 
                 const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
                 call.pc = pc;
+                watchForStuckConnection(pc);
 
                 pc.onicecandidate = (ev) => {
                     if (!ev.candidate) log("ICE gathering complete");
@@ -1740,6 +1774,7 @@ const waCallService = {
 
                 const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
                 call.pc = pc;
+                watchForStuckConnection(pc);
 
                 pc.onicecandidate = (ev) => {
                     if (!ev.candidate) log("outbound ICE gathering complete");
