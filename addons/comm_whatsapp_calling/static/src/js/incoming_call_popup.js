@@ -826,7 +826,16 @@ const waCallService = {
                         }
                         notify(`Transferring — ${result.targets_notified} agent(s) notified`,
                                "success");
-                        teardownCall(true);
+                        // hangupCall, not a bare teardownCall — this
+                        // source call was already answered, so closing
+                        // the local RTCPeerConnection alone leaves it
+                        // "ongoing" from Meta's side (Meta was never
+                        // told to terminate it). That's exactly what
+                        // then blocks the receiving agent's "Call back"
+                        // with "A call with this number is already
+                        // ongoing" — Meta sees an existing open session
+                        // with that customer and refuses the new one.
+                        hangupCall(callLogId);
                     } catch (err) {
                         notify("Transfer failed: " + (err?.message || err),
                                "danger");
