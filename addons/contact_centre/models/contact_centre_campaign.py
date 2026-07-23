@@ -349,8 +349,11 @@ class ContactCentreCampaign(models.Model):
 
     def _send_whatsapp(self, contact, body):
         phone = contact.phone_number
-        if not phone:
-            _logger.warning("Campaign %s: contact %s has no phone number, skipping WA.", self.name, contact.id)
+        bsuid = contact.bsuid
+        if not phone and not bsuid:
+            _logger.warning(
+                "Campaign %s: contact %s has no phone number or WhatsApp ID, skipping WA.",
+                self.name, contact.id)
             return
 
         account = self.env['comm.whatsapp.account'].sudo().get_default()
@@ -358,6 +361,7 @@ class ContactCentreCampaign(models.Model):
             recipient_phone=phone,
             message_text=body,
             account=account,
+            bsuid=bsuid,
         )
         success = isinstance(result, dict) and result.get('success', False)
         status = 'sent' if success else 'failed'

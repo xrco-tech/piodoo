@@ -41,7 +41,13 @@ class ContactCentreContact(models.Model):
         calling/chatbot modules) and this contact (contact_centre's own
         bsuid, since this module is the only place both fields are
         reachable at once). See either field's own module for why
-        there isn't just one."""
+        there isn't just one.
+
+        `phone_number` may be falsy — once a WhatsApp user adopts a
+        username and goes 30+ days without interacting with this
+        business number, Meta omits phone-number fields from webhooks
+        entirely and only bsuid survives. Falls through to a bsuid
+        lookup/create in that case instead of returning nothing."""
         clean = re.sub(r"\D", "", phone_number or "")
         Partner = self.env["res.partner"].sudo()
         partner = Partner.browse()
@@ -49,10 +55,12 @@ class ContactCentreContact(models.Model):
             partner = Partner.search([
                 "|", ("phone", "ilike", clean), ("mobile", "ilike", clean),
             ], limit=1)
+        if not partner and bsuid:
+            partner = Partner.search([("wa_bsuid", "=", bsuid)], limit=1)
         if not partner:
             partner = Partner.create({
-                "name": f"{source_label} {phone_number}",
-                "mobile": phone_number,
+                "name": f"{source_label} {phone_number or bsuid}",
+                "mobile": phone_number or False,
                 "is_company": False,
                 "wa_bsuid": bsuid,
             })
@@ -66,7 +74,7 @@ class ContactCentreContact(models.Model):
     @api.model
     def _sync_whatsapp_message(self, wa_message):
         phone = wa_message.phone_number or wa_message.wa_id
-        if not phone:
+        if not phone and not wa_message.bsuid:
             return
         contact = self._find_or_create_by_phone(phone, "WhatsApp", bsuid=wa_message.bsuid)
         direction = "inbound" if wa_message.is_incoming else "outbound"

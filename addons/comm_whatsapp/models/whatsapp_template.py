@@ -818,10 +818,15 @@ class WhatsAppTemplate(models.Model):
             }
         }
 
-    def _send_simple(self, to_number, variables=None):
+    def _send_simple(self, to_number, variables=None, bsuid=None):
         """Send this template to `to_number` — for system-triggered sends
         (e.g. the WhatsApp calling widget's "send a call permission
         request" prompt) that don't go through the interactive wizard.
+        `to_number` may be falsy if the recipient is only known by
+        `bsuid` (adopted a WhatsApp username and gone 30+ days quiet
+        with this business number) — sent as "recipient" instead of
+        "to"; per Meta's docs "to" takes precedence when both are
+        present, so it's safe to send both whenever both are known.
 
         `variables` is an optional dict used to fill body placeholders:
         for a named-format body (see _extract_named_params), keys match
@@ -852,8 +857,8 @@ class WhatsAppTemplate(models.Model):
                              "token or phone number)."}
 
         recipient = re.sub(r'[^0-9]', '', to_number or '')
-        if not recipient:
-            return {'success': False, 'error': "Missing recipient number."}
+        if not recipient and not bsuid:
+            return {'success': False, 'error': "Missing recipient number or WhatsApp ID (bsuid)."}
 
         template_payload = {
             'name': self.name,
@@ -893,10 +898,13 @@ class WhatsAppTemplate(models.Model):
         payload = {
             'messaging_product': 'whatsapp',
             'recipient_type': 'individual',
-            'to': recipient,
             'type': 'template',
             'template': template_payload,
         }
+        if recipient:
+            payload['to'] = recipient
+        if bsuid:
+            payload['recipient'] = bsuid
         url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
         headers = {
             'Authorization': f'Bearer {access_token}',

@@ -268,6 +268,12 @@ class WhatsAppAuthController(http.Controller):
                         # Handle status updates
                         if 'statuses' in value:
                             self._process_statuses(value['statuses'])
+
+                        # BSUID rotation — Meta can reassign a user's
+                        # business-scoped user ID; without this, a
+                        # stored wa_bsuid silently goes stale.
+                        if 'user_id_update' in value:
+                            self._process_user_id_update(value['user_id_update'])
                 
                 # Process each unique message id only once (avoids duplicate first message)
                 seen_message_ids = set()
@@ -393,6 +399,30 @@ class WhatsAppAuthController(http.Controller):
                     
         except Exception as e:
             _logger.error(f"Error processing statuses: {e}", exc_info=True)
+
+    def _process_user_id_update(self, event):
+        """Meta fires this when a WhatsApp user's business-scoped user
+        ID (bsuid) changes — re-point every partner still on the old
+        value so future sends targeting it don't silently start
+        failing. Payload shape: {"user_id": {"previous": ..., "current":
+        ...}, ...}.
+
+        See: https://developers.facebook.com/documentation/business-messaging/whatsapp/business-scoped-user-ids/
+        """
+        try:
+            user_id = event.get('user_id', {}) or {}
+            previous_bsuid = user_id.get('previous')
+            current_bsuid = user_id.get('current')
+            if not previous_bsuid or not current_bsuid:
+                _logger.warning(
+                    f"user_id_update event missing previous/current: {event}")
+                return
+            request.env['res.partner'].sudo()._handle_wa_bsuid_rotation(
+                previous_bsuid, current_bsuid)
+            _logger.info(
+                f"BSUID rotated: {previous_bsuid} -> {current_bsuid}")
+        except Exception as e:
+            _logger.error(f"Error processing user_id_update: {e}", exc_info=True)
 
     @http.route('/whatsapp/auth/initiate', type='http', auth='user', methods=['GET'])
     def initiate_auth(self):

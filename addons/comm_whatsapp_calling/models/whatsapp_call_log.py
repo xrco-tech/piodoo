@@ -22,7 +22,10 @@ class WhatsappCallLog(models.Model):
 
     call_id = fields.Char("Call ID", required=True, index=True, readonly=True)
     partner_id = fields.Many2one("res.partner", "Contact", ondelete="set null")
-    from_number = fields.Char("From", required=True, readonly=True)
+    # Not required: a caller who's adopted a WhatsApp username and gone
+    # 30+ days quiet with this business number has their phone omitted
+    # from the call webhook entirely — bsuid (below) is what's left.
+    from_number = fields.Char("From", readonly=True)
     to_number = fields.Char("To", required=True, readonly=True)
     # Meta's business-scoped user ID (e.g. "US.13491208655302741918") —
     # rolling out alongside optional WhatsApp usernames. Phone number
@@ -641,12 +644,22 @@ class WhatsappCallLog(models.Model):
         except Exception:
             return response.text[:200] if response.text else f"HTTP {response.status_code}"
 
-    def action_connect(self, sdp_offer, to_number):
+    def action_connect(self, sdp_offer, to_number, bsuid=None):
         """Initiate an outbound WhatsApp call. The browser has already
         created an RTCPeerConnection, captured the user's mic, and built
         an SDP offer. We POST that offer to Meta's /{PNID}/calls with
         action=connect. Meta places the call to `to_number`; when the
         recipient picks up, Meta fires a webhook with the answer SDP.
+
+        `to_number` may be falsy if the recipient is only known by
+        `bsuid` (adopted a WhatsApp username and gone 30+ days quiet
+        with this business number) — sent as "recipient" instead of
+        "to". Meta's Calling API uses the same to/recipient precedence
+        as the Messages API (to wins when both are present), so it's
+        safe to send both whenever both are known. No current caller
+        actually supplies a bare bsuid yet — the dial pad only ever
+        collects a typed phone number — but this makes the model layer
+        ready for whenever that UI gap gets closed.
 
         Returns {"success": True, "meta_call_id": ...} when Meta accepted
         the offer, else {"success": False, "error": <reason>} — the error
@@ -659,11 +672,11 @@ class WhatsappCallLog(models.Model):
                 "comm_whatsapp_calling: connect refused — missing sdp_offer"
             )
             return {"success": False, "error": "Missing SDP offer from the browser."}
-        if not to_number:
+        if not to_number and not bsuid:
             _logger.warning(
-                "comm_whatsapp_calling: connect refused — missing to_number"
+                "comm_whatsapp_calling: connect refused — missing to_number and bsuid"
             )
-            return {"success": False, "error": "Missing recipient number."}
+            return {"success": False, "error": "Missing recipient number or WhatsApp ID."}
         token, phone_number_id = self._get_comm_whatsapp_config()
         if not token or not phone_number_id:
             _logger.warning(
@@ -676,10 +689,13 @@ class WhatsappCallLog(models.Model):
         url = f"https://graph.facebook.com/{META_GRAPH_VERSION}/{phone_number_id}/calls"
         payload = {
             "messaging_product": "whatsapp",
-            "to":     to_number,
             "action": "connect",
             "session": {"sdp_type": "offer", "sdp": sdp_offer},
         }
+        if to_number:
+            payload["to"] = to_number
+        if bsuid:
+            payload["recipient"] = bsuid
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type":  "application/json",

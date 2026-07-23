@@ -25,8 +25,11 @@ class ContactCentreContact(models.Model):
 
     def _send_reply_whatsapp(self, body):
         phone = self.phone_number
-        if not phone:
-            _logger.warning("Inbox: contact %s has no phone number, skipping WA reply.", self.id)
+        bsuid = self.bsuid
+        if not phone and not bsuid:
+            _logger.warning(
+                "Inbox: contact %s has no phone number or WhatsApp ID, skipping WA reply.",
+                self.id)
             return False
 
         account = self.env['comm.whatsapp.account'].sudo().get_default()
@@ -34,6 +37,7 @@ class ContactCentreContact(models.Model):
             recipient_phone=phone,
             message_text=body,
             account=account,
+            bsuid=bsuid,
         )
         success = isinstance(result, dict) and result.get('success', False)
         status = 'sent' if success else 'failed'

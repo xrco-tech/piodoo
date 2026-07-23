@@ -17,7 +17,11 @@ class WhatsAppMessage(models.Model):
 
     # Message identifiers
     message_id = fields.Char(string='Message ID', required=True, index=True, readonly=True)
-    wa_id = fields.Char(string='WhatsApp ID', required=True, index=True, readonly=True, help='WhatsApp ID of the sender')
+    # Not required: a sender who's adopted a WhatsApp username and gone
+    # 30+ days quiet with this business number has phone fields
+    # (including this one) omitted from the webhook entirely — bsuid
+    # (below) is what's left in that case.
+    wa_id = fields.Char(string='WhatsApp ID', index=True, readonly=True, help='WhatsApp ID of the sender')
     phone_number = fields.Char(string='Phone Number', readonly=True, help='Phone number of the sender')
     # Meta's business-scoped user ID (e.g. "US.13491208655302741918") —
     # rolling out alongside optional WhatsApp usernames. Phone number
@@ -549,10 +553,12 @@ class WhatsAppMessage(models.Model):
             else:
                 message_body = f"{message_type} message"
             
-            # Get contact name
+            # Get contact name — falls back to bsuid when the sender's
+            # phone (wa_id) is also absent (30+ days quiet after
+            # adopting a username), so this isn't just blank.
             contact_name = contact.get('profile', {}).get('name', '')
             if not contact_name:
-                contact_name = wa_id
+                contact_name = wa_id or bsuid
             
             # Check if message already exists (use sudo to ensure we can search)
             existing = self.sudo().search([('message_id', '=', message_id)], limit=1)
@@ -701,13 +707,16 @@ class WhatsAppMessage(models.Model):
                 return False
 
     def send_whatsapp_message(self, recipient_phone, message_text, phone_number_id=None,
-                              context_message_id=None, account=None):
+                              context_message_id=None, account=None, bsuid=None):
         """
         Send a WhatsApp message using Meta Cloud API.
 
         Based on: https://developers.facebook.com/documentation/business-messaging/whatsapp/overview
 
-        :param recipient_phone: Recipient phone number in international format (e.g., '27683264051')
+        :param recipient_phone: Recipient phone number in international format
+                       (e.g., '27683208874'). May be falsy if the contact is
+                       only known by bsuid (adopted a WhatsApp username and
+                       gone 30+ days quiet with this business number).
         :param message_text: Text content of the message
         :param phone_number_id: Phone number ID (optional, will resolve to an account)
         :param context_message_id: Message ID to quote/reply to (optional, will show as quoted message)
@@ -715,6 +724,11 @@ class WhatsAppMessage(models.Model):
                        overrides phone_number_id + global config for both the
                        phone_number_id and access_token. This is the preferred
                        multi-account API.
+        :param bsuid: Meta's business-scoped user ID for the recipient, when
+                       known. Sent as the "recipient" field alongside "to" —
+                       per Meta's docs, "to" (phone) takes precedence when
+                       both are present, so this is purely a fallback for
+                       when recipient_phone is unavailable.
         :return: Dictionary with success status and message ID or error
         """
         try:
@@ -750,39 +764,51 @@ class WhatsAppMessage(models.Model):
                     'success': False,
                     'error': 'Phone number ID not configured.'
                 }
-            
+            if not recipient_phone and not bsuid:
+                return {
+                    'success': False,
+                    'error': 'No recipient phone number or WhatsApp ID (bsuid) provided.'
+                }
+
             # Format recipient phone number (remove + and spaces)
-            recipient_phone = recipient_phone.replace('+', '').replace(' ', '').replace('-', '')
-            
+            if recipient_phone:
+                recipient_phone = recipient_phone.replace('+', '').replace(' ', '').replace('-', '')
+
             # API endpoint
             url = f"https://graph.facebook.com/v18.0/{phone_number_id}/messages"
-            
+
             # Headers
             headers = {
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/json',
             }
-            
-            # Message payload
+
+            # Message payload. "to" (phone) takes precedence over
+            # "recipient" (bsuid) when both are present per Meta's docs,
+            # so it's safe to always send whichever we have — no need to
+            # choose one.
             payload = {
                 'messaging_product': 'whatsapp',
                 'recipient_type': 'individual',
-                'to': recipient_phone,
                 'type': 'text',
                 'text': {
                     'preview_url': False,
                     'body': message_text
                 }
             }
-            
+            if recipient_phone:
+                payload['to'] = recipient_phone
+            if bsuid:
+                payload['recipient'] = bsuid
+
             # Add context to quote/reply to a message if provided
             if context_message_id:
                 payload['context'] = {
                     'message_id': context_message_id
                 }
                 _logger.info(f"Including context message_id: {context_message_id} for quoted reply")
-            
-            _logger.info(f"Sending WhatsApp message to {recipient_phone} via {url}")
+
+            _logger.info(f"Sending WhatsApp message to {recipient_phone or bsuid} via {url}")
             _logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
             
             # Send request
@@ -797,9 +823,10 @@ class WhatsAppMessage(models.Model):
                 # Create outgoing message record (use sudo to ensure permissions)
                 self.sudo().create({
                     'message_id': message_id or f'sent_{fields.Datetime.now()}',
-                    'wa_id': recipient_phone,
-                    'phone_number': recipient_phone,
-                    'contact_name': recipient_phone,
+                    'wa_id': recipient_phone or False,
+                    'phone_number': recipient_phone or False,
+                    'contact_name': recipient_phone or bsuid,
+                    'bsuid': bsuid,
                     'message_type': 'text',
                     'message_body': message_text,
                     'message_timestamp': fields.Datetime.now(),

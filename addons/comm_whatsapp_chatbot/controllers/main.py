@@ -172,8 +172,12 @@ class WhatsAppChatbotController(http.Controller):
     def _find_or_create_partner(self, wa_id, contact_data):
         """
         Find or create a partner based on WhatsApp ID.
-        
-        :param wa_id: WhatsApp ID
+
+        :param wa_id: WhatsApp ID — may be falsy; a contact who's
+            adopted a WhatsApp username and gone 30+ days quiet with
+            this business number has their phone omitted from the
+            webhook entirely, leaving only contact_data['user_id']
+            (bsuid).
         :param contact_data: Contact data from webhook
         :return: Partner record
         """
@@ -184,27 +188,38 @@ class WhatsAppChatbotController(http.Controller):
             # res_partner.py (comm_whatsapp) for why this is captured
             # alongside phone number rather than instead of it.
             bsuid = contact_data.get('user_id')
-            partner = request.env['res.partner'].sudo().search([
-                '|',
-                ('phone', '=', phone_number),
-                ('mobile', '=', phone_number)
-            ], limit=1)
+
+            partner = request.env['res.partner'].browse()
+            if phone_number:
+                partner = request.env['res.partner'].sudo().search([
+                    '|',
+                    ('phone', '=', phone_number),
+                    ('mobile', '=', phone_number)
+                ], limit=1)
+            if not partner and bsuid:
+                partner = request.env['res.partner'].sudo().search(
+                    [('wa_bsuid', '=', bsuid)], limit=1)
 
             if not partner:
+                if not phone_number and not bsuid:
+                    return False
                 # Create new partner
-                name = contact_data.get('profile', {}).get('name', f"WhatsApp Contact {phone_number}")
+                name = contact_data.get('profile', {}).get('name') or (
+                    f"WhatsApp Contact {phone_number}" if phone_number
+                    else "WhatsApp Contact"
+                )
                 partner = request.env['res.partner'].sudo().create({
                     'name': name,
-                    'mobile': phone_number,
+                    'mobile': phone_number or False,
                     'is_company': False,
                     'wa_bsuid': bsuid,
                 })
-                _logger.info(f"Created new partner: {partner.id} for {phone_number}")
+                _logger.info(f"Created new partner: {partner.id} for {phone_number or bsuid}")
             elif bsuid and partner.wa_bsuid != bsuid:
                 partner.write({'wa_bsuid': bsuid})
 
             return partner
-            
+
         except Exception as e:
             _logger.error(f"Error finding/creating partner: {e}")
             return False

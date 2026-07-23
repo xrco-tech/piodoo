@@ -402,18 +402,25 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             )
 
     def _find_or_create_partner(self, phone_number, bsuid=None):
-        if not phone_number:
-            return request.env["res.partner"].browse()
-        clean = phone_number.replace("+", "").replace(" ", "").replace("-", "")
+        """`phone_number` may be falsy — a caller who's adopted a
+        WhatsApp username and gone 30+ days quiet with this business
+        number has their phone omitted from the call webhook entirely,
+        leaving only bsuid. Falls through to a bsuid lookup/create
+        instead of bailing out with an empty recordset in that case."""
         Partner = request.env["res.partner"].sudo()
-        partner = Partner.search(
-            [
-                "|",
-                ("phone", "ilike", f"%{clean}%"),
-                ("mobile", "ilike", f"%{clean}%"),
-            ],
-            limit=1,
-        )
+        partner = Partner.browse()
+        if phone_number:
+            clean = phone_number.replace("+", "").replace(" ", "").replace("-", "")
+            partner = Partner.search(
+                [
+                    "|",
+                    ("phone", "ilike", f"%{clean}%"),
+                    ("mobile", "ilike", f"%{clean}%"),
+                ],
+                limit=1,
+            )
+        if not partner and bsuid:
+            partner = Partner.search([("wa_bsuid", "=", bsuid)], limit=1)
         if partner:
             # Meta's business-scoped user ID, when present — see
             # comm_whatsapp's res_partner.py for why this is captured
@@ -421,9 +428,11 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             if bsuid and partner.wa_bsuid != bsuid:
                 partner.write({"wa_bsuid": bsuid})
             return partner
+        if not phone_number and not bsuid:
+            return Partner.browse()
         return Partner.create({
-            "name": f"WhatsApp {phone_number}",
-            "mobile": phone_number,
+            "name": f"WhatsApp {phone_number or bsuid}",
+            "mobile": phone_number or False,
             "is_company": False,
             "wa_bsuid": bsuid,
         })

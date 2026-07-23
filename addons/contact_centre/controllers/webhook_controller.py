@@ -56,16 +56,26 @@ class ContactCentreWebhookController(http.Controller):
                 # Delivery / read status updates
                 for status in value.get('statuses', []):
                     self._handle_whatsapp_status_update(status)
-                # Inbound messages
+                # BSUID rotation — Meta can reassign a user's business-
+                # scoped user ID; without this, a stored bsuid silently
+                # goes stale.
+                if 'user_id_update' in value:
+                    self._handle_user_id_update(value['user_id_update'])
+                # Inbound messages. .get('wa_id') rather than direct
+                # indexing — a contact who's gone quiet 30+ days after
+                # adopting a username has phone fields (including this
+                # one) omitted from the webhook entirely, so this key
+                # can legitimately be absent.
                 contacts_map = {
                     c['wa_id']: c.get('profile', {}).get('name', '')
-                    for c in value.get('contacts', [])
+                    for c in value.get('contacts', []) if c.get('wa_id')
                 }
                 # Meta's business-scoped user ID, keyed the same way —
                 # see _get_or_create_contact for why this is captured.
                 bsuid_map = {
                     c['wa_id']: c.get('user_id')
-                    for c in value.get('contacts', []) if c.get('user_id')
+                    for c in value.get('contacts', [])
+                    if c.get('wa_id') and c.get('user_id')
                 }
                 for msg in value.get('messages', []):
                     self._handle_whatsapp_inbound(msg, contacts_map, bsuid_map)
@@ -89,6 +99,29 @@ class ContactCentreWebhookController(http.Controller):
             [('provider_message_id', '=', provider_msg_id)], limit=1)
         if cc_msg:
             cc_msg.write({'status': mapped})
+
+    def _handle_user_id_update(self, event):
+        """Meta fires this when a WhatsApp user's business-scoped user
+        ID (bsuid) changes — re-point every contact still on the old
+        value so future sends targeting it don't silently start
+        failing. Payload shape: {"user_id": {"previous": ..., "current":
+        ...}, ...}.
+
+        See: https://developers.facebook.com/documentation/business-messaging/whatsapp/business-scoped-user-ids/
+        """
+        try:
+            user_id = event.get('user_id', {}) or {}
+            previous_bsuid = user_id.get('previous')
+            current_bsuid = user_id.get('current')
+            if not previous_bsuid or not current_bsuid:
+                _logger.warning(
+                    "user_id_update event missing previous/current: %s", event)
+                return
+            request.env['contact.centre.contact'].sudo()._handle_wa_bsuid_rotation(
+                previous_bsuid, current_bsuid)
+            _logger.info("BSUID rotated: %s -> %s", previous_bsuid, current_bsuid)
+        except Exception as e:
+            _logger.error("Error processing user_id_update: %s", e)
 
     def _handle_whatsapp_inbound(self, msg, contacts_map, bsuid_map=None):
         """Create a contact.centre.message record for an inbound WhatsApp message."""
@@ -285,6 +318,12 @@ class ContactCentreWebhookController(http.Controller):
         business-scoped user ID, when the webhook included one — see
         contact_centre_contact.py's bsuid field for why it's captured
         here rather than assumed to always be absent.
+
+        `phone` may be falsy — once a WhatsApp user adopts a username
+        and goes 30+ days without interacting with this business
+        number, Meta omits phone-number fields from webhooks entirely.
+        Falls through to a bsuid lookup/create in that case rather than
+        matching every other phone-less contact on an empty string.
         """
         # Normalize phone: strip spaces/dashes, ensure leading +
         normalized = re.sub(r'[\s\-()]', '', phone or '')
@@ -292,20 +331,35 @@ class ContactCentreWebhookController(http.Controller):
             normalized = '+' + normalized
 
         # Try to find existing CC contact
-        cc_contact = request.env['contact.centre.contact'].sudo().search(
-            [('phone_number', '=', normalized)], limit=1)
-        if cc_contact:
-            if bsuid and cc_contact.bsuid != bsuid:
-                cc_contact.write({'bsuid': bsuid})
-            return cc_contact
+        if normalized:
+            cc_contact = request.env['contact.centre.contact'].sudo().search(
+                [('phone_number', '=', normalized)], limit=1)
+            if cc_contact:
+                if bsuid and cc_contact.bsuid != bsuid:
+                    cc_contact.write({'bsuid': bsuid})
+                return cc_contact
+
+        if bsuid:
+            cc_contact = request.env['contact.centre.contact'].sudo().search(
+                [('bsuid', '=', bsuid)], limit=1)
+            if cc_contact:
+                if normalized and cc_contact.phone_number != normalized:
+                    # Phone reappeared for a contact we'd only known by bsuid.
+                    cc_contact.partner_id.write({'mobile': normalized})
+                return cc_contact
+
+        if not normalized and not bsuid:
+            return None
 
         # Try to find by partner mobile
-        partner = request.env['res.partner'].sudo().search(
-            [('mobile', '=', normalized)], limit=1)
+        partner = request.env['res.partner'].browse()
+        if normalized:
+            partner = request.env['res.partner'].sudo().search(
+                [('mobile', '=', normalized)], limit=1)
         if not partner:
             partner = request.env['res.partner'].sudo().create({
-                'name': name or normalized,
-                'mobile': normalized,
+                'name': name or normalized or 'WhatsApp Contact',
+                'mobile': normalized or False,
             })
 
         cc_contact = request.env['contact.centre.contact'].sudo().create({
