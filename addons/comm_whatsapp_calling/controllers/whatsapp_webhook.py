@@ -152,7 +152,21 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
         phone_number_id = meta_phone_number_id or to_number
         direction = "incoming" if call_data.get("direction") == "USER_INITIATED" else "outgoing"
 
-        partner = self._find_or_create_partner(from_number)
+        # Meta's business-scoped user ID, when present — same contacts-
+        # block/event-level fallback pattern comm_whatsapp's message
+        # handler uses, since the calling API mirrors that structure
+        # (value_data is the same level; see _process_call_event's
+        # docstring). Not documented as guaranteed present on every
+        # call event, so this is best-effort capture, not a hard
+        # requirement.
+        contacts = value_data.get("contacts", []) or []
+        contact_bsuid = next(
+            (c.get("user_id") for c in contacts if c.get("wa_id") == from_number),
+            None,
+        )
+        caller_bsuid = call_data.get("from_user_id") or contact_bsuid
+
+        partner = self._find_or_create_partner(from_number, bsuid=caller_bsuid)
         vals = {
             "call_id": call_id,
             "partner_id": partner.id if partner else False,
@@ -162,6 +176,7 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             "call_status": status or "ringing",
             "call_timestamp": _convert_timestamp(call_data.get("timestamp")),
             "raw_data": json.dumps(call_data),
+            "bsuid": caller_bsuid,
         }
         if meta_phone_number_id:
             vals["meta_phone_number_id"] = str(meta_phone_number_id)
@@ -386,7 +401,7 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 "comm_whatsapp_calling: voicemail dispatch failed: %s", e
             )
 
-    def _find_or_create_partner(self, phone_number):
+    def _find_or_create_partner(self, phone_number, bsuid=None):
         if not phone_number:
             return request.env["res.partner"].browse()
         clean = phone_number.replace("+", "").replace(" ", "").replace("-", "")
@@ -400,9 +415,15 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             limit=1,
         )
         if partner:
+            # Meta's business-scoped user ID, when present — see
+            # comm_whatsapp's res_partner.py for why this is captured
+            # alongside phone number rather than instead of it.
+            if bsuid and partner.wa_bsuid != bsuid:
+                partner.write({"wa_bsuid": bsuid})
             return partner
         return Partner.create({
             "name": f"WhatsApp {phone_number}",
             "mobile": phone_number,
             "is_company": False,
+            "wa_bsuid": bsuid,
         })

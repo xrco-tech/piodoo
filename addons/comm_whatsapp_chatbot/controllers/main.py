@@ -180,12 +180,16 @@ class WhatsAppChatbotController(http.Controller):
         try:
             # Try to find by mobile/phone
             phone_number = contact_data.get('wa_id') or wa_id
+            # Meta's business-scoped user ID, when present — see
+            # res_partner.py (comm_whatsapp) for why this is captured
+            # alongside phone number rather than instead of it.
+            bsuid = contact_data.get('user_id')
             partner = request.env['res.partner'].sudo().search([
                 '|',
                 ('phone', '=', phone_number),
                 ('mobile', '=', phone_number)
             ], limit=1)
-            
+
             if not partner:
                 # Create new partner
                 name = contact_data.get('profile', {}).get('name', f"WhatsApp Contact {phone_number}")
@@ -193,9 +197,12 @@ class WhatsAppChatbotController(http.Controller):
                     'name': name,
                     'mobile': phone_number,
                     'is_company': False,
+                    'wa_bsuid': bsuid,
                 })
                 _logger.info(f"Created new partner: {partner.id} for {phone_number}")
-            
+            elif bsuid and partner.wa_bsuid != bsuid:
+                partner.write({'wa_bsuid': bsuid})
+
             return partner
             
         except Exception as e:

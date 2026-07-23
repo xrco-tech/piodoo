@@ -34,7 +34,14 @@ class ContactCentreContact(models.Model):
             contact = self.sudo().create({"partner_id": partner.id})
         return contact
 
-    def _find_or_create_by_phone(self, phone_number, source_label):
+    def _find_or_create_by_phone(self, phone_number, source_label, bsuid=None):
+        """`bsuid` is Meta's business-scoped user ID, when the caller
+        already has one (e.g. from whatsapp.message.bsuid) — stored on
+        both the partner (comm_whatsapp's wa_bsuid, shared with the
+        calling/chatbot modules) and this contact (contact_centre's own
+        bsuid, since this module is the only place both fields are
+        reachable at once). See either field's own module for why
+        there isn't just one."""
         clean = re.sub(r"\D", "", phone_number or "")
         Partner = self.env["res.partner"].sudo()
         partner = Partner.browse()
@@ -47,15 +54,21 @@ class ContactCentreContact(models.Model):
                 "name": f"{source_label} {phone_number}",
                 "mobile": phone_number,
                 "is_company": False,
+                "wa_bsuid": bsuid,
             })
-        return self._find_or_create_contact_for_partner(partner)
+        elif bsuid and partner.wa_bsuid != bsuid:
+            partner.write({"wa_bsuid": bsuid})
+        contact = self._find_or_create_contact_for_partner(partner)
+        if bsuid and contact.bsuid != bsuid:
+            contact.write({"bsuid": bsuid})
+        return contact
 
     @api.model
     def _sync_whatsapp_message(self, wa_message):
         phone = wa_message.phone_number or wa_message.wa_id
         if not phone:
             return
-        contact = self._find_or_create_by_phone(phone, "WhatsApp")
+        contact = self._find_or_create_by_phone(phone, "WhatsApp", bsuid=wa_message.bsuid)
         direction = "inbound" if wa_message.is_incoming else "outbound"
         message_type = _WA_TO_CENTRE_MESSAGE_TYPE.get(wa_message.message_type, "text")
         self.env["contact.centre.message"].sudo().create({

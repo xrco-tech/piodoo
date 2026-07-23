@@ -36,6 +36,20 @@ class ContactCentreContact(models.Model):
         store=True,
         readonly=False,
     )
+    # Meta's business-scoped user ID (e.g. "US.13491208655302741918") —
+    # rolling out alongside optional WhatsApp usernames. Phone number
+    # stays authoritative for now; this is captured in parallel wherever
+    # a contact is resolved from a WhatsApp webhook, so identity isn't
+    # lost once phone-number fields start getting omitted from webhooks
+    # for users who've adopted a username and gone quiet for 30+ days.
+    # Lives here rather than on res.partner because this module doesn't
+    # depend on comm_whatsapp (see that module's res_partner.py for the
+    # equivalent field used by the comm_whatsapp-dependent modules).
+    # See: https://developers.facebook.com/documentation/business-messaging/whatsapp/business-scoped-user-ids/
+    bsuid = fields.Char(
+        'WhatsApp Business-Scoped User ID', index=True,
+        help="Meta's business-scoped user ID for this contact, when known.",
+    )
     # Computed (not manually written) so it can never drift out of sync -
     # it used to be set by hand in contact.centre.message's create()
     # override, which only covered brand-new messages: an existing

@@ -24,6 +24,18 @@ class WhatsappCallLog(models.Model):
     partner_id = fields.Many2one("res.partner", "Contact", ondelete="set null")
     from_number = fields.Char("From", required=True, readonly=True)
     to_number = fields.Char("To", required=True, readonly=True)
+    # Meta's business-scoped user ID (e.g. "US.13491208655302741918") —
+    # rolling out alongside optional WhatsApp usernames. Phone number
+    # (from_number/to_number above) stays authoritative for now; this is
+    # captured in parallel, best-effort, wherever the call webhook
+    # includes it, so caller identity isn't lost once phone-number
+    # fields start getting omitted from webhooks for users who've
+    # adopted a username and gone quiet for 30+ days.
+    # See: https://developers.facebook.com/documentation/business-messaging/whatsapp/business-scoped-user-ids/
+    bsuid = fields.Char(
+        "WhatsApp Business-Scoped User ID", index=True, readonly=True,
+        help="Meta's business-scoped user ID for the caller, when present in the webhook.",
+    )
     call_direction = fields.Selection(
         [("incoming", "Incoming"), ("outgoing", "Outgoing")],
         required=True,

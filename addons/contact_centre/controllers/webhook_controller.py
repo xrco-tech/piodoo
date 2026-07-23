@@ -61,8 +61,14 @@ class ContactCentreWebhookController(http.Controller):
                     c['wa_id']: c.get('profile', {}).get('name', '')
                     for c in value.get('contacts', [])
                 }
+                # Meta's business-scoped user ID, keyed the same way —
+                # see _get_or_create_contact for why this is captured.
+                bsuid_map = {
+                    c['wa_id']: c.get('user_id')
+                    for c in value.get('contacts', []) if c.get('user_id')
+                }
                 for msg in value.get('messages', []):
-                    self._handle_whatsapp_inbound(msg, contacts_map)
+                    self._handle_whatsapp_inbound(msg, contacts_map, bsuid_map)
 
     def _handle_whatsapp_status_update(self, status):
         """Update contact.centre.message status from a WhatsApp delivery event."""
@@ -84,10 +90,11 @@ class ContactCentreWebhookController(http.Controller):
         if cc_msg:
             cc_msg.write({'status': mapped})
 
-    def _handle_whatsapp_inbound(self, msg, contacts_map):
+    def _handle_whatsapp_inbound(self, msg, contacts_map, bsuid_map=None):
         """Create a contact.centre.message record for an inbound WhatsApp message."""
         sender_wa_id = msg.get('from')
         sender_name = contacts_map.get(sender_wa_id, sender_wa_id)
+        sender_bsuid = (bsuid_map or {}).get(sender_wa_id) or msg.get('from_user_id')
         msg_type = msg.get('type', 'text')
 
         body = ''
@@ -109,7 +116,7 @@ class ContactCentreWebhookController(http.Controller):
             body = f"[Location: {loc.get('latitude')}, {loc.get('longitude')}]"
 
         # Resolve or create contact
-        contact = self._get_or_create_contact(phone=sender_wa_id, name=sender_name)
+        contact = self._get_or_create_contact(phone=sender_wa_id, name=sender_name, bsuid=sender_bsuid)
         if not contact:
             return
 
@@ -271,10 +278,13 @@ class ContactCentreWebhookController(http.Controller):
     # Helpers
     # -------------------------------------------------------------------------
 
-    def _get_or_create_contact(self, phone, name=None):
+    def _get_or_create_contact(self, phone, name=None, bsuid=None):
         """
         Find an existing contact.centre.contact by phone number or create one
-        (also creating a res.partner if needed).
+        (also creating a res.partner if needed). `bsuid` is Meta's
+        business-scoped user ID, when the webhook included one — see
+        contact_centre_contact.py's bsuid field for why it's captured
+        here rather than assumed to always be absent.
         """
         # Normalize phone: strip spaces/dashes, ensure leading +
         normalized = re.sub(r'[\s\-()]', '', phone or '')
@@ -285,6 +295,8 @@ class ContactCentreWebhookController(http.Controller):
         cc_contact = request.env['contact.centre.contact'].sudo().search(
             [('phone_number', '=', normalized)], limit=1)
         if cc_contact:
+            if bsuid and cc_contact.bsuid != bsuid:
+                cc_contact.write({'bsuid': bsuid})
             return cc_contact
 
         # Try to find by partner mobile
@@ -298,5 +310,6 @@ class ContactCentreWebhookController(http.Controller):
 
         cc_contact = request.env['contact.centre.contact'].sudo().create({
             'partner_id': partner.id,
+            'bsuid': bsuid,
         })
         return cc_contact

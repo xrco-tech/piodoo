@@ -19,6 +19,15 @@ class WhatsAppMessage(models.Model):
     message_id = fields.Char(string='Message ID', required=True, index=True, readonly=True)
     wa_id = fields.Char(string='WhatsApp ID', required=True, index=True, readonly=True, help='WhatsApp ID of the sender')
     phone_number = fields.Char(string='Phone Number', readonly=True, help='Phone number of the sender')
+    # Meta's business-scoped user ID (e.g. "US.13491208655302741918") —
+    # rolling out alongside optional WhatsApp usernames. Phone number
+    # stays authoritative for now (wa_id/phone_number above); this is
+    # captured in parallel so a sender's identity isn't lost once
+    # phone-number fields start getting omitted from webhooks for
+    # users who've adopted a username and gone quiet for 30+ days.
+    # See: https://developers.facebook.com/documentation/business-messaging/whatsapp/business-scoped-user-ids/
+    bsuid = fields.Char(string='Business-Scoped User ID', index=True, readonly=True,
+                        help="Meta's business-scoped user ID for the sender, when present in the webhook.")
     
     # Contact information
     contact_name = fields.Char(string='Contact Name', readonly=True, help='Name from contact profile')
@@ -406,6 +415,10 @@ class WhatsAppMessage(models.Model):
             # Extract message info
             message_id = webhook_data.get('id')
             wa_id = webhook_data.get('from')
+            # Prefer the message-level property; fall back to the
+            # contacts-block one — Meta documents both as carrying the
+            # same BSUID, but doesn't guarantee both are always present.
+            bsuid = webhook_data.get('from_user_id') or contact.get('user_id')
             timestamp_str = webhook_data.get('timestamp')
             message_type = webhook_data.get('type', 'text')
             
@@ -553,6 +566,7 @@ class WhatsAppMessage(models.Model):
                 'message_id': message_id,
                 'wa_id': wa_id,
                 'phone_number': wa_id,  # Use wa_id as phone number
+                'bsuid': bsuid,
                 'contact_name': contact_name,
                 'message_type': message_type,
                 'message_body': message_body,
