@@ -49,8 +49,16 @@ Odoo so the shell installs clean on its own.
         'security/cx_module_groups.xml',
         'security/ir.model.access.csv',
         'views/cx_conversation_views.xml',
+        'views/cx_inbox_views.xml',
         'views/cx_menus.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'cx_module/static/src/inbox/inbox.scss',
+            'cx_module/static/src/inbox/inbox.js',
+            'cx_module/static/src/inbox/inbox.xml',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,

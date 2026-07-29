@@ -37,7 +37,7 @@
     <menuitem id="menu_cx_inbox"
               name="Inbox (All Channels)"
               parent="menu_cx_conversations"
-              action="action_cx_inbox"
+              action="action_cx_inbox_screen"
               sequence="10"/>
 
     <menuitem id="menu_cx_livechat"
