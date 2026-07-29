@@ -41,6 +41,8 @@ Odoo so the shell installs clean on its own.
         'comm_chatbot_sms',
         'comm_chatbot_web',
         'comm_chatbot_email',        # new adapter, this repo
+        'comm_whatsapp',             # WhatsApp account config (referenced by cx_menus)
+        'comm_sms',                  # SMS account config (referenced by cx_menus)
         'comm_whatsapp_calling',     # Voice/Calls widget system, reused wholesale
         # Phase 3 — Billing (shared ledger + Meta rate cards + cost simulator):
         'comm_billing_core',
