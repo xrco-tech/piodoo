@@ -271,24 +271,51 @@ class MCPLog(models.Model):
 
     @api.model
     def _register_hook(self):
-        """Register cleanup cron job on module installation."""
+        """Ensure the log-cleanup cron exists.
+
+        This runs on *every* registry load, not just install. It must therefore
+        be resilient:
+
+        1. Only write when a value actually differs. An unconditional
+           ``cron.write`` on every reload will deadlock when the reload was
+           triggered by the cron worker currently executing this very job:
+           ``ir_cron._try_lock`` then raises "cron task is currently being
+           executed", which aborts the whole registry load and blanks the
+           backend. A no-op reload must not attempt any write.
+        2. Never let a failure here abort module loading — isolate it in a
+           savepoint and swallow/log any error.
+        """
         super()._register_hook()
-        # Create or update the cron job for log cleanup
+        Cron = self.env["ir.cron"].sudo()
+        model = self.env["ir.model"].search([("model", "=", "mcp.log")], limit=1)
+        if not model:
+            return
         cron_vals = {
             "name": "MCP Log Cleanup",
-            "model_id": self.env["ir.model"].search([("model", "=", "mcp.log")]).id,
+            "model_id": model.id,
             "state": "code",
             "code": "model.cleanup_old_logs()",
             "interval_type": "days",
             "interval_number": 1,
-            # 'numbercall': -1,  # This field doesn't exist in Odoo 18
             "active": True,
         }
-        cron = self.env["ir.cron"].search([("name", "=", "MCP Log Cleanup")])
-        if cron:
-            cron.write(cron_vals)
-        else:
-            self.env["ir.cron"].create(cron_vals)
+        try:
+            with self.env.cr.savepoint():
+                cron = Cron.search([("name", "=", "MCP Log Cleanup")], limit=1)
+                if not cron:
+                    Cron.create(cron_vals)
+                    return
+                changed = {}
+                for field, value in cron_vals.items():
+                    current = cron[field]
+                    if field == "model_id":
+                        current = current.id
+                    if current != value:
+                        changed[field] = value
+                if changed:
+                    cron.write(changed)
+        except Exception as e:  # never abort the registry load over cron upkeep
+            _logger.warning("MCP Log Cleanup cron setup skipped: %s", e)
 
     def get_summary(self):
         """Get a summary of the log entry for display."""
