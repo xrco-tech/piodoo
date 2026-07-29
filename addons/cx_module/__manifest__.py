@@ -30,7 +30,6 @@ Odoo so the shell installs clean on its own.
     'website': 'https://github.com/xrco-tech/piodoo',
     'license': 'LGPL-3',
     # Deps grow per phase:
-    #   Phase 4  Marketing  -> comm_campaign
     #   Phase 5  Tickets    -> helpdesk (uninstallable on this instance — blocked)
     'depends': [
         'base',
@@ -46,6 +45,8 @@ Odoo so the shell installs clean on its own.
         # Phase 3 — Billing (shared ledger + Meta rate cards + cost simulator):
         'comm_billing_core',
         'comm_whatsapp_billing',
+        # Phase 4 — Marketing (omnichannel campaign engine + budget caps):
+        'comm_campaign',
     ],
     'data': [
         'security/cx_module_groups.xml',
