@@ -219,4 +219,37 @@
               action="comm_chatbot.action_comm_bot"
               sequence="5"/>
 
+    <!-- Channel registry: the comm.channel definitions (WhatsApp/SMS/web/voice/email). -->
+    <menuitem id="menu_cx_config_channels"
+              name="Channels"
+              parent="menu_cx_config"
+              action="comm_chatbot.action_comm_channel"
+              sequence="10"/>
+
+    <!-- Per-channel account config (provider credentials). -->
+    <menuitem id="menu_cx_config_wa_accounts"
+              name="WhatsApp Accounts"
+              parent="menu_cx_config"
+              action="comm_whatsapp.action_comm_whatsapp_account"
+              sequence="20"/>
+
+    <menuitem id="menu_cx_config_sms_accounts"
+              name="SMS Accounts"
+              parent="menu_cx_config"
+              action="comm_sms.action_comm_sms_account"
+              sequence="30"/>
+
+    <!-- Email servers (the Email channel sends via mail.mail / these servers). -->
+    <menuitem id="menu_cx_config_mail_out"
+              name="Email — Outgoing Servers"
+              parent="menu_cx_config"
+              action="base.action_ir_mail_server_list"
+              sequence="40"/>
+
+    <menuitem id="menu_cx_config_mail_in"
+              name="Email — Incoming Servers"
+              parent="menu_cx_config"
+              action="mail.action_email_server_tree"
+              sequence="50"/>
+
 </odoo>
