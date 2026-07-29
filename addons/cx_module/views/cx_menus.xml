@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Unified CX menu skeleton (Phase 0).
+
+        Structure, sequence numbers, and groups= gating follow the
+        "Odoo XML Menu Skeleton" and "Access Groups" sections of
+        Unified_CX_Menu_Structure.docx exactly.
+
+        Phase 0 is standalone, so only leaves that resolve against base Odoo
+        are wired now (Customers > Contacts). Every other tab is created as a
+        parent here; its leaves are added by the phase that builds the backing
+        action — see the note under each tab. An empty parent menu simply does
+        not render until it has a visible child, so shipping the parents early
+        is harmless and keeps sequence/gating in one place.
+    -->
+
+    <!-- ============ Root App ============ -->
+    <menuitem id="menu_cx_root"
+              name="Unified CX"
+              web_icon="cx_module,static/description/icon.png"
+              sequence="10"/>
+
+    <!-- ============ Workspace ============ -->
+    <!-- Phase 6: My Dashboard (cx.dashboard), Live Queue, Customer 360 Search. -->
+    <menuitem id="menu_cx_workspace"
+              name="Workspace"
+              parent="menu_cx_root"
+              sequence="10"/>
+
+    <!-- ============ Conversations (Phase 1) ============ -->
+    <menuitem id="menu_cx_conversations"
+              name="Conversations"
+              parent="menu_cx_root"
+              sequence="20"/>
+
+    <menuitem id="menu_cx_inbox"
+              name="Inbox (All Channels)"
+              parent="menu_cx_conversations"
+              action="action_cx_inbox"
+              sequence="10"/>
+
+    <menuitem id="menu_cx_livechat"
+              name="Live Chat"
+              parent="menu_cx_conversations"
+              action="action_cx_livechat"
+              sequence="20"/>
+
+    <!-- Voice / Calls reuses the comm_whatsapp_calling widget system wholesale. -->
+    <menuitem id="menu_cx_voice"
+              name="Voice / Calls"
+              parent="menu_cx_conversations"
+              action="comm_whatsapp_calling.action_whatsapp_call_log"
+              sequence="30"/>
+
+    <menuitem id="menu_cx_email"
+              name="Email"
+              parent="menu_cx_conversations"
+              action="action_cx_email"
+              sequence="40"/>
+
+    <menuitem id="menu_cx_wa_sms"
+              name="WhatsApp &amp; SMS"
+              parent="menu_cx_conversations"
+              action="action_cx_wa_sms"
+              sequence="50"/>
+
+    <!-- ============ Tickets ============ -->
+    <!-- Phase 5: All / My / Escalated / SLA (helpdesk) + Knowledge Base. -->
+    <menuitem id="menu_cx_tickets"
+              name="Tickets"
+              parent="menu_cx_root"
+              sequence="30"/>
+
+    <!-- ============ Sales ============ -->
+    <!-- Leads / Opportunities (crm), Quotations / Orders (sale) — pending the
+         crm/sale dependency decision (see Open Questions). -->
+    <menuitem id="menu_cx_sales"
+              name="Sales"
+              parent="menu_cx_root"
+              sequence="40"/>
+
+    <!-- ============ Marketing ============ -->
+    <!-- Phase 4: Campaigns / Segments / Journeys / Templates (comm_campaign).
+         Journeys is Manager+. -->
+    <menuitem id="menu_cx_marketing"
+              name="Marketing"
+              parent="menu_cx_root"
+              sequence="50"/>
+
+    <!-- ============ Customers ============ -->
+    <menuitem id="menu_cx_customers"
+              name="Customers"
+              parent="menu_cx_root"
+              sequence="60"/>
+
+    <!-- Wired now: standalone against the contacts app. -->
+    <menuitem id="menu_cx_contacts"
+              name="Contacts"
+              parent="menu_cx_customers"
+              action="contacts.action_contacts"
+              sequence="10"/>
+    <!-- Phase 6: Companies (res.partner is_company filter),
+         Interaction Timeline (cx.timeline). -->
+
+    <!-- ============ Reporting (Manager+) ============ -->
+    <!-- Phase 6: Agent / Channel / SLA / CSAT / ROI reports. -->
+    <menuitem id="menu_cx_reporting"
+              name="Reporting"
+              parent="menu_cx_root"
+              sequence="70"
+              groups="cx_module.group_cx_manager"/>
+
+    <!-- ============ Billing ============ -->
+    <!-- Phase 3: Spend Dashboard / Cost by Channel / Campaign Cost Estimator /
+         Budgets &amp; Alerts / Usage &amp; Invoices / Rate Cards (comm_billing_core).
+         Estimator is Agent; most others Manager+; Rate Cards Admin only. -->
+    <menuitem id="menu_cx_billing"
+              name="Billing"
+              parent="menu_cx_root"
+              sequence="75"/>
+
+    <!-- ============ Configuration (Admin only) ============ -->
+    <!-- Later phases: Channels &amp; Routing / Teams / SLA Policies / Tags /
+         Integrations / General Settings. -->
+    <menuitem id="menu_cx_config"
+              name="Configuration"
+              parent="menu_cx_root"
+              sequence="80"
+              groups="cx_module.group_cx_admin"/>
+
+</odoo>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Phase 1 — Conversations actions.
+
+        Per the settled reuse decision, UCX does NOT re-model conversations:
+        these actions target comm_chatbot's comm.conversation directly (its own
+        list/form views), and UCX owns only the action + menu surface. Channel
+        splits are plain domains on primary_channel_id.code.
+    -->
+
+    <!-- Inbox (All Channels): every open conversation, all channels. -->
+    <record id="action_cx_inbox" model="ir.actions.act_window">
+        <field name="name">Inbox</field>
+        <field name="res_model">comm.conversation</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No conversations yet</p>
+            <p>Messages from every channel — WhatsApp, SMS, web chat, voice, email — land here in one list.</p>
+        </field>
+    </record>
+
+    <!-- Live Chat: web-widget conversations only. -->
+    <record id="action_cx_livechat" model="ir.actions.act_window">
+        <field name="name">Live Chat</field>
+        <field name="res_model">comm.conversation</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('primary_channel_id.code', '=', 'web')]</field>
+    </record>
+
+    <!-- Email: email-channel conversations only. -->
+    <record id="action_cx_email" model="ir.actions.act_window">
+        <field name="name">Email</field>
+        <field name="res_model">comm.conversation</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('primary_channel_id.code', '=', 'email')]</field>
+    </record>
+
+    <!-- WhatsApp &amp; SMS: the two messaging channels together. -->
+    <record id="action_cx_wa_sms" model="ir.actions.act_window">
+        <field name="name">WhatsApp &amp; SMS</field>
+        <field name="res_model">comm.conversation</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('primary_channel_id.code', 'in', ['whatsapp', 'sms'])]</field>
+    </record>
+
+</odoo>
