@@ -29,20 +29,26 @@ Odoo so the shell installs clean on its own.
     'author': 'XR Co.',
     'website': 'https://github.com/xrco-tech/piodoo',
     'license': 'LGPL-3',
-    # Phase 0 is intentionally standalone. Feature deps are added per phase:
-    #   Phase 1  Conversations   -> comm_chatbot, comm_chatbot_whatsapp/_sms/_web,
-    #                               comm_whatsapp, comm_sms, comm_whatsapp_calling
-    #   Phase 3  Billing         -> comm_billing_core
-    #   Phase 4  Marketing       -> comm_campaign
-    #   Phase 5  Tickets         -> helpdesk (+ cx_ticket_sync glue module)
+    # Deps grow per phase:
+    #   Phase 3  Billing    -> comm_billing_core
+    #   Phase 4  Marketing  -> comm_campaign
+    #   Phase 5  Tickets    -> helpdesk (uninstallable on this instance — blocked)
     'depends': [
         'base',
         'mail',
         'contacts',
+        # Phase 1 — Conversations (Gen-2 trunk + channel adapters, all reused):
+        'comm_chatbot',
+        'comm_chatbot_whatsapp',
+        'comm_chatbot_sms',
+        'comm_chatbot_web',
+        'comm_chatbot_email',        # new adapter, this repo
+        'comm_whatsapp_calling',     # Voice/Calls widget system, reused wholesale
     ],
     'data': [
         'security/cx_module_groups.xml',
         'security/ir.model.access.csv',
+        'views/cx_conversation_views.xml',
         'views/cx_menus.xml',
     ],
     'installable': True,

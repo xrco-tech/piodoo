@@ -28,13 +28,42 @@
               parent="menu_cx_root"
               sequence="10"/>
 
-    <!-- ============ Conversations ============ -->
-    <!-- Phase 1: Inbox / Live Chat / Voice / Email / WhatsApp &amp; SMS
-         (comm_chatbot + channel adapters + comm_whatsapp_calling). -->
+    <!-- ============ Conversations (Phase 1) ============ -->
     <menuitem id="menu_cx_conversations"
               name="Conversations"
               parent="menu_cx_root"
               sequence="20"/>
+
+    <menuitem id="menu_cx_inbox"
+              name="Inbox (All Channels)"
+              parent="menu_cx_conversations"
+              action="action_cx_inbox"
+              sequence="10"/>
+
+    <menuitem id="menu_cx_livechat"
+              name="Live Chat"
+              parent="menu_cx_conversations"
+              action="action_cx_livechat"
+              sequence="20"/>
+
+    <!-- Voice / Calls reuses the comm_whatsapp_calling widget system wholesale. -->
+    <menuitem id="menu_cx_voice"
+              name="Voice / Calls"
+              parent="menu_cx_conversations"
+              action="comm_whatsapp_calling.action_whatsapp_call_log"
+              sequence="30"/>
+
+    <menuitem id="menu_cx_email"
+              name="Email"
+              parent="menu_cx_conversations"
+              action="action_cx_email"
+              sequence="40"/>
+
+    <menuitem id="menu_cx_wa_sms"
+              name="WhatsApp &amp; SMS"
+              parent="menu_cx_conversations"
+              action="action_cx_wa_sms"
+              sequence="50"/>
 
     <!-- ============ Tickets ============ -->
     <!-- Phase 5: All / My / Escalated / SLA (helpdesk) + Knowledge Base. -->
