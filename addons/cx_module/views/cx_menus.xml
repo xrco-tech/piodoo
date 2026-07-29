@@ -111,14 +111,40 @@
               sequence="70"
               groups="cx_module.group_cx_manager"/>
 
-    <!-- ============ Billing ============ -->
-    <!-- Phase 3: Spend Dashboard / Cost by Channel / Campaign Cost Estimator /
-         Budgets &amp; Alerts / Usage &amp; Invoices / Rate Cards (comm_billing_core).
-         Estimator is Agent; most others Manager+; Rate Cards Admin only. -->
+    <!-- ============ Billing (Phase 3) ============ -->
+    <!-- Reuses comm_billing_core's shared ledger + the WhatsApp cost simulator.
+         Budgets &amp; Alerts is deferred to Phase 4 (comm_campaign). -->
     <menuitem id="menu_cx_billing"
               name="Billing"
               parent="menu_cx_root"
               sequence="75"/>
+
+    <menuitem id="menu_cx_billing_dashboard"
+              name="Spend Dashboard"
+              parent="menu_cx_billing"
+              action="comm_billing_core.action_comm_billing_dashboard"
+              sequence="10"
+              groups="cx_module.group_cx_manager"/>
+
+    <menuitem id="menu_cx_billing_channel"
+              name="Cost by Channel"
+              parent="menu_cx_billing"
+              action="comm_billing_core.action_comm_billing_event"
+              sequence="20"
+              groups="cx_module.group_cx_manager"/>
+
+    <menuitem id="menu_cx_billing_estimate"
+              name="Campaign Cost Estimator"
+              parent="menu_cx_billing"
+              action="comm_whatsapp_billing.action_whatsapp_cost_simulation"
+              sequence="30"/>
+
+    <menuitem id="menu_cx_billing_ratecards"
+              name="Rate Cards"
+              parent="menu_cx_billing"
+              action="comm_billing_core.action_comm_billing_rate_card"
+              sequence="60"
+              groups="cx_module.group_cx_admin"/>
 
     <!-- ============ Configuration (Admin only) ============ -->
     <!-- Later phases: Channels &amp; Routing / Teams / SLA Policies / Tags /
