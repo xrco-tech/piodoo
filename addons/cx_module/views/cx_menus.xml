@@ -211,4 +211,12 @@
               sequence="80"
               groups="cx_module.group_cx_admin"/>
 
+    <!-- Bots &amp; Flows: opens the comm.bot list; each bot's form carries the
+         "Flow Canvas" button (the Phase 2 flow builder). -->
+    <menuitem id="menu_cx_config_bots"
+              name="Bots &amp; Flows"
+              parent="menu_cx_config"
+              action="comm_chatbot.action_comm_bot"
+              sequence="5"/>
+
 </odoo>
