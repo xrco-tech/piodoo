@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="cx_module.BotFlow">
+        <div class="o_action o_cx_flow d-flex flex-column" style="height:100%;">
+            <div class="o_cx_flow_toolbar d-flex align-items-center gap-3">
+                <strong><t t-esc="state.botName"/></strong>
+                <span class="text-muted small"><t t-esc="state.nodes.length"/> steps</span>
+                <span class="ms-auto text-muted small">Click a step to edit it</span>
+            </div>
+
+            <div class="o_cx_flow_canvas flex-grow-1">
+                <div t-if="state.loading" class="p-4 text-muted">Loading flow…</div>
+                <div t-elif="!state.nodes.length" class="p-4 text-muted">This bot has no steps yet.</div>
+                <div t-else="" class="o_cx_flow_stage" t-attf-style="width:{{state.width}}px; height:{{state.height}}px;">
+                    <svg class="o_cx_flow_svg" t-att-width="state.width" t-att-height="state.height">
+                        <defs>
+                            <marker id="cxFlowArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                                <path d="M0,0 L8,4 L0,8 Z" class="o_cx_flow_arrowhead"/>
+                            </marker>
+                        </defs>
+                        <t t-foreach="state.edges" t-as="e" t-key="e_index">
+                            <path class="o_cx_flow_connector" t-att-d="e.d" marker-end="url(#cxFlowArrow)"/>
+                            <text t-if="e.label" class="o_cx_flow_edge_label" t-att-x="e.lx" t-att-y="e.ly"
+                                  text-anchor="middle"><t t-esc="e.label"/></text>
+                        </t>
+                    </svg>
+                    <t t-foreach="state.nodes" t-as="n" t-key="n.id">
+                        <div class="o_cx_flow_node" t-attf-class="o_cx_flow_kind_{{n.kind}} {{ n.isEntry ? 'o_cx_flow_node_entry' : '' }}"
+                             t-attf-style="left:{{n.x}}px; top:{{n.y}}px;"
+                             t-on-click="() => this.openStep(n.id)">
+                            <div class="o_cx_flow_node_kind">
+                                <span t-if="n.isEntry" class="badge text-bg-dark me-1">entry</span>
+                                <t t-esc="n.kind"/>
+                            </div>
+                            <div class="o_cx_flow_node_name"><t t-esc="n.name"/></div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

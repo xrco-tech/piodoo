@@ -50,6 +50,7 @@ Odoo so the shell installs clean on its own.
         'security/ir.model.access.csv',
         'views/cx_conversation_views.xml',
         'views/cx_inbox_views.xml',
+        'views/cx_bot_views.xml',
         'views/cx_menus.xml',
     ],
     'assets': {
@@ -57,6 +58,9 @@ Odoo so the shell installs clean on its own.
             'cx_module/static/src/inbox/inbox.scss',
             'cx_module/static/src/inbox/inbox.js',
             'cx_module/static/src/inbox/inbox.xml',
+            'cx_module/static/src/flow/flow.scss',
+            'cx_module/static/src/flow/flow.js',
+            'cx_module/static/src/flow/flow.xml',
         ],
     },
     'installable': True,

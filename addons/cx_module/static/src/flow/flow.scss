@@ -1,0 +1,95 @@
+.o_cx_flow {
+    height: 100%;
+    background: var(--o-view-background-color, #fff);
+
+    .o_cx_flow_toolbar {
+        padding: 0.6rem 1rem;
+        border-bottom: 1px solid var(--o-gray-300, #dee2e6);
+        background: var(--o-gray-100, #f8f9fa);
+        flex-shrink: 0;
+    }
+
+    // Scrollable canvas; the inner stage is sized to the whole graph.
+    .o_cx_flow_canvas {
+        overflow: auto;
+        background:
+            radial-gradient(circle, var(--o-gray-300, #dee2e6) 1px, transparent 1px);
+        background-size: 22px 22px;
+    }
+
+    .o_cx_flow_stage {
+        position: relative;
+    }
+
+    .o_cx_flow_svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+    }
+
+    .o_cx_flow_connector {
+        fill: none;
+        stroke: var(--o-gray-500, #adb5bd);
+        stroke-width: 2;
+    }
+
+    .o_cx_flow_arrowhead {
+        fill: var(--o-gray-500, #adb5bd);
+    }
+
+    .o_cx_flow_edge_label {
+        fill: var(--o-gray-700, #495057);
+        font-size: 11px;
+    }
+
+    // ── Step nodes ──────────────────────────────────────────────────────
+    .o_cx_flow_node {
+        position: absolute;
+        width: 190px;
+        height: 66px;
+        box-sizing: border-box;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--o-gray-400, #ced4da);
+        border-left: 4px solid var(--bs-primary, #0d6efd);
+        border-radius: 8px;
+        background: var(--o-view-background-color, #fff);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        overflow: hidden;
+        transition: box-shadow 0.1s ease;
+
+        &:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        }
+
+        &.o_cx_flow_node_entry {
+            border-left-color: #37474f;
+        }
+    }
+
+    .o_cx_flow_node_kind {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--o-gray-600, #6c757d);
+    }
+
+    .o_cx_flow_node_name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    // Per-kind left-border accents.
+    .o_cx_flow_kind_menu     { border-left-color: #6f42c1; }
+    .o_cx_flow_kind_input    { border-left-color: #0dcaf0; }
+    .o_cx_flow_kind_condition { border-left-color: #fd7e14; }
+    .o_cx_flow_kind_action   { border-left-color: #20c997; }
+    .o_cx_flow_kind_handoff  { border-left-color: #d63384; }
+    .o_cx_flow_kind_llm      { border-left-color: #6610f2; }
+    .o_cx_flow_kind_jump     { border-left-color: #ffc107; }
+    .o_cx_flow_kind_end      { border-left-color: #dc3545; }
+}
