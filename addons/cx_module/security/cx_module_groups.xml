@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Module category so the three tiers group under "Unified CX"
+             in Settings > Users rather than under Administration. -->
+        <record id="module_category_cx" model="ir.module.category">
+            <field name="name">Unified CX</field>
+            <field name="description">Access levels for the Unified Customer Experience app.</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Agent: day-to-day handling. Workspace, Conversations, Tickets,
+             Sales, Marketing (view), Customers, Billing > Campaign Cost Estimator. -->
+        <record id="group_cx_agent" model="res.groups">
+            <field name="name">Agent</field>
+            <field name="category_id" ref="module_category_cx"/>
+            <field name="comment">Front-line agent: unified inbox, tickets, sales, customers, and the campaign cost estimator.</field>
+        </record>
+
+        <!-- Manager: everything Agent has, plus Reporting, Marketing Journeys,
+             and the manager-level Billing views. -->
+        <record id="group_cx_manager" model="res.groups">
+            <field name="name">Manager</field>
+            <field name="category_id" ref="module_category_cx"/>
+            <field name="comment">Team lead / manager: adds Reporting, Marketing Journeys, and spend / budget / invoice billing views.</field>
+            <field name="implied_ids" eval="[(4, ref('group_cx_agent'))]"/>
+        </record>
+
+        <!-- Admin: everything Manager has, plus Configuration and Rate Cards. -->
+        <record id="group_cx_admin" model="res.groups">
+            <field name="name">Administrator</field>
+            <field name="category_id" ref="module_category_cx"/>
+            <field name="comment">Full access: adds Configuration and Billing > Rate Cards.</field>
+            <field name="implied_ids" eval="[(4, ref('group_cx_manager'))]"/>
+        </record>
+
+    </data>
+</odoo>
