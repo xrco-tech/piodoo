@@ -12,6 +12,14 @@
     <!-- Inbox (All Channels) is the OWL client action in cx_inbox_views.xml.
          The per-channel items below stay as plain filtered list views. -->
 
+    <!-- Workspace > Live Queue: open/waiting conversations across all channels. -->
+    <record id="action_cx_live_queue" model="ir.actions.act_window">
+        <field name="name">Live Queue</field>
+        <field name="res_model">comm.conversation</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('lifecycle_state', 'in', ['open', 'waiting'])]</field>
+    </record>
+
     <!-- Live Chat: web-widget conversations only. -->
     <record id="action_cx_livechat" model="ir.actions.act_window">
         <field name="name">Live Chat</field>

@@ -21,12 +21,29 @@
               web_icon="cx_module,static/description/icon.png"
               sequence="10"/>
 
-    <!-- ============ Workspace ============ -->
-    <!-- Phase 6: My Dashboard (cx.dashboard), Live Queue, Customer 360 Search. -->
+    <!-- ============ Workspace (Phase 6) ============ -->
     <menuitem id="menu_cx_workspace"
               name="Workspace"
               parent="menu_cx_root"
               sequence="10"/>
+
+    <menuitem id="menu_cx_dashboard"
+              name="My Dashboard"
+              parent="menu_cx_workspace"
+              action="action_cx_dashboard"
+              sequence="10"/>
+
+    <menuitem id="menu_cx_live_queue"
+              name="Live Queue"
+              parent="menu_cx_workspace"
+              action="action_cx_live_queue"
+              sequence="20"/>
+
+    <menuitem id="menu_cx_360_search"
+              name="Customer 360 Search"
+              parent="menu_cx_workspace"
+              action="contacts.action_contacts"
+              sequence="30"/>
 
     <!-- ============ Conversations (Phase 1) ============ -->
     <menuitem id="menu_cx_conversations"
@@ -120,13 +137,26 @@
     <!-- Phase 6: Companies (res.partner is_company filter),
          Interaction Timeline (cx.timeline). -->
 
-    <!-- ============ Reporting (Manager+) ============ -->
-    <!-- Phase 6: Agent / Channel / SLA / CSAT / ROI reports. -->
+    <!-- ============ Reporting (Manager+, Phase 6) ============ -->
+    <!-- Agent + Channel performance over cx.report.conversation. SLA / CSAT /
+         ROI need helpdesk / survey / sales data not on this instance — later. -->
     <menuitem id="menu_cx_reporting"
               name="Reporting"
               parent="menu_cx_root"
               sequence="70"
               groups="cx_module.group_cx_manager"/>
+
+    <menuitem id="menu_cx_report_agent"
+              name="Agent Performance"
+              parent="menu_cx_reporting"
+              action="action_cx_report_agent"
+              sequence="10"/>
+
+    <menuitem id="menu_cx_report_channel"
+              name="Channel Performance"
+              parent="menu_cx_reporting"
+              action="action_cx_report_channel"
+              sequence="20"/>
 
     <!-- ============ Billing (Phase 3) ============ -->
     <!-- Reuses comm_billing_core's shared ledger + the WhatsApp cost simulator.

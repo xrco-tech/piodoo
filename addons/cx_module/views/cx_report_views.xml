@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Phase 6 — Reporting + Workspace dashboard, all over cx.report.conversation. -->
+
+    <record id="view_cx_report_pivot" model="ir.ui.view">
+        <field name="name">cx.report.conversation.pivot</field>
+        <field name="model">cx.report.conversation</field>
+        <field name="arch" type="xml">
+            <pivot string="Conversation Analytics">
+                <field name="primary_channel_id" type="row"/>
+                <field name="conversation_count" type="measure"/>
+                <field name="interaction_count" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_cx_report_graph" model="ir.ui.view">
+        <field name="name">cx.report.conversation.graph</field>
+        <field name="model">cx.report.conversation</field>
+        <field name="arch" type="xml">
+            <graph string="Conversation Analytics" type="bar">
+                <field name="primary_channel_id"/>
+                <field name="conversation_count" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_cx_report_list" model="ir.ui.view">
+        <field name="name">cx.report.conversation.list</field>
+        <field name="model">cx.report.conversation</field>
+        <field name="arch" type="xml">
+            <list string="Conversation Analytics">
+                <field name="opened_at"/>
+                <field name="partner_id"/>
+                <field name="primary_channel_id"/>
+                <field name="assigned_agent_id"/>
+                <field name="lifecycle_state"/>
+                <field name="interaction_count" sum="Messages"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cx_report_search" model="ir.ui.view">
+        <field name="name">cx.report.conversation.search</field>
+        <field name="model">cx.report.conversation</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="assigned_agent_id"/>
+                <group expand="0" string="Group By">
+                    <filter name="gb_channel" string="Channel" context="{'group_by': 'primary_channel_id'}"/>
+                    <filter name="gb_agent" string="Agent" context="{'group_by': 'assigned_agent_id'}"/>
+                    <filter name="gb_state" string="State" context="{'group_by': 'lifecycle_state'}"/>
+                    <filter name="gb_bot" string="Bot" context="{'group_by': 'bot_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Reporting > Channel Performance -->
+    <record id="action_cx_report_channel" model="ir.actions.act_window">
+        <field name="name">Channel Performance</field>
+        <field name="res_model">cx.report.conversation</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="context">{'search_default_gb_channel': 1}</field>
+    </record>
+
+    <!-- Reporting > Agent Performance -->
+    <record id="action_cx_report_agent" model="ir.actions.act_window">
+        <field name="name">Agent Performance</field>
+        <field name="res_model">cx.report.conversation</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="context">{'search_default_gb_agent': 1}</field>
+    </record>
+
+    <!-- Workspace > My Dashboard (channel breakdown, drawn from the same view) -->
+    <record id="action_cx_dashboard" model="ir.actions.act_window">
+        <field name="name">My Dashboard</field>
+        <field name="res_model">cx.report.conversation</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="context">{'search_default_gb_channel': 1}</field>
+    </record>
+</odoo>
