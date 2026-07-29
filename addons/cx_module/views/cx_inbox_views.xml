@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Phase 2 — the 3-pane OWL inbox (client action), re-platformed from
+         contact_centre_inbox onto comm.conversation / comm.interaction. -->
+    <record id="action_cx_inbox_screen" model="ir.actions.client">
+        <field name="name">Inbox</field>
+        <field name="tag">cx_module_inbox</field>
+    </record>
+</odoo>

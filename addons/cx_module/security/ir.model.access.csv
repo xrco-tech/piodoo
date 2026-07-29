@@ -1,1 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_cx_conversation_agent,cx.conversation.agent,comm_chatbot.model_comm_conversation,cx_module.group_cx_agent,1,1,0,0
+access_cx_interaction_agent,cx.interaction.agent,comm_chatbot.model_comm_interaction,cx_module.group_cx_agent,1,1,1,0
