@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Phase 2 — add a "Flow Canvas" button to the comm.bot form, next to the
+         existing mermaid diagram button. Opens the UCX OWL flow canvas. -->
+    <record id="view_comm_bot_form_cx_flow" model="ir.ui.view">
+        <field name="name">comm.bot.form.cx.flow</field>
+        <field name="model">comm.bot</field>
+        <field name="inherit_id" ref="comm_chatbot.view_comm_bot_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_view_flow_diagram']" position="after">
+                <button name="action_cx_open_flow_canvas" type="object"
+                        string="Flow Canvas" class="btn-secondary"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
