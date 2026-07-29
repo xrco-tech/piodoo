@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Phase 7 — surface the AI Copilot on the conversation form: a
+         human-launched "Generate AI Copilot" button + the AI fields. -->
+    <record id="view_comm_conversation_form_cx_copilot" model="ir.ui.view">
+        <field name="name">comm.conversation.form.cx.copilot</field>
+        <field name="model">comm.conversation</field>
+        <field name="inherit_id" ref="comm_chatbot.view_comm_conversation_form"/>
+        <field name="arch" type="xml">
+            <sheet position="inside">
+                <group string="AI Copilot" col="2">
+                    <button name="action_cx_generate_copilot" type="object"
+                            string="Generate AI Copilot" class="btn-secondary" colspan="2"/>
+                    <field name="ai_sentiment"/>
+                    <field name="ai_analyzed_date"/>
+                    <field name="ai_summary" colspan="2"/>
+                    <field name="ai_suggested_reply" colspan="2"/>
+                </group>
+            </sheet>
+        </field>
+    </record>
+</odoo>
