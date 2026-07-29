@@ -42,7 +42,8 @@ export class CxBotFlow extends Component {
             const steps = await this.orm.searchRead(
                 "comm.bot.step",
                 [["bot_id", "=", this.botId]],
-                ["name", "kind", "sequence", "next_step_id", "jump_target_step_id"],
+                ["name", "kind", "sequence", "next_step_id", "jump_target_step_id",
+                 "input_retry_step_id", "llm_fallback_step_id", "llm_decision_option_ids"],
                 { order: "sequence, id" }
             );
             const options = await this.orm.searchRead(
@@ -73,6 +74,11 @@ export class CxBotFlow extends Component {
         for (const s of steps) {
             addEdge(s.id, s.next_step_id && s.next_step_id[0], "");
             addEdge(s.id, s.jump_target_step_id && s.jump_target_step_id[0], "jump");
+            addEdge(s.id, s.input_retry_step_id && s.input_retry_step_id[0], "retry");
+            addEdge(s.id, s.llm_fallback_step_id && s.llm_fallback_step_id[0], "fallback");
+            for (const tgt of s.llm_decision_option_ids || []) {
+                addEdge(s.id, tgt, "decision");
+            }
         }
         for (const o of options) {
             addEdge(o.step_id[0], o.next_step_id && o.next_step_id[0], o.label);
