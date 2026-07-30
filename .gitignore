@@ -1,2 +1,6 @@
 .env
 ./addons/whatsapp_custom/
+
+# Python bytecode
+__pycache__/
+*.pyc
