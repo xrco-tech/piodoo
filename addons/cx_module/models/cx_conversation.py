@@ -31,6 +31,19 @@ class CommConversation(models.Model):
     primary_channel_code = fields.Char(
         related='primary_channel_id.code', string='Primary Channel Code')
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            self.env['cx.integration.webhook']._cx_enqueue_event(
+                'conversation.opened', {
+                    'event': 'conversation.opened',
+                    'conversation_id': rec.id,
+                    'partner_id': rec.partner_id.id,
+                    'channel': rec.primary_channel_id.code or None,
+                })
+        return records
+
     def action_cx_send_reply(self, channel_code, text):
         """Send an agent-typed reply on the given channel.
 
@@ -88,9 +101,12 @@ class CommInteraction(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        # Nudge every open inbox to reload the affected conversation. Kept
-        # best-effort so a bus hiccup can never block message creation.
+        # Nudge every open inbox to reload the affected conversation, and
+        # enqueue any matching webhooks. Both are best-effort — a bus hiccup or
+        # webhook-config issue must never block message creation, and the
+        # webhook enqueue only writes cheap DB rows (the cron does the HTTP).
         bus = self.env['bus.bus']
+        Webhook = self.env['cx.integration.webhook']
         for rec in records:
             try:
                 bus._sendone(CX_INBOX_BUS_CHANNEL, 'cx_inbox_new_interaction',
@@ -98,4 +114,18 @@ class CommInteraction(models.Model):
             except Exception:  # pragma: no cover
                 _logger.debug('cx_inbox bus notify skipped for interaction %s',
                               rec.id)
+            try:
+                event_code = ('interaction.inbound' if rec.direction == 'inbound'
+                              else 'interaction.outbound')
+                Webhook._cx_enqueue_event(event_code, {
+                    'event': event_code,
+                    'interaction_id': rec.id,
+                    'conversation_id': rec.conversation_id.id,
+                    'direction': rec.direction,
+                    'channel': rec.channel_id.code or None,
+                    'body': rec.rendered_body or rec.raw_body or '',
+                    'at': rec.at and fields.Datetime.to_string(rec.at),
+                })
+            except Exception:  # pragma: no cover
+                _logger.debug('cx webhook enqueue skipped for interaction %s', rec.id)
         return records

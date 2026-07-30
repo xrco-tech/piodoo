@@ -4,3 +4,4 @@ access_cx_interaction_agent,cx.interaction.agent,comm_chatbot.model_comm_interac
 access_cx_report_agent,cx.report.conversation.agent,cx_module.model_cx_report_conversation,cx_module.group_cx_agent,1,0,0,0
 access_cx_integration_mcp_admin,cx.integration.mcp.admin,cx_module.model_cx_integration_mcp,cx_module.group_cx_admin,1,1,1,1
 access_cx_integration_webhook_admin,cx.integration.webhook.admin,cx_module.model_cx_integration_webhook,cx_module.group_cx_admin,1,1,1,1
+access_cx_integration_delivery_admin,cx.integration.webhook.delivery.admin,cx_module.model_cx_integration_webhook_delivery,cx_module.group_cx_admin,1,1,1,1

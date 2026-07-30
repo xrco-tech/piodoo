@@ -292,5 +292,11 @@
               action="action_cx_integration_webhook"
               sequence="20"/>
 
+    <menuitem id="menu_cx_config_integrations_deliveries"
+              name="Webhook Deliveries"
+              parent="menu_cx_config_integrations"
+              action="action_cx_integration_delivery"
+              sequence="30"/>
+
 
 </odoo>

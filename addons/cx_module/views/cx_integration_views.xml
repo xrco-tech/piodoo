@@ -85,9 +85,26 @@
                         </group>
                     </group>
                     <p class="text-muted">
-                        Deliveries are signed with an <code>X-CX-Signature: sha256=…</code>
-                        header (HMAC of the JSON body) when a secret is set.
+                        Deliveries are queued on the matching event and sent by a
+                        background job (retried with backoff). Signed with an
+                        <code>X-CX-Signature: sha256=…</code> header when a secret is set.
                     </p>
+                    <notebook>
+                        <page string="Recent Deliveries">
+                            <field name="delivery_ids" readonly="1">
+                                <list>
+                                    <field name="create_date"/>
+                                    <field name="event"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'sent'"
+                                           decoration-danger="state == 'failed'"
+                                           decoration-warning="state == 'pending'"/>
+                                    <field name="attempts"/>
+                                    <field name="last_error"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -101,5 +118,31 @@
             <p class="o_view_nocontent_smiling_face">Add a webhook</p>
             <p>Fire signed HTTP callbacks to external systems. Use "Send Test" to verify an endpoint.</p>
         </field>
+    </record>
+
+    <!-- ===== Delivery queue / log ===== -->
+    <record id="view_cx_integration_delivery_list" model="ir.ui.view">
+        <field name="name">cx.integration.webhook.delivery.list</field>
+        <field name="model">cx.integration.webhook.delivery</field>
+        <field name="arch" type="xml">
+            <list string="Webhook Deliveries" create="0">
+                <field name="create_date"/>
+                <field name="webhook_id"/>
+                <field name="event"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sent'"
+                       decoration-danger="state == 'failed'"
+                       decoration-warning="state == 'pending'"/>
+                <field name="attempts"/>
+                <field name="next_attempt_at"/>
+                <field name="last_error"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_cx_integration_delivery" model="ir.actions.act_window">
+        <field name="name">Webhook Deliveries</field>
+        <field name="res_model">cx.integration.webhook.delivery</field>
+        <field name="view_mode">list</field>
     </record>
 </odoo>
