@@ -17,12 +17,43 @@ _logger = logging.getLogger(__name__)
 
 class KioskReceiptController(http.Controller):
 
-    @http.route('/receipt/send', type='http', auth='public', methods=['POST'], csrf=False)
-    def send_receipt(self, **kw):
+    def _authorized(self):
         expected = request.env['ir.config_parameter'].sudo().get_param('kiosk_receipt.token')
         auth = request.httprequest.headers.get('Authorization', '')
         presented = auth[7:] if auth.startswith('Bearer ') else ''
-        if not expected or presented != expected:
+        return bool(expected) and presented == expected
+
+    # -- catalogue export (kiosk pulls this on "Import from Odoo") ------------
+
+    @http.route('/catalog/export', type='http', auth='public', methods=['GET'], csrf=False)
+    def catalog_export(self, **kw):
+        if not self._authorized():
+            return self._json({'status': 'error', 'detail': 'unauthorized'}, 401)
+        products = request.env['product.product'].sudo().search([('active', '=', True)])
+        out = []
+        for p in products:
+            # Odoo category "All / Food / Coffee" -> kiosk path ["Food","Coffee"]
+            path = []
+            categ = getattr(p, 'categ_id', False)
+            if categ:
+                name = getattr(categ, 'complete_name', False) or categ.name or ''
+                parts = [s.strip() for s in name.split('/')]
+                path = [s for s in parts if s and s.lower() != 'all'][:5]
+            out.append({
+                'name': p.name or '',
+                'priceCents': int(round((getattr(p, 'lst_price', 0.0) or 0.0) * 100)),
+                'sku': p.default_code or ('ODOO-%d' % p.id),
+                'barcode': getattr(p, 'barcode', '') or '',
+                'stockQty': int(getattr(p, 'qty_available', 0) or 0),
+                'category': path,
+            })
+        return self._json(out)
+
+    # -- receipt dispatch ----------------------------------------------------
+
+    @http.route('/receipt/send', type='http', auth='public', methods=['POST'], csrf=False)
+    def send_receipt(self, **kw):
+        if not self._authorized():
             return self._json({'status': 'error', 'detail': 'unauthorized'}, 401)
 
         try:
