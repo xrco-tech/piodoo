@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Phase 7 — AI Ops chat (client action) + Marketing menu entry. -->
+    <record id="action_cx_ai_ops" model="ir.actions.client">
+        <field name="name">AI Assistant</field>
+        <field name="tag">cx_ai_ops</field>
+    </record>
+
+    <menuitem id="menu_cx_ai_ops"
+              name="AI Assistant"
+              parent="menu_cx_marketing"
+              action="action_cx_ai_ops"
+              sequence="50"/>
+</odoo>

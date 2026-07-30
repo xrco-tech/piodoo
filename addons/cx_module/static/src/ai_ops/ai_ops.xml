@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="cx_module.AiOps">
+        <div class="o_action o_cx_aiops d-flex flex-column" style="height:100%;">
+            <div class="o_cx_aiops_header">AI Assistant <span class="text-muted small">— drafts campaigns; you launch them</span></div>
+
+            <div class="o_cx_aiops_thread flex-grow-1 overflow-auto p-3" t-ref="thread">
+                <t t-foreach="state.messages" t-as="msg" t-key="msg_index">
+                    <div class="d-flex mb-2"
+                         t-att-class="msg.role === 'user' ? 'justify-content-end' : 'justify-content-start'">
+                        <div class="o_cx_aiops_bubble p-2"
+                             t-att-class="msg.role === 'user' ? 'bg-primary text-white' : 'bg-light'"
+                             style="white-space: pre-wrap;"><t t-esc="msg.content"/></div>
+                    </div>
+                </t>
+                <div t-if="state.busy" class="text-muted small">Thinking…</div>
+            </div>
+
+            <div t-if="state.suggestions.length" class="px-3 pb-1 d-flex flex-wrap gap-1">
+                <t t-foreach="state.suggestions" t-as="s" t-key="s_index">
+                    <button class="btn btn-sm btn-outline-primary" t-on-click="() => this.pickSuggestion(s)">
+                        <t t-esc="s"/>
+                    </button>
+                </t>
+            </div>
+
+            <div class="border-top p-2 d-flex gap-2 align-items-end">
+                <textarea class="form-control form-control-sm o_cx_aiops_input" rows="1"
+                          placeholder="Ask me to draft a campaign..."
+                          t-att-value="state.input" t-on-input="onInput" t-on-keydown="onKeydown"/>
+                <button class="btn btn-primary btn-sm" t-on-click="send" t-att-disabled="state.busy">Send</button>
+            </div>
+        </div>
+    </t>
+
+</templates>

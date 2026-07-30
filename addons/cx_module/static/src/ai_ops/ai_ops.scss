@@ -1,0 +1,25 @@
+.o_cx_aiops {
+    height: 100%;
+    background: var(--o-view-background-color, #fff);
+    max-width: 900px;
+    margin: 0 auto;
+
+    .o_cx_aiops_header {
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        border-bottom: 1px solid var(--o-gray-300, #dee2e6);
+        background: var(--o-gray-100, #f8f9fa);
+        flex-shrink: 0;
+    }
+
+    .o_cx_aiops_bubble {
+        max-width: 75%;
+        border-radius: 12px;
+    }
+
+    .o_cx_aiops_input {
+        resize: none;
+        overflow-y: auto;
+        max-height: 10rem;
+    }
+}
