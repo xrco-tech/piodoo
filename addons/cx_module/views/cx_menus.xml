@@ -274,9 +274,23 @@
               action="base_setup.action_general_configuration"
               sequence="90"/>
 
-    <!-- Integrations (spec): no distinct config model in the reused stack —
-         the channel accounts + mail servers above already cover it. Left
-         unwired pending a decision on what a dedicated screen would hold. -->
+    <!-- Integrations: MCP connectors + outbound webhooks. -->
+    <menuitem id="menu_cx_config_integrations"
+              name="Integrations"
+              parent="menu_cx_config"
+              sequence="80"/>
+
+    <menuitem id="menu_cx_config_integrations_mcp"
+              name="MCP Connectors"
+              parent="menu_cx_config_integrations"
+              action="action_cx_integration_mcp"
+              sequence="10"/>
+
+    <menuitem id="menu_cx_config_integrations_webhooks"
+              name="Webhooks"
+              parent="menu_cx_config_integrations"
+              action="action_cx_integration_webhook"
+              sequence="20"/>
 
 
 </odoo>

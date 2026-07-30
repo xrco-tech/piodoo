@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===== MCP Connectors ===== -->
+    <record id="view_cx_integration_mcp_list" model="ir.ui.view">
+        <field name="name">cx.integration.mcp.list</field>
+        <field name="model">cx.integration.mcp</field>
+        <field name="arch" type="xml">
+            <list string="MCP Connectors">
+                <field name="name"/>
+                <field name="url"/>
+                <field name="transport"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cx_integration_mcp_form" model="ir.ui.view">
+        <field name="name">cx.integration.mcp.form</field>
+        <field name="model">cx.integration.mcp</field>
+        <field name="arch" type="xml">
+            <form string="MCP Connector">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="url" placeholder="https://mcp.example.com/sse"/>
+                        <field name="transport"/>
+                        <field name="auth_token" password="True"/>
+                        <field name="active"/>
+                    </group>
+                    <group string="Notes">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_cx_integration_mcp" model="ir.actions.act_window">
+        <field name="name">MCP Connectors</field>
+        <field name="res_model">cx.integration.mcp</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add an MCP connector</p>
+            <p>Register external MCP servers the platform can connect to.</p>
+        </field>
+    </record>
+
+    <!-- ===== Webhooks ===== -->
+    <record id="view_cx_integration_webhook_list" model="ir.ui.view">
+        <field name="name">cx.integration.webhook.list</field>
+        <field name="model">cx.integration.webhook</field>
+        <field name="arch" type="xml">
+            <list string="Webhooks">
+                <field name="name"/>
+                <field name="event"/>
+                <field name="target_url"/>
+                <field name="last_status"/>
+                <field name="last_triggered_at"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cx_integration_webhook_form" model="ir.ui.view">
+        <field name="name">cx.integration.webhook.form</field>
+        <field name="model">cx.integration.webhook</field>
+        <field name="arch" type="xml">
+            <form string="Webhook">
+                <header>
+                    <button name="action_cx_test_webhook" type="object"
+                            string="Send Test" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="event"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="target_url" placeholder="https://example.com/hooks/ucx"/>
+                            <field name="secret" password="True"/>
+                            <field name="last_status"/>
+                            <field name="last_triggered_at"/>
+                        </group>
+                    </group>
+                    <p class="text-muted">
+                        Deliveries are signed with an <code>X-CX-Signature: sha256=…</code>
+                        header (HMAC of the JSON body) when a secret is set.
+                    </p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_cx_integration_webhook" model="ir.actions.act_window">
+        <field name="name">Webhooks</field>
+        <field name="res_model">cx.integration.webhook</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a webhook</p>
+            <p>Fire signed HTTP callbacks to external systems. Use "Send Test" to verify an endpoint.</p>
+        </field>
+    </record>
+</odoo>
