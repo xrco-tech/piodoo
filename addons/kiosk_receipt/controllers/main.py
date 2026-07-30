@@ -39,7 +39,9 @@ class KioskReceiptController(http.Controller):
             if categ:
                 name = getattr(categ, 'complete_name', False) or categ.name or ''
                 parts = [s.strip() for s in name.split('/')]
-                path = [s for s in parts if s and s.lower() != 'all'][:5]
+                # Drop Odoo's generic roots so real categories become the departments.
+                skip = ('all', 'saleable')
+                path = [s for s in parts if s and s.lower() not in skip][:5]
             out.append({
                 'name': p.name or '',
                 'priceCents': int(round((getattr(p, 'lst_price', 0.0) or 0.0) * 100)),
