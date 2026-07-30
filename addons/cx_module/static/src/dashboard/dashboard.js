@@ -19,8 +19,12 @@ export class CxDashboard extends Component {
         const ctx = (this.props.action && this.props.action.context) || {};
         this.state = useState({
             scope: ctx.dashboard_scope || "me",
+            rangeMode: "days",         // "days" | "custom"
             days: 30,
-            team: "",
+            dateFrom: "",
+            dateTo: "",
+            filters: { teams: [], agents: [], channels: [], campaigns: [], direction: "" },
+            openFilter: null,          // which filter dropdown panel is open
             loading: true,
             data: null,
         });
@@ -30,11 +34,16 @@ export class CxDashboard extends Component {
     async load() {
         this.state.loading = true;
         try {
-            this.state.data = await this.orm.call("cx.dashboard", "get_metrics", [], {
+            const kwargs = {
                 scope: this.state.scope,
                 days: this.state.days,
-                team: this.state.team || null,
-            });
+                filters: JSON.parse(JSON.stringify(this.state.filters)),
+            };
+            if (this.state.rangeMode === "custom" && this.state.dateFrom && this.state.dateTo) {
+                kwargs.date_from = this.state.dateFrom;
+                kwargs.date_to = this.state.dateTo;
+            }
+            this.state.data = await this.orm.call("cx.dashboard", "get_metrics", [], kwargs);
         } finally {
             this.state.loading = false;
         }
@@ -45,12 +54,80 @@ export class CxDashboard extends Component {
     }
 
     setDays(d) {
+        this.state.rangeMode = "days";
         this.state.days = d;
+        this.state.dateFrom = "";
+        this.state.dateTo = "";
         this.load();
     }
 
-    onTeamChange(ev) {
-        this.state.team = ev.target.value;
+    onDateFrom(ev) { this.state.dateFrom = ev.target.value; }
+    onDateTo(ev) { this.state.dateTo = ev.target.value; }
+
+    applyCustomRange() {
+        if (this.state.dateFrom && this.state.dateTo) {
+            this.state.rangeMode = "custom";
+            this.load();
+        }
+    }
+
+    // ------------------------------------------------------------------ filters
+    // Which filter dimensions apply to this scope (direction is rendered separately).
+    get filterDims() {
+        const o = (this.state.data && this.state.data.filter_options) || {};
+        const scope = this.state.scope;
+        const dims = [];
+        if (scope === "org") {
+            dims.push({ key: "teams", label: "Teams",
+                        options: (o.teams || []).map((t) => ({ id: t, name: t })) });
+        }
+        if (scope !== "me") {
+            dims.push({ key: "agents", label: "Agents", options: o.agents || [] });
+        }
+        dims.push({ key: "channels", label: "Channels", options: o.channels || [] });
+        dims.push({ key: "campaigns", label: "Campaigns", options: o.campaigns || [] });
+        return dims;
+    }
+
+    filterLabel(dim) {
+        const n = this.state.filters[dim.key].length;
+        return n ? `${dim.label}: ${n}` : `${dim.label}: All`;
+    }
+
+    isChecked(key, id) {
+        return this.state.filters[key].includes(id);
+    }
+
+    toggleFilter(key, id) {
+        const arr = this.state.filters[key];
+        const i = arr.indexOf(id);
+        if (i >= 0) { arr.splice(i, 1); } else { arr.push(id); }
+        this.load();
+    }
+
+    clearFilter(key) {
+        this.state.filters[key] = [];
+        this.load();
+    }
+
+    togglePanel(key) {
+        this.state.openFilter = this.state.openFilter === key ? null : key;
+    }
+
+    setDirection(d) {
+        this.state.filters.direction = d;
+        this.load();
+    }
+
+    get hasActiveFilters() {
+        const f = this.state.filters;
+        return f.teams.length || f.agents.length || f.channels.length ||
+               f.campaigns.length || f.direction;
+    }
+
+    clearAllFilters() {
+        this.state.filters = { teams: [], agents: [], channels: [], campaigns: [], direction: "" };
+        this.state.openFilter = null;
         this.load();
     }
 
@@ -74,10 +151,12 @@ export class CxDashboard extends Component {
         return (v || 0).toLocaleString();
     }
 
-    fmtMoney(usd) {
-        if (usd === null || usd === undefined) return "$0.00";
-        return "$" + Number(usd).toLocaleString(undefined, {
+    fmtMoney(v) {
+        const c = this.state.data && this.state.data.currency;
+        const sym = (c && c.symbol) || "$";
+        const amt = Number(v || 0).toLocaleString(undefined, {
             minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return c && c.position === "after" ? `${amt} ${sym}` : `${sym}${amt}`;
     }
 
     titleCase(s) {

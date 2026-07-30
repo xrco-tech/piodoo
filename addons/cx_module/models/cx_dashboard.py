@@ -22,8 +22,9 @@ expose cross-agent data and REQUIRE group_cx_manager — enforced here, server
 side, regardless of what the client sends.
 """
 import logging
+from datetime import timedelta
 
-from odoo import api, models
+from odoo import api, fields, models
 from odoo.exceptions import AccessError
 
 _logger = logging.getLogger(__name__)
@@ -48,34 +49,60 @@ class CxDashboard(models.TransientModel):
 
     # ------------------------------------------------------------------ public
     @api.model
-    def get_metrics(self, scope='me', days=30, team=None):
-        """Aggregate efficiency metrics for the given scope.
+    def get_metrics(self, scope='me', days=30, team=None, filters=None,
+                    date_from=None, date_to=None):
+        """Aggregate efficiency metrics for the given scope + filters.
 
-        scope: 'me' (own rows), 'team' (a team, or all teams), 'org' (everything).
-        days:  look-back window in days (clamped 1..365).
-        team:  assigned_team_code to filter on for scope='team' (optional).
+        scope:      'me' (own rows), 'team', 'org'.
+        days:       quick look-back window in days (used when no custom range).
+        date_from/date_to: 'YYYY-MM-DD' custom range (overrides `days`).
+        team:       legacy single-team arg (folds into filters['teams']).
+        filters:    {teams:[codes], agents:[ids], channels:[ids],
+                     campaigns:[ids], direction:'inbound'|'outbound'}.
+                    Cross-actor filters (agents/teams) are ignored on 'me'.
         """
         days = max(1, min(int(days or 30), MAX_DAYS))
         scope = scope if scope in ('me', 'team', 'org') else 'me'
+        filters = dict(filters or {})
+        if team and not filters.get('teams'):
+            filters['teams'] = [team]
 
         is_manager = self.env.user.has_group('cx_module.group_cx_manager')
         if scope in ('team', 'org') and not is_manager:
             raise AccessError(
                 "Team and organisation dashboards are limited to CX Managers.")
+        if scope == 'me':                       # an agent only ever sees own rows
+            filters.pop('agents', None)
+            filters.pop('teams', None)
+        if scope == 'team':                     # team dashboards don't slice by team
+            filters.pop('teams', None)
 
-        where, params = self._scope_domain(scope, team)
-        params['days'] = days
+        dt_from, dt_to, window_label = self._resolve_window(days, date_from, date_to)
+        params = {'uid': self.env.uid, 'dt_from': dt_from, 'dt_to': dt_to}
+        self._apply_filter_params(filters, params)
+        where = self._build_where(scope, filters, windowed=True)
+        where_live = self._build_where(scope, filters, windowed=False)
         target = self._fr_target_secs()
+        currency = self.env.company.currency_id
 
         payload = {
             'scope': scope,
             'scope_label': {'me': 'My performance', 'team': 'Team',
                             'org': 'Organisation'}[scope],
             'days': days,
+            'window_label': window_label,
+            'date_from': date_from or '',
+            'date_to': date_to or '',
             'sla_target_secs': target,
             'is_manager': is_manager,
-            'teams': self._team_options() if is_manager else [],
-            'selected_team': team or '',
+            'currency': {'symbol': currency.symbol or currency.name,
+                         'name': currency.name, 'position': currency.position},
+            'filters': {'teams': filters.get('teams') or [],
+                        'agents': filters.get('agents') or [],
+                        'channels': filters.get('channels') or [],
+                        'campaigns': filters.get('campaigns') or [],
+                        'direction': filters.get('direction') or ''},
+            'filter_options': self._filter_options(scope, params),
             'kpis': self._kpis(where, params, target),
             'trend': self._trend(where, params),
             'dow': self._dow(where, params),
@@ -87,14 +114,113 @@ class CxDashboard(models.TransientModel):
         # cross-channel / queue / campaign / customer picture is the whole point.
         if scope == 'org':
             payload['omni'] = {
-                'channels': self._omni_channels(where, params),
-                'queue': self._omni_queue(),
-                'campaigns': self._omni_campaigns(params),
+                'channels': self._omni_channels(where, params, currency),
+                'queue': self._omni_queue(where_live, params),
+                'campaigns': self._omni_campaigns(params, currency),
                 'customers': self._omni_customers(where, params),
             }
         return payload
 
     # --------------------------------------------------------------- internals
+    def _resolve_window(self, days, date_from, date_to):
+        """Return (dt_from, dt_to, label). A valid custom range wins; otherwise
+        the quick `days` look-back to now."""
+        now = fields.Datetime.now()
+        if date_from and date_to:
+            try:
+                d0 = fields.Date.to_date(date_from)
+                d1 = fields.Date.to_date(date_to)
+                if d0 and d1 and d0 <= d1:
+                    dt_from = fields.Datetime.to_datetime(d0)
+                    dt_to = fields.Datetime.to_datetime(d1) + timedelta(days=1)
+                    return dt_from, dt_to, '%s → %s' % (date_from, date_to)
+            except (ValueError, TypeError):
+                pass
+        return now - timedelta(days=days), now, 'last %s days' % days
+
+    def _apply_filter_params(self, filters, params):
+        if filters.get('teams'):
+            params['f_teams'] = [str(t) for t in filters['teams']]
+        if filters.get('agents'):
+            params['f_agents'] = [int(a) for a in filters['agents']]
+        if filters.get('channels'):
+            params['f_channels'] = [int(c) for c in filters['channels']]
+        if filters.get('campaigns'):
+            # conversation.campaign_id is a Char holding str(campaign.id).
+            params['f_campaigns'] = [str(int(c)) for c in filters['campaigns']]
+        if filters.get('direction') in ('inbound', 'outbound'):
+            params['f_direction'] = filters['direction']
+
+    def _build_where(self, scope, filters, windowed=True):
+        """Shared WHERE fragment on alias c = comm_conversation. `windowed`
+        adds the date-window bound (omit it for the live queue)."""
+        clauses = []
+        if windowed:
+            clauses.append("c.opened_at >= %(dt_from)s AND c.opened_at < %(dt_to)s")
+        if scope == 'me':
+            clauses.append("c.assigned_agent_id = %(uid)s")
+        if filters.get('teams'):
+            clauses.append("c.assigned_team_code = ANY(%(f_teams)s)")
+        if filters.get('agents'):
+            clauses.append("c.assigned_agent_id = ANY(%(f_agents)s)")
+        if filters.get('channels'):
+            clauses.append("c.primary_channel_id = ANY(%(f_channels)s)")
+        if filters.get('campaigns'):
+            clauses.append("c.campaign_id = ANY(%(f_campaigns)s)")
+        if filters.get('direction') in ('inbound', 'outbound'):
+            clauses.append(
+                "(SELECT i2.direction FROM comm_interaction i2 "
+                "WHERE i2.conversation_id = c.id ORDER BY i2.at LIMIT 1) = %(f_direction)s")
+        return " AND ".join(clauses) if clauses else "TRUE"
+
+    def _filter_options(self, scope, params):
+        """Options for the filter bar. Channels + campaigns are global lists;
+        agents/teams are the ones actually present in the current window."""
+        opts = {'agents': [], 'channels': [], 'campaigns': [], 'teams': []}
+        opts['channels'] = [
+            {'id': c.id, 'name': c.name}
+            for c in self.env['comm.channel'].sudo().search(
+                [('active', '=', True)], order='sequence, code')]
+        opts['campaigns'] = [
+            {'id': c.id, 'name': c.name}
+            for c in self.env['comm.campaign'].sudo().search(
+                [], order='id desc', limit=50)]
+        if scope in ('team', 'org'):
+            self.env.cr.execute("""
+                SELECT DISTINCT assigned_agent_id FROM comm_conversation
+                 WHERE assigned_agent_id IS NOT NULL
+                   AND opened_at >= %(dt_from)s AND opened_at < %(dt_to)s
+            """, params)
+            ids = [r[0] for r in self.env.cr.fetchall()]
+            names = {u.id: u.name
+                     for u in self.env['res.users'].sudo().browse(ids)}
+            opts['agents'] = sorted(
+                ({'id': i, 'name': names.get(i, '?')} for i in ids),
+                key=lambda x: x['name'])
+        if scope == 'org':
+            self.env.cr.execute("""
+                SELECT DISTINCT assigned_team_code FROM comm_conversation
+                 WHERE assigned_team_code IS NOT NULL AND assigned_team_code != ''
+                   AND opened_at >= %(dt_from)s AND opened_at < %(dt_to)s
+                 ORDER BY 1
+            """, params)
+            opts['teams'] = [r[0] for r in self.env.cr.fetchall()]
+        return opts
+
+    def _to_company_currency(self, amount_usd, currency):
+        """Convert a USD figure (billing is stored in USD) to the company
+        currency for display."""
+        if not amount_usd:
+            return 0.0
+        try:
+            usd = self.env.ref('base.USD', raise_if_not_found=False)
+            if usd and currency and usd != currency:
+                return currency.round(usd._convert(
+                    amount_usd, currency, self.env.company, fields.Date.today()))
+        except Exception:  # pragma: no cover - never let FX break the dashboard
+            _logger.warning('cx dashboard FX convert failed', exc_info=True)
+        return round(amount_usd, 2)
+
     def _fr_target_secs(self):
         raw = self.env['ir.config_parameter'].sudo().get_param(
             'cx_module.first_response_target_secs')
@@ -102,29 +228,6 @@ class CxDashboard(models.TransientModel):
             return max(1, int(raw)) if raw else DEFAULT_FR_TARGET_SECS
         except (TypeError, ValueError):
             return DEFAULT_FR_TARGET_SECS
-
-    def _team_options(self):
-        self.env.cr.execute("""
-            SELECT DISTINCT assigned_team_code
-              FROM comm_conversation
-             WHERE assigned_team_code IS NOT NULL AND assigned_team_code != ''
-             ORDER BY assigned_team_code
-        """)
-        return [r[0] for r in self.env.cr.fetchall()]
-
-    def _scope_domain(self, scope, team):
-        """Build the shared WHERE fragment (on alias c = comm_conversation) and
-        params. Always window-bounded by opened_at >= now - days."""
-        clauses = ["c.opened_at >= (now() at time zone 'UTC') - (%(days)s || ' days')::interval"]
-        params = {}
-        if scope == 'me':
-            clauses.append("c.assigned_agent_id = %(uid)s")
-            params['uid'] = self.env.uid
-        elif scope == 'team' and team:
-            clauses.append("c.assigned_team_code = %(team)s")
-            params['team'] = team
-        # scope 'org' (and 'team' with no team) add no extra actor filter.
-        return " AND ".join(clauses), params
 
     def _first_response_cte(self):
         """SQL fragment: per-conversation first-response seconds.
@@ -212,8 +315,8 @@ class CxDashboard(models.TransientModel):
                 count(*) FILTER (WHERE is_missed) AS missed,
                 avg(duration) FILTER (WHERE duration > 0) AS avg_secs
               FROM whatsapp_call_log
-             WHERE call_timestamp >= (now() at time zone 'UTC') - (%(days)s || ' days')::interval
-        """, {'days': params['days']})
+             WHERE call_timestamp >= %(dt_from)s AND call_timestamp < %(dt_to)s
+        """, {'dt_from': params['dt_from'], 'dt_to': params['dt_to']})
         row = self.env.cr.dictfetchone() or {}
         return {
             'answered': row.get('answered') or 0,
@@ -325,10 +428,11 @@ class CxDashboard(models.TransientModel):
         return board
 
     # ------------------------------------------------------- omni-channel (org)
-    def _omni_channels(self, where, params):
+    def _omni_channels(self, where, params, currency):
         """Per-channel mix: conversations (by the conversation's primary channel)
         merged with messages + cost (by each interaction's own channel). This is
-        the module's omni-channel headline — one row per channel."""
+        the module's omni-channel headline — one row per channel. Cost is
+        converted from stored USD into the company currency."""
         p = {**params, 'uid': self.env.uid}
         self.env.cr.execute(f"""
             SELECT ch.id AS cid, ch.code AS code, ch.name AS name, count(c.id) AS convos
@@ -339,7 +443,7 @@ class CxDashboard(models.TransientModel):
         """, p)
         by_id = {r['cid']: {'channel_id': r['cid'], 'code': r['code'],
                             'name': r['name'], 'conversations': r['convos'],
-                            'messages': 0, 'cost_usd': 0.0}
+                            'messages': 0, 'cost': 0.0}
                  for r in self.env.cr.dictfetchall()}
         self.env.cr.execute(f"""
             SELECT ch.id AS cid, ch.code AS code, ch.name AS name,
@@ -354,41 +458,42 @@ class CxDashboard(models.TransientModel):
         for r in self.env.cr.dictfetchall():
             row = by_id.setdefault(r['cid'], {
                 'channel_id': r['cid'], 'code': r['code'], 'name': r['name'],
-                'conversations': 0, 'messages': 0, 'cost_usd': 0.0})
+                'conversations': 0, 'messages': 0, 'cost': 0.0})
             row['messages'] = r['msgs']
-            row['cost_usd'] = round(r['cost'], 4)
+            row['cost'] = self._to_company_currency(r['cost'], currency)
         rows = sorted(by_id.values(),
                       key=lambda x: (x['conversations'], x['messages']), reverse=True)
         return rows
 
-    def _omni_queue(self):
-        """Live backlog RIGHT NOW (not window-bounded) by channel — open/waiting/
-        handed-off conversations, with the oldest wait per channel."""
-        self.env.cr.execute("""
+    def _omni_queue(self, where_live, params):
+        """Live backlog RIGHT NOW (not window-bounded, but respecting the active
+        team/agent/channel/campaign/direction filters) by channel."""
+        self.env.cr.execute(f"""
             SELECT coalesce(ch.name, '—') AS channel,
                    count(*) AS waiting,
                    EXTRACT(EPOCH FROM ((now() at time zone 'UTC') - min(c.opened_at)))::int AS oldest_secs
               FROM comm_conversation c
               LEFT JOIN comm_channel ch ON ch.id = c.primary_channel_id
-             WHERE c.lifecycle_state IN ('open', 'waiting', 'handoff')
+             WHERE c.lifecycle_state IN ('open', 'waiting', 'handoff') AND {where_live}
              GROUP BY ch.name
              ORDER BY waiting DESC
-        """)
+        """, {**params, 'uid': self.env.uid})
         rows = [{'channel': r[0], 'waiting': r[1], 'oldest_secs': r[2] or 0}
                 for r in self.env.cr.fetchall()]
         total = sum(r['waiting'] for r in rows)
         oldest = max((r['oldest_secs'] for r in rows), default=0)
         return {'rows': rows, 'total_waiting': total, 'oldest_secs': oldest}
 
-    def _omni_campaigns(self, params):
+    def _omni_campaigns(self, params, currency):
         """Recent campaigns (performance from the send ledger) + cross-channel
-        reach — the omni-channel spread of outbound sends in-window."""
+        reach — the omni-channel spread of outbound sends in-window. Cost is
+        converted from stored USD into the company currency."""
         camps = self.env['comm.campaign'].sudo().search([], order='id desc', limit=8)
         clist = [{
             'id': c.id, 'name': c.name, 'state': c.state,
             'sends': c.total_sends, 'delivered': c.successful_sends,
             'conversions': c.conversion_count,
-            'cost_usd': round(c.total_cost_usd or 0.0, 2),
+            'cost': self._to_company_currency(c.total_cost_usd or 0.0, currency),
         } for c in camps]
         # Sends by channel (omni-channel reach) over the window.
         self.env.cr.execute("""
@@ -396,10 +501,11 @@ class CxDashboard(models.TransientModel):
               FROM comm_campaign_send s
               LEFT JOIN comm_channel ch ON ch.id = s.chosen_channel_id
              WHERE coalesce(s.sent_at, s.scheduled_at, s.create_date)
-                   >= (now() at time zone 'UTC') - (%(days)s || ' days')::interval
+                   >= %(dt_from)s
+               AND coalesce(s.sent_at, s.scheduled_at, s.create_date) < %(dt_to)s
              GROUP BY ch.name
              ORDER BY sends DESC
-        """, {'days': params['days']})
+        """, {'dt_from': params['dt_from'], 'dt_to': params['dt_to']})
         by_channel = [{'channel': r[0], 'sends': r[1]}
                       for r in self.env.cr.fetchall()]
         return {'list': clist, 'by_channel': by_channel}
@@ -424,7 +530,7 @@ class CxDashboard(models.TransientModel):
                  GROUP BY partner_id
             )
             SELECT a.partner_id, a.convos, a.channels,
-                   (f.first_ever >= (now() at time zone 'UTC') - (%(days)s || ' days')::interval) AS is_new
+                   (f.first_ever >= %(dt_from)s) AS is_new
               FROM active a
               JOIN firstseen f ON f.partner_id = a.partner_id
              ORDER BY a.convos DESC

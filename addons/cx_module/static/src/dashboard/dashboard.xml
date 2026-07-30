@@ -4,30 +4,67 @@
     <t t-name="cx_module.Dashboard">
         <div class="o_action o_cx_dash">
 
-            <!-- Header: scope title + window controls -->
+          <!-- Fixed top: header + filter bar (does not scroll) -->
+          <div class="o_cx_dash_top">
             <div class="o_cx_dash_head d-flex flex-wrap align-items-center gap-2">
                 <div class="o_cx_dash_title">
                     <t t-esc="state.data ? state.data.scope_label : ''"/> dashboard
-                    <span class="o_cx_dash_sub">measuring efficiency · last <t t-esc="state.days"/> days</span>
+                    <span class="o_cx_dash_sub">measuring efficiency · <t t-esc="state.data ? state.data.window_label : ''"/></span>
                 </div>
                 <div class="flex-grow-1"/>
-                <div t-if="state.data and state.data.is_manager and state.scope === 'team'" class="o_cx_dash_teamsel">
-                    <select class="form-select form-select-sm" t-on-change="onTeamChange">
-                        <option value="">All teams</option>
-                        <t t-foreach="state.data.teams" t-as="tm" t-key="tm">
-                            <option t-att-value="tm" t-att-selected="tm === state.team"><t t-esc="tm"/></option>
-                        </t>
-                    </select>
-                </div>
                 <div class="btn-group btn-group-sm" role="group">
                     <t t-foreach="dayOptions" t-as="d" t-key="d">
                         <button class="btn"
-                                t-att-class="state.days === d ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-att-class="state.rangeMode === 'days' and state.days === d ? 'btn-primary' : 'btn-outline-secondary'"
                                 t-on-click="() => this.setDays(d)"><t t-esc="d"/>d</button>
                     </t>
                 </div>
+                <div class="o_cx_daterange">
+                    <input type="date" class="form-control form-control-sm" t-att-value="state.dateFrom" t-on-change="onDateFrom"/>
+                    <span class="text-muted">→</span>
+                    <input type="date" class="form-control form-control-sm" t-att-value="state.dateTo" t-on-change="onDateTo"/>
+                    <button class="btn btn-sm btn-outline-primary" t-on-click="applyCustomRange"
+                            t-att-disabled="!state.dateFrom or !state.dateTo">Apply</button>
+                </div>
             </div>
 
+            <!-- Filter bar -->
+            <div t-if="state.data" class="o_cx_filters">
+                <t t-foreach="filterDims" t-as="dim" t-key="dim.key">
+                    <div class="o_cx_filter">
+                        <button class="btn btn-sm"
+                                t-att-class="state.filters[dim.key].length ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.togglePanel(dim.key)">
+                            <t t-esc="filterLabel(dim)"/> ▾
+                        </button>
+                        <div t-if="state.openFilter === dim.key" class="o_cx_filter_panel">
+                            <div class="o_cx_filter_actions">
+                                <a t-on-click="() => this.clearFilter(dim.key)">Clear</a>
+                                <a t-on-click="() => this.togglePanel(dim.key)">Close</a>
+                            </div>
+                            <t t-if="dim.options.length">
+                                <label t-foreach="dim.options" t-as="op" t-key="op.id" class="o_cx_filter_opt">
+                                    <input type="checkbox" t-att-checked="isChecked(dim.key, op.id)"
+                                           t-on-change="() => this.toggleFilter(dim.key, op.id)"/>
+                                    <span t-esc="op.name"/>
+                                </label>
+                            </t>
+                            <div t-else="" class="text-muted small p-1">None in this window</div>
+                        </div>
+                    </div>
+                </t>
+                <!-- Direction (inbound/outbound) -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn" t-att-class="!state.filters.direction ? 'btn-secondary' : 'btn-outline-secondary'" t-on-click="() => this.setDirection('')">All</button>
+                    <button class="btn" t-att-class="state.filters.direction === 'inbound' ? 'btn-secondary' : 'btn-outline-secondary'" t-on-click="() => this.setDirection('inbound')">Inbound</button>
+                    <button class="btn" t-att-class="state.filters.direction === 'outbound' ? 'btn-secondary' : 'btn-outline-secondary'" t-on-click="() => this.setDirection('outbound')">Outbound</button>
+                </div>
+                <a t-if="hasActiveFilters" class="o_cx_clearall" t-on-click="clearAllFilters">Clear all</a>
+            </div>
+          </div>
+
+          <!-- Scrollable body -->
+          <div class="o_cx_dash_body">
             <div t-if="state.loading" class="o_cx_dash_loading text-muted">Loading metrics…</div>
 
             <t t-if="!state.loading and state.data">
@@ -200,7 +237,7 @@
                                             </td>
                                             <td class="text-end"><t t-esc="fmtNum(c.conversations)"/></td>
                                             <td class="text-end"><t t-esc="fmtNum(c.messages)"/></td>
-                                            <td class="text-end"><t t-esc="fmtMoney(c.cost_usd)"/></td>
+                                            <td class="text-end"><t t-esc="fmtMoney(c.cost)"/></td>
                                         </tr>
                                     </t>
                                 </tbody>
@@ -253,7 +290,7 @@
                                             <td class="text-end"><t t-esc="fmtNum(cp.sends)"/></td>
                                             <td class="text-end"><t t-esc="fmtNum(cp.delivered)"/></td>
                                             <td class="text-end"><t t-esc="fmtNum(cp.conversions)"/></td>
-                                            <td class="text-end"><t t-esc="fmtMoney(cp.cost_usd)"/></td>
+                                            <td class="text-end"><t t-esc="fmtMoney(cp.cost)"/></td>
                                         </tr>
                                     </t>
                                 </tbody>
@@ -297,6 +334,7 @@
                     </div>
                 </t>
             </t>
+          </div>
         </div>
     </t>
 

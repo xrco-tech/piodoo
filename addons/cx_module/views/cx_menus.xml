@@ -47,11 +47,26 @@
               groups="cx_module.group_cx_manager"
               sequence="14"/>
 
-    <menuitem id="menu_cx_live_queue"
-              name="Live Queue"
+    <!-- Queues (kanban backlog over comm.conversation). -->
+    <menuitem id="menu_cx_queue_me"
+              name="My Queues"
               parent="menu_cx_workspace"
-              action="action_cx_live_queue"
+              action="action_cx_queue_me"
               sequence="20"/>
+
+    <menuitem id="menu_cx_queue_team"
+              name="Team Queues"
+              parent="menu_cx_workspace"
+              action="action_cx_queue_team"
+              groups="cx_module.group_cx_manager"
+              sequence="22"/>
+
+    <menuitem id="menu_cx_queue_all"
+              name="All Queues"
+              parent="menu_cx_workspace"
+              action="action_cx_queue_all"
+              groups="cx_module.group_cx_manager"
+              sequence="24"/>
 
     <menuitem id="menu_cx_360_search"
               name="Customer 360 Search"

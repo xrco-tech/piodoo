@@ -1,12 +1,68 @@
 .o_cx_dash {
-    padding: 1rem 1.25rem 2rem;
-    background: var(--o-view-background-color, #f8f9fa);
+    // Odoo's `.o_action` already makes this a full-height flex column with
+    // overflow hidden; we just split it into a fixed top + a scrolling body
+    // (min-height:0 is what lets the body actually scroll to the bottom).
+    display: flex;
+    flex-direction: column;
     height: 100%;
-    overflow: auto;
+    overflow: hidden;
+    background: var(--o-view-background-color, #f8f9fa);
+
+    .o_cx_dash_top {
+        flex: 0 0 auto;
+        overflow: visible;            // let filter dropdowns spill over the body
+        position: relative;
+        z-index: 10;
+        padding: 0.9rem 1.25rem 0.6rem;
+        background: var(--o-view-background-color, #f8f9fa);
+        border-bottom: 1px solid var(--o-gray-300, #dee2e6);
+    }
+    .o_cx_dash_body {
+        flex: 1 1 auto;
+        min-height: 0;                // critical: lets the flex child scroll
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 1rem 1.25rem 3rem;
+    }
 
     .o_cx_dash_head {
-        margin-bottom: 1rem;
+        margin-bottom: 0.6rem;
     }
+
+    // Custom date range
+    .o_cx_daterange {
+        display: flex; align-items: center; gap: 0.3rem;
+        input[type="date"] { width: auto; min-width: 130px; }
+    }
+
+    // Filter bar
+    .o_cx_filters {
+        display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;
+        position: relative;
+    }
+    .o_cx_filter { position: relative; }
+    .o_cx_filter_panel {
+        position: absolute; top: calc(100% + 3px); left: 0; z-index: 100;
+        background: var(--o-white, #fff);
+        border: 1px solid var(--o-gray-300, #dee2e6);
+        border-radius: 8px; padding: 0.35rem;
+        min-width: 200px; max-width: 320px; max-height: 300px; overflow: auto;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+    }
+    .o_cx_filter_actions {
+        display: flex; justify-content: space-between;
+        border-bottom: 1px solid var(--o-gray-200, #edeff2);
+        padding-bottom: 0.25rem; margin-bottom: 0.25rem;
+        a { font-size: 0.75rem; cursor: pointer; }
+    }
+    .o_cx_filter_opt {
+        display: flex; gap: 0.45rem; align-items: center;
+        padding: 0.2rem 0.35rem; font-size: 0.82rem; cursor: pointer;
+        margin: 0; border-radius: 4px; white-space: nowrap;
+        &:hover { background: var(--o-gray-100, #f8f9fa); }
+        input { cursor: pointer; }
+    }
+    .o_cx_clearall { font-size: 0.78rem; cursor: pointer; margin-left: 0.25rem; }
     .o_cx_dash_title {
         font-size: 1.35rem;
         font-weight: 700;

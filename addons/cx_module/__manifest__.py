@@ -63,6 +63,7 @@ Odoo so the shell installs clean on its own.
         'views/cx_copilot_views.xml',
         'views/cx_integration_views.xml',
         'views/cx_ai_ops_views.xml',
+        'views/cx_queue_views.xml',
         'views/cx_menus.xml',
     ],
     'assets': {
