@@ -177,6 +177,125 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- ===== Omni-channel deep-dive (Manager dashboard only) ===== -->
+                <t t-if="state.scope === 'org' and omni">
+                    <div class="o_cx_omni_head">Omni-channel overview <span class="text-muted">— one module, every channel</span></div>
+
+                    <div class="o_cx_dash_row">
+                        <!-- Channel mix -->
+                        <div class="o_cx_card o_cx_grow2">
+                            <div class="o_cx_card_h">Channel mix — conversations, messages &amp; cost</div>
+                            <table class="o_cx_chan table table-sm" t-if="channelBars.length">
+                                <thead>
+                                    <tr><th>Channel</th><th class="o_cx_chan_barcol">Share of conversations</th>
+                                        <th class="text-end">Convos</th><th class="text-end">Msgs</th><th class="text-end">Cost</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="channelBars" t-as="c" t-key="c.channel_id">
+                                        <tr>
+                                            <td><span class="o_cx_chan_name"><t t-esc="c.name"/></span></td>
+                                            <td class="o_cx_chan_barcol">
+                                                <div class="o_cx_dist_track"><div class="o_cx_dist_fill" t-attf-style="width:{{c.w}}%"/></div>
+                                            </td>
+                                            <td class="text-end"><t t-esc="fmtNum(c.conversations)"/></td>
+                                            <td class="text-end"><t t-esc="fmtNum(c.messages)"/></td>
+                                            <td class="text-end"><t t-esc="fmtMoney(c.cost_usd)"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                            <div t-else="" class="text-muted p-3">No channel activity in this window.</div>
+                        </div>
+
+                        <!-- Live queue by channel -->
+                        <div class="o_cx_card">
+                            <div class="o_cx_card_h">Live queue <span class="text-muted">— open right now</span></div>
+                            <div class="o_cx_queue_hero">
+                                <div>
+                                    <div class="o_cx_queue_big" t-att-class="omni.queue.total_waiting ? 'text-warning' : 'text-success'"><t t-esc="fmtNum(omni.queue.total_waiting)"/></div>
+                                    <div class="o_cx_queue_lbl">waiting</div>
+                                </div>
+                                <div>
+                                    <div class="o_cx_queue_big"><t t-esc="fmtDuration(omni.queue.oldest_secs)"/></div>
+                                    <div class="o_cx_queue_lbl">longest wait</div>
+                                </div>
+                            </div>
+                            <table class="table table-sm o_cx_queue_tbl" t-if="omni.queue.rows.length">
+                                <tbody>
+                                    <t t-foreach="omni.queue.rows" t-as="q" t-key="q_index">
+                                        <tr>
+                                            <td><t t-esc="q.channel"/></td>
+                                            <td class="text-end"><t t-esc="fmtNum(q.waiting)"/></td>
+                                            <td class="text-end text-muted"><t t-esc="fmtDuration(q.oldest_secs)"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                            <div t-else="" class="text-muted p-2">Queue is clear 🎉</div>
+                        </div>
+                    </div>
+
+                    <div class="o_cx_dash_row">
+                        <!-- Campaigns -->
+                        <div class="o_cx_card o_cx_grow2">
+                            <div class="o_cx_card_h">Campaigns <span class="text-muted">— reach, delivery &amp; conversions</span></div>
+                            <table class="o_cx_board table table-sm" t-if="omni.campaigns.list.length">
+                                <thead>
+                                    <tr><th>Campaign</th><th>State</th><th class="text-end">Sends</th>
+                                        <th class="text-end">Delivered</th><th class="text-end">Conversions</th><th class="text-end">Cost</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="omni.campaigns.list" t-as="cp" t-key="cp.id">
+                                        <tr>
+                                            <td><t t-esc="cp.name"/></td>
+                                            <td><span class="o_cx_badge" t-att-data-state="cp.state"><t t-esc="titleCase(cp.state)"/></span></td>
+                                            <td class="text-end"><t t-esc="fmtNum(cp.sends)"/></td>
+                                            <td class="text-end"><t t-esc="fmtNum(cp.delivered)"/></td>
+                                            <td class="text-end"><t t-esc="fmtNum(cp.conversions)"/></td>
+                                            <td class="text-end"><t t-esc="fmtMoney(cp.cost_usd)"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                            <div t-else="" class="text-muted p-3">No campaigns yet.</div>
+                            <div t-if="campaignChannelBars.length" class="o_cx_camp_reach">
+                                <div class="o_cx_camp_reach_h">Outbound reach by channel</div>
+                                <t t-foreach="campaignChannelBars" t-as="b" t-key="b_index">
+                                    <div class="o_cx_dist_row">
+                                        <div class="o_cx_dist_lbl"><t t-esc="b.channel"/></div>
+                                        <div class="o_cx_dist_track"><div class="o_cx_dist_fill o_cx_fill_alt" t-attf-style="width:{{b.w}}%"/></div>
+                                        <div class="o_cx_dist_val"><t t-esc="fmtNum(b.sends)"/></div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- Customers -->
+                        <div class="o_cx_card">
+                            <div class="o_cx_card_h">Customers reached</div>
+                            <div class="o_cx_cust_kpis">
+                                <div><div class="o_cx_cust_v"><t t-esc="fmtNum(omni.customers.total)"/></div><div class="o_cx_cust_l">customers</div></div>
+                                <div><div class="o_cx_cust_v text-primary"><t t-esc="fmtNum(omni.customers.multi_channel)"/></div><div class="o_cx_cust_l">multi-channel</div></div>
+                                <div><div class="o_cx_cust_v"><t t-esc="fmtNum(omni.customers.new)"/> / <t t-esc="fmtNum(omni.customers.returning)"/></div><div class="o_cx_cust_l">new / returning</div></div>
+                            </div>
+                            <table class="table table-sm o_cx_cust_tbl" t-if="omni.customers.top.length">
+                                <tbody>
+                                    <t t-foreach="omni.customers.top" t-as="cu" t-key="cu.partner_id">
+                                        <tr>
+                                            <td><t t-esc="cu.name"/></td>
+                                            <td class="text-end"><t t-esc="fmtNum(cu.conversations)"/> convos</td>
+                                            <td class="text-end">
+                                                <span class="o_cx_chan_badge" t-att-class="cu.channels > 1 ? 'o_cx_multi' : ''"><t t-esc="cu.channels"/> ch</span>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                            <div t-else="" class="text-muted p-2">No customers in this window.</div>
+                        </div>
+                    </div>
+                </t>
             </t>
         </div>
     </t>

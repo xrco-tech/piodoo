@@ -83,6 +83,15 @@ class CxDashboard(models.TransientModel):
             'sentiment': self._sentiment(where, params),
             'leaderboard': self._leaderboard(where, params) if scope != 'me' else [],
         }
+        # Omni-channel deep-dive: only on the Manager (org) dashboard, where the
+        # cross-channel / queue / campaign / customer picture is the whole point.
+        if scope == 'org':
+            payload['omni'] = {
+                'channels': self._omni_channels(where, params),
+                'queue': self._omni_queue(),
+                'campaigns': self._omni_campaigns(params),
+                'customers': self._omni_customers(where, params),
+            }
         return payload
 
     # --------------------------------------------------------------- internals
@@ -314,6 +323,125 @@ class CxDashboard(models.TransientModel):
                 'sentiment_score': score,
             })
         return board
+
+    # ------------------------------------------------------- omni-channel (org)
+    def _omni_channels(self, where, params):
+        """Per-channel mix: conversations (by the conversation's primary channel)
+        merged with messages + cost (by each interaction's own channel). This is
+        the module's omni-channel headline — one row per channel."""
+        p = {**params, 'uid': self.env.uid}
+        self.env.cr.execute(f"""
+            SELECT ch.id AS cid, ch.code AS code, ch.name AS name, count(c.id) AS convos
+              FROM comm_conversation c
+              JOIN comm_channel ch ON ch.id = c.primary_channel_id
+             WHERE {where}
+             GROUP BY ch.id, ch.code, ch.name
+        """, p)
+        by_id = {r['cid']: {'channel_id': r['cid'], 'code': r['code'],
+                            'name': r['name'], 'conversations': r['convos'],
+                            'messages': 0, 'cost_usd': 0.0}
+                 for r in self.env.cr.dictfetchall()}
+        self.env.cr.execute(f"""
+            SELECT ch.id AS cid, ch.code AS code, ch.name AS name,
+                   count(i.id) AS msgs,
+                   coalesce(sum(i.projected_cost_usd), 0)::float AS cost
+              FROM comm_interaction i
+              JOIN comm_conversation c ON c.id = i.conversation_id
+              JOIN comm_channel ch ON ch.id = i.channel_id
+             WHERE {where}
+             GROUP BY ch.id, ch.code, ch.name
+        """, p)
+        for r in self.env.cr.dictfetchall():
+            row = by_id.setdefault(r['cid'], {
+                'channel_id': r['cid'], 'code': r['code'], 'name': r['name'],
+                'conversations': 0, 'messages': 0, 'cost_usd': 0.0})
+            row['messages'] = r['msgs']
+            row['cost_usd'] = round(r['cost'], 4)
+        rows = sorted(by_id.values(),
+                      key=lambda x: (x['conversations'], x['messages']), reverse=True)
+        return rows
+
+    def _omni_queue(self):
+        """Live backlog RIGHT NOW (not window-bounded) by channel — open/waiting/
+        handed-off conversations, with the oldest wait per channel."""
+        self.env.cr.execute("""
+            SELECT coalesce(ch.name, '—') AS channel,
+                   count(*) AS waiting,
+                   EXTRACT(EPOCH FROM ((now() at time zone 'UTC') - min(c.opened_at)))::int AS oldest_secs
+              FROM comm_conversation c
+              LEFT JOIN comm_channel ch ON ch.id = c.primary_channel_id
+             WHERE c.lifecycle_state IN ('open', 'waiting', 'handoff')
+             GROUP BY ch.name
+             ORDER BY waiting DESC
+        """)
+        rows = [{'channel': r[0], 'waiting': r[1], 'oldest_secs': r[2] or 0}
+                for r in self.env.cr.fetchall()]
+        total = sum(r['waiting'] for r in rows)
+        oldest = max((r['oldest_secs'] for r in rows), default=0)
+        return {'rows': rows, 'total_waiting': total, 'oldest_secs': oldest}
+
+    def _omni_campaigns(self, params):
+        """Recent campaigns (performance from the send ledger) + cross-channel
+        reach — the omni-channel spread of outbound sends in-window."""
+        camps = self.env['comm.campaign'].sudo().search([], order='id desc', limit=8)
+        clist = [{
+            'id': c.id, 'name': c.name, 'state': c.state,
+            'sends': c.total_sends, 'delivered': c.successful_sends,
+            'conversions': c.conversion_count,
+            'cost_usd': round(c.total_cost_usd or 0.0, 2),
+        } for c in camps]
+        # Sends by channel (omni-channel reach) over the window.
+        self.env.cr.execute("""
+            SELECT coalesce(ch.name, '—') AS channel, count(*) AS sends
+              FROM comm_campaign_send s
+              LEFT JOIN comm_channel ch ON ch.id = s.chosen_channel_id
+             WHERE coalesce(s.sent_at, s.scheduled_at, s.create_date)
+                   >= (now() at time zone 'UTC') - (%(days)s || ' days')::interval
+             GROUP BY ch.name
+             ORDER BY sends DESC
+        """, {'days': params['days']})
+        by_channel = [{'channel': r[0], 'sends': r[1]}
+                      for r in self.env.cr.fetchall()]
+        return {'list': clist, 'by_channel': by_channel}
+
+    def _omni_customers(self, where, params):
+        """Customer reach with an omni-channel lens: how many customers we touch,
+        how many we reach on MORE THAN ONE channel, new vs returning, and the top
+        customers by volume with their channel spread."""
+        p = {**params, 'uid': self.env.uid}
+        self.env.cr.execute(f"""
+            WITH active AS (
+                SELECT c.partner_id,
+                       count(*) AS convos,
+                       count(DISTINCT c.primary_channel_id) AS channels
+                  FROM comm_conversation c
+                 WHERE {where} AND c.partner_id IS NOT NULL
+                 GROUP BY c.partner_id
+            ),
+            firstseen AS (
+                SELECT partner_id, min(opened_at) AS first_ever
+                  FROM comm_conversation
+                 GROUP BY partner_id
+            )
+            SELECT a.partner_id, a.convos, a.channels,
+                   (f.first_ever >= (now() at time zone 'UTC') - (%(days)s || ' days')::interval) AS is_new
+              FROM active a
+              JOIN firstseen f ON f.partner_id = a.partner_id
+             ORDER BY a.convos DESC
+        """, p)
+        rows = self.env.cr.dictfetchall()
+        total = len(rows)
+        multi = sum(1 for r in rows if (r['channels'] or 0) > 1)
+        new = sum(1 for r in rows if r['is_new'])
+        top_rows = rows[:8]
+        names = {pr.id: pr.name for pr in
+                 self.env['res.partner'].sudo().browse([r['partner_id'] for r in top_rows])}
+        top = [{'partner_id': r['partner_id'],
+                'name': names.get(r['partner_id'], 'Unknown'),
+                'conversations': r['convos'], 'channels': r['channels']}
+               for r in top_rows]
+        return {'total': total, 'multi_channel': multi,
+                'new': new, 'returning': total - new, 'top': top}
 
     @staticmethod
     def _round(v):

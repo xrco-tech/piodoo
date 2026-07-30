@@ -106,4 +106,46 @@
     .o_cx_board { margin-bottom: 0; }
     .o_cx_board thead th { font-size: 0.72rem; text-transform: uppercase; color: var(--o-gray-600, #6c757d); border-top: 0; }
     .o_cx_board tbody td { font-size: 0.85rem; vertical-align: middle; }
+
+    // ---- Omni-channel deep-dive
+    .o_cx_omni_head {
+        font-size: 1.05rem; font-weight: 700; margin: 0.5rem 0 0.75rem;
+        padding-top: 0.75rem; border-top: 2px solid var(--o-gray-300, #dee2e6);
+    }
+    .o_cx_fill_alt { background: #714b67 !important; }
+
+    // Channel mix table
+    .o_cx_chan thead th { font-size: 0.72rem; text-transform: uppercase; color: var(--o-gray-600, #6c757d); border-top: 0; }
+    .o_cx_chan tbody td { font-size: 0.85rem; vertical-align: middle; }
+    .o_cx_chan_barcol { width: 45%; }
+    .o_cx_chan_name { font-weight: 600; }
+
+    // Live queue
+    .o_cx_queue_hero { display: flex; gap: 1.5rem; margin-bottom: 0.6rem; }
+    .o_cx_queue_big { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+    .o_cx_queue_lbl { font-size: 0.72rem; color: var(--o-gray-600, #6c757d); }
+    .o_cx_queue_tbl td { font-size: 0.82rem; }
+
+    // Campaign badges + reach
+    .o_cx_badge {
+        font-size: 0.7rem; font-weight: 600; padding: 1px 7px; border-radius: 10px;
+        background: var(--o-gray-200, #edeff2); color: var(--o-gray-700, #495057);
+        &[data-state="running"] { background: #d1e7dd; color: #0f5132; }
+        &[data-state="completed"] { background: #cfe2ff; color: #084298; }
+        &[data-state="scheduled"] { background: #fff3cd; color: #664d03; }
+        &[data-state="paused"] { background: #f8d7da; color: #842029; }
+    }
+    .o_cx_camp_reach { margin-top: 0.75rem; }
+    .o_cx_camp_reach_h { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--o-gray-700, #495057); }
+
+    // Customers
+    .o_cx_cust_kpis { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .o_cx_cust_v { font-size: 1.25rem; font-weight: 700; line-height: 1.1; }
+    .o_cx_cust_l { font-size: 0.68rem; color: var(--o-gray-600, #6c757d); }
+    .o_cx_cust_tbl td { font-size: 0.82rem; vertical-align: middle; }
+    .o_cx_chan_badge {
+        font-size: 0.68rem; font-weight: 600; padding: 1px 6px; border-radius: 8px;
+        background: var(--o-gray-200, #edeff2); color: var(--o-gray-600, #6c757d);
+        &.o_cx_multi { background: #cfe2ff; color: #084298; }
+    }
 }

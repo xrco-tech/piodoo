@@ -74,6 +74,34 @@ export class CxDashboard extends Component {
         return (v || 0).toLocaleString();
     }
 
+    fmtMoney(usd) {
+        if (usd === null || usd === undefined) return "$0.00";
+        return "$" + Number(usd).toLocaleString(undefined, {
+            minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    titleCase(s) {
+        return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+    }
+
+    // -------------------------------------------------------- omni-channel (org)
+    get omni() {
+        return (this.state.data && this.state.data.omni) || null;
+    }
+
+    // Channel mix rows scaled to the busiest channel (by conversations).
+    get channelBars() {
+        const ch = (this.omni && this.omni.channels) || [];
+        const max = Math.max(1, ...ch.map((r) => r.conversations));
+        return ch.map((r) => ({ ...r, w: (100 * r.conversations) / max }));
+    }
+
+    get campaignChannelBars() {
+        const bc = (this.omni && this.omni.campaigns.by_channel) || [];
+        const max = Math.max(1, ...bc.map((r) => r.sends));
+        return bc.map((r) => ({ ...r, w: (100 * r.sends) / max }));
+    }
+
     // ------------------------------------------------------------------- trend
     // Return the trend as {bars:[{x,label,openedH,closedH}], max} in a 0..100 box.
     get trendBars() {
