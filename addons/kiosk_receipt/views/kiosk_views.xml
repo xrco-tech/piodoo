@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Kiosk Order -->
+    <record id="view_kiosk_order_list" model="ir.ui.view">
+        <field name="name">kiosk.order.list</field>
+        <field name="model">kiosk.order</field>
+        <field name="arch" type="xml">
+            <list string="Kiosk Orders">
+                <field name="sold_at"/>
+                <field name="kiosk_ref"/>
+                <field name="total" sum="Total"/>
+                <field name="tip"/>
+                <field name="item_count"/>
+                <field name="checkout_id"/>
+                <field name="refund_id"/>
+                <field name="staff_ref"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kiosk_order_form" model="ir.ui.view">
+        <field name="name">kiosk.order.form</field>
+        <field name="model">kiosk.order</field>
+        <field name="arch" type="xml">
+            <form string="Kiosk Order">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="kiosk_ref"/>
+                            <field name="sold_at"/>
+                            <field name="staff_ref"/>
+                            <field name="shift_ref"/>
+                        </group>
+                        <group>
+                            <field name="subtotal"/>
+                            <field name="tip"/>
+                            <field name="total"/>
+                            <field name="item_count"/>
+                            <field name="checkout_id"/>
+                            <field name="refund_id"/>
+                        </group>
+                    </group>
+                    <field name="lines_json"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kiosk_order" model="ir.actions.act_window">
+        <field name="name">Kiosk Orders</field>
+        <field name="res_model">kiosk.order</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Kiosk Audit -->
+    <record id="view_kiosk_audit_list" model="ir.ui.view">
+        <field name="name">kiosk.audit.list</field>
+        <field name="model">kiosk.audit</field>
+        <field name="arch" type="xml">
+            <list string="Kiosk Audit">
+                <field name="happened_at"/>
+                <field name="event_type"/>
+                <field name="staff_name"/>
+                <field name="detail"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kiosk_audit_form" model="ir.ui.view">
+        <field name="name">kiosk.audit.form</field>
+        <field name="model">kiosk.audit</field>
+        <field name="arch" type="xml">
+            <form string="Kiosk Audit Event">
+                <sheet>
+                    <group>
+                        <field name="kiosk_ref"/>
+                        <field name="happened_at"/>
+                        <field name="event_type"/>
+                        <field name="staff_name"/>
+                        <field name="staff_ref"/>
+                        <field name="detail"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kiosk_audit" model="ir.actions.act_window">
+        <field name="name">Kiosk Audit Log</field>
+        <field name="res_model">kiosk.audit</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_kiosk_root" name="Kiosk" sequence="90"/>
+    <menuitem id="menu_kiosk_orders" name="Orders" parent="menu_kiosk_root"
+              action="action_kiosk_order" sequence="10"/>
+    <menuitem id="menu_kiosk_audit" name="Audit Log" parent="menu_kiosk_root"
+              action="action_kiosk_audit" sequence="20"/>
+
+</odoo>

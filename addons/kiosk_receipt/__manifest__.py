@@ -14,6 +14,7 @@
     'depends': ['contacts', 'mail', 'comm_sms', 'comm_whatsapp'],
     'data': [
         'security/ir.model.access.csv',
+        'views/kiosk_views.xml',
     ],
     'application': False,
     'installable': True,
