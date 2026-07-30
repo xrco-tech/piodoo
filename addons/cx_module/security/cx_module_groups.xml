@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <!-- Module category so the three tiers group under "UCX" in Settings >
+         Users. Kept updatable (outside noupdate) so its label tracks the app
+         name; the groups below stay noupdate to preserve membership. -->
+    <record id="module_category_cx" model="ir.module.category">
+        <field name="name">UCX</field>
+        <field name="description">Access levels for the UCX (Unified Customer Experience) app.</field>
+        <field name="sequence">20</field>
+    </record>
 
-        <!-- Module category so the three tiers group under "UCX"
-             in Settings > Users rather than under Administration. -->
-        <record id="module_category_cx" model="ir.module.category">
-            <field name="name">UCX</field>
-            <field name="description">Access levels for the Unified Customer Experience app.</field>
-            <field name="sequence">20</field>
-        </record>
+    <data noupdate="1">
 
         <!-- Agent: day-to-day handling. Workspace, Conversations, Tickets,
              Sales, Marketing (view), Customers, Billing > Campaign Cost Estimator. -->
