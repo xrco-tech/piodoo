@@ -29,5 +29,53 @@
         <field name="tag">cx_dashboard</field>
         <field name="context">{'dashboard_scope': 'org'}</field>
     </record>
-    <!-- Menu entries are declared in cx_menus.xml (where menu_cx_workspace lives). -->
+
+    <!-- Reporting: a performance-focused dashboard (same engine + style,
+         emphasis on agent leaderboard + channel performance). -->
+    <record id="action_cx_report_dashboard" model="ir.actions.client">
+        <field name="name">Performance Report</field>
+        <field name="tag">cx_dashboard</field>
+        <field name="context">{'dashboard_scope': 'org', 'dashboard_kind': 'performance'}</field>
+    </record>
+
+    <!-- Billing: a spend-focused dashboard in the same style. -->
+    <record id="action_cx_billing_dashboard" model="ir.actions.client">
+        <field name="name">Spend Dashboard</field>
+        <field name="tag">cx_dashboard</field>
+        <field name="context">{'dashboard_scope': 'org', 'dashboard_kind': 'billing'}</field>
+    </record>
+
+    <!-- Budgets &amp; Alerts: a purpose-built budget list (fixes the old menu
+         that opened the generic Campaigns view). Only campaigns with a cap. -->
+    <record id="view_cx_budget_list" model="ir.ui.view">
+        <field name="name">cx.budget.list</field>
+        <field name="model">comm.campaign</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="1" string="Budgets &amp; Alerts">
+                <field name="name"/>
+                <field name="state"/>
+                <field name="budget_cap_local" string="Budget cap"/>
+                <field name="total_cost_local" string="Spent"/>
+                <field name="budget_currency_id" optional="show"/>
+                <field name="budget_soft_threshold_pct" string="Alert at %"/>
+                <field name="hard_stop_at_cap" string="Hard stop"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_cx_budgets" model="ir.actions.act_window">
+        <field name="name">Budgets &amp; Alerts</field>
+        <field name="res_model">comm.campaign</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('budget_cap_local', '>', 0)]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'sequence': 1, 'view_mode': 'list', 'view_id': ref('view_cx_budget_list')}),
+            (0, 0, {'sequence': 2, 'view_mode': 'form'})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No budgets set yet</p>
+            <p>Campaigns with a budget cap appear here with their spend, alert
+               threshold and hard-stop setting. Set a cap on a campaign to add it.</p>
+        </field>
+    </record>
+    <!-- Menu entries are declared in cx_menus.xml (where the parents live). -->
 </odoo>

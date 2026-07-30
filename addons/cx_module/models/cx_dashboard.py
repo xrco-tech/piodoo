@@ -121,6 +121,131 @@ class CxDashboard(models.TransientModel):
             }
         return payload
 
+    @api.model
+    def get_billing_metrics(self, days=30, date_from=None, date_to=None, filters=None):
+        """Spend-focused metrics for the Billing dashboard — same window/filter/
+        currency machinery as get_metrics, but the measures are all cost. Manager
+        gated (billing figures are cross-actor). Costs are in company currency."""
+        if not self.env.user.has_group('cx_module.group_cx_manager'):
+            raise AccessError("The billing dashboard is limited to CX Managers.")
+        days = max(1, min(int(days or 30), MAX_DAYS))
+        filters = dict(filters or {})
+        dt_from, dt_to, window_label = self._resolve_window(days, date_from, date_to)
+        params = {'uid': self.env.uid, 'dt_from': dt_from, 'dt_to': dt_to}
+        self._apply_filter_params(filters, params)
+        where = self._build_where('org', filters, windowed=True)
+        currency = self.env.company.currency_id
+        cur = {'symbol': currency.symbol or currency.name,
+               'name': currency.name, 'position': currency.position}
+
+        # Spend + message volume (interaction-based, over in-scope conversations).
+        self.env.cr.execute(f"""
+            SELECT coalesce(sum(i.projected_cost_usd), 0)::float AS spend_usd,
+                   count(i.id) AS messages,
+                   count(i.id) FILTER (WHERE i.projected_cost_usd > 0) AS billable
+              FROM comm_interaction i
+              JOIN comm_conversation c ON c.id = i.conversation_id
+             WHERE {where}
+        """, params)
+        row = self.env.cr.dictfetchone() or {}
+        spend = self._to_company_currency(row.get('spend_usd') or 0.0, currency)
+        self.env.cr.execute(
+            f"SELECT count(*) FROM comm_conversation c WHERE {where}", params)
+        convos = (self.env.cr.fetchone() or [0])[0]
+        messages = row.get('messages') or 0
+        billable = row.get('billable') or 0
+
+        # Spend by channel.
+        self.env.cr.execute(f"""
+            SELECT ch.name AS name, coalesce(sum(i.projected_cost_usd), 0)::float AS cost,
+                   count(i.id) AS msgs
+              FROM comm_interaction i
+              JOIN comm_conversation c ON c.id = i.conversation_id
+              JOIN comm_channel ch ON ch.id = i.channel_id
+             WHERE {where}
+             GROUP BY ch.name ORDER BY cost DESC
+        """, params)
+        spend_by_channel = [
+            {'name': r[0], 'cost': self._to_company_currency(r[1], currency), 'messages': r[2]}
+            for r in self.env.cr.fetchall()]
+
+        # Daily spend trend.
+        self.env.cr.execute(f"""
+            SELECT to_char(date_trunc('day', i.at), 'YYYY-MM-DD') AS day,
+                   coalesce(sum(i.projected_cost_usd), 0)::float AS cost
+              FROM comm_interaction i
+              JOIN comm_conversation c ON c.id = i.conversation_id
+             WHERE {where}
+             GROUP BY 1 ORDER BY 1
+        """, params)
+        spend_trend = [
+            {'day': r[0], 'cost': self._to_company_currency(r[1], currency)}
+            for r in self.env.cr.fetchall()]
+
+        # Spend by campaign (attributed via conversation.campaign_id = str(id)).
+        self.env.cr.execute(f"""
+            SELECT c.campaign_id AS cid,
+                   coalesce(sum(i.projected_cost_usd), 0)::float AS cost, count(i.id) AS msgs
+              FROM comm_interaction i
+              JOIN comm_conversation c ON c.id = i.conversation_id
+             WHERE {where} AND c.campaign_id IS NOT NULL AND c.campaign_id != ''
+             GROUP BY c.campaign_id ORDER BY cost DESC LIMIT 10
+        """, params)
+        camp_rows = self.env.cr.dictfetchall()
+        cmap = {c.id: c.name for c in self.env['comm.campaign'].sudo().browse(
+            [int(r['cid']) for r in camp_rows if (r['cid'] or '').isdigit()])}
+        spend_by_campaign = [{
+            'name': cmap.get(int(r['cid']), r['cid']) if (r['cid'] or '').isdigit() else r['cid'],
+            'cost': self._to_company_currency(r['cost'], currency), 'messages': r['msgs'],
+        } for r in camp_rows]
+
+        # Budget utilisation (campaigns with a cap). cap + spent are in the
+        # campaign's own budget currency, so we show that symbol per row.
+        budgets = []
+        exceeded = 0
+        camps = self.env['comm.campaign'].sudo().search(
+            [('budget_cap_local', '>', 0)], order='id desc', limit=20)
+        for c in camps:
+            cap = c.budget_cap_local or 0.0
+            spent = c.total_cost_local or 0.0
+            pct = round(100.0 * spent / cap, 0) if cap else 0
+            soft = c.budget_soft_threshold_pct or 80
+            status = 'exceeded' if pct >= 100 else ('warn' if pct >= soft else 'ok')
+            if status == 'exceeded':
+                exceeded += 1
+            budgets.append({
+                'name': c.name, 'state': c.state, 'cap': round(cap, 2),
+                'spent': round(spent, 2), 'pct': pct, 'status': status,
+                'symbol': (c.budget_currency_id.symbol or cur['symbol'])})
+
+        return {
+            'kind': 'billing',
+            'window_label': window_label, 'days': days,
+            'date_from': date_from or '', 'date_to': date_to or '',
+            'currency': cur,
+            'filters': self._echo_filters(filters),
+            'filter_options': self._filter_options('org', params),
+            'kpis': {
+                'total_spend': spend,
+                'messages': messages,
+                'billable_messages': billable,
+                'cost_per_conversation': round(spend / convos, 2) if convos else 0.0,
+                'cost_per_message': round(spend / billable, 4) if billable else 0.0,
+                'active_budgets': len(camps),
+                'budgets_exceeded': exceeded,
+            },
+            'spend_by_channel': spend_by_channel,
+            'spend_trend': spend_trend,
+            'spend_by_campaign': spend_by_campaign,
+            'budgets': budgets,
+        }
+
+    @staticmethod
+    def _echo_filters(filters):
+        return {'teams': filters.get('teams') or [], 'agents': filters.get('agents') or [],
+                'channels': filters.get('channels') or [], 'campaigns': filters.get('campaigns') or [],
+                'direction': filters.get('direction') or ''}
+
     # --------------------------------------------------------------- internals
     def _resolve_window(self, days, date_from, date_to):
         """Return (dt_from, dt_to, label). A valid custom range wins; otherwise

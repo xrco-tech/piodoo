@@ -8,8 +8,8 @@
           <div class="o_cx_dash_top">
             <div class="o_cx_dash_head d-flex flex-wrap align-items-center gap-2">
                 <div class="o_cx_dash_title">
-                    <t t-esc="state.data ? state.data.scope_label : ''"/> dashboard
-                    <span class="o_cx_dash_sub">measuring efficiency · <t t-esc="state.data ? state.data.window_label : ''"/></span>
+                    <t t-esc="title"/>
+                    <span class="o_cx_dash_sub"><t t-esc="state.data ? state.data.window_label : ''"/></span>
                 </div>
                 <div class="flex-grow-1"/>
                 <div class="btn-group btn-group-sm" role="group">
@@ -67,7 +67,8 @@
           <div class="o_cx_dash_body">
             <div t-if="state.loading" class="o_cx_dash_loading text-muted">Loading metrics…</div>
 
-            <t t-if="!state.loading and state.data">
+            <!-- ===================== Efficiency / Performance ===================== -->
+            <t t-if="!state.loading and state.data and state.kind !== 'billing'">
                 <!-- KPI cards -->
                 <div class="o_cx_kpis">
                     <div class="o_cx_kpi" t-on-click="openConversations" role="button">
@@ -215,9 +216,12 @@
                     </table>
                 </div>
 
-                <!-- ===== Omni-channel deep-dive (Manager dashboard only) ===== -->
-                <t t-if="state.scope === 'org' and omni">
-                    <div class="o_cx_omni_head">Omni-channel overview <span class="text-muted">— one module, every channel</span></div>
+                <!-- ===== Channel deep-dive (Manager: full omni; Reporting: channels only) ===== -->
+                <t t-if="omni and (state.kind === 'efficiency' or state.kind === 'performance')">
+                    <div class="o_cx_omni_head">
+                        <t t-if="state.kind === 'performance'">Channel performance</t>
+                        <t t-else="">Omni-channel overview <span class="text-muted">— one module, every channel</span></t>
+                    </div>
 
                     <div class="o_cx_dash_row">
                         <!-- Channel mix -->
@@ -245,8 +249,8 @@
                             <div t-else="" class="text-muted p-3">No channel activity in this window.</div>
                         </div>
 
-                        <!-- Live queue by channel -->
-                        <div class="o_cx_card">
+                        <!-- Live queue by channel (Manager only) -->
+                        <div class="o_cx_card" t-if="state.kind === 'efficiency'">
                             <div class="o_cx_card_h">Live queue <span class="text-muted">— open right now</span></div>
                             <div class="o_cx_queue_hero">
                                 <div>
@@ -273,7 +277,7 @@
                         </div>
                     </div>
 
-                    <div class="o_cx_dash_row">
+                    <div class="o_cx_dash_row" t-if="state.kind === 'efficiency'">
                         <!-- Campaigns -->
                         <div class="o_cx_card o_cx_grow2">
                             <div class="o_cx_card_h">Campaigns <span class="text-muted">— reach, delivery &amp; conversions</span></div>
@@ -333,6 +337,112 @@
                         </div>
                     </div>
                 </t>
+            </t>
+
+            <!-- ===================== Billing / Spend ===================== -->
+            <t t-if="!state.loading and state.data and state.kind === 'billing'">
+                <div class="o_cx_kpis">
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val"><t t-esc="fmtMoney(state.data.kpis.total_spend)"/></div>
+                        <div class="o_cx_kpi_lbl">Total spend</div>
+                        <div class="o_cx_kpi_foot">messaging cost this window</div>
+                    </div>
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val"><t t-esc="fmtMoney(state.data.kpis.cost_per_conversation)"/></div>
+                        <div class="o_cx_kpi_lbl">Cost / conversation</div>
+                    </div>
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val"><t t-esc="fmtMoney(state.data.kpis.cost_per_message)"/></div>
+                        <div class="o_cx_kpi_lbl">Cost / billable message</div>
+                    </div>
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val"><t t-esc="fmtNum(state.data.kpis.billable_messages)"/></div>
+                        <div class="o_cx_kpi_lbl">Billable messages</div>
+                        <div class="o_cx_kpi_foot">of <t t-esc="fmtNum(state.data.kpis.messages)"/> total</div>
+                    </div>
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val">
+                            <t t-esc="fmtNum(state.data.kpis.active_budgets)"/>
+                            <span t-if="state.data.kpis.budgets_exceeded" class="o_cx_kpi_val_sub text-danger"> · <t t-esc="fmtNum(state.data.kpis.budgets_exceeded)"/> over</span>
+                        </div>
+                        <div class="o_cx_kpi_lbl">Active budgets</div>
+                    </div>
+                </div>
+
+                <div class="o_cx_dash_row">
+                    <!-- Spend trend -->
+                    <div class="o_cx_card o_cx_grow2">
+                        <div class="o_cx_card_h">Daily spend</div>
+                        <div class="o_cx_dow" t-if="spendTrendBars.bars.length">
+                            <t t-foreach="spendTrendBars.bars" t-as="b" t-key="b_index">
+                                <div class="o_cx_dow_col" t-att-title="b.label + ': ' + fmtMoney(b.cost)">
+                                    <div class="o_cx_dow_bar o_cx_spend_bar" t-attf-style="height:{{b.h}}%"/>
+                                    <div class="o_cx_dow_x"><t t-esc="b.label"/></div>
+                                </div>
+                            </t>
+                        </div>
+                        <div t-else="" class="text-muted p-3">No spend in this window.</div>
+                    </div>
+                    <!-- Spend by channel -->
+                    <div class="o_cx_card">
+                        <div class="o_cx_card_h">Spend by channel</div>
+                        <div class="o_cx_dist" t-if="spendChannelBars.length">
+                            <t t-foreach="spendChannelBars" t-as="c" t-key="c_index">
+                                <div class="o_cx_dist_row">
+                                    <div class="o_cx_dist_lbl"><t t-esc="c.name"/></div>
+                                    <div class="o_cx_dist_track"><div class="o_cx_dist_fill o_cx_spend_fill" t-attf-style="width:{{c.w}}%"/></div>
+                                    <div class="o_cx_dist_val"><t t-esc="fmtMoney(c.cost)"/></div>
+                                </div>
+                            </t>
+                        </div>
+                        <div t-else="" class="text-muted p-3">No spend in this window.</div>
+                    </div>
+                </div>
+
+                <div class="o_cx_dash_row">
+                    <!-- Budget utilisation -->
+                    <div class="o_cx_card o_cx_grow2">
+                        <div class="o_cx_card_h">Budget utilisation <span class="text-muted">— caps &amp; alerts</span></div>
+                        <table class="o_cx_board table table-sm" t-if="state.data.budgets.length">
+                            <thead>
+                                <tr><th>Campaign</th><th>State</th><th class="o_cx_chan_barcol">Used</th>
+                                    <th class="text-end">Spent / cap</th></tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="state.data.budgets" t-as="bg" t-key="bg_index">
+                                    <tr>
+                                        <td><t t-esc="bg.name"/></td>
+                                        <td><span class="o_cx_badge" t-att-data-state="bg.state"><t t-esc="titleCase(bg.state)"/></span></td>
+                                        <td class="o_cx_chan_barcol">
+                                            <div class="o_cx_dist_track">
+                                                <div class="o_cx_dist_fill" t-att-class="'o_cx_budg_' + bg.status" t-attf-style="width:{{bg.pct > 100 ? 100 : bg.pct}}%"/>
+                                            </div>
+                                            <span class="o_cx_budg_pct" t-att-class="bg.status === 'exceeded' ? 'text-danger' : (bg.status === 'warn' ? 'text-warning' : 'text-muted')"><t t-esc="bg.pct"/>%</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-esc="fmtMoneySym(bg.spent, bg.symbol)"/> / <t t-esc="fmtMoneySym(bg.cap, bg.symbol)"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                        <div t-else="" class="text-muted p-3">No campaigns have a budget cap set.</div>
+                    </div>
+                    <!-- Spend by campaign -->
+                    <div class="o_cx_card">
+                        <div class="o_cx_card_h">Top spend by campaign</div>
+                        <div class="o_cx_dist" t-if="spendCampaignBars.length">
+                            <t t-foreach="spendCampaignBars" t-as="cp" t-key="cp_index">
+                                <div class="o_cx_dist_row">
+                                    <div class="o_cx_dist_lbl o_cx_camp_lbl"><t t-esc="cp.name"/></div>
+                                    <div class="o_cx_dist_track"><div class="o_cx_dist_fill o_cx_spend_fill" t-attf-style="width:{{cp.w}}%"/></div>
+                                    <div class="o_cx_dist_val"><t t-esc="fmtMoney(cp.cost)"/></div>
+                                </div>
+                            </t>
+                        </div>
+                        <div t-else="" class="text-muted p-3">No campaign-attributed spend.</div>
+                    </div>
+                </div>
             </t>
           </div>
         </div>

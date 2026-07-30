@@ -204,4 +204,13 @@
         background: var(--o-gray-200, #edeff2); color: var(--o-gray-600, #6c757d);
         &.o_cx_multi { background: #cfe2ff; color: #084298; }
     }
+
+    // ---- Billing / spend
+    .o_cx_spend_bar { background: #2fb37f; }
+    .o_cx_spend_fill { background: #2fb37f !important; }
+    .o_cx_camp_lbl { width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_cx_budg_ok { background: #2fb37f !important; }
+    .o_cx_budg_warn { background: #f0ad4e !important; }
+    .o_cx_budg_exceeded { background: #dc3545 !important; }
+    .o_cx_budg_pct { font-size: 0.72rem; margin-left: 0.4rem; font-weight: 600; }
 }

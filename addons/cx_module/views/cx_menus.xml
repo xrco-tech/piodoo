@@ -175,14 +175,20 @@
               sequence="70"
               groups="cx_module.group_cx_manager"/>
 
+    <menuitem id="menu_cx_report_dashboard"
+              name="Performance Report"
+              parent="menu_cx_reporting"
+              action="action_cx_report_dashboard"
+              sequence="5"/>
+
     <menuitem id="menu_cx_report_agent"
-              name="Agent Performance"
+              name="Agent Performance (pivot)"
               parent="menu_cx_reporting"
               action="action_cx_report_agent"
               sequence="10"/>
 
     <menuitem id="menu_cx_report_channel"
-              name="Channel Performance"
+              name="Channel Performance (pivot)"
               parent="menu_cx_reporting"
               action="action_cx_report_channel"
               sequence="20"/>
@@ -198,8 +204,15 @@
     <menuitem id="menu_cx_billing_dashboard"
               name="Spend Dashboard"
               parent="menu_cx_billing"
-              action="comm_billing_core.action_comm_billing_dashboard"
+              action="action_cx_billing_dashboard"
               sequence="10"
+              groups="cx_module.group_cx_manager"/>
+
+    <menuitem id="menu_cx_billing_ledger"
+              name="Billing Ledger"
+              parent="menu_cx_billing"
+              action="comm_billing_core.action_comm_billing_dashboard"
+              sequence="15"
               groups="cx_module.group_cx_manager"/>
 
     <menuitem id="menu_cx_billing_channel"
@@ -220,7 +233,7 @@
     <menuitem id="menu_cx_billing_budgets"
               name="Budgets &amp; Alerts"
               parent="menu_cx_billing"
-              action="comm_campaign.action_comm_campaign"
+              action="action_cx_budgets"
               sequence="40"
               groups="cx_module.group_cx_manager"/>
 

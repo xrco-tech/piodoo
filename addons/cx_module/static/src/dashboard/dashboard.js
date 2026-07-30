@@ -19,6 +19,7 @@ export class CxDashboard extends Component {
         const ctx = (this.props.action && this.props.action.context) || {};
         this.state = useState({
             scope: ctx.dashboard_scope || "me",
+            kind: ctx.dashboard_kind || "efficiency",   // efficiency | performance | billing
             rangeMode: "days",         // "days" | "custom"
             days: 30,
             dateFrom: "",
@@ -35,7 +36,6 @@ export class CxDashboard extends Component {
         this.state.loading = true;
         try {
             const kwargs = {
-                scope: this.state.scope,
                 days: this.state.days,
                 filters: JSON.parse(JSON.stringify(this.state.filters)),
             };
@@ -43,10 +43,20 @@ export class CxDashboard extends Component {
                 kwargs.date_from = this.state.dateFrom;
                 kwargs.date_to = this.state.dateTo;
             }
-            this.state.data = await this.orm.call("cx.dashboard", "get_metrics", [], kwargs);
+            const method = this.state.kind === "billing" ? "get_billing_metrics" : "get_metrics";
+            if (this.state.kind !== "billing") {
+                kwargs.scope = this.state.scope;
+            }
+            this.state.data = await this.orm.call("cx.dashboard", method, [], kwargs);
         } finally {
             this.state.loading = false;
         }
+    }
+
+    get title() {
+        if (this.state.kind === "billing") return "Billing · Spend";
+        if (this.state.kind === "performance") return "Performance report";
+        return (this.state.data ? this.state.data.scope_label : "") + " dashboard";
     }
 
     get dayOptions() {
@@ -179,6 +189,32 @@ export class CxDashboard extends Component {
         const bc = (this.omni && this.omni.campaigns.by_channel) || [];
         const max = Math.max(1, ...bc.map((r) => r.sends));
         return bc.map((r) => ({ ...r, w: (100 * r.sends) / max }));
+    }
+
+    // ------------------------------------------------------------- billing bars
+    get spendChannelBars() {
+        const rows = (this.state.data && this.state.data.spend_by_channel) || [];
+        const max = Math.max(0.0001, ...rows.map((r) => r.cost));
+        return rows.map((r) => ({ ...r, w: (100 * r.cost) / max }));
+    }
+
+    get spendCampaignBars() {
+        const rows = (this.state.data && this.state.data.spend_by_campaign) || [];
+        const max = Math.max(0.0001, ...rows.map((r) => r.cost));
+        return rows.map((r) => ({ ...r, w: (100 * r.cost) / max }));
+    }
+
+    get spendTrendBars() {
+        const t = (this.state.data && this.state.data.spend_trend) || [];
+        const max = Math.max(0.0001, ...t.map((r) => r.cost));
+        return { max, bars: t.map((r) => ({ label: r.day.slice(5), cost: r.cost,
+                                            h: (100 * r.cost) / max })) };
+    }
+
+    fmtMoneySym(v, sym) {
+        const amt = Number(v || 0).toLocaleString(undefined, {
+            minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return `${sym || ""}${amt}`;
     }
 
     // ------------------------------------------------------------------- trend
