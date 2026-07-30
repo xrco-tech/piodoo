@@ -95,6 +95,8 @@ class KioskReceiptController(http.Controller):
                 'subtotal': (r.get('subtotalCents') or 0) / 100.0,
                 'tip': (r.get('tipCents') or 0) / 100.0,
                 'total': (r.get('totalCents') or 0) / 100.0,
+                'cash': (r.get('cashCents') or 0) / 100.0,
+                'card': (r.get('cardCents') or 0) / 100.0,
                 'item_count': r.get('itemCount') or 0,
                 'staff_ref': r.get('staffId') or '',
                 'shift_ref': r.get('shiftId') or '',

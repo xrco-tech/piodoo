@@ -16,6 +16,8 @@ class KioskOrder(models.Model):
     subtotal = fields.Float(string='Subtotal')
     tip = fields.Float(string='Tip')
     total = fields.Float(string='Total')
+    cash = fields.Float(string='Cash')
+    card = fields.Float(string='Card')
     item_count = fields.Integer(string='Items')
     staff_ref = fields.Char(string='Staff Ref')
     shift_ref = fields.Char(string='Shift Ref')

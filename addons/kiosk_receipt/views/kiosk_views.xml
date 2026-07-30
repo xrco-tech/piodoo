@@ -10,6 +10,8 @@
                 <field name="sold_at"/>
                 <field name="kiosk_ref"/>
                 <field name="total" sum="Total"/>
+                <field name="cash" sum="Cash"/>
+                <field name="card" sum="Card"/>
                 <field name="tip"/>
                 <field name="item_count"/>
                 <field name="checkout_id"/>
@@ -36,6 +38,8 @@
                             <field name="subtotal"/>
                             <field name="tip"/>
                             <field name="total"/>
+                            <field name="cash"/>
+                            <field name="card"/>
                             <field name="item_count"/>
                             <field name="checkout_id"/>
                             <field name="refund_id"/>
