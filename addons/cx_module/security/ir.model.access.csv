@@ -5,3 +5,4 @@ access_cx_report_agent,cx.report.conversation.agent,cx_module.model_cx_report_co
 access_cx_integration_mcp_admin,cx.integration.mcp.admin,cx_module.model_cx_integration_mcp,cx_module.group_cx_admin,1,1,1,1
 access_cx_integration_webhook_admin,cx.integration.webhook.admin,cx_module.model_cx_integration_webhook,cx_module.group_cx_admin,1,1,1,1
 access_cx_integration_delivery_admin,cx.integration.webhook.delivery.admin,cx_module.model_cx_integration_webhook_delivery,cx_module.group_cx_admin,1,1,1,1
+access_cx_ai_ops_agent,cx.ai.ops.agent,cx_module.model_cx_ai_ops,cx_module.group_cx_agent,1,1,1,0

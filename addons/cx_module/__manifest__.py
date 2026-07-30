@@ -61,6 +61,7 @@ Odoo so the shell installs clean on its own.
         'views/cx_report_views.xml',
         'views/cx_copilot_views.xml',
         'views/cx_integration_views.xml',
+        'views/cx_ai_ops_views.xml',
         'views/cx_menus.xml',
     ],
     'assets': {
@@ -71,6 +72,9 @@ Odoo so the shell installs clean on its own.
             'cx_module/static/src/flow/flow.scss',
             'cx_module/static/src/flow/flow.js',
             'cx_module/static/src/flow/flow.xml',
+            'cx_module/static/src/ai_ops/ai_ops.scss',
+            'cx_module/static/src/ai_ops/ai_ops.js',
+            'cx_module/static/src/ai_ops/ai_ops.xml',
         ],
     },
     'installable': True,

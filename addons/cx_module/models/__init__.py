@@ -5,3 +5,4 @@ from . import cx_report
 from . import cx_copilot
 from . import cx_integration
 from . import cx_campaign
+from . import cx_ai_ops
