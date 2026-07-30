@@ -33,6 +33,7 @@ Odoo so the shell installs clean on its own.
     #   Phase 5  Tickets    -> helpdesk (uninstallable on this instance — blocked)
     'depends': [
         'base',
+        'base_setup',                # General Settings action (cx_menus)
         'mail',
         'contacts',
         # Phase 1 — Conversations (Gen-2 trunk + channel adapters, all reused):

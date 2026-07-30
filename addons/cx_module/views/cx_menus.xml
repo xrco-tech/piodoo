@@ -252,4 +252,31 @@
               action="mail.action_email_server_tree"
               sequence="50"/>
 
+    <!-- Teams: reuses the call-routing team model (the only team model in the
+         reused stack). -->
+    <menuitem id="menu_cx_config_teams"
+              name="Teams"
+              parent="menu_cx_config"
+              action="comm_whatsapp_calling.action_whatsapp_call_team"
+              sequence="60"/>
+
+    <!-- Tags &amp; Categories: standard contact tags (res.partner.category). -->
+    <menuitem id="menu_cx_config_tags"
+              name="Tags &amp; Categories"
+              parent="menu_cx_config"
+              action="base.action_partner_category_form"
+              sequence="70"/>
+
+    <!-- General Settings: Odoo's system settings. -->
+    <menuitem id="menu_cx_config_settings"
+              name="General Settings"
+              parent="menu_cx_config"
+              action="base_setup.action_general_configuration"
+              sequence="90"/>
+
+    <!-- Integrations (spec): no distinct config model in the reused stack —
+         the channel accounts + mail servers above already cover it. Left
+         unwired pending a decision on what a dedicated screen would hold. -->
+
+
 </odoo>
