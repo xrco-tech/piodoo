@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kiosk_order_user,kiosk.order.user,model_kiosk_order,base.group_user,1,1,1,0
+access_kiosk_order_manager,kiosk.order.manager,model_kiosk_order,base.group_system,1,1,1,1
+access_kiosk_audit_user,kiosk.audit.user,model_kiosk_audit,base.group_user,1,1,1,0
+access_kiosk_audit_manager,kiosk.audit.manager,model_kiosk_audit,base.group_system,1,1,1,1

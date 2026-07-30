@@ -11,8 +11,10 @@
     'author': 'XRCO',
     'license': 'LGPL-3',
     'category': 'Tools',
-    'depends': ['mail', 'comm_sms', 'comm_whatsapp'],
-    'data': [],
+    'depends': ['contacts', 'mail', 'comm_sms', 'comm_whatsapp'],
+    'data': [
+        'security/ir.model.access.csv',
+    ],
     'application': False,
     'installable': True,
 }
