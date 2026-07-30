@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!--
-        Unified CX menu skeleton (Phase 0).
+        UCX menu skeleton (Phase 0).
 
         Structure, sequence numbers, and groups= gating follow the
         "Odoo XML Menu Skeleton" and "Access Groups" sections of
@@ -17,7 +17,7 @@
 
     <!-- ============ Root App ============ -->
     <menuitem id="menu_cx_root"
-              name="Unified CX"
+              name="UCX"
               web_icon="cx_module,static/description/icon.png"
               sequence="10"/>
 

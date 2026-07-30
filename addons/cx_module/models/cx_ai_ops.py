@@ -29,7 +29,7 @@ OPS_MAX_TOKENS = 4096
 MAX_TOOL_ITERATIONS = 6
 
 SYSTEM_PROMPT = (
-    "You are the Unified CX marketing assistant inside an Odoo app. You help the "
+    "You are the UCX marketing assistant inside an Odoo app. You help the "
     "user draft and edit outbound campaigns using the tools provided.\n\n"
     "Hard rules:\n"
     "- Campaigns you create or edit ALWAYS stay in draft. You have NO tool to "

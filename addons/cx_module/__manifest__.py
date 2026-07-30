@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Unified CX',
+    'name': 'UCX',
     'version': '18.0.1.0.0',
     'category': 'Communications',
     'summary': 'One workspace to manage a customer end-to-end across every channel',
@@ -15,7 +15,7 @@ channel, one campaign engine, and one customer timeline.
 
 This is **Phase 0**: the standalone module shell.
 
-- Root application menu ("Unified CX") + the full top-level tab structure
+- Root application menu ("UCX") + the full top-level tab structure
   (Workspace / Conversations / Tickets / Sales / Marketing / Customers /
   Reporting / Billing / Configuration) from the Menu Structure spec.
 - Security groups cx.group_cx_agent < cx.group_cx_manager < cx.group_cx_admin
