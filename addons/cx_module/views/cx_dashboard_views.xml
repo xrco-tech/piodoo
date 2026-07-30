@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- UCX efficiency dashboards (OWL client action, one per role scope). -->
+
+    <!-- Default first-response SLA target (10 min), seeded once. noupdate so a
+         module upgrade never clobbers an admin's change in System Parameters;
+         the engine also falls back to 600 if the param is ever absent. -->
+    <data noupdate="1">
+        <record id="cx_first_response_target" model="ir.config_parameter">
+            <field name="key">cx_module.first_response_target_secs</field>
+            <field name="value">600</field>
+        </record>
+    </data>
+
+    <record id="action_cx_dash_me" model="ir.actions.client">
+        <field name="name">My Dashboard</field>
+        <field name="tag">cx_dashboard</field>
+        <field name="context">{'dashboard_scope': 'me'}</field>
+    </record>
+
+    <record id="action_cx_dash_team" model="ir.actions.client">
+        <field name="name">Team Dashboard</field>
+        <field name="tag">cx_dashboard</field>
+        <field name="context">{'dashboard_scope': 'team'}</field>
+    </record>
+
+    <record id="action_cx_dash_org" model="ir.actions.client">
+        <field name="name">Manager Dashboard</field>
+        <field name="tag">cx_dashboard</field>
+        <field name="context">{'dashboard_scope': 'org'}</field>
+    </record>
+    <!-- Menu entries are declared in cx_menus.xml (where menu_cx_workspace lives). -->
+</odoo>

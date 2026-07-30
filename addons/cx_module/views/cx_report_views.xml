@@ -73,11 +73,6 @@
         <field name="context">{'search_default_gb_agent': 1}</field>
     </record>
 
-    <!-- Workspace > My Dashboard (channel breakdown, drawn from the same view) -->
-    <record id="action_cx_dashboard" model="ir.actions.act_window">
-        <field name="name">My Dashboard</field>
-        <field name="res_model">cx.report.conversation</field>
-        <field name="view_mode">graph,pivot,list</field>
-        <field name="context">{'search_default_gb_channel': 1}</field>
-    </record>
+    <!-- Note: Workspace > My Dashboard is now the OWL efficiency dashboard
+         (action_cx_dash_me in cx_dashboard_views.xml), not this pivot view. -->
 </odoo>

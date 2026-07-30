@@ -30,8 +30,22 @@
     <menuitem id="menu_cx_dashboard"
               name="My Dashboard"
               parent="menu_cx_workspace"
-              action="action_cx_dashboard"
+              action="action_cx_dash_me"
               sequence="10"/>
+
+    <menuitem id="menu_cx_dash_team"
+              name="Team Dashboard"
+              parent="menu_cx_workspace"
+              action="action_cx_dash_team"
+              groups="cx_module.group_cx_manager"
+              sequence="12"/>
+
+    <menuitem id="menu_cx_dash_org"
+              name="Manager Dashboard"
+              parent="menu_cx_workspace"
+              action="action_cx_dash_org"
+              groups="cx_module.group_cx_manager"
+              sequence="14"/>
 
     <menuitem id="menu_cx_live_queue"
               name="Live Queue"

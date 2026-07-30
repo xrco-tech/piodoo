@@ -1,0 +1,109 @@
+.o_cx_dash {
+    padding: 1rem 1.25rem 2rem;
+    background: var(--o-view-background-color, #f8f9fa);
+    height: 100%;
+    overflow: auto;
+
+    .o_cx_dash_head {
+        margin-bottom: 1rem;
+    }
+    .o_cx_dash_title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        text-transform: capitalize;
+    }
+    .o_cx_dash_sub {
+        font-size: 0.8rem;
+        font-weight: 400;
+        color: var(--o-gray-600, #6c757d);
+        text-transform: none;
+        margin-left: 0.5rem;
+    }
+    .o_cx_dash_teamsel { min-width: 180px; }
+    .o_cx_dash_loading { padding: 2rem; }
+
+    // ---- KPI cards
+    .o_cx_kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .o_cx_kpi {
+        background: var(--o-white, #fff);
+        border: 1px solid var(--o-gray-300, #dee2e6);
+        border-radius: 10px;
+        padding: 0.9rem 1rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        &[role="button"] { cursor: pointer; }
+        &[role="button"]:hover { border-color: var(--o-brand-primary, #714b67); }
+    }
+    .o_cx_kpi_val { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
+    .o_cx_kpi_val_sub { font-size: 0.9rem; font-weight: 600; }
+    .o_cx_kpi_lbl { font-size: 0.85rem; font-weight: 600; margin-top: 0.15rem; }
+    .o_cx_kpi_foot { font-size: 0.72rem; color: var(--o-gray-600, #6c757d); margin-top: 0.2rem; }
+
+    // ---- Cards & layout rows
+    .o_cx_dash_row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .o_cx_card {
+        background: var(--o-white, #fff);
+        border: 1px solid var(--o-gray-300, #dee2e6);
+        border-radius: 10px;
+        padding: 0.9rem 1rem;
+        flex: 1 1 260px;
+        min-width: 260px;
+    }
+    .o_cx_grow2 { flex: 2 1 420px; }
+    .o_cx_card_h { font-weight: 600; margin-bottom: 0.6rem; font-size: 0.95rem; }
+    .o_cx_legend {
+        display: flex; gap: 1rem; font-size: 0.75rem;
+        color: var(--o-gray-700, #495057); margin-bottom: 0.4rem;
+    }
+    .o_cx_dot {
+        display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+        margin-right: 4px; vertical-align: baseline;
+    }
+
+    // ---- Trend (grouped vertical bars)
+    .o_cx_trend {
+        display: flex; align-items: flex-end; gap: 3px;
+        height: 160px; overflow-x: auto; padding-top: 0.5rem;
+    }
+    .o_cx_trend_col { display: flex; flex-direction: column; align-items: center; min-width: 16px; flex: 1; }
+    .o_cx_trend_bars { display: flex; align-items: flex-end; gap: 2px; height: 140px; width: 100%; justify-content: center; }
+    .o_cx_trend_bar { width: 45%; min-width: 5px; border-radius: 2px 2px 0 0; transition: height 0.3s; }
+    .o_cx_trend_bar.o_cx_op { background: #3aa0ff; }
+    .o_cx_trend_bar.o_cx_cl { background: #6c757d; }
+    .o_cx_trend_x { font-size: 0.6rem; color: var(--o-gray-600, #6c757d); margin-top: 3px; white-space: nowrap; }
+
+    // ---- Distribution (horizontal bars)
+    .o_cx_dist { display: flex; flex-direction: column; gap: 0.45rem; }
+    .o_cx_dist_row { display: flex; align-items: center; gap: 0.6rem; }
+    .o_cx_dist_lbl { width: 72px; font-size: 0.78rem; color: var(--o-gray-700, #495057); flex-shrink: 0; }
+    .o_cx_dist_track { flex: 1; background: var(--o-gray-200, #edeff2); border-radius: 4px; height: 16px; }
+    .o_cx_dist_fill { height: 100%; background: #3aa0ff; border-radius: 4px; min-width: 2px; transition: width 0.3s; }
+    .o_cx_dist_val { width: 90px; text-align: right; font-size: 0.8rem; font-weight: 600; flex-shrink: 0; }
+
+    // ---- Day of week
+    .o_cx_dow { display: flex; align-items: flex-end; gap: 6px; height: 150px; }
+    .o_cx_dow_col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+    .o_cx_dow_bar { width: 60%; min-width: 8px; background: #714b67; border-radius: 3px 3px 0 0; transition: height 0.3s; }
+    .o_cx_dow_x { font-size: 0.68rem; color: var(--o-gray-600, #6c757d); margin-top: 4px; }
+
+    // ---- Sentiment donut
+    .o_cx_donut_wrap { display: flex; align-items: center; gap: 1rem; }
+    .o_cx_donut { width: 130px; height: 130px; flex-shrink: 0; }
+    .o_cx_donut_big { font-size: 20px; font-weight: 700; fill: var(--o-gray-900, #212529); }
+    .o_cx_donut_small { font-size: 9px; fill: var(--o-gray-600, #6c757d); }
+    .o_cx_donut_leg { font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.25rem; }
+
+    // ---- Leaderboard
+    .o_cx_board { margin-bottom: 0; }
+    .o_cx_board thead th { font-size: 0.72rem; text-transform: uppercase; color: var(--o-gray-600, #6c757d); border-top: 0; }
+    .o_cx_board tbody td { font-size: 0.85rem; vertical-align: middle; }
+}

@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="cx_module.Dashboard">
+        <div class="o_action o_cx_dash">
+
+            <!-- Header: scope title + window controls -->
+            <div class="o_cx_dash_head d-flex flex-wrap align-items-center gap-2">
+                <div class="o_cx_dash_title">
+                    <t t-esc="state.data ? state.data.scope_label : ''"/> dashboard
+                    <span class="o_cx_dash_sub">measuring efficiency · last <t t-esc="state.days"/> days</span>
+                </div>
+                <div class="flex-grow-1"/>
+                <div t-if="state.data and state.data.is_manager and state.scope === 'team'" class="o_cx_dash_teamsel">
+                    <select class="form-select form-select-sm" t-on-change="onTeamChange">
+                        <option value="">All teams</option>
+                        <t t-foreach="state.data.teams" t-as="tm" t-key="tm">
+                            <option t-att-value="tm" t-att-selected="tm === state.team"><t t-esc="tm"/></option>
+                        </t>
+                    </select>
+                </div>
+                <div class="btn-group btn-group-sm" role="group">
+                    <t t-foreach="dayOptions" t-as="d" t-key="d">
+                        <button class="btn"
+                                t-att-class="state.days === d ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.setDays(d)"><t t-esc="d"/>d</button>
+                    </t>
+                </div>
+            </div>
+
+            <div t-if="state.loading" class="o_cx_dash_loading text-muted">Loading metrics…</div>
+
+            <t t-if="!state.loading and state.data">
+                <!-- KPI cards -->
+                <div class="o_cx_kpis">
+                    <div class="o_cx_kpi" t-on-click="openConversations" role="button">
+                        <div class="o_cx_kpi_val"><t t-esc="fmtNum(state.data.kpis.conversations)"/></div>
+                        <div class="o_cx_kpi_lbl">Conversations</div>
+                        <div class="o_cx_kpi_foot">
+                            <span class="text-warning"><t t-esc="fmtNum(state.data.kpis.open)"/> open</span> ·
+                            <span class="text-success"><t t-esc="fmtNum(state.data.kpis.closed)"/> closed</span>
+                        </div>
+                    </div>
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val"><t t-esc="fmtDuration(state.data.kpis.avg_first_response_secs)"/></div>
+                        <div class="o_cx_kpi_lbl">Avg first response</div>
+                        <div class="o_cx_kpi_foot">customer waits before a reply</div>
+                    </div>
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val"
+                             t-att-class="state.data.kpis.first_response_sla_pct !== null and state.data.kpis.first_response_sla_pct >= 80 ? 'text-success' : (state.data.kpis.first_response_sla_pct !== null and state.data.kpis.first_response_sla_pct &lt; 50 ? 'text-danger' : '')">
+                            <t t-esc="fmtPct(state.data.kpis.first_response_sla_pct)"/>
+                        </div>
+                        <div class="o_cx_kpi_lbl">First-response SLA</div>
+                        <div class="o_cx_kpi_foot">target ≤ <t t-esc="fmtDuration(state.data.sla_target_secs)"/></div>
+                    </div>
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val"><t t-esc="fmtDuration(state.data.kpis.avg_handle_secs)"/></div>
+                        <div class="o_cx_kpi_lbl">Avg handling time</div>
+                        <div class="o_cx_kpi_foot">open → closed, closed convos</div>
+                    </div>
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val"><t t-esc="fmtNum(state.data.kpis.messages)"/></div>
+                        <div class="o_cx_kpi_lbl">Messages handled</div>
+                        <div class="o_cx_kpi_foot">inbound + outbound</div>
+                    </div>
+                    <div class="o_cx_kpi">
+                        <div class="o_cx_kpi_val">
+                            <t t-esc="fmtNum(state.data.kpis.calls_answered)"/>
+                            <span class="o_cx_kpi_val_sub text-danger" t-if="state.data.kpis.calls_missed"> / <t t-esc="fmtNum(state.data.kpis.calls_missed)"/> missed</span>
+                        </div>
+                        <div class="o_cx_kpi_lbl">Voice calls</div>
+                        <div class="o_cx_kpi_foot">avg <t t-esc="fmtDuration(state.data.kpis.avg_call_secs)"/> · team-level</div>
+                    </div>
+                </div>
+
+                <!-- Charts row -->
+                <div class="o_cx_dash_row">
+                    <!-- Trend -->
+                    <div class="o_cx_card o_cx_grow2">
+                        <div class="o_cx_card_h">Conversation volume — opened vs same-day closed</div>
+                        <div class="o_cx_legend">
+                            <span><i class="o_cx_dot" style="background:#3aa0ff"/> Opened</span>
+                            <span><i class="o_cx_dot" style="background:#6c757d"/> Closed</span>
+                        </div>
+                        <div class="o_cx_trend" t-if="trendBars.bars.length">
+                            <t t-foreach="trendBars.bars" t-as="b" t-key="b_index">
+                                <div class="o_cx_trend_col" t-att-title="b.label + ': ' + b.opened + ' opened, ' + b.closed + ' closed'">
+                                    <div class="o_cx_trend_bars">
+                                        <div class="o_cx_trend_bar o_cx_op" t-attf-style="height:{{b.openedH}}%"/>
+                                        <div class="o_cx_trend_bar o_cx_cl" t-attf-style="height:{{b.closedH}}%"/>
+                                    </div>
+                                    <div class="o_cx_trend_x"><t t-esc="b.label"/></div>
+                                </div>
+                            </t>
+                        </div>
+                        <div t-else="" class="text-muted p-3">No conversations in this window.</div>
+                    </div>
+
+                    <!-- Sentiment donut -->
+                    <div class="o_cx_card">
+                        <div class="o_cx_card_h">Satisfaction (AI sentiment proxy)</div>
+                        <div class="o_cx_donut_wrap">
+                            <svg viewBox="0 0 120 120" class="o_cx_donut">
+                                <t t-foreach="sentimentDonut.segs" t-as="sg" t-key="sg.key">
+                                    <path t-if="sg.path" t-att-d="sg.path" t-att-fill="sg.color"/>
+                                </t>
+                                <text x="60" y="58" text-anchor="middle" class="o_cx_donut_big"
+                                      t-esc="sentimentDonut.posPct === null ? '—' : sentimentDonut.posPct + '%'"/>
+                                <text x="60" y="72" text-anchor="middle" class="o_cx_donut_small">positive</text>
+                            </svg>
+                            <div class="o_cx_donut_leg">
+                                <t t-foreach="sentimentDonut.segs" t-as="sg" t-key="sg.key">
+                                    <div><i class="o_cx_dot" t-attf-style="background:{{sg.color}}"/>
+                                        <t t-esc="sg.label"/> <span class="text-muted"><t t-esc="sg.value"/></span></div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distribution + DOW -->
+                <div class="o_cx_dash_row">
+                    <div class="o_cx_card o_cx_grow2">
+                        <div class="o_cx_card_h">First-response time distribution</div>
+                        <div class="o_cx_dist">
+                            <t t-foreach="distribution" t-as="d" t-key="d.bucket">
+                                <div class="o_cx_dist_row">
+                                    <div class="o_cx_dist_lbl"><t t-esc="d.bucket"/></div>
+                                    <div class="o_cx_dist_track"><div class="o_cx_dist_fill" t-attf-style="width:{{d.w}}%"/></div>
+                                    <div class="o_cx_dist_val"><t t-esc="d.count"/> <span class="text-muted">(<t t-esc="d.pct"/>%)</span></div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                    <div class="o_cx_card">
+                        <div class="o_cx_card_h">Busiest day of week</div>
+                        <div class="o_cx_dow">
+                            <t t-foreach="dowBars" t-as="w" t-key="w.dow">
+                                <div class="o_cx_dow_col" t-att-title="w.opened + ' conversations'">
+                                    <div class="o_cx_dow_bar" t-attf-style="height:{{w.h}}%"/>
+                                    <div class="o_cx_dow_x"><t t-esc="w.label"/></div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agent leaderboard (team/org only) -->
+                <div t-if="state.scope !== 'me'" class="o_cx_card">
+                    <div class="o_cx_card_h">Agent leaderboard <span class="text-muted">— ranked by conversations handled</span></div>
+                    <table class="o_cx_board table table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Agent</th><th class="text-end">Convos</th>
+                                <th class="text-end">Closed</th><th class="text-end">Avg first resp</th>
+                                <th class="text-end">Avg handle</th><th class="text-end">Msgs</th>
+                                <th class="text-end">Positive</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-if="state.data.leaderboard.length">
+                                <t t-foreach="state.data.leaderboard" t-as="a" t-key="a.agent_id">
+                                    <tr>
+                                        <td class="text-muted"><t t-esc="a_index + 1"/></td>
+                                        <td><t t-esc="a.agent"/></td>
+                                        <td class="text-end"><t t-esc="fmtNum(a.conversations)"/></td>
+                                        <td class="text-end"><t t-esc="fmtNum(a.closed)"/></td>
+                                        <td class="text-end"><t t-esc="fmtDuration(a.avg_first_response_secs)"/></td>
+                                        <td class="text-end"><t t-esc="fmtDuration(a.avg_handle_secs)"/></td>
+                                        <td class="text-end"><t t-esc="fmtNum(a.messages)"/></td>
+                                        <td class="text-end"><t t-esc="a.sentiment_score === null ? '—' : a.sentiment_score + '%'"/></td>
+                                    </tr>
+                                </t>
+                            </t>
+                            <tr t-else=""><td colspan="8" class="text-muted text-center p-3">No assigned conversations in this window.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>
