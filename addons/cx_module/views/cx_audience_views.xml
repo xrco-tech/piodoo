@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Audiences / Segments: saved res.partner filters reusable across campaigns. -->
+
+    <record id="view_cx_audience_list" model="ir.ui.view">
+        <field name="name">cx.audience.list</field>
+        <field name="model">cx.audience</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="partner_count" string="Contacts"/>
+                <field name="campaign_count" string="Campaigns"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cx_audience_form" model="ir.ui.view">
+        <field name="name">cx.audience.form</field>
+        <field name="model">cx.audience</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-users" type="object"
+                                name="action_cx_preview_contacts">
+                            <field name="partner_count" widget="statinfo" string="Contacts"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. VIP customers in Gauteng"/></h1>
+                    </div>
+                    <group>
+                        <field name="active" widget="boolean_toggle"/>
+                    </group>
+                    <field name="description" placeholder="What is this segment for?"/>
+                    <separator string="Contact filter"/>
+                    <p class="text-muted">Contacts matching this filter make up the segment.
+                        Campaigns can select this segment instead of specifying their own filter.</p>
+                    <field name="domain" widget="domain" options="{'model': 'res.partner', 'foldable': true}"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_cx_audience" model="ir.actions.act_window">
+        <field name="name">Audiences / Segments</field>
+        <field name="res_model">cx.audience</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create your first audience</p>
+            <p>An audience is a saved contact filter (e.g. “customers in Gauteng”).
+               Build it once here, then reuse it on any campaign.</p>
+        </field>
+    </record>
+
+    <!-- Add the segment selector to the campaign form, above the manual filter. -->
+    <record id="view_comm_campaign_form_cx_audience" model="ir.ui.view">
+        <field name="name">comm.campaign.form.cx.audience</field>
+        <field name="model">comm.campaign</field>
+        <field name="inherit_id" ref="comm_campaign.view_comm_campaign_form"/>
+        <field name="arch" type="xml">
+            <field name="audience_mode" position="before">
+                <field name="cx_audience_id"
+                       options="{'no_create_edit': False}"/>
+            </field>
+        </field>
+    </record>
+</odoo>

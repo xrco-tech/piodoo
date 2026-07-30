@@ -68,12 +68,6 @@
               groups="cx_module.group_cx_manager"
               sequence="24"/>
 
-    <menuitem id="menu_cx_360_search"
-              name="Customer 360 Search"
-              parent="menu_cx_workspace"
-              action="contacts.action_contacts"
-              sequence="30"/>
-
     <!-- ============ Conversations (Phase 1) ============ -->
     <menuitem id="menu_cx_conversations"
               name="Conversations"
@@ -143,8 +137,14 @@
     <menuitem id="menu_cx_segments"
               name="Audiences / Segments"
               parent="menu_cx_marketing"
-              action="comm_campaign.action_comm_partner_pref"
+              action="action_cx_audience"
               sequence="20"/>
+
+    <menuitem id="menu_cx_comm_prefs"
+              name="Communication Preferences"
+              parent="menu_cx_marketing"
+              action="comm_campaign.action_comm_partner_pref"
+              sequence="25"/>
 
     <!-- Journeys (Manager+) and Templates: no comm_* reuse target yet
          (marketing.journey / marketing.segment / mail.template are Enterprise

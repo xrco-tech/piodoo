@@ -37,7 +37,7 @@
                             </div>
                             <div class="o_kanban_record_bottom">
                                 <div class="oe_kanban_bottom_left text-muted">
-                                    <field name="opened_at" widget="relative"/>
+                                    <field name="opened_at"/>
                                 </div>
                                 <div class="oe_kanban_bottom_right">
                                     <field name="assigned_agent_id" widget="many2one_avatar_user"/>
