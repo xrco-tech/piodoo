@@ -86,13 +86,6 @@
               action="action_cx_livechat"
               sequence="20"/>
 
-    <!-- Voice / Calls reuses the comm_whatsapp_calling widget system wholesale. -->
-    <menuitem id="menu_cx_voice"
-              name="Voice / Calls"
-              parent="menu_cx_conversations"
-              action="comm_whatsapp_calling.action_whatsapp_call_log"
-              sequence="30"/>
-
     <menuitem id="menu_cx_email"
               name="Email"
               parent="menu_cx_conversations"
@@ -113,18 +106,24 @@
               sequence="60"/>
 
     <!-- ============ Voice (voice operations) ============ -->
-    <!-- Voice admin/analytics, re-surfaced from comm_whatsapp_calling.
-         (The live call inbox stays under Conversations &gt; Voice / Calls.) -->
+    <!-- All voice under one tab: the live call log (agents), the manager
+         dashboard, and admin teams/routing. From comm_whatsapp_calling. -->
     <menuitem id="menu_cx_voice_tab"
               name="Voice"
               parent="menu_cx_root"
-              sequence="25"
-              groups="cx_module.group_cx_manager"/>
+              sequence="25"/>
+
+    <menuitem id="menu_cx_voice_calls"
+              name="Calls"
+              parent="menu_cx_voice_tab"
+              action="comm_whatsapp_calling.action_whatsapp_call_log"
+              sequence="5"/>
 
     <menuitem id="menu_cx_voice_dashboard"
               name="Calls Dashboard"
               parent="menu_cx_voice_tab"
               action="comm_whatsapp_calling.action_whatsapp_call_log_dashboard"
+              groups="cx_module.group_cx_manager"
               sequence="10"/>
 
     <menuitem id="menu_cx_voice_routing"
@@ -132,7 +131,7 @@
               parent="menu_cx_voice_tab"
               action="comm_whatsapp_calling.action_whatsapp_call_routing_rule"
               groups="cx_module.group_cx_admin"
-              sequence="20"/>
+              sequence="30"/>
 
     <!-- ============ Tickets ============ -->
     <!-- Phase 5: All / My / Escalated / SLA (helpdesk) + Knowledge Base. -->
@@ -150,14 +149,21 @@
               sequence="40"/>
 
     <!-- ============ Bots & Automation ============ -->
-    <!-- Gen-2 flow builder internals + WhatsApp channel content, re-surfaced
-         from Comm Bots / WhatsApp Light. (Bots &amp; Flows itself lives under
-         Configuration; move it here to fully realise this tab.) -->
+    <!-- The Gen-2 flow builder (bots + steps/triggers/tools + web sessions)
+         and WhatsApp channel content, re-surfaced from Comm Bots / WhatsApp
+         Light into one tab. -->
     <menuitem id="menu_cx_bots"
               name="Bots &amp; Automation"
               parent="menu_cx_root"
               sequence="45"
               groups="cx_module.group_cx_admin"/>
+
+    <!-- Bots &amp; Flows: comm.bot list; each bot's form has the Flow Canvas button. -->
+    <menuitem id="menu_cx_bots_builder"
+              name="Bots &amp; Flows"
+              parent="menu_cx_bots"
+              action="comm_chatbot.action_comm_bot"
+              sequence="5"/>
 
     <menuitem id="menu_cx_bots_steps"
               name="Flow Steps"
@@ -342,14 +348,6 @@
               sequence="80"
               groups="cx_module.group_cx_admin"/>
 
-    <!-- Bots &amp; Flows: opens the comm.bot list; each bot's form carries the
-         "Flow Canvas" button (the Phase 2 flow builder). -->
-    <menuitem id="menu_cx_config_bots"
-              name="Bots &amp; Flows"
-              parent="menu_cx_config"
-              action="comm_chatbot.action_comm_bot"
-              sequence="5"/>
-
     <!-- Channel registry: the comm.channel definitions (WhatsApp/SMS/web/voice/email). -->
     <menuitem id="menu_cx_config_channels"
               name="Channels"
@@ -383,13 +381,14 @@
               action="mail.action_email_server_tree"
               sequence="50"/>
 
-    <!-- Teams: reuses the call-routing team model (the only team model in the
-         reused stack). -->
+    <!-- Teams live under Voice (the call-routing team model is the only team
+         model in the reused stack). -->
     <menuitem id="menu_cx_config_teams"
               name="Teams"
-              parent="menu_cx_config"
+              parent="menu_cx_voice_tab"
               action="comm_whatsapp_calling.action_whatsapp_call_team"
-              sequence="60"/>
+              groups="cx_module.group_cx_admin"
+              sequence="20"/>
 
     <!-- Tags &amp; Categories: standard contact tags (res.partner.category). -->
     <menuitem id="menu_cx_config_tags"
