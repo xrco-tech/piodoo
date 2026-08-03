@@ -50,6 +50,11 @@ Odoo so the shell installs clean on its own.
         'comm_whatsapp_billing',
         # Phase 4 — Marketing (omnichannel campaign engine + budget caps):
         'comm_campaign',
+        # Second inbox design: surfaces the Contact Centre (Gen-1) inbox as-is
+        # AND lets the UCX-native CC-skin inbox reuse its o_cc_inbox_* styles.
+        # NOTE: this pulls the Gen-1 Contact Centre app into UCX's dep graph
+        # (already installed on this instance).
+        'contact_centre_inbox',
     ],
     'data': [
         'security/cx_module_groups.xml',
@@ -72,6 +77,8 @@ Odoo so the shell installs clean on its own.
             'cx_module/static/src/inbox/inbox.scss',
             'cx_module/static/src/inbox/inbox.js',
             'cx_module/static/src/inbox/inbox.xml',
+            'cx_module/static/src/inbox_cc/inbox_cc.js',
+            'cx_module/static/src/inbox_cc/inbox_cc.xml',
             'cx_module/static/src/flow/flow.scss',
             'cx_module/static/src/flow/flow.js',
             'cx_module/static/src/flow/flow.xml',

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="cx_module.InboxCc">
+        <div class="o_action o_cc_inbox d-flex flex-row" style="height: 100%;">
+
+            <!-- ── Left: conversation list ──────────────────────────── -->
+            <div class="o_cc_inbox_list d-flex flex-column" t-if="state.showLeftPane">
+                <div class="o_cc_inbox_pane_header">Conversations</div>
+                <div class="p-2 border-bottom">
+                    <input type="text" class="form-control form-control-sm" placeholder="Search name, phone, email..."
+                           t-att-value="state.searchQuery" t-on-input="onSearchInput"/>
+                </div>
+                <div class="p-2 border-bottom d-flex gap-1 flex-wrap">
+                    <button class="btn btn-sm" t-att-class="!state.stateFilter ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.filterByState(false)">All</button>
+                    <button class="btn btn-sm" t-att-class="state.stateFilter === 'open' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.filterByState('open')">Open</button>
+                    <button class="btn btn-sm" t-att-class="state.stateFilter === 'waiting' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.filterByState('waiting')">Waiting</button>
+                    <button class="btn btn-sm" t-att-class="state.stateFilter === 'closed' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.filterByState('closed')">Closed</button>
+                </div>
+                <div class="flex-grow-1 overflow-auto">
+                    <div t-if="state.loadingList" class="p-3 text-muted">Loading…</div>
+                    <t t-foreach="state.conversations" t-as="conv" t-key="conv.id">
+                        <div class="p-2 border-bottom o_cc_inbox_contact"
+                             t-att-class="{'o_cc_inbox_contact_selected': conv.id === state.selectedId}"
+                             t-on-click="() => this.selectConversation(conv.id)"
+                             style="cursor:pointer;">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <strong><t t-esc="conv.partner_id and conv.partner_id[1] or conv.name"/></strong>
+                                <span class="badge" t-att-class="{
+                                    'text-bg-success': conv.lifecycle_state === 'open',
+                                    'text-bg-warning': conv.lifecycle_state === 'waiting',
+                                    'text-bg-info': conv.lifecycle_state === 'handoff',
+                                    'text-bg-secondary': conv.lifecycle_state === 'closed',
+                                    'text-bg-dark': conv.lifecycle_state === 'timeout',
+                                }"><t t-esc="conv.lifecycle_state"/></span>
+                            </div>
+                            <div class="text-muted small">
+                                <span class="badge text-bg-light me-1"><t t-esc="conv.primary_channel_code"/></span>
+                                <t t-esc="conv.last_activity_at"/>
+                            </div>
+                        </div>
+                    </t>
+                    <div t-if="!state.loadingList and !state.conversations.length" class="p-3 text-muted">
+                        No conversations
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Center: thread + composer ────────────────────────── -->
+            <div class="o_cc_inbox_thread flex-grow-1 d-flex flex-column">
+                <div class="o_cc_inbox_pane_header d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-1" t-on-click="toggleLeftPane" title="Show/hide conversations">
+                        <i t-att-class="state.showLeftPane ? 'fa fa-angle-double-left' : 'fa fa-angle-double-right'"/>
+                    </button>
+                    <span>
+                        <t t-if="state.selected">
+                            <t t-esc="state.selected.partner_id and state.selected.partner_id[1] or state.selected.name"/>
+                            <span class="text-muted fw-normal ms-2 small"><t t-esc="state.selected.primary_channel_code"/></span>
+                        </t>
+                        <t t-else="">Thread</t>
+                    </span>
+                </div>
+                <t t-if="!state.selectedId">
+                    <div class="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
+                        Select a conversation on the left to see its thread
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="flex-grow-1 overflow-auto p-3" t-ref="thread">
+                        <div t-if="state.loadingMessages" class="text-muted">Loading…</div>
+                        <t t-foreach="state.messages" t-as="message" t-key="message.id">
+                            <div class="d-flex mb-2"
+                                 t-att-class="message.direction === 'outbound' ? 'justify-content-end' : 'justify-content-start'">
+                                <div class="o_cc_inbox_bubble p-2"
+                                     t-att-class="message.direction === 'outbound' ? 'bg-primary text-white' : 'bg-light'">
+                                    <div class="small opacity-75">
+                                        <span class="badge text-bg-dark me-1"><t t-esc="message.channel_code"/></span>
+                                        <t t-esc="message.at"/>
+                                    </div>
+                                    <div style="white-space: pre-wrap;"><t t-esc="message.rendered_body or message.raw_body"/></div>
+                                    <div class="small opacity-75" t-if="message.direction === 'outbound'">
+                                        <t t-esc="message.status"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                        <div t-if="!state.loadingMessages and !state.messages.length" class="text-muted">
+                            No messages yet
+                        </div>
+                    </div>
+                    <div class="border-top p-2 d-flex gap-2 align-items-end">
+                        <select class="form-select form-select-sm" style="width: auto;" t-model="state.composerChannel">
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="sms">SMS</option>
+                            <option value="email">Email</option>
+                        </select>
+                        <textarea class="form-control form-control-sm o_cc_inbox_composer" rows="1"
+                                  t-att-value="state.composerText"
+                                  t-on-input="onComposerInput"
+                                  placeholder="Type a reply..."/>
+                        <button class="btn btn-primary btn-sm" t-on-click="sendReply">Send</button>
+                    </div>
+                </t>
+            </div>
+
+            <!-- ── Right: AI copilot + internal notes ───────────────── -->
+            <div class="o_cc_inbox_side d-flex flex-column overflow-auto"
+                 t-att-class="{'o_cc_inbox_side_wide': state.showNotes}">
+                <div class="o_cc_inbox_pane_header">Copilot &amp; Notes</div>
+                <t t-if="!state.selectedId">
+                    <div class="p-3 text-muted small">
+                        Select a conversation to see its AI summary and internal notes
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_cc_inbox_side_section">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0">AI Copilot</h6>
+                            <button class="btn btn-sm btn-outline-primary py-0" t-on-click="generateCopilot" t-att-disabled="state.aiLoading">
+                                <t t-esc="state.aiLoading ? 'Analyzing…' : (state.ai.ai_summary ? 'Re-run' : 'Analyze')"/>
+                            </button>
+                        </div>
+                        <div class="small text-muted my-1" t-if="state.ai.ai_analyzed_date">
+                            Analyzed <t t-esc="state.ai.ai_analyzed_date"/>
+                        </div>
+                        <span class="badge mb-1" t-if="state.ai.ai_sentiment" t-att-class="{
+                            'text-bg-success': state.ai.ai_sentiment === 'positive',
+                            'text-bg-warning': state.ai.ai_sentiment === 'neutral',
+                            'text-bg-danger': state.ai.ai_sentiment === 'negative',
+                        }"><t t-esc="state.ai.ai_sentiment"/></span>
+                        <p class="small" t-if="state.ai.ai_summary"><t t-esc="state.ai.ai_summary"/></p>
+                        <div t-if="state.ai.ai_suggested_reply" class="border rounded p-2 small mb-2">
+                            <t t-esc="state.ai.ai_suggested_reply"/>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" t-if="state.ai.ai_suggested_reply"
+                                t-on-click="insertSuggestedReply">Insert as Reply</button>
+                        <div t-if="!state.ai.ai_summary and !state.ai.ai_suggested_reply and !state.aiLoading" class="small text-muted">
+                            Not analyzed yet
+                        </div>
+                    </div>
+                    <div class="o_cc_inbox_side_section">
+                        <button class="btn btn-sm btn-link p-0" t-on-click="toggleNotes">
+                            <t t-esc="state.showNotes ? 'Hide Internal Notes' : 'Show Internal Notes'"/>
+                        </button>
+                        <div t-if="state.showNotes" class="mt-2">
+                            <Chatter threadModel="'comm.conversation'" threadId="state.selectedId"/>
+                        </div>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+
+</templates>

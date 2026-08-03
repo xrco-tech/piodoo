@@ -6,4 +6,11 @@
         <field name="name">Inbox</field>
         <field name="tag">cx_module_inbox</field>
     </record>
+
+    <!-- Second inbox design: the Contact Centre skin over the same Gen-2 data
+         (comm.conversation), with the UCX AI Copilot + Notes right pane. -->
+    <record id="action_cx_inbox_cc" model="ir.actions.client">
+        <field name="name">Inbox (CC design)</field>
+        <field name="tag">cx_module_inbox_cc</field>
+    </record>
 </odoo>

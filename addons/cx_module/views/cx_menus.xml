@@ -80,6 +80,22 @@
               action="action_cx_inbox_screen"
               sequence="10"/>
 
+    <!-- Second design: CC skin over Gen-2 comm.conversation (UCX-native). -->
+    <menuitem id="menu_cx_inbox_cc"
+              name="Inbox (CC design)"
+              parent="menu_cx_conversations"
+              action="action_cx_inbox_cc"
+              sequence="12"/>
+
+    <!-- The original Contact Centre inbox as-is (Gen-1 contact.centre data +
+         voice-script/call-picker). Only for users with Contact Centre access. -->
+    <menuitem id="menu_cx_inbox_contact_centre"
+              name="Inbox (Contact Centre)"
+              parent="menu_cx_conversations"
+              action="contact_centre_inbox.action_contact_centre_inbox"
+              groups="contact_centre.group_contact_centre_agent"
+              sequence="14"/>
+
     <menuitem id="menu_cx_livechat"
               name="Live Chat"
               parent="menu_cx_conversations"
