@@ -105,6 +105,35 @@
               action="action_cx_wa_sms"
               sequence="50"/>
 
+    <!-- Raw message-level log (comm.interaction), re-surfaced from Comm Bots. -->
+    <menuitem id="menu_cx_interactions"
+              name="Interactions (message log)"
+              parent="menu_cx_conversations"
+              action="comm_chatbot.action_comm_interaction"
+              sequence="60"/>
+
+    <!-- ============ Voice (voice operations) ============ -->
+    <!-- Voice admin/analytics, re-surfaced from comm_whatsapp_calling.
+         (The live call inbox stays under Conversations &gt; Voice / Calls.) -->
+    <menuitem id="menu_cx_voice_tab"
+              name="Voice"
+              parent="menu_cx_root"
+              sequence="25"
+              groups="cx_module.group_cx_manager"/>
+
+    <menuitem id="menu_cx_voice_dashboard"
+              name="Calls Dashboard"
+              parent="menu_cx_voice_tab"
+              action="comm_whatsapp_calling.action_whatsapp_call_log_dashboard"
+              sequence="10"/>
+
+    <menuitem id="menu_cx_voice_routing"
+              name="Call Routing"
+              parent="menu_cx_voice_tab"
+              action="comm_whatsapp_calling.action_whatsapp_call_routing_rule"
+              groups="cx_module.group_cx_admin"
+              sequence="20"/>
+
     <!-- ============ Tickets ============ -->
     <!-- Phase 5: All / My / Escalated / SLA (helpdesk) + Knowledge Base. -->
     <menuitem id="menu_cx_tickets"
@@ -120,6 +149,52 @@
               parent="menu_cx_root"
               sequence="40"/>
 
+    <!-- ============ Bots & Automation ============ -->
+    <!-- Gen-2 flow builder internals + WhatsApp channel content, re-surfaced
+         from Comm Bots / WhatsApp Light. (Bots &amp; Flows itself lives under
+         Configuration; move it here to fully realise this tab.) -->
+    <menuitem id="menu_cx_bots"
+              name="Bots &amp; Automation"
+              parent="menu_cx_root"
+              sequence="45"
+              groups="cx_module.group_cx_admin"/>
+
+    <menuitem id="menu_cx_bots_steps"
+              name="Flow Steps"
+              parent="menu_cx_bots"
+              action="comm_chatbot.action_comm_bot_step"
+              sequence="10"/>
+
+    <menuitem id="menu_cx_bots_triggers"
+              name="Triggers"
+              parent="menu_cx_bots"
+              action="comm_chatbot.action_comm_bot_trigger"
+              sequence="20"/>
+
+    <menuitem id="menu_cx_bots_llm"
+              name="LLM Tools"
+              parent="menu_cx_bots"
+              action="comm_chatbot.action_comm_bot_llm_tool"
+              sequence="30"/>
+
+    <menuitem id="menu_cx_bots_web"
+              name="Web Sessions"
+              parent="menu_cx_bots"
+              action="comm_chatbot_web.action_comm_bot_web_session"
+              sequence="40"/>
+
+    <menuitem id="menu_cx_bots_wa_templates"
+              name="WhatsApp Templates"
+              parent="menu_cx_bots"
+              action="comm_whatsapp.action_whatsapp_template"
+              sequence="50"/>
+
+    <menuitem id="menu_cx_bots_wa_flows"
+              name="WhatsApp Flows"
+              parent="menu_cx_bots"
+              action="comm_whatsapp.action_whatsapp_flow"
+              sequence="60"/>
+
     <!-- ============ Marketing (Phase 4) ============ -->
     <!-- Reuses comm_campaign. Journeys/Templates map to Enterprise
          marketing_automation models not installed here — left as placeholders. -->
@@ -133,6 +208,14 @@
               parent="menu_cx_marketing"
               action="comm_campaign.action_comm_campaign"
               sequence="10"/>
+
+    <!-- Per-recipient send/delivery log, re-surfaced from Comm Campaign. -->
+    <menuitem id="menu_cx_campaign_sends"
+              name="Sends (delivery log)"
+              parent="menu_cx_marketing"
+              action="comm_campaign.action_comm_campaign_send"
+              groups="cx_module.group_cx_manager"
+              sequence="15"/>
 
     <menuitem id="menu_cx_segments"
               name="Audiences / Segments"
@@ -163,8 +246,14 @@
               parent="menu_cx_customers"
               action="contacts.action_contacts"
               sequence="10"/>
-    <!-- Phase 6: Companies (res.partner is_company filter),
-         Interaction Timeline (cx.timeline). -->
+
+    <!-- Companies: res.partner filtered to is_company. -->
+    <menuitem id="menu_cx_companies"
+              name="Companies"
+              parent="menu_cx_customers"
+              action="action_cx_companies"
+              sequence="20"/>
+    <!-- Phase 6 remaining: Interaction Timeline (cx.timeline). -->
 
     <!-- ============ Reporting (Manager+, Phase 6) ============ -->
     <!-- Agent + Channel performance over cx.report.conversation. SLA / CSAT /
