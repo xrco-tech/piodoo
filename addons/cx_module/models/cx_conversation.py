@@ -31,6 +31,24 @@ class CommConversation(models.Model):
     primary_channel_code = fields.Char(
         related='primary_channel_id.code', string='Primary Channel Code')
 
+    # Conversation wrap-up code — same shared taxonomy as call dispositions
+    # (comm.disposition, defined in comm_whatsapp_calling). One outcome
+    # scheme across voice and chat.
+    disposition_id = fields.Many2one(
+        'comm.disposition', string='Disposition', ondelete='set null', index=True,
+        help='Outcome / wrap-up code the agent set for this conversation.')
+    disposition_note = fields.Text('Disposition Note')
+
+    def action_set_disposition(self, disposition_id, note=None):
+        """Set (or clear) the disposition on this conversation. Callable
+        from the inbox via ORM."""
+        self.ensure_one()
+        vals = {'disposition_id': disposition_id or False}
+        if note is not None:
+            vals['disposition_note'] = note
+        self.write(vals)
+        return True
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)

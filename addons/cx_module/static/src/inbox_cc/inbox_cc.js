@@ -37,6 +37,9 @@ export class CxInboxCc extends Component {
             showNotes: false,
             ai: {},
             aiLoading: false,
+            dispositions: [],
+            dispositionId: false,
+            dispositionNote: "",
         });
 
         this.threadRef = useRef("thread");
@@ -45,7 +48,9 @@ export class CxInboxCc extends Component {
         this.debouncedLoad = useDebounced(() => this.loadConversations(), 300);
         this._onBus = this._onBus.bind(this);
 
-        onWillStart(() => this.loadConversations());
+        onWillStart(async () => {
+            await Promise.all([this.loadConversations(), this.loadDispositions()]);
+        });
 
         this.busService.addChannel("cx_inbox");
         this.busService.subscribe("cx_inbox_new_interaction", this._onBus);
@@ -100,12 +105,46 @@ export class CxInboxCc extends Component {
         }
     }
 
+    async loadDispositions() {
+        this.state.dispositions = await this.orm.searchRead(
+            "comm.disposition", [], ["name"], { order: "sequence, name" }
+        );
+    }
+
     async loadCopilot(id) {
         const recs = await this.orm.read(
             "comm.conversation", [id],
-            ["ai_summary", "ai_sentiment", "ai_suggested_reply", "ai_analyzed_date"]
+            ["ai_summary", "ai_sentiment", "ai_suggested_reply", "ai_analyzed_date",
+             "disposition_id", "disposition_note"]
         );
-        this.state.ai = recs && recs.length ? recs[0] : {};
+        const rec = recs && recs.length ? recs[0] : {};
+        this.state.ai = rec;
+        this.state.dispositionId = rec.disposition_id ? rec.disposition_id[0] : false;
+        this.state.dispositionNote = rec.disposition_note || "";
+    }
+
+    async onDispositionChange(ev) {
+        if (!this.state.selectedId) {
+            return;
+        }
+        const val = parseInt(ev.target.value, 10) || false;
+        this.state.dispositionId = val;
+        await this.orm.call("comm.conversation", "action_set_disposition", [
+            [this.state.selectedId], val, this.state.dispositionNote,
+        ]);
+    }
+
+    async saveDispositionNote() {
+        if (!this.state.selectedId) {
+            return;
+        }
+        await this.orm.call("comm.conversation", "action_set_disposition", [
+            [this.state.selectedId], this.state.dispositionId, this.state.dispositionNote,
+        ]);
+    }
+
+    onDispositionNoteInput(ev) {
+        this.state.dispositionNote = ev.target.value;
     }
 
     async generateCopilot() {

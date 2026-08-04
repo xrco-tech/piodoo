@@ -53,4 +53,47 @@
         <field name="context">{'default_is_company': True}</field>
     </record>
 
+    <!-- ── Disposition on the conversation (shared taxonomy) ─────────── -->
+    <record id="view_comm_conversation_form_cx_disposition" model="ir.ui.view">
+        <field name="name">comm.conversation.form.cx.disposition</field>
+        <field name="model">comm.conversation</field>
+        <field name="inherit_id" ref="comm_chatbot.view_comm_conversation_form"/>
+        <field name="arch" type="xml">
+            <sheet position="inside">
+                <group string="Disposition" col="2">
+                    <field name="disposition_id" options="{'no_quick_create': True}"/>
+                    <field name="disposition_note"
+                           placeholder="Wrap-up note (reason, follow-up, …)"/>
+                </group>
+            </sheet>
+        </field>
+    </record>
+
+    <record id="view_comm_conversation_list_cx_disposition" model="ir.ui.view">
+        <field name="name">comm.conversation.list.cx.disposition</field>
+        <field name="model">comm.conversation</field>
+        <field name="inherit_id" ref="comm_chatbot.view_comm_conversation_list"/>
+        <field name="arch" type="xml">
+            <list position="inside">
+                <field name="disposition_id" string="Disposition"
+                       optional="show" options="{'no_create_edit': True}"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_conversation_search_cx_disposition" model="ir.ui.view">
+        <field name="name">comm.conversation.search.cx.disposition</field>
+        <field name="model">comm.conversation</field>
+        <field name="inherit_id" ref="comm_chatbot.view_comm_conversation_search"/>
+        <field name="arch" type="xml">
+            <search position="inside">
+                <field name="disposition_id"/>
+                <filter string="Not dispositioned" name="cx_no_disposition"
+                        domain="[('disposition_id', '=', False)]"/>
+                <filter string="Disposition" name="cx_group_disposition"
+                        context="{'group_by': 'disposition_id'}"/>
+            </search>
+        </field>
+    </record>
+
 </odoo>
