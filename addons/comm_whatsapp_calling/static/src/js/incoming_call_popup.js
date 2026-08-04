@@ -1635,8 +1635,78 @@ const waCallService = {
         }
 
         function hangupCall(callLogId) {
+            const wrapupName = activeCall?.partnerName;
             teardownCall(true);
             callRpc(`/whatsapp/call/decline/${callLogId}`, {}).catch(() => {});
+            showDispositionWrapup(callLogId, wrapupName);
+        }
+
+        // After a call ends, offer a quick wrap-up: a floating card with a
+        // disposition picker + note that writes to whatsapp.call.log. Kept
+        // fully standalone (its own DOM element, not part of the HUD) so it
+        // is decoupled from the HUD/PC teardown lifecycle.
+        async function showDispositionWrapup(callLogId, contactName) {
+            if (!callLogId) return;
+            const existing = document.getElementById("wa_call_disposition_prompt");
+            if (existing) existing.remove();
+            let dispositions = [];
+            try {
+                dispositions = await orm.searchRead(
+                    "comm.disposition", [], ["name"], { order: "sequence, name" });
+            } catch (e) {
+                return; // model missing / no access — silently skip
+            }
+            if (!dispositions.length) return;
+            const c = colors();
+            const anchor = anchorTopRight();
+            const wrap = document.createElement("div");
+            wrap.id = "wa_call_disposition_prompt";
+            Object.assign(wrap.style, {
+                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
+                width: "300px", background: c.card, color: c.text,
+                borderRadius: "10px", boxShadow: c.shadow, zIndex: "10001",
+                overflow: "hidden",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            });
+            const options = ['<option value="">— Select outcome —</option>']
+                .concat(dispositions.map(
+                    (d) => `<option value="${d.id}">${escapeHtml(d.name)}</option>`))
+                .join("");
+            wrap.innerHTML = `
+                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-size:13px;font-weight:600;"><i class="fa fa-clipboard me-1"></i>Call ended — set outcome</div>
+                    <button data-action="skip" title="Skip" style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
+                </div>
+                <div style="padding:14px;">
+                    <div style="font-size:12px;color:${c.textMuted};margin-bottom:8px;">${escapeHtml(contactName || "")}</div>
+                    <select data-role="disp" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid ${c.inputBorder};background:${c.inputBg};color:${c.text};font-size:13px;margin-bottom:8px;">${options}</select>
+                    <textarea data-role="note" rows="2" placeholder="Wrap-up note…" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid ${c.inputBorder};background:${c.inputBg};color:${c.text};font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+                    <div style="display:flex;gap:6px;margin-top:10px;">
+                        <button data-action="save" style="flex:1;background:${c.primary};color:#fff;border:none;border-radius:6px;padding:7px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>
+                        <button data-action="skip2" style="background:${c.cardAlt};color:${c.text};border:1px solid ${c.border};border-radius:6px;padding:7px 12px;font-size:13px;cursor:pointer;">Skip</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(wrap);
+            const remove = () => { try { wrap.remove(); } catch (e) {} };
+            const save = async () => {
+                const dispId = parseInt(wrap.querySelector("[data-role=disp]").value, 10) || false;
+                const note = wrap.querySelector("[data-role=note]").value || "";
+                try {
+                    await orm.call("whatsapp.call.log", "action_set_disposition",
+                        [[callLogId], dispId, note]);
+                    notify("Disposition saved.", "success");
+                } catch (e) {
+                    notify("Could not save disposition.", "danger");
+                }
+                remove();
+            };
+            wrap.querySelector("[data-action=save]").addEventListener("click", save);
+            wrap.querySelector("[data-action=skip]").addEventListener("click", remove);
+            wrap.querySelector("[data-action=skip2]").addEventListener("click", remove);
+            // Don't linger forever if the agent walks away.
+            setTimeout(() => {
+                if (document.getElementById("wa_call_disposition_prompt") === wrap) remove();
+            }, 90000);
         }
 
         function teardownCall(userInitiated) {
@@ -2101,7 +2171,10 @@ const waCallService = {
                         && activeCall
                         && activeCall.id === payload.call_log_id) {
                     log("remote party ended the call; tearing down");
+                    const wrapupName = activeCall.partnerName;
+                    const wrapupId = activeCall.id;
                     teardownCall(false);
+                    showDispositionWrapup(wrapupId, wrapupName);
                 }
             });
             if (typeof bus_service.start === "function") {

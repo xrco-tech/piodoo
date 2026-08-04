@@ -31,6 +31,9 @@ export class CxInbox extends Component {
             composerText: "",
             composerChannel: "whatsapp",
             showLeftPane: true,
+            dispositions: [],
+            dispositionId: false,
+            dispositionNote: "",
         });
 
         this.threadRef = useRef("thread");
@@ -44,7 +47,9 @@ export class CxInbox extends Component {
         this.debouncedLoad = useDebounced(() => this.loadConversations(), 300);
         this._onBus = this._onBus.bind(this);
 
-        onWillStart(() => this.loadConversations());
+        onWillStart(async () => {
+            await Promise.all([this.loadConversations(), this.loadDispositions()]);
+        });
 
         // Live updates: the server _sendone's to the "cx_inbox" channel on every
         // new comm.interaction (see cx_conversation.py).
@@ -83,7 +88,46 @@ export class CxInbox extends Component {
         this.state.selected = this.state.conversations.find((c) => c.id === id) || false;
         const code = this.state.selected && this.state.selected.primary_channel_code;
         this.state.composerChannel = SENDABLE_CHANNELS.includes(code) ? code : "whatsapp";
-        await this.loadMessages(id);
+        await Promise.all([this.loadMessages(id), this.loadDisposition(id)]);
+    }
+
+    async loadDispositions() {
+        this.state.dispositions = await this.orm.searchRead(
+            "comm.disposition", [], ["name"], { order: "sequence, name" }
+        );
+    }
+
+    async loadDisposition(id) {
+        const recs = await this.orm.read(
+            "comm.conversation", [id], ["disposition_id", "disposition_note"]
+        );
+        const rec = recs && recs.length ? recs[0] : {};
+        this.state.dispositionId = rec.disposition_id ? rec.disposition_id[0] : false;
+        this.state.dispositionNote = rec.disposition_note || "";
+    }
+
+    async onDispositionChange(ev) {
+        if (!this.state.selectedId) {
+            return;
+        }
+        const val = parseInt(ev.target.value, 10) || false;
+        this.state.dispositionId = val;
+        await this.orm.call("comm.conversation", "action_set_disposition", [
+            [this.state.selectedId], val, this.state.dispositionNote,
+        ]);
+    }
+
+    onDispositionNoteInput(ev) {
+        this.state.dispositionNote = ev.target.value;
+    }
+
+    async saveDispositionNote() {
+        if (!this.state.selectedId) {
+            return;
+        }
+        await this.orm.call("comm.conversation", "action_set_disposition", [
+            [this.state.selectedId], this.state.dispositionId, this.state.dispositionNote,
+        ]);
     }
 
     async loadMessages(id) {

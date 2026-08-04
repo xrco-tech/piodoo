@@ -100,13 +100,29 @@
                 </t>
             </div>
 
-            <!-- ── Right: internal notes (comm.conversation is a mail.thread) ── -->
+            <!-- ── Right: disposition + internal notes (comm.conversation is a mail.thread) ── -->
             <div class="o_cx_inbox_side d-flex flex-column overflow-auto">
-                <div class="o_cx_inbox_pane_header">Internal Notes</div>
+                <div class="o_cx_inbox_pane_header">Disposition &amp; Notes</div>
                 <t t-if="!state.selectedId">
-                    <div class="p-3 text-muted small">Select a conversation to see its internal notes</div>
+                    <div class="p-3 text-muted small">Select a conversation to set its outcome and see its internal notes</div>
                 </t>
                 <t t-else="">
+                    <div class="p-2 border-bottom">
+                        <label class="form-label small mb-1">Disposition</label>
+                        <select class="form-select form-select-sm mb-2" t-on-change="onDispositionChange">
+                            <option value="">— none —</option>
+                            <t t-foreach="state.dispositions" t-as="d" t-key="d.id">
+                                <option t-att-value="d.id" t-att-selected="d.id === state.dispositionId">
+                                    <t t-esc="d.name"/>
+                                </option>
+                            </t>
+                        </select>
+                        <textarea class="form-control form-control-sm" rows="2"
+                                  placeholder="Wrap-up note…"
+                                  t-att-value="state.dispositionNote"
+                                  t-on-input="onDispositionNoteInput"
+                                  t-on-change="saveDispositionNote"/>
+                    </div>
                     <div class="p-2">
                         <Chatter threadModel="'comm.conversation'" threadId="state.selectedId"/>
                     </div>
