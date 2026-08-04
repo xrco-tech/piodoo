@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ── List (editable — quick taxonomy management) ─────────────── -->
+        <record id="view_comm_disposition_list" model="ir.ui.view">
+            <field name="name">comm.disposition.list</field>
+            <field name="model">comm.disposition</field>
+            <field name="arch" type="xml">
+                <list string="Dispositions" editable="bottom">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="code" optional="show"/>
+                    <field name="category"/>
+                    <field name="note_required" string="Needs note"/>
+                    <field name="description" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ── Form ────────────────────────────────────────────────────── -->
+        <record id="view_comm_disposition_form" model="ir.ui.view">
+            <field name="name">comm.disposition.form</field>
+            <field name="model">comm.disposition</field>
+            <field name="arch" type="xml">
+                <form string="Disposition">
+                    <sheet>
+                        <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                                invisible="active"/>
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1><field name="name" placeholder="e.g. Callback requested"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="code" placeholder="e.g. CALLBACK"/>
+                                <field name="category"/>
+                                <field name="sequence"/>
+                            </group>
+                            <group>
+                                <field name="note_required"/>
+                                <field name="color" widget="color_picker"/>
+                                <field name="active" invisible="1"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="description" nolabel="1"
+                                   placeholder="Optional hint shown to agents in the picker"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_comm_disposition" model="ir.actions.act_window">
+            <field name="name">Dispositions</field>
+            <field name="res_model">comm.disposition</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">Create your first disposition</p>
+                <p>Dispositions are the outcome / wrap-up codes agents set on a call
+                   (and later, a chat) — e.g. Resolved, Callback, Wrong number.</p>
+            </field>
+        </record>
+
+        <!-- ── Default taxonomy (editable/removable by managers) ───────── -->
+        <record id="disposition_resolved" model="comm.disposition">
+            <field name="name">Resolved</field>
+            <field name="code">RESOLVED</field>
+            <field name="category">resolved</field>
+            <field name="sequence">10</field>
+            <field name="color">10</field>
+        </record>
+        <record id="disposition_callback" model="comm.disposition">
+            <field name="name">Callback requested</field>
+            <field name="code">CALLBACK</field>
+            <field name="category">callback</field>
+            <field name="sequence">20</field>
+            <field name="note_required" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="disposition_not_interested" model="comm.disposition">
+            <field name="name">Not interested</field>
+            <field name="code">NOT_INTERESTED</field>
+            <field name="category">unresolved</field>
+            <field name="sequence">30</field>
+            <field name="color">1</field>
+        </record>
+        <record id="disposition_no_answer" model="comm.disposition">
+            <field name="name">No answer / Voicemail</field>
+            <field name="code">NO_ANSWER</field>
+            <field name="category">no_contact</field>
+            <field name="sequence">40</field>
+            <field name="color">4</field>
+        </record>
+        <record id="disposition_wrong_number" model="comm.disposition">
+            <field name="name">Wrong number</field>
+            <field name="code">WRONG_NUMBER</field>
+            <field name="category">invalid</field>
+            <field name="sequence">50</field>
+            <field name="color">2</field>
+        </record>
+        <record id="disposition_spam" model="comm.disposition">
+            <field name="name">Spam</field>
+            <field name="code">SPAM</field>
+            <field name="category">invalid</field>
+            <field name="sequence">60</field>
+            <field name="color">9</field>
+        </record>
+    </data>
+</odoo>

@@ -61,6 +61,26 @@ class WhatsappCallLog(models.Model):
     end_timestamp = fields.Datetime("End Time", readonly=True)
     duration = fields.Integer("Duration (seconds)", readonly=True)
 
+    # ── Disposition (agent wrap-up code) ──────────────────────────────
+    # Set by the agent after a call to record its outcome. The taxonomy
+    # is the shared, channel-agnostic comm.disposition model.
+    disposition_id = fields.Many2one(
+        "comm.disposition", string="Disposition", ondelete="set null", index=True,
+        help="Outcome / wrap-up code the agent set for this call.",
+    )
+    disposition_note = fields.Text("Disposition Note")
+
+    def action_set_disposition(self, disposition_id, note=None):
+        """Set (or clear) the disposition on this call. Callable from the
+        call widget / popup via ORM: pass a comm.disposition id (or falsy
+        to clear) and an optional free-text note."""
+        self.ensure_one()
+        vals = {"disposition_id": disposition_id or False}
+        if note is not None:
+            vals["disposition_note"] = note
+        self.write(vals)
+        return True
+
     # ── Recording ─────────────────────────────────────────────────────
     # WhatsApp calls are end-to-end encrypted between the browser and
     # Meta, so there's nothing server-side to record — the browser

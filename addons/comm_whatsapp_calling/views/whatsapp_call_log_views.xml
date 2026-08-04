@@ -12,6 +12,10 @@
                     <field name="to_number"/>
                     <field name="call_id"/>
                     <field name="account_id"/>
+                    <field name="disposition_id"/>
+                    <separator/>
+                    <filter string="Not dispositioned" name="no_disposition"
+                            domain="[('disposition_id', '=', False)]"/>
                     <separator/>
                     <filter string="Incoming" name="incoming"
                             domain="[('call_direction', '=', 'incoming')]"/>
@@ -44,6 +48,8 @@
                                 context="{'group_by': 'day_bucket'}"/>
                         <filter string="Contact" name="group_partner"
                                 context="{'group_by': 'partner_id'}"/>
+                        <filter string="Disposition" name="group_disposition"
+                                context="{'group_by': 'disposition_id'}"/>
                         <filter string="Day" name="group_day"
                                 context="{'group_by': 'call_timestamp:day'}"/>
                     </group>
@@ -57,6 +63,7 @@
             <field name="model">whatsapp.call.log</field>
             <field name="arch" type="xml">
                 <list string="WhatsApp Calls"
+                      editable="bottom"
                       decoration-danger="is_missed"
                       decoration-muted="call_status == 'declined'">
                     <field name="call_timestamp" widget="datetime"/>
@@ -78,6 +85,9 @@
                     <field name="is_missed" invisible="1"/>
                     <field name="has_recording" string="Recorded"/>
                     <field name="day_bucket" optional="hide"/>
+                    <field name="disposition_id" string="Disposition"
+                           options="{'no_create_edit': True}" placeholder="Set outcome…"/>
+                    <field name="disposition_note" optional="hide"/>
                     <button name="action_return_call" type="object"
                             icon="fa-phone" title="Call back"
                             class="btn-link"/>
@@ -100,6 +110,7 @@
                     <field name="is_missed"/>
                     <field name="partner_id"/>
                     <field name="from_number"/>
+                    <field name="disposition_id"/>
                     <templates>
                         <t t-name="kanban-box">
                             <div t-att-class="'oe_kanban_card oe_kanban_global_click ' +
@@ -124,6 +135,9 @@
                                     <span t-attf-class="badge #{record.call_status.raw_value === 'answered' ? 'text-bg-success' : record.call_status.raw_value === 'declined' ? 'text-bg-secondary' : record.call_status.raw_value === 'failed' ? 'text-bg-danger' : 'text-bg-info'}">
                                         <field name="call_status"/>
                                     </span>
+                                    <span t-if="record.disposition_id.raw_value"
+                                          class="badge text-bg-light border ms-1"
+                                          t-esc="record.disposition_id.value"/>
                                     <button name="action_return_call"
                                             type="object"
                                             class="btn btn-sm btn-outline-primary o_wa_kanban_call">
@@ -155,6 +169,12 @@
                             <label for="contact_display" string="Contact"/>
                             <h1><field name="contact_display" readonly="1"/></h1>
                         </div>
+                        <group string="Disposition" col="2">
+                            <field name="disposition_id"
+                                   options="{'no_quick_create': True}"/>
+                            <field name="disposition_note"
+                                   placeholder="Wrap-up note (reason, callback time, …)"/>
+                        </group>
                         <group>
                             <group>
                                 <field name="call_id" readonly="1"/>

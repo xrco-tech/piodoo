@@ -149,6 +149,15 @@
               groups="cx_module.group_cx_admin"
               sequence="30"/>
 
+    <!-- Disposition taxonomy management (outcome codes for calls, and later
+         conversations). Managed by admins / Call Managers. -->
+    <menuitem id="menu_cx_voice_dispositions"
+              name="Dispositions"
+              parent="menu_cx_voice_tab"
+              action="comm_whatsapp_calling.action_comm_disposition"
+              groups="cx_module.group_cx_admin"
+              sequence="40"/>
+
     <!-- ============ Tickets ============ -->
     <!-- Phase 5: All / My / Escalated / SLA (helpdesk) + Knowledge Base. -->
     <menuitem id="menu_cx_tickets"

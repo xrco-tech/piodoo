@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from . import comm_disposition
 from . import whatsapp_call_log
 from . import ir_attachment
 from . import res_partner

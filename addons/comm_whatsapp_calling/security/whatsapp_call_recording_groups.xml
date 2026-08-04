@@ -12,5 +12,15 @@
             <field name="category_id" ref="base.module_category_tools"/>
             <field name="comment">Can download and delete WhatsApp call recordings. Everyone else can only play them back in Odoo.</field>
         </record>
+
+        <!-- Manages the disposition taxonomy (create/edit outcome codes).
+             Setting a disposition on a call needs only call-log write
+             (base.group_user already has it) — this group gates the
+             configuration side. -->
+        <record id="group_whatsapp_call_manager" model="res.groups">
+            <field name="name">Call Manager</field>
+            <field name="category_id" ref="base.module_category_tools"/>
+            <field name="comment">Can create and edit call dispositions (outcome codes). Agents can set an existing disposition on a call without this group.</field>
+        </record>
     </data>
 </odoo>

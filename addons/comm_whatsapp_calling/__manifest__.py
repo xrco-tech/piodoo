@@ -26,6 +26,7 @@ See WHATSAPP_CALLING_PLAN.md for Meta API details and WebRTC options.
     'data': [
         'security/whatsapp_call_recording_groups.xml',
         'security/ir.model.access.csv',
+        'views/comm_disposition_views.xml',
         'views/whatsapp_call_log_views.xml',
         'views/whatsapp_call_team_views.xml',
         'views/whatsapp_call_routing_rule_views.xml',
