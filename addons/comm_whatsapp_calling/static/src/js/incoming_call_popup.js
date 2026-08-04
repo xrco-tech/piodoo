@@ -174,9 +174,21 @@ const waCallService = {
                 });
             }
         }
-        // Small circular icon button used in every widget's "Shortcuts" row.
-        function iconBtn(action, icon, title, extra = "") {
+        // Icon button used in every widget's "Shortcuts"/"Call" row. When a
+        // `label` is given it renders as an icon-over-text pill (so agents
+        // don't have to rely on hover tooltips); with no label it stays the
+        // original compact 40px circle.
+        function iconBtn(action, icon, title, extra = "", label = "") {
             const c = colors();
+            if (label) {
+                return `<button data-action="${action}" title="${escapeHtml(title)}"
+                             style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+                                    min-width:52px;border-radius:10px;padding:7px 6px;background:${c.cardAlt};color:${c.text};
+                                    border:none;font-size:15px;line-height:1;cursor:pointer;${extra}">
+                            <i class="fa ${icon}"></i>
+                            <span style="font-size:10px;font-weight:600;white-space:nowrap;">${escapeHtml(label)}</span>
+                        </button>`;
+            }
             return `<button data-action="${action}" title="${escapeHtml(title)}"
                          style="width:40px;height:40px;border-radius:50%;background:${c.cardAlt};color:${c.text};
                                 border:none;font-size:15px;cursor:pointer;${extra}">
@@ -405,9 +417,9 @@ const waCallService = {
                    </div>`
                 : "";
             const shortcuts = shortcutsRowHtml([
-                payload.partner_id ? iconBtn("view-inbox", "fa-inbox", "View in Inbox") : "",
-                iconBtn("change-script", "fa-list-alt", "Choose voice script"),
-                payload.partner_id ? iconBtn("add-campaign", "fa-bullhorn", "Add to campaign") : "",
+                payload.partner_id ? iconBtn("view-inbox", "fa-inbox", "View in Inbox", "", "Inbox") : "",
+                iconBtn("change-script", "fa-list-alt", "Choose voice script", "", "Script"),
+                payload.partner_id ? iconBtn("add-campaign", "fa-bullhorn", "Add to campaign", "", "Campaign") : "",
             ]);
             wrap.innerHTML = `
                 <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
@@ -615,11 +627,11 @@ const waCallService = {
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             });
             const shortcuts = shortcutsRowHtml([
-                payload.partner_id ? iconBtn("view-inbox", "fa-inbox", "View in Inbox") : "",
-                iconBtn("script", "fa-list-alt", scriptSession ? "Change voice script" : "Start voice script"),
-                payload.partner_id ? iconBtn("add-campaign", "fa-bullhorn", "Add to campaign") : "",
+                payload.partner_id ? iconBtn("view-inbox", "fa-inbox", "View in Inbox", "", "Inbox") : "",
+                iconBtn("script", "fa-list-alt", scriptSession ? "Change voice script" : "Start voice script", "", "Script"),
+                payload.partner_id ? iconBtn("add-campaign", "fa-bullhorn", "Add to campaign", "", "Campaign") : "",
                 iconBtn("theme-toggle", theme === "dark" ? "fa-sun-o" : "fa-moon-o",
-                         `Switch to ${theme === "dark" ? "light" : "dark"} theme`),
+                         `Switch to ${theme === "dark" ? "light" : "dark"} theme`, "", "Theme"),
             ]);
             hud.innerHTML = `
                 <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
@@ -643,11 +655,11 @@ const waCallService = {
                 <div style="padding:14px 16px 6px;border-top:1px solid ${c.border};margin-top:8px;">
                     <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Call</div>
                     <div style="display:flex;gap:10px;">
-                        ${iconBtn("transfer", "fa-random", "Transfer to team")}
+                        ${iconBtn("transfer", "fa-random", "Transfer to team", "", "Transfer")}
                         ${iconBtn("mute", muted ? "fa-microphone-slash" : "fa-microphone", muted ? "Unmute" : "Mute",
-                                  muted ? `background:${c.danger};color:#fff;` : "")}
+                                  muted ? `background:${c.danger};color:#fff;` : "", muted ? "Unmute" : "Mute")}
                         ${connected ? iconBtn("record", "fa-circle", recording ? "Stop recording" : "Record this call",
-                                  recording ? `background:${c.danger};color:#fff;` : "") : ""}
+                                  recording ? `background:${c.danger};color:#fff;` : "", recording ? "Stop" : "Record") : ""}
                     </div>
                 </div>
                 <div style="display:flex;justify-content:center;padding:16px;">
