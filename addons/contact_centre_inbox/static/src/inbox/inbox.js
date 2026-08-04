@@ -49,6 +49,9 @@ export class ContactCentreInbox extends Component {
             voiceSessionId: false,
             voiceChatbotName: "",
             rightPaneTab: "copilot",
+            dispositions: [],
+            dispositionId: false,
+            dispositionNote: "",
         });
 
         this.composerRef = useRef("composerTextarea");
@@ -73,7 +76,9 @@ export class ContactCentreInbox extends Component {
         this._onBusNotification = this._onBusNotification.bind(this);
         this.debouncedLoadContacts = useDebounced(() => this.loadContacts(), 300);
 
-        onWillStart(() => this.loadContacts());
+        onWillStart(async () => {
+            await Promise.all([this.loadContacts(), this.loadDispositions()]);
+        });
 
         this.busService.subscribe("contact_centre_new_message", this._onBusNotification);
         this.busService.start();
@@ -120,7 +125,49 @@ export class ContactCentreInbox extends Component {
     async selectContact(contactId) {
         this.state.selectedContactId = contactId;
         this.state.selectedContact = this.state.contacts.find((c) => c.id === contactId) || false;
-        await Promise.all([this.loadMessages(contactId), this.loadAiPanel(contactId)]);
+        await Promise.all([
+            this.loadMessages(contactId),
+            this.loadAiPanel(contactId),
+            this.loadDisposition(contactId),
+        ]);
+    }
+
+    async loadDispositions() {
+        this.state.dispositions = await this.orm.searchRead(
+            "comm.disposition", [], ["name"], { order: "sequence, name" }
+        );
+    }
+
+    async loadDisposition(contactId) {
+        const [rec] = await this.orm.read(
+            "contact.centre.contact", [contactId], ["disposition_id", "disposition_note"]
+        );
+        this.state.dispositionId = rec && rec.disposition_id ? rec.disposition_id[0] : false;
+        this.state.dispositionNote = (rec && rec.disposition_note) || "";
+    }
+
+    async onDispositionChange(ev) {
+        if (!this.state.selectedContactId) {
+            return;
+        }
+        const val = parseInt(ev.target.value, 10) || false;
+        this.state.dispositionId = val;
+        await this.orm.call("contact.centre.contact", "action_set_disposition", [
+            [this.state.selectedContactId], val, this.state.dispositionNote,
+        ]);
+    }
+
+    onDispositionNoteInput(ev) {
+        this.state.dispositionNote = ev.target.value;
+    }
+
+    async saveDispositionNote() {
+        if (!this.state.selectedContactId) {
+            return;
+        }
+        await this.orm.call("contact.centre.contact", "action_set_disposition", [
+            [this.state.selectedContactId], this.state.dispositionId, this.state.dispositionNote,
+        ]);
     }
 
     async loadMessages(contactId) {

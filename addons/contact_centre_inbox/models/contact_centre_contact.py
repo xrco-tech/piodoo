@@ -10,6 +10,25 @@ _logger = logging.getLogger(__name__)
 class ContactCentreContact(models.Model):
     _inherit = 'contact.centre.contact'
 
+    # Bridge the shared disposition taxonomy (comm.disposition, from
+    # comm_whatsapp_calling — a dependency of this module) onto the Gen-1
+    # contact thread, so the CC inbox can wrap up a conversation with the
+    # same outcome codes as calls and the Gen-2 inbox.
+    disposition_id = fields.Many2one(
+        'comm.disposition', string='Disposition', ondelete='set null', index=True,
+        help='Outcome / wrap-up code the agent set for this conversation.')
+    disposition_note = fields.Text('Disposition Note')
+
+    def action_set_disposition(self, disposition_id, note=None):
+        """Set (or clear) the disposition on this contact. Called from the
+        inbox picker."""
+        self.ensure_one()
+        vals = {'disposition_id': disposition_id or False}
+        if note is not None:
+            vals['disposition_note'] = note
+        self.write(vals)
+        return True
+
     def action_send_reply(self, channel, body):
         """Send a manual agent reply on the given channel and log it.
         Public (no leading underscore) since it's called from the inbox's

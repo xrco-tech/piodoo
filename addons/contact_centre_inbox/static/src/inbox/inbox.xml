@@ -150,6 +150,22 @@
                     </div>
                 </t>
                 <t t-else="">
+                    <div class="o_cc_inbox_side_section" t-if="!state.showVoiceScript or state.rightPaneTab === 'copilot'">
+                        <h6 class="mb-1">Disposition</h6>
+                        <select class="form-select form-select-sm mb-2" t-on-change="onDispositionChange">
+                            <option value="">— none —</option>
+                            <t t-foreach="state.dispositions" t-as="d" t-key="d.id">
+                                <option t-att-value="d.id" t-att-selected="d.id === state.dispositionId">
+                                    <t t-esc="d.name"/>
+                                </option>
+                            </t>
+                        </select>
+                        <textarea class="form-control form-control-sm" rows="2"
+                                  placeholder="Wrap-up note…"
+                                  t-att-value="state.dispositionNote"
+                                  t-on-input="onDispositionNoteInput"
+                                  t-on-change="saveDispositionNote"/>
+                    </div>
                     <div class="o_cc_inbox_side_section" t-if="state.showVoiceScript and state.rightPaneTab === 'script'">
                         <VoiceScriptPanel sessionId="state.voiceSessionId"
                                           chatbotName="state.voiceChatbotName"
