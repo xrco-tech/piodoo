@@ -185,13 +185,13 @@ const waCallService = {
                 // button itself is transparent — `extra` styles the circle
                 // (e.g. the mute/record active-state background).
                 return `<button data-action="${action}" title="${escapeHtml(title)}"
-                             style="display:inline-flex;flex-direction:column;align-items:center;gap:4px;
+                             style="display:inline-flex;flex-direction:column;align-items:center;gap:5px;
                                     background:none;border:none;padding:0;cursor:pointer;line-height:1;">
-                            <span style="width:40px;height:40px;border-radius:50%;background:${c.cardAlt};color:${c.text};
-                                         display:inline-flex;align-items:center;justify-content:center;font-size:15px;${extra}">
+                            <span style="width:48px;height:48px;border-radius:50%;background:${c.cardAlt};color:${c.text};
+                                         display:inline-flex;align-items:center;justify-content:center;font-size:17px;${extra}">
                                 <i class="fa ${icon}"></i>
                             </span>
-                            <span style="font-size:10px;font-weight:600;color:${c.textMuted};white-space:nowrap;">${escapeHtml(label)}</span>
+                            <span style="font-size:11px;font-weight:600;color:${c.textMuted};white-space:nowrap;">${escapeHtml(label)}</span>
                         </button>`;
             }
             return `<button data-action="${action}" title="${escapeHtml(title)}"
@@ -205,7 +205,7 @@ const waCallService = {
             return `
                 <div style="padding:12px 16px 4px;">
                     <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Shortcuts</div>
-                    <div style="display:flex;gap:10px;justify-content:center;">${rows.filter(Boolean).join("")}</div>
+                    <div style="display:flex;gap:12px;justify-content:flex-start;">${rows.filter(Boolean).join("")}</div>
                 </div>
             `;
         }
@@ -659,7 +659,7 @@ const waCallService = {
                 ${shortcuts}
                 <div style="padding:14px 16px 6px;border-top:1px solid ${c.border};margin-top:8px;">
                     <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Call</div>
-                    <div style="display:flex;gap:10px;">
+                    <div style="display:flex;gap:12px;">
                         ${iconBtn("transfer", "fa-random", "Transfer to team", "", "Transfer")}
                         ${iconBtn("mute", muted ? "fa-microphone-slash" : "fa-microphone", muted ? "Unmute" : "Mute",
                                   muted ? `background:${c.danger};color:#fff;` : "", muted ? "Unmute" : "Mute")}
