@@ -59,6 +59,38 @@
                         <t t-if="state.selected"><t t-esc="state.selected.partner_id ? state.selected.partner_id[1] : state.selected.name"/></t>
                         <t t-else="">Thread</t>
                     </span>
+                    <div class="ms-auto position-relative" t-if="state.selectedId">
+                        <button class="btn btn-sm btn-primary" t-on-click="toggleTemplatePicker">
+                            <i class="fa fa-paper-plane me-1"/>Send Template
+                        </button>
+                        <div t-if="state.showTemplatePicker"
+                             style="position:absolute;right:0;top:112%;z-index:1050;width:300px;background:#fff;color:#111827;border:1px solid #dee2e6;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:10px 12px;">
+                            <div class="fw-semibold small text-muted mb-2">Send a template</div>
+                            <label class="form-label small mb-1">Channel</label>
+                            <select class="form-select form-select-sm mb-2" t-on-change="onTemplateChannelChange">
+                                <option value="whatsapp" t-att-selected="state.templateChannel === 'whatsapp'">WhatsApp</option>
+                                <option value="sms" t-att-selected="state.templateChannel === 'sms'">SMS</option>
+                                <option value="email" t-att-selected="state.templateChannel === 'email'">Email</option>
+                            </select>
+                            <label class="form-label small mb-1">Template</label>
+                            <select class="form-select form-select-sm mb-2" t-on-change="onTemplateSelect">
+                                <option value="">— Select a template —</option>
+                                <t t-foreach="state.templates" t-as="tpl" t-key="tpl.id">
+                                    <option t-att-value="tpl.id" t-att-selected="tpl.id === state.selectedTemplateId"><t t-esc="tpl.name"/></option>
+                                </t>
+                            </select>
+                            <div t-if="!state.templates.length" class="small text-muted mb-2">No templates for this channel.</div>
+                            <div t-if="templateWarning" class="alert alert-warning py-1 px-2 small mb-2">
+                                <i class="fa fa-exclamation-triangle me-1"/><t t-esc="templateWarning"/>
+                            </div>
+                            <div t-if="state.templateError" class="alert alert-danger py-1 px-2 small mb-2"><t t-esc="state.templateError"/></div>
+                            <button class="btn btn-primary btn-sm w-100"
+                                    t-att-disabled="!state.selectedTemplateId or templateWarning or state.templateSending"
+                                    t-on-click="sendTemplate">
+                                <t t-esc="state.templateSending ? 'Sending…' : 'Send'"/>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <t t-if="!state.selectedId">
                     <div class="d-flex align-items-center justify-content-center flex-grow-1 text-muted">

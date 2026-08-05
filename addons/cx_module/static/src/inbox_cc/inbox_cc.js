@@ -40,6 +40,12 @@ export class CxInboxCc extends Component {
             dispositions: [],
             dispositionId: false,
             dispositionNote: "",
+            showTemplatePicker: false,
+            templateChannel: "whatsapp",
+            templates: [],
+            selectedTemplateId: false,
+            templateSending: false,
+            templateError: "",
         });
 
         this.threadRef = useRef("thread");
@@ -74,7 +80,8 @@ export class CxInboxCc extends Component {
             this.state.conversations = await this.orm.searchRead(
                 "comm.conversation",
                 domain,
-                ["name", "partner_id", "primary_channel_code", "lifecycle_state", "last_activity_at"],
+                ["name", "partner_id", "primary_channel_code", "lifecycle_state", "last_activity_at",
+                 "partner_email", "partner_mobile", "partner_phone"],
                 { order: "last_activity_at desc nulls last", limit: 200 }
             );
         } finally {
@@ -141,6 +148,74 @@ export class CxInboxCc extends Component {
         await this.orm.call("comm.conversation", "action_set_disposition", [
             [this.state.selectedId], this.state.dispositionId, this.state.dispositionNote,
         ]);
+    }
+
+    // ── Send template ───────────────────────────────────────────────────
+    async toggleTemplatePicker() {
+        this.state.showTemplatePicker = !this.state.showTemplatePicker;
+        this.state.templateError = "";
+        if (this.state.showTemplatePicker) {
+            await this.loadTemplates();
+        }
+    }
+
+    async loadTemplates() {
+        this.state.templates = await this.orm.searchRead(
+            "contact.centre.template",
+            [["channel", "=", this.state.templateChannel], ["active", "=", true]],
+            ["name"], { order: "name" }
+        );
+        if (!this.state.templates.some((t) => t.id === this.state.selectedTemplateId)) {
+            this.state.selectedTemplateId = false;
+        }
+    }
+
+    onTemplateChannelChange(ev) {
+        this.state.templateChannel = ev.target.value;
+        this.state.selectedTemplateId = false;
+        this.state.templateError = "";
+        this.loadTemplates();
+    }
+
+    onTemplateSelect(ev) {
+        this.state.selectedTemplateId = parseInt(ev.target.value, 10) || false;
+    }
+
+    get templateWarning() {
+        const c = this.state.selected;
+        if (!c) return "";
+        const ch = this.state.templateChannel;
+        if (ch === "email" && !c.partner_email) {
+            return "This contact has no email address set — an email template can't be sent.";
+        }
+        if ((ch === "sms" || ch === "whatsapp") && !c.partner_mobile && !c.partner_phone) {
+            return ch === "sms"
+                ? "This contact has no phone number set — an SMS template can't be sent."
+                : "This contact has no WhatsApp number set — a WhatsApp template can't be sent.";
+        }
+        return "";
+    }
+
+    async sendTemplate() {
+        if (!this.state.selectedTemplateId || this.templateWarning || this.state.templateSending) {
+            return;
+        }
+        this.state.templateSending = true;
+        this.state.templateError = "";
+        try {
+            const res = await this.orm.call("comm.conversation", "action_send_template", [
+                [this.state.selectedId], this.state.selectedTemplateId,
+            ]);
+            if (res && res.error) {
+                this.state.templateError = res.error;
+            } else {
+                this.state.showTemplatePicker = false;
+                this.state.selectedTemplateId = false;
+                await this.loadMessages(this.state.selectedId);
+            }
+        } finally {
+            this.state.templateSending = false;
+        }
     }
 
     onDispositionNoteInput(ev) {

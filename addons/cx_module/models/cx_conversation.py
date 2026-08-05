@@ -49,6 +49,42 @@ class CommConversation(models.Model):
         self.write(vals)
         return True
 
+    # ── Send template (from the inbox) ──────────────────────────────────
+    # Reuses the shared contact.centre.template taxonomy so UCX and the CC
+    # inbox pick from the same templates. Address is the conversation's
+    # partner's email / mobile-or-phone.
+    partner_email = fields.Char(related='partner_id.email', string='Contact Email')
+    partner_mobile = fields.Char(related='partner_id.mobile', string='Contact Mobile')
+    partner_phone = fields.Char(related='partner_id.phone', string='Contact Phone')
+
+    def _template_address_error(self, channel):
+        """Reason this conversation's contact can't receive a template on
+        `channel` (missing address), or '' when it can."""
+        self.ensure_one()
+        p = self.partner_id
+        if channel == 'email' and not (p and p.email):
+            return "This contact has no email address set, so an email template cannot be sent."
+        if channel in ('sms', 'whatsapp') and not (p and (p.mobile or p.phone)):
+            label = 'SMS' if channel == 'sms' else 'WhatsApp'
+            addr = 'phone number' if channel == 'sms' else 'WhatsApp number'
+            return "This contact has no %s set, so a %s template cannot be sent." % (addr, label)
+        return ""
+
+    def action_send_template(self, template_id):
+        """Send a contact.centre.template on its channel to this
+        conversation's contact. Validates the address first (returns
+        {'error': msg}); else sends via the engine's own outbound path
+        (action_cx_send_reply) and returns {'success': True}."""
+        self.ensure_one()
+        template = self.env['contact.centre.template'].browse(int(template_id))
+        if not template.exists():
+            return {'error': "Template not found."}
+        err = self._template_address_error(template.channel)
+        if err:
+            return {'error': err}
+        self.action_cx_send_reply(template.channel, template.body_text or "")
+        return {'success': True}
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
