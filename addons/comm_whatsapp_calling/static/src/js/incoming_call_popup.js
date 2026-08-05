@@ -2035,10 +2035,10 @@ const waCallService = {
             let selectedChatbotId = null;
             let selectedChatbotName = "";
             const shortcuts = shortcutsRowHtml([
-                iconBtn("script", "fa-list-alt", "Choose voice script"),
-                iconBtn("add-campaign", "fa-bullhorn", "Add to campaign"),
-                iconBtn("history", "fa-history", "Call history"),
-                iconBtn("contacts", "fa-address-book", "Contacts"),
+                iconBtn("script", "fa-list-alt", "Choose voice script", "", "Script"),
+                iconBtn("add-campaign", "fa-bullhorn", "Add to campaign", "", "Campaign"),
+                iconBtn("history", "fa-history", "Call history", "", "History"),
+                iconBtn("contacts", "fa-address-book", "Contacts", "", "Contacts"),
             ]);
             wrap.innerHTML = `
                 <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
