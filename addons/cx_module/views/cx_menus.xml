@@ -406,6 +406,28 @@
               action="mail.action_email_server_tree"
               sequence="50"/>
 
+    <!-- Message templates (contact.centre.template, per channel) — the
+         templates the inbox "Send Template" picker offers. -->
+    <menuitem id="menu_cx_config_templates"
+              name="Templates"
+              parent="menu_cx_config"
+              sequence="55"/>
+    <menuitem id="menu_cx_config_tpl_whatsapp"
+              name="WhatsApp Templates"
+              parent="menu_cx_config_templates"
+              action="contact_centre.action_whatsapp_template"
+              sequence="10"/>
+    <menuitem id="menu_cx_config_tpl_sms"
+              name="SMS Templates"
+              parent="menu_cx_config_templates"
+              action="contact_centre.action_sms_template"
+              sequence="20"/>
+    <menuitem id="menu_cx_config_tpl_email"
+              name="Email Templates"
+              parent="menu_cx_config_templates"
+              action="contact_centre.action_email_template"
+              sequence="30"/>
+
     <!-- Teams live under Voice (the call-routing team model is the only team
          model in the reused stack). -->
     <menuitem id="menu_cx_config_teams"
