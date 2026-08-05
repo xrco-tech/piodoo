@@ -63,22 +63,64 @@
                         </t>
                         <t t-else="">Thread</t>
                     </span>
-                    <div class="ms-auto position-relative" t-if="state.selectedContactId">
-                        <button class="btn btn-sm btn-success" t-on-click="toggleCallPicker">
-                            <i class="fa fa-phone me-1"/>Call WhatsApp
-                        </button>
-                        <div t-if="state.showCallPicker" class="o_cc_inbox_call_picker">
-                            <div class="fw-semibold small text-muted px-2 pt-2 pb-1">Choose a script</div>
-                            <div class="o_cc_inbox_call_picker_item" t-on-click="() => this.startVoiceCall(false)">
-                                No script (plain call)
-                            </div>
-                            <t t-foreach="state.voiceChatbots" t-as="chatbot" t-key="chatbot.id">
-                                <div class="o_cc_inbox_call_picker_item" t-on-click="() => this.startVoiceCall(chatbot.id)">
-                                    <t t-esc="chatbot.name"/>
+                    <div class="ms-auto d-flex gap-2" t-if="state.selectedContactId">
+                        <div class="position-relative">
+                            <button class="btn btn-sm btn-success" t-on-click="toggleCallPicker">
+                                <i class="fa fa-phone me-1"/>Call WhatsApp
+                            </button>
+                            <div t-if="state.showCallPicker" class="o_cc_inbox_call_picker">
+                                <div class="fw-semibold small text-muted px-2 pt-2 pb-1">Choose a script</div>
+                                <div class="o_cc_inbox_call_picker_item" t-on-click="() => this.startVoiceCall(false)">
+                                    No script (plain call)
                                 </div>
-                            </t>
-                            <div t-if="!state.voiceChatbots.length" class="px-2 py-2 text-muted small">
-                                No published voice scripts
+                                <t t-foreach="state.voiceChatbots" t-as="chatbot" t-key="chatbot.id">
+                                    <div class="o_cc_inbox_call_picker_item" t-on-click="() => this.startVoiceCall(chatbot.id)">
+                                        <t t-esc="chatbot.name"/>
+                                    </div>
+                                </t>
+                                <div t-if="!state.voiceChatbots.length" class="px-2 py-2 text-muted small">
+                                    No published voice scripts
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="position-relative">
+                            <button class="btn btn-sm btn-primary" t-on-click="toggleTemplatePicker">
+                                <i class="fa fa-paper-plane me-1"/>Send Template
+                            </button>
+                            <div t-if="state.showTemplatePicker" class="o_cc_inbox_call_picker" style="width: 300px;">
+                                <div class="fw-semibold small text-muted px-2 pt-2 pb-1">Send a template</div>
+                                <div class="px-2 pb-2">
+                                    <label class="form-label small mb-1">Channel</label>
+                                    <select class="form-select form-select-sm mb-2" t-on-change="onTemplateChannelChange">
+                                        <option value="whatsapp" t-att-selected="state.templateChannel === 'whatsapp'">WhatsApp</option>
+                                        <option value="sms" t-att-selected="state.templateChannel === 'sms'">SMS</option>
+                                        <option value="email" t-att-selected="state.templateChannel === 'email'">Email</option>
+                                    </select>
+                                    <label class="form-label small mb-1">Template</label>
+                                    <select class="form-select form-select-sm mb-2" t-on-change="onTemplateSelect">
+                                        <option value="">— Select a template —</option>
+                                        <t t-foreach="state.templates" t-as="tpl" t-key="tpl.id">
+                                            <option t-att-value="tpl.id" t-att-selected="tpl.id === state.selectedTemplateId">
+                                                <t t-esc="tpl.name"/>
+                                            </option>
+                                        </t>
+                                    </select>
+                                    <div t-if="!state.templates.length" class="small text-muted mb-2">
+                                        No templates for this channel.
+                                    </div>
+                                    <div t-if="templateWarning" class="alert alert-warning py-1 px-2 small mb-2">
+                                        <i class="fa fa-exclamation-triangle me-1"/><t t-esc="templateWarning"/>
+                                    </div>
+                                    <div t-if="state.templateError" class="alert alert-danger py-1 px-2 small mb-2">
+                                        <t t-esc="state.templateError"/>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm w-100"
+                                            t-att-disabled="!state.selectedTemplateId or templateWarning or state.templateSending"
+                                            t-on-click="sendTemplate">
+                                        <t t-esc="state.templateSending ? 'Sending…' : 'Send'"/>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

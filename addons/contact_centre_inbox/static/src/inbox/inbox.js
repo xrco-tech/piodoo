@@ -52,6 +52,12 @@ export class ContactCentreInbox extends Component {
             dispositions: [],
             dispositionId: false,
             dispositionNote: "",
+            showTemplatePicker: false,
+            templateChannel: "whatsapp",
+            templates: [],
+            selectedTemplateId: false,
+            templateSending: false,
+            templateError: "",
         });
 
         this.composerRef = useRef("composerTextarea");
@@ -110,7 +116,7 @@ export class ContactCentreInbox extends Component {
             this.state.contacts = await this.orm.searchRead(
                 "contact.centre.contact",
                 domain,
-                ["name", "phone_number", "state", "last_contact_date", "partner_id"],
+                ["name", "phone_number", "email", "bsuid", "state", "last_contact_date", "partner_id"],
                 // "nulls last" matters here: Postgres defaults DESC sorts to
                 // NULLS FIRST, so without it every contact with zero message/
                 // call history would rank above ones with real recent
@@ -168,6 +174,78 @@ export class ContactCentreInbox extends Component {
         await this.orm.call("contact.centre.contact", "action_set_disposition", [
             [this.state.selectedContactId], this.state.dispositionId, this.state.dispositionNote,
         ]);
+    }
+
+    // ── Send template ───────────────────────────────────────────────────
+    async toggleTemplatePicker() {
+        this.state.showTemplatePicker = !this.state.showTemplatePicker;
+        this.state.templateError = "";
+        if (this.state.showTemplatePicker) {
+            this.state.showCallPicker = false;
+            await this.loadTemplates();
+        }
+    }
+
+    async loadTemplates() {
+        this.state.templates = await this.orm.searchRead(
+            "contact.centre.template",
+            [["channel", "=", this.state.templateChannel], ["active", "=", true]],
+            ["name"], { order: "name" }
+        );
+        if (!this.state.templates.some((t) => t.id === this.state.selectedTemplateId)) {
+            this.state.selectedTemplateId = false;
+        }
+    }
+
+    onTemplateChannelChange(ev) {
+        this.state.templateChannel = ev.target.value;
+        this.state.selectedTemplateId = false;
+        this.state.templateError = "";
+        this.loadTemplates();
+    }
+
+    onTemplateSelect(ev) {
+        this.state.selectedTemplateId = parseInt(ev.target.value, 10) || false;
+    }
+
+    // Client-side pre-send validation: warn (and block) when the contact
+    // has no address for the chosen channel.
+    get templateWarning() {
+        const c = this.state.selectedContact;
+        if (!c) return "";
+        const ch = this.state.templateChannel;
+        if (ch === "email" && !c.email) {
+            return "This contact has no email address set — an email template can't be sent.";
+        }
+        if (ch === "sms" && !c.phone_number) {
+            return "This contact has no phone number set — an SMS template can't be sent.";
+        }
+        if (ch === "whatsapp" && !c.phone_number && !c.bsuid) {
+            return "This contact has no WhatsApp number set — a WhatsApp template can't be sent.";
+        }
+        return "";
+    }
+
+    async sendTemplate() {
+        if (!this.state.selectedTemplateId || this.templateWarning || this.state.templateSending) {
+            return;
+        }
+        this.state.templateSending = true;
+        this.state.templateError = "";
+        try {
+            const res = await this.orm.call("contact.centre.contact", "action_send_template", [
+                [this.state.selectedContactId], this.state.selectedTemplateId,
+            ]);
+            if (res && res.error) {
+                this.state.templateError = res.error;
+            } else {
+                this.state.showTemplatePicker = false;
+                this.state.selectedTemplateId = false;
+                await this.loadMessages(this.state.selectedContactId);
+            }
+        } finally {
+            this.state.templateSending = false;
+        }
     }
 
     async loadMessages(contactId) {
