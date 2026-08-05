@@ -181,12 +181,17 @@ const waCallService = {
         function iconBtn(action, icon, title, extra = "", label = "") {
             const c = colors();
             if (label) {
+                // Keep the round icon; the label sits BELOW the circle. The
+                // button itself is transparent — `extra` styles the circle
+                // (e.g. the mute/record active-state background).
                 return `<button data-action="${action}" title="${escapeHtml(title)}"
-                             style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-                                    min-width:52px;border-radius:10px;padding:7px 6px;background:${c.cardAlt};color:${c.text};
-                                    border:none;font-size:15px;line-height:1;cursor:pointer;${extra}">
-                            <i class="fa ${icon}"></i>
-                            <span style="font-size:10px;font-weight:600;white-space:nowrap;">${escapeHtml(label)}</span>
+                             style="display:inline-flex;flex-direction:column;align-items:center;gap:4px;
+                                    background:none;border:none;padding:0;cursor:pointer;line-height:1;">
+                            <span style="width:40px;height:40px;border-radius:50%;background:${c.cardAlt};color:${c.text};
+                                         display:inline-flex;align-items:center;justify-content:center;font-size:15px;${extra}">
+                                <i class="fa ${icon}"></i>
+                            </span>
+                            <span style="font-size:10px;font-weight:600;color:${c.textMuted};white-space:nowrap;">${escapeHtml(label)}</span>
                         </button>`;
             }
             return `<button data-action="${action}" title="${escapeHtml(title)}"
