@@ -21,6 +21,17 @@ class ContactCentreMessage(models.Model):
         related="call_recording_id.recording_duration_display", string="Recording Length",
     )
 
+    # Surface the call's wrap-up disposition + note on the message so the
+    # Inbox thread can show a call's outcome inline, next to its recording.
+    call_disposition_id = fields.Many2one(
+        "comm.disposition", related="whatsapp_call_log_id.disposition_id",
+        string="Call Disposition", store=False,
+    )
+    call_disposition_note = fields.Text(
+        related="whatsapp_call_log_id.disposition_note",
+        string="Call Disposition Note", store=False,
+    )
+
     @api.depends("whatsapp_call_log_id.recording_ids")
     def _compute_call_recording_id(self):
         for rec in self:

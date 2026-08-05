@@ -109,6 +109,13 @@
                                             <t t-esc="message.call_recording_duration"/>
                                         </span>
                                     </div>
+                                    <div t-if="message.call_disposition_id" class="mt-1">
+                                        <span class="badge text-bg-light border">
+                                            <i class="fa fa-clipboard me-1"/><t t-esc="message.call_disposition_id[1]"/>
+                                        </span>
+                                        <span t-if="message.call_disposition_note" class="small fst-italic opacity-75 ms-1"
+                                              t-esc="message.call_disposition_note"/>
+                                    </div>
                                     <div class="small opacity-75" t-if="message.direction === 'outbound'">
                                         <t t-esc="message.status"/>
                                     </div>
