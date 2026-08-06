@@ -50,9 +50,12 @@ def S(name, parent, stype='message', body=None, seq=10):
     })
 
 def opt(menu, value, name, stype='message', body=None):
-    """A numbered menu option: child step + a trigger answer on `value`."""
-    child = S(name, menu, stype, body, seq=(int(value) if str(value).isdigit() else 999) * 10 + 1)
-    ans = Answer.create({'value': str(value), 'operator': 'is_equal_to', 'step_id': child.id})
+    """A numbered menu option: child step + a trigger answer on `value`.
+    '0' (Exit/Back) sorts last; 1-9 sort in order."""
+    sval = str(value)
+    seq = 9000 if sval == '0' else (int(sval) * 10 if sval.isdigit() else 990)
+    child = S(name, menu, stype, body, seq=seq)
+    ans = Answer.create({'value': sval, 'operator': 'is_equal_to', 'step_id': child.id})
     child.trigger_answer_ids = [(4, ans.id)]
     return child
 
