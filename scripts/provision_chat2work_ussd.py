@@ -70,26 +70,32 @@ def home(menu, value='0', name='Main menu'):
     return child
 
 # Shared prelude for every execute_code snippet: setv/getv/last_input helpers.
+# NOTE: execute_code runs `exec(code, {}, locals)`, so a nested function's
+# globals is the EMPTY dict — it can't see exec-locals like `env`. We capture
+# the deps as DEFAULT ARGS (evaluated at def-time in the local scope) so they
+# bind correctly.
 HELP = """
-Var = env['whatsapp.chatbot.variable'].sudo()
-Val = env['whatsapp.chatbot.value'].sudo()
-Msg = env['whatsapp.chatbot.message'].sudo()
 _contact = record.contact_id
 _botid = record.chatbot_id.id
-def setv(n, v):
-    var = Var.search([('chatbot_id','=',_botid),('name','=',n)], limit=1)
+def setv(n, v, env=env, contact=_contact, botid=_botid):
+    Var = env['whatsapp.chatbot.variable'].sudo()
+    Val = env['whatsapp.chatbot.value'].sudo()
+    var = Var.search([('chatbot_id','=',botid),('name','=',n)], limit=1)
     if not var: return
-    ex = Val.search([('contact_id','=',_contact.id),('variable_id','=',var.id)], limit=1)
+    ex = Val.search([('contact_id','=',contact.id),('variable_id','=',var.id)], limit=1)
     val = '' if v is None else str(v)
     if ex: ex.value = val
-    else: Val.create({'contact_id':_contact.id,'variable_id':var.id,'value':val})
-def getv(n):
-    var = Var.search([('chatbot_id','=',_botid),('name','=',n)], limit=1)
+    else: Val.create({'contact_id':contact.id,'variable_id':var.id,'value':val})
+def getv(n, env=env, contact=_contact, botid=_botid):
+    Var = env['whatsapp.chatbot.variable'].sudo()
+    Val = env['whatsapp.chatbot.value'].sudo()
+    var = Var.search([('chatbot_id','=',botid),('name','=',n)], limit=1)
     if not var: return ''
-    ex = Val.search([('contact_id','=',_contact.id),('variable_id','=',var.id)], limit=1)
+    ex = Val.search([('contact_id','=',contact.id),('variable_id','=',var.id)], limit=1)
     return (ex.value or '') if ex else ''
-def last_input():
-    m = Msg.search([('contact_id','=',_contact.id),('chatbot_id','=',_botid),('type','=','incoming')], order='id desc', limit=1)
+def last_input(env=env, contact=_contact, botid=_botid):
+    Msg = env['whatsapp.chatbot.message'].sudo()
+    m = Msg.search([('contact_id','=',contact.id),('chatbot_id','=',botid),('type','=','incoming')], order='id desc', limit=1)
     return (m.message_plain or '').strip() if m else ''
 """
 
