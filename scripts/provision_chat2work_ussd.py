@@ -40,7 +40,8 @@ bot = Bot.create({'name': BOT_NAME, 'channel': 'ussd', 'status': 'draft',
 
 for vn in ('job_menu', 'job_ids', 'chosen_job_id', 'chosen_job_label',
            'slot_menu', 'slot_ids', 'chosen_slot_id', 'chosen_slot_label', 'booking_ref',
-           'status_text', 'iv_menu', 'iv_ids', 'chosen_booking_id', 'chosen_iv_label'):
+           'status_text', 'iv_menu', 'iv_ids', 'chosen_booking_id', 'chosen_iv_label',
+           'reg_name', 'reg_area'):
     Var.create({'chatbot_id': bot.id, 'name': vn})
 
 # ── helpers ─────────────────────────────────────────────────────────────────
@@ -224,20 +225,32 @@ if bid.isdigit() and sid.isdigit():
         bk.reschedule(slot)
 """
 
-THANKS_REG = "Thanks! Your profile is saved. We'll match you to jobs and SMS you when interviews open. Dial *384*0000# anytime."
+SAVE_NAME = HELP + "\nsetv('reg_name', last_input())\n"
+SAVE_AREA = HELP + "\nsetv('reg_area', last_input())\n"
+
+CREATE_PROFILE = HELP + """
+ans = last_input()
+field = {'1':'call_centre','2':'retail','3':'warehouse','4':'admin','5':'other'}.get(ans, 'other')
+name = (getv('reg_name') or '').strip() or 'Candidate'
+loc = (getv('reg_area') or '').strip()
+partner = _contact.partner_id
+phone = (partner.mobile or partner.phone or '') if partner else ''
+env['chat2work.candidate'].sudo().upsert(partner=partner, phone=phone, name=name, location=loc, field=field, registered_via='ussd')
+"""
 
 # ── 3. Root: main menu ──────────────────────────────────────────────────────
 root = S('Main menu', None, 'message', "Chat2Work - Jobs & Interviews\nReply with a number:")
 
-# 1. Register (static)
+# 1. Register (DYNAMIC — creates/updates a chat2work.candidate profile)
 reg = opt(root, '1', 'Register profile', 'question_text', "Enter your full name:")
-reg_area = nxt(reg, 'Register - area', 'question_text', "Enter your town/area:")
-reg_field = nxt(reg_area, 'Register - field', 'message', "Choose your field:")
-opt(reg_field, '1', 'Call Centre', 'message', THANKS_REG)
-opt(reg_field, '2', 'Retail', 'message', THANKS_REG)
-opt(reg_field, '3', 'Warehouse/Driver', 'message', THANKS_REG)
-opt(reg_field, '4', 'Admin/General', 'message', THANKS_REG)
-opt(reg_field, '5', 'Other', 'message', THANKS_REG)
+reg_save_name = nxt(reg, 'Register - save name', 'execute_code', extra={'code': SAVE_NAME})
+reg_area = nxt(reg_save_name, 'Register - area', 'question_text', "Enter your town/area:")
+reg_save_area = nxt(reg_area, 'Register - save area', 'execute_code', extra={'code': SAVE_AREA})
+reg_field = nxt(reg_save_area, 'Register - field', 'question_text',
+                "Choose your field:\n1. Call Centre\n2. Retail\n3. Warehouse/Driver\n4. Admin/General\n5. Other")
+reg_create = nxt(reg_field, 'Register - create profile', 'execute_code', extra={'code': CREATE_PROFILE})
+nxt(reg_create, 'Register - done', 'message',
+    "Thanks {{variables.reg_name}}! Your profile is saved. We'll match you to jobs and SMS you when interviews open.")
 
 # 2. Browse jobs (DYNAMIC — lists live jobs)
 browse = opt(root, '2', 'Browse jobs', 'execute_code', extra={'code': LOAD_JOBS})

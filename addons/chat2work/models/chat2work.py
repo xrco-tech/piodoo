@@ -68,6 +68,58 @@ class Chat2workInterviewSlot(models.Model):
         return local.strftime('%a %d %b %H:%M')
 
 
+class Chat2workCandidate(models.Model):
+    _name = 'chat2work.candidate'
+    _description = 'Chat2Work Candidate Profile'
+    _order = 'create_date desc'
+    _rec_name = 'name'
+
+    name = fields.Char('Full Name', required=True)
+    partner_id = fields.Many2one('res.partner', 'Contact')
+    phone = fields.Char('Phone')
+    location = fields.Char('Town / Area')
+    field = fields.Selection([
+        ('call_centre', 'Call Centre'),
+        ('retail', 'Retail'),
+        ('warehouse', 'Warehouse / Driver'),
+        ('admin', 'Admin / General'),
+        ('other', 'Other'),
+    ], string='Field')
+    registered_via = fields.Char('Registered Via', default='ussd')
+    active = fields.Boolean(default=True)
+
+    @api.model
+    def upsert(self, partner=None, phone=None, name=None, location=None, field=None, registered_via='ussd'):
+        """Create or update the candidate profile for this caller (matched by
+        partner, then phone). Used by the USSD Register flow."""
+        rec = self.env['chat2work.candidate']
+        if partner:
+            rec = self.search([('partner_id', '=', partner.id)], limit=1)
+        if not rec and phone:
+            rec = self.search([('phone', '=', phone)], limit=1)
+        phone = phone or (partner and (partner.mobile or partner.phone)) or ''
+        vals = {'registered_via': registered_via}
+        if name:
+            vals['name'] = name
+        if location is not None:
+            vals['location'] = location
+        if field:
+            vals['field'] = field
+        if rec:
+            rec.write(vals)
+        else:
+            vals.setdefault('name', name or 'Candidate')
+            vals['partner_id'] = partner.id if partner else False
+            vals['phone'] = phone
+            rec = self.create(vals)
+        # Keep the linked partner's name in sync with the registered name.
+        if partner and name:
+            partner.name = name
+            if phone and not partner.mobile:
+                partner.mobile = phone
+        return rec
+
+
 class Chat2workInterviewBooking(models.Model):
     _name = 'chat2work.interview.booking'
     _description = 'Chat2Work Interview Booking'

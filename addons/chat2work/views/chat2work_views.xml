@@ -103,8 +103,56 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <!-- ── Candidate ───────────────────────────────────────────────────── -->
+    <record id="view_chat2work_candidate_list" model="ir.ui.view">
+        <field name="name">chat2work.candidate.list</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="arch" type="xml">
+            <list string="Candidates">
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="location"/>
+                <field name="field"/>
+                <field name="registered_via"/>
+                <field name="create_date"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chat2work_candidate_form" model="ir.ui.view">
+        <field name="name">chat2work.candidate.form</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="arch" type="xml">
+            <form string="Candidate">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="phone"/>
+                            <field name="location"/>
+                            <field name="field"/>
+                        </group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="registered_via"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chat2work_candidate" model="ir.actions.act_window">
+        <field name="name">Candidates</field>
+        <field name="res_model">chat2work.candidate</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
     <!-- ── Menus ───────────────────────────────────────────────────────── -->
     <menuitem id="menu_chat2work_root" name="Chat2Work" sequence="45"/>
+    <menuitem id="menu_chat2work_candidates" name="Candidates" parent="menu_chat2work_root" action="action_chat2work_candidate" sequence="5"/>
     <menuitem id="menu_chat2work_jobs" name="Jobs" parent="menu_chat2work_root" action="action_chat2work_job" sequence="10"/>
     <menuitem id="menu_chat2work_slots" name="Interview Slots" parent="menu_chat2work_root" action="action_chat2work_slot" sequence="20"/>
     <menuitem id="menu_chat2work_bookings" name="Bookings" parent="menu_chat2work_root" action="action_chat2work_booking" sequence="30"/>
