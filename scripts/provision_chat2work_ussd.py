@@ -62,8 +62,11 @@ def nxt(parent, name, stype='message', body=None):
 
 def home(menu, value='0', name='Main menu'):
     """A '0' option that jumps back to the root (main menu)."""
-    child = S(name, menu, 'jump_to_flow', seq=999)
-    child.write({'target_chatbot_id': bot.id, 'target_step_id': root.id})
+    child = Step.create({
+        'chatbot_id': bot.id, 'parent_id': menu.id, 'name': name,
+        'step_type': 'jump_to_flow', 'sequence': 999,
+        'target_chatbot_id': bot.id, 'target_step_id': root.id,
+    })
     ans = Answer.create({'value': str(value), 'operator': 'is_equal_to', 'step_id': child.id})
     child.trigger_answer_ids = [(4, ans.id)]
     return child
