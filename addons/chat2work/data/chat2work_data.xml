@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_chat2work_booking" model="ir.sequence">
+            <field name="name">Chat2Work Booking</field>
+            <field name="code">chat2work.booking</field>
+            <field name="prefix">CW</field>
+            <field name="padding">5</field>
+        </record>
+
+        <!-- Demo jobs -->
+        <record id="job_call_centre" model="chat2work.job">
+            <field name="name">Call Centre Agent</field>
+            <field name="location">JHB</field>
+            <field name="salary_text">R6 500/mo</field>
+            <field name="requirements">Matric</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="job_warehouse" model="chat2work.job">
+            <field name="name">Warehouse Assistant</field>
+            <field name="location">PTA</field>
+            <field name="salary_text">R5 800/mo</field>
+            <field name="requirements">No experience needed</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="job_cashier" model="chat2work.job">
+            <field name="name">Retail Cashier</field>
+            <field name="location">Soweto</field>
+            <field name="salary_text">R6 000/mo</field>
+            <field name="requirements">Matric preferred</field>
+            <field name="sequence">30</field>
+        </record>
+
+        <!-- Demo interview slots (future-dated so they stay bookable) -->
+        <record id="slot_cc_1" model="chat2work.interview.slot">
+            <field name="job_id" ref="job_call_centre"/>
+            <field name="start_datetime" eval="(datetime.datetime.now() + datetime.timedelta(days=3)).strftime('%Y-%m-%d 09:00:00')"/>
+            <field name="capacity">3</field>
+        </record>
+        <record id="slot_cc_2" model="chat2work.interview.slot">
+            <field name="job_id" ref="job_call_centre"/>
+            <field name="start_datetime" eval="(datetime.datetime.now() + datetime.timedelta(days=3)).strftime('%Y-%m-%d 11:00:00')"/>
+            <field name="capacity">3</field>
+        </record>
+        <record id="slot_cc_3" model="chat2work.interview.slot">
+            <field name="job_id" ref="job_call_centre"/>
+            <field name="start_datetime" eval="(datetime.datetime.now() + datetime.timedelta(days=4)).strftime('%Y-%m-%d 10:00:00')"/>
+            <field name="capacity">2</field>
+        </record>
+        <record id="slot_wh_1" model="chat2work.interview.slot">
+            <field name="job_id" ref="job_warehouse"/>
+            <field name="start_datetime" eval="(datetime.datetime.now() + datetime.timedelta(days=2)).strftime('%Y-%m-%d 08:30:00')"/>
+            <field name="capacity">5</field>
+        </record>
+        <record id="slot_wh_2" model="chat2work.interview.slot">
+            <field name="job_id" ref="job_warehouse"/>
+            <field name="start_datetime" eval="(datetime.datetime.now() + datetime.timedelta(days=5)).strftime('%Y-%m-%d 14:00:00')"/>
+            <field name="capacity">5</field>
+        </record>
+        <record id="slot_ca_1" model="chat2work.interview.slot">
+            <field name="job_id" ref="job_cashier"/>
+            <field name="start_datetime" eval="(datetime.datetime.now() + datetime.timedelta(days=3)).strftime('%Y-%m-%d 13:00:00')"/>
+            <field name="capacity">2</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── Job ─────────────────────────────────────────────────────────── -->
+    <record id="view_chat2work_job_list" model="ir.ui.view">
+        <field name="name">chat2work.job.list</field>
+        <field name="model">chat2work.job</field>
+        <field name="arch" type="xml">
+            <list string="Jobs">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="location"/>
+                <field name="salary_text"/>
+                <field name="available_slot_count" string="Slots"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chat2work_job_form" model="ir.ui.view">
+        <field name="name">chat2work.job.form</field>
+        <field name="model">chat2work.job</field>
+        <field name="arch" type="xml">
+            <form string="Job">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Call Centre Agent"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="location"/>
+                            <field name="salary_text"/>
+                            <field name="requirements"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="available_slot_count"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <field name="description" placeholder="Job description…"/>
+                    <notebook>
+                        <page string="Interview Slots" name="slots">
+                            <field name="slot_ids">
+                                <list editable="bottom">
+                                    <field name="start_datetime"/>
+                                    <field name="capacity"/>
+                                    <field name="booked_count"/>
+                                    <field name="is_available"/>
+                                    <field name="active"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chat2work_job" model="ir.actions.act_window">
+        <field name="name">Jobs</field>
+        <field name="res_model">chat2work.job</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ── Interview Slot ──────────────────────────────────────────────── -->
+    <record id="view_chat2work_slot_list" model="ir.ui.view">
+        <field name="name">chat2work.interview.slot.list</field>
+        <field name="model">chat2work.interview.slot</field>
+        <field name="arch" type="xml">
+            <list string="Interview Slots" decoration-muted="not is_available">
+                <field name="job_id"/>
+                <field name="start_datetime"/>
+                <field name="capacity"/>
+                <field name="booked_count"/>
+                <field name="is_available"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_chat2work_slot" model="ir.actions.act_window">
+        <field name="name">Interview Slots</field>
+        <field name="res_model">chat2work.interview.slot</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ── Booking ─────────────────────────────────────────────────────── -->
+    <record id="view_chat2work_booking_list" model="ir.ui.view">
+        <field name="name">chat2work.interview.booking.list</field>
+        <field name="model">chat2work.interview.booking</field>
+        <field name="arch" type="xml">
+            <list string="Bookings" decoration-success="state == 'booked'" decoration-muted="state == 'cancelled'">
+                <field name="reference"/>
+                <field name="partner_id"/>
+                <field name="phone"/>
+                <field name="job_id"/>
+                <field name="slot_id"/>
+                <field name="state" widget="badge"/>
+                <field name="channel"/>
+                <field name="create_date"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_chat2work_booking" model="ir.actions.act_window">
+        <field name="name">Bookings</field>
+        <field name="res_model">chat2work.interview.booking</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ── Menus ───────────────────────────────────────────────────────── -->
+    <menuitem id="menu_chat2work_root" name="Chat2Work" sequence="45"/>
+    <menuitem id="menu_chat2work_jobs" name="Jobs" parent="menu_chat2work_root" action="action_chat2work_job" sequence="10"/>
+    <menuitem id="menu_chat2work_slots" name="Interview Slots" parent="menu_chat2work_root" action="action_chat2work_slot" sequence="20"/>
+    <menuitem id="menu_chat2work_bookings" name="Bookings" parent="menu_chat2work_root" action="action_chat2work_booking" sequence="30"/>
+</odoo>
