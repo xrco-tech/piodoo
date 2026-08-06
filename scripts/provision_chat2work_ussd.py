@@ -30,6 +30,9 @@ if not account:
 # ── 2. Fresh bot + variables ────────────────────────────────────────────────
 old = Bot.search([('name', '=', BOT_NAME)])
 if old:
+    # Messages + sessions FK-reference the bot and don't cascade — purge first.
+    env['whatsapp.chatbot.message'].sudo().search([('chatbot_id', 'in', old.ids)]).unlink()
+    env['whatsapp.chatbot.ussd.session'].sudo().search([('chatbot_id', 'in', old.ids)]).unlink()
     old.mapped('step_ids').unlink()
     old.unlink()
 bot = Bot.create({'name': BOT_NAME, 'channel': 'ussd', 'status': 'draft',
