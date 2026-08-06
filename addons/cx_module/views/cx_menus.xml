@@ -190,6 +190,14 @@
               action="comm_chatbot.action_comm_bot"
               sequence="5"/>
 
+    <!-- WhatsApp / USSD chatbots are the separate Gen-1 whatsapp.chatbot model
+         (e.g. the USSD menu flows) — surfaced here alongside the Gen-2 bots. -->
+    <menuitem id="menu_cx_bots_wa_chatbots"
+              name="WhatsApp / USSD Chatbots"
+              parent="menu_cx_bots"
+              action="comm_whatsapp_chatbot.action_whatsapp_chatbot"
+              sequence="7"/>
+
     <menuitem id="menu_cx_bots_steps"
               name="Flow Steps"
               parent="menu_cx_bots"
