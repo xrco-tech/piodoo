@@ -12,7 +12,7 @@ Step = env['whatsapp.chatbot.step'].sudo()
 Answer = env['whatsapp.chatbot.answer'].sudo()
 Account = env['comm.ussd.account'].sudo()
 
-BOT_NAME = 'Chat2Work USSD'
+BOT_NAME = 'Chat To Work USSD'   # whatsapp.chatbot.name allows only letters/spaces/dashes
 SERVICE_CODE = '*384*0000#'   # placeholder until Africa's Talking assigns the real code
 
 # ── 1. USSD account (upsert by service code) ────────────────────────────────
