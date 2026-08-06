@@ -105,7 +105,7 @@ book = opt(root, '3', 'Book interview', 'message', "Select a job to interview fo
 def booking_job(value, label, header):
     job = opt(book, value, label, 'message', header + "\nPick an interview slot:")
     for sval, slabel in (('1', 'Mon 12 Aug 09:00'), ('2', 'Mon 12 Aug 11:00'), ('3', 'Tue 13 Aug 10:00')):
-        slot = opt(job, sval, slabel, 'message', "%s\n%s\n1. Confirm  2. Cancel" % (label, slabel))
+        slot = opt(job, sval, slabel, 'message', "%s\n%s" % (label, slabel))
         opt(slot, '1', 'Confirm', 'message',
             "Booked! Ref CW10432.\n%s, %s.\nWe'll SMS the address & reminders." % (label, slabel))
         opt(slot, '2', 'Cancel', 'message', "Booking cancelled. Dial in again to pick another slot.")
@@ -125,17 +125,17 @@ home(status, '0', 'Main menu')
 # 5. My interviews  (list -> action -> reschedule/cancel)
 mine = opt(root, '5', 'My interviews', 'message', "Your interviews:")
 iv = opt(mine, '1', 'Call Centre Agent - Mon 12 Aug 09:00', 'message',
-         "Call Centre Agent, Mon 12 Aug 09:00\n1. Reschedule  2. Cancel")
+         "Call Centre Agent, Mon 12 Aug 09:00")
 resch = opt(iv, '1', 'Reschedule', 'message', "Pick a new slot:")
 opt(resch, '1', 'Tue 13 Aug 10:00', 'message', "Rescheduled to Tue 13 Aug 10:00. SMS confirmation sent.")
 opt(resch, '2', 'Wed 14 Aug 14:00', 'message', "Rescheduled to Wed 14 Aug 14:00. SMS confirmation sent.")
-canc = opt(iv, '2', 'Cancel', 'message', "Cancel this interview?\n1. Yes  2. No")
+canc = opt(iv, '2', 'Cancel', 'message', "Cancel this interview?")
 opt(canc, '1', 'Yes, cancel', 'message', "Interview cancelled. Rebook anytime by dialling in.")
 opt(canc, '2', 'No, keep it', 'message', "Kept. We'll SMS you a reminder before the interview.")
 home(mine, '0', 'Main menu')
 
 # 6. Talk to a consultant
-cons = opt(root, '6', 'Consultant', 'message', "Request a callback?\n1. Yes, call me\n2. No")
+cons = opt(root, '6', 'Consultant', 'message', "Request a callback?")
 opt(cons, '1', 'Yes, call me', 'message',
     "Thanks! A Chat2Work consultant will call you on this number within 1 business day.")
 opt(cons, '2', 'No', 'message', "No problem. Dial in anytime for jobs & interviews.")
