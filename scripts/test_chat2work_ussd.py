@@ -30,10 +30,10 @@ def run(label, inputs):
             break
 
 
-run("Book an interview (main > 3 > 1 > 1 > 1)", [None, '3', '1', '1', '1'])
-run("Check my status (main > 4 > 1)", [None, '4', '1'])
-run("Register (main > 1 > name > area > field)", [None, '1', 'John Dube', 'Soweto', '1'])
-run("Consultant (main > 6 > 1)", [None, '6', '1'])
+run("Book an interview (main > 3 > 1 > 1 > 1)", [None, '3', '1', '1', '1'])   # creates a booking
+run("Check my status (main > 4)", [None, '4'])                                # reads the booking
+run("My interviews > reschedule (main > 5 > 1 > 2 > 2)", [None, '5', '1', '2', '2'])
+run("My interviews > cancel (main > 5 > 1 > 1 > 1)", [None, '5', '1', '1', '1'])
 
 env.cr.rollback()   # test only — don't persist the sim session/messages
 print("\nDONE (rolled back test session).")

@@ -39,7 +39,8 @@ bot = Bot.create({'name': BOT_NAME, 'channel': 'ussd', 'status': 'draft',
                   'ussd_account_id': account.id})
 
 for vn in ('job_menu', 'job_ids', 'chosen_job_id', 'chosen_job_label',
-           'slot_menu', 'slot_ids', 'chosen_slot_id', 'chosen_slot_label', 'booking_ref'):
+           'slot_menu', 'slot_ids', 'chosen_slot_id', 'chosen_slot_label', 'booking_ref',
+           'status_text', 'iv_menu', 'iv_ids', 'chosen_booking_id', 'chosen_iv_label'):
     Var.create({'chatbot_id': bot.id, 'name': vn})
 
 # ── helpers ─────────────────────────────────────────────────────────────────
@@ -152,6 +153,77 @@ if sid.isdigit():
 setv('booking_ref', ref or 'unavailable')
 """
 
+STATUS_LOAD = HELP + """
+partner = _contact.partner_id
+Bk = env['chat2work.interview.booking'].sudo()
+bks = Bk.search([('partner_id','=',partner.id)], order='create_date desc', limit=8) if partner else Bk.browse()
+if not bks:
+    txt = 'You have no applications yet.\\nChoose Book interview to get started.'
+else:
+    labels = dict(Bk._fields['state'].selection)
+    lines = []
+    for b in bks:
+        lines.append('%s - %s (%s)' % (b.job_id.name or '', b.slot_id.ussd_label() if b.slot_id else 'TBD', labels.get(b.state, b.state)))
+    txt = 'Your applications:\\n' + '\\n'.join(lines)
+setv('status_text', txt)
+"""
+
+MYINT_LOAD = HELP + """
+import datetime as _dt
+partner = _contact.partner_id
+Bk = env['chat2work.interview.booking'].sudo()
+bks = Bk.search([('partner_id','=',partner.id),('state','=','booked')], order='id') if partner else Bk.browse()
+now = _dt.datetime.now()
+rows = [b for b in bks if b.slot_id and (not b.slot_id.start_datetime or b.slot_id.start_datetime > now)][:9]
+lines=[]; ids=[]
+for i,b in enumerate(rows, start=1):
+    lines.append('%d. %s - %s' % (i, b.job_id.name or '', b.slot_id.ussd_label() if b.slot_id else 'TBD')); ids.append(str(b.id))
+setv('iv_menu', '\\n'.join(lines) if lines else 'You have no upcoming interviews.')
+setv('iv_ids', ','.join(ids))
+"""
+
+MYINT_RESOLVE = HELP + """
+ans = last_input()
+ids = [x for x in (getv('iv_ids') or '').split(',') if x]
+bk = None
+if ans.isdigit() and 1 <= int(ans) <= len(ids):
+    bk = env['chat2work.interview.booking'].sudo().browse(int(ids[int(ans)-1]))
+if bk and bk.exists():
+    setv('chosen_booking_id', bk.id)
+    setv('chosen_iv_label', '%s - %s' % (bk.job_id.name or '', bk.slot_id.ussd_label() if bk.slot_id else 'TBD'))
+else:
+    setv('chosen_booking_id',''); setv('chosen_iv_label','(not found)')
+"""
+
+CANCEL_DO = HELP + """
+bid = getv('chosen_booking_id')
+if bid.isdigit():
+    bk = env['chat2work.interview.booking'].sudo().browse(int(bid))
+    if bk.exists(): bk.action_cancel()
+"""
+
+RESCH_LOAD = HELP + """
+bid = getv('chosen_booking_id')
+sl=[]; si=[]
+if bid.isdigit():
+    bk = env['chat2work.interview.booking'].sudo().browse(int(bid))
+    if bk.exists() and bk.job_id:
+        slots = bk.job_id.slot_ids.filtered(lambda s: s.is_available).sorted(lambda s:(s.start_datetime, s.id))[:9]
+        for i,s in enumerate(slots, start=1):
+            sl.append('%d. %s' % (i, s.ussd_label())); si.append(str(s.id))
+setv('slot_menu', '\\n'.join(sl) if sl else 'No other slots available.')
+setv('slot_ids', ','.join(si))
+"""
+
+RESCH_DO = HELP + """
+bid = getv('chosen_booking_id'); sid = getv('chosen_slot_id')
+if bid.isdigit() and sid.isdigit():
+    bk = env['chat2work.interview.booking'].sudo().browse(int(bid))
+    slot = env['chat2work.interview.slot'].sudo().browse(int(sid))
+    if bk.exists() and slot.exists() and slot.is_available:
+        bk.reschedule(slot)
+"""
+
 THANKS_REG = "Thanks! Your profile is saved. We'll match you to jobs and SMS you when interviews open. Dial *384*0000# anytime."
 
 # ── 3. Root: main menu ──────────────────────────────────────────────────────
@@ -187,23 +259,26 @@ nxt(c_yes, 'Book - booked', 'message',
     "Booked! Ref {{variables.booking_ref}}.\n{{variables.chosen_job_label}}\n{{variables.chosen_slot_label}}.\nWe'll SMS the address & reminders.")
 opt(confirm, '2', 'Cancel', 'message', "Booking cancelled. Dial in again to pick another slot.")
 
-# 4. Check my status (static example)
-status = opt(root, '4', 'My status', 'message', "Your applications:")
-opt(status, '1', 'Call Centre Agent - Interview booked', 'message',
-    "Call Centre Agent (JHB)\nStatus: Interview booked\nWe'll SMS reminders.")
-opt(status, '2', 'Warehouse Asst - Under review', 'message',
-    "Warehouse Assistant (PTA)\nStatus: Under review. We'll SMS you if shortlisted.")
-home(status, '0', 'Main menu')
+# 4. Check my status (DYNAMIC — the caller's real bookings)
+status = opt(root, '4', 'My status', 'execute_code', extra={'code': STATUS_LOAD})
+nxt(status, 'Status - show', 'message', "{{variables.status_text}}")
 
-# 5. My interviews (static example)
-mine = opt(root, '5', 'My interviews', 'message', "Your interviews:")
-iv = opt(mine, '1', 'Call Centre Agent - upcoming', 'message', "Call Centre Agent, upcoming")
-resch = opt(iv, '1', 'Reschedule', 'message', "Pick a new slot:")
-opt(resch, '1', 'Next available slot', 'message', "Rescheduled. SMS confirmation sent.")
-canc = opt(iv, '2', 'Cancel', 'message', "Cancel this interview?")
-opt(canc, '1', 'Yes, cancel', 'message', "Interview cancelled. Rebook anytime by dialling in.")
-opt(canc, '2', 'No, keep it', 'message', "Kept. We'll SMS you a reminder before the interview.")
-home(mine, '0', 'Main menu')
+# 5. My interviews (DYNAMIC — list -> cancel / reschedule)
+mine = opt(root, '5', 'My interviews', 'execute_code', extra={'code': MYINT_LOAD})
+mine_pick = nxt(mine, 'My interviews - pick', 'question_text', "Your interviews:\n{{variables.iv_menu}}")
+mine_resolve = nxt(mine_pick, 'My interviews - resolve', 'execute_code', extra={'code': MYINT_RESOLVE})
+mine_action = nxt(mine_resolve, 'My interviews - action', 'message', "{{variables.chosen_iv_label}}")
+# 1. Cancel
+mine_cancel = opt(mine_action, '1', 'Cancel', 'message', "Cancel this interview?")
+mc_yes = opt(mine_cancel, '1', 'Yes, cancel', 'execute_code', extra={'code': CANCEL_DO})
+nxt(mc_yes, 'Cancel - done', 'message', "Interview cancelled. Rebook anytime by dialling in.")
+opt(mine_cancel, '2', 'No, keep it', 'message', "Kept. We'll SMS you a reminder before the interview.")
+# 2. Reschedule
+mine_resch = opt(mine_action, '2', 'Reschedule', 'execute_code', extra={'code': RESCH_LOAD})
+resch_pick = nxt(mine_resch, 'Reschedule - pick slot', 'question_text', "Pick a new slot:\n{{variables.slot_menu}}")
+resch_resolve = nxt(resch_pick, 'Reschedule - resolve slot', 'execute_code', extra={'code': RESOLVE_SLOT})
+resch_do = nxt(resch_resolve, 'Reschedule - apply', 'execute_code', extra={'code': RESCH_DO})
+nxt(resch_do, 'Reschedule - done', 'message', "Rescheduled to {{variables.chosen_slot_label}}. SMS confirmation sent.")
 
 # 6. Consultant (static)
 cons = opt(root, '6', 'Consultant', 'message', "Request a callback?")

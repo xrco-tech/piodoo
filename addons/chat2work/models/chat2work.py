@@ -97,3 +97,15 @@ class Chat2workInterviewBooking(models.Model):
             'partner_id': partner.id if partner else False,
             'phone': phone or (partner and (partner.mobile or partner.phone)) or '',
         })
+
+    def action_cancel(self):
+        """Cancel the booking(s). Used by the USSD flow."""
+        self.write({'state': 'cancelled'})
+        return True
+
+    def reschedule(self, new_slot):
+        """Move this booking to a different (available) slot."""
+        self.ensure_one()
+        new_slot.ensure_one()
+        self.write({'slot_id': new_slot.id, 'job_id': new_slot.job_id.id})
+        return True
