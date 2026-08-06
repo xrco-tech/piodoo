@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 # Provision the Chat2Work USSD flow as a whatsapp.chatbot (channel=ussd).
-# Run with:  docker compose run --rm -T odoo odoo shell -d odoo --no-http < this_file
+# Run:  docker compose run --rm -T odoo odoo shell -d odoo --no-http < this_file
 #
-# Idempotent: deletes and rebuilds the "Chat2Work USSD" bot on each run.
-# The dynamic lists (jobs, slots, statuses) are STATIC EXAMPLES here so the
-# flow is fully navigable/testable — replace them with execute_code steps that
-# read real records once the job/interview models exist.
+# Idempotent: rebuilds the "Chat To Work USSD" bot each run.
+# Book & Browse are DYNAMIC — execute_code steps read live chat2work.job /
+# chat2work.interview.slot records and create chat2work.interview.booking.
+# Register / Status / My interviews / Consultant remain static examples.
 
 Bot = env['whatsapp.chatbot'].sudo()
 Step = env['whatsapp.chatbot.step'].sudo()
 Answer = env['whatsapp.chatbot.answer'].sudo()
 Account = env['comm.ussd.account'].sudo()
+Var = env['whatsapp.chatbot.variable'].sudo()
 
-BOT_NAME = 'Chat To Work USSD'   # whatsapp.chatbot.name allows only letters/spaces/dashes
-SERVICE_CODE = '*384*0000#'   # placeholder until Africa's Talking assigns the real code
+BOT_NAME = 'Chat To Work USSD'   # name allows only letters/spaces/dashes
+SERVICE_CODE = '*384*0000#'       # placeholder until Africa's Talking assigns it
 
-# ── 1. USSD account (upsert by service code) ────────────────────────────────
+# ── 1. USSD account ─────────────────────────────────────────────────────────
 account = Account.search([('service_code', '=', SERVICE_CODE)], limit=1)
 if not account:
     vals = {'name': 'Chat2Work USSD', 'service_code': SERVICE_CODE}
@@ -26,61 +27,128 @@ if not account:
             break
     account = Account.create(vals)
 
-# ── 2. Fresh bot ────────────────────────────────────────────────────────────
+# ── 2. Fresh bot + variables ────────────────────────────────────────────────
 old = Bot.search([('name', '=', BOT_NAME)])
 if old:
     old.mapped('step_ids').unlink()
     old.unlink()
-bot = Bot.create({
-    'name': BOT_NAME,
-    'channel': 'ussd',
-    'status': 'draft',
-    'ussd_account_id': account.id,
-})
+bot = Bot.create({'name': BOT_NAME, 'channel': 'ussd', 'status': 'draft',
+                  'ussd_account_id': account.id})
+
+for vn in ('job_menu', 'job_ids', 'chosen_job_id', 'chosen_job_label',
+           'slot_menu', 'slot_ids', 'chosen_slot_id', 'chosen_slot_label', 'booking_ref'):
+    Var.create({'chatbot_id': bot.id, 'name': vn})
 
 # ── helpers ─────────────────────────────────────────────────────────────────
-def S(name, parent, stype='message', body=None, seq=10):
-    return Step.create({
-        'chatbot_id': bot.id,
-        'parent_id': parent.id if parent else False,
-        'name': name,
-        'step_type': stype,
-        'body_plain': body or '',
-        'sequence': seq,
-    })
+def S(name, parent, stype='message', body=None, seq=10, extra=None):
+    vals = {'chatbot_id': bot.id, 'parent_id': parent.id if parent else False,
+            'name': name, 'step_type': stype, 'body_plain': body or '', 'sequence': seq}
+    if extra:
+        vals.update(extra)
+    return Step.create(vals)
 
-def opt(menu, value, name, stype='message', body=None):
-    """A numbered menu option: child step + a trigger answer on `value`.
-    '0' (Exit/Back) sorts last; 1-9 sort in order."""
+def opt(menu, value, name, stype='message', body=None, extra=None):
     sval = str(value)
     seq = 9000 if sval == '0' else (int(sval) * 10 if sval.isdigit() else 990)
-    child = S(name, menu, stype, body, seq=seq)
+    child = S(name, menu, stype, body, seq=seq, extra=extra)
     ans = Answer.create({'value': sval, 'operator': 'is_equal_to', 'step_id': child.id})
     child.trigger_answer_ids = [(4, ans.id)]
     return child
 
-def nxt(parent, name, stype='message', body=None):
-    """The single follow-on step after a free-text question (no trigger)."""
-    return S(name, parent, stype, body, seq=10)
+def nxt(parent, name, stype='message', body=None, extra=None):
+    return S(name, parent, stype, body, seq=10, extra=extra)
 
 def home(menu, value='0', name='Main menu'):
-    """A '0' option that jumps back to the root (main menu)."""
-    child = Step.create({
-        'chatbot_id': bot.id, 'parent_id': menu.id, 'name': name,
-        'step_type': 'jump_to_flow', 'sequence': 999,
-        'target_chatbot_id': bot.id, 'target_step_id': root.id,
-    })
+    child = Step.create({'chatbot_id': bot.id, 'parent_id': menu.id, 'name': name,
+                         'step_type': 'jump_to_flow', 'sequence': 999,
+                         'target_chatbot_id': bot.id, 'target_step_id': root.id})
     ans = Answer.create({'value': str(value), 'operator': 'is_equal_to', 'step_id': child.id})
     child.trigger_answer_ids = [(4, ans.id)]
     return child
 
+# Shared prelude for every execute_code snippet: setv/getv/last_input helpers.
+HELP = """
+Var = env['whatsapp.chatbot.variable'].sudo()
+Val = env['whatsapp.chatbot.value'].sudo()
+Msg = env['whatsapp.chatbot.message'].sudo()
+_contact = record.contact_id
+_botid = record.chatbot_id.id
+def setv(n, v):
+    var = Var.search([('chatbot_id','=',_botid),('name','=',n)], limit=1)
+    if not var: return
+    ex = Val.search([('contact_id','=',_contact.id),('variable_id','=',var.id)], limit=1)
+    val = '' if v is None else str(v)
+    if ex: ex.value = val
+    else: Val.create({'contact_id':_contact.id,'variable_id':var.id,'value':val})
+def getv(n):
+    var = Var.search([('chatbot_id','=',_botid),('name','=',n)], limit=1)
+    if not var: return ''
+    ex = Val.search([('contact_id','=',_contact.id),('variable_id','=',var.id)], limit=1)
+    return (ex.value or '') if ex else ''
+def last_input():
+    m = Msg.search([('contact_id','=',_contact.id),('chatbot_id','=',_botid),('type','=','incoming')], order='id desc', limit=1)
+    return (m.message_plain or '').strip() if m else ''
+"""
+
+LOAD_JOBS = HELP + """
+jobs = env['chat2work.job'].sudo().search([('active','=',True)], order='sequence,id')
+jobs = [j for j in jobs if j.available_slot_count > 0][:9]
+lines=[]; ids=[]
+for i,j in enumerate(jobs, start=1):
+    lines.append('%d. %s' % (i, j.ussd_label())); ids.append(str(j.id))
+setv('job_menu', '\\n'.join(lines) if lines else 'No jobs available right now.')
+setv('job_ids', ','.join(ids))
+"""
+
+RESOLVE_JOB = HELP + """
+ans = last_input()
+ids = [x for x in (getv('job_ids') or '').split(',') if x]
+job = None
+if ans.isdigit() and 1 <= int(ans) <= len(ids):
+    job = env['chat2work.job'].sudo().browse(int(ids[int(ans)-1]))
+if job and job.exists():
+    setv('chosen_job_id', job.id); setv('chosen_job_label', job.ussd_label())
+    slots = job.slot_ids.filtered(lambda s: s.is_available).sorted(lambda s: (s.start_datetime, s.id))[:9]
+    sl=[]; si=[]
+    for i,s in enumerate(slots, start=1):
+        sl.append('%d. %s' % (i, s.ussd_label())); si.append(str(s.id))
+    setv('slot_menu', '\\n'.join(sl) if sl else 'No slots available for this job.')
+    setv('slot_ids', ','.join(si))
+else:
+    setv('chosen_job_id',''); setv('chosen_job_label',''); setv('slot_menu','Invalid choice. Please dial in again.'); setv('slot_ids','')
+"""
+
+RESOLVE_SLOT = HELP + """
+ans = last_input()
+sids = [x for x in (getv('slot_ids') or '').split(',') if x]
+slot = None
+if ans.isdigit() and 1 <= int(ans) <= len(sids):
+    slot = env['chat2work.interview.slot'].sudo().browse(int(sids[int(ans)-1]))
+if slot and slot.exists() and slot.is_available:
+    setv('chosen_slot_id', slot.id); setv('chosen_slot_label', slot.ussd_label())
+else:
+    setv('chosen_slot_id',''); setv('chosen_slot_label','(unavailable)')
+"""
+
+BOOK_CREATE = HELP + """
+sid = getv('chosen_slot_id')
+ref = ''
+if sid.isdigit():
+    slot = env['chat2work.interview.slot'].sudo().browse(int(sid))
+    if slot.exists() and slot.is_available:
+        partner = _contact.partner_id
+        phone = (partner.mobile or partner.phone or '') if partner else ''
+        bk = env['chat2work.interview.booking'].sudo().book_slot(slot, partner=partner, phone=phone)
+        ref = bk.reference
+setv('booking_ref', ref or 'unavailable')
+"""
+
 THANKS_REG = "Thanks! Your profile is saved. We'll match you to jobs and SMS you when interviews open. Dial *384*0000# anytime."
 
 # ── 3. Root: main menu ──────────────────────────────────────────────────────
-root = S('Main menu', None, 'message',
-         "Chat2Work - Jobs & Interviews\nReply with a number:")
+root = S('Main menu', None, 'message', "Chat2Work - Jobs & Interviews\nReply with a number:")
 
-# 1. Register / profile  (name -> area -> field -> done)
+# 1. Register (static)
 reg = opt(root, '1', 'Register profile', 'question_text', "Enter your full name:")
 reg_area = nxt(reg, 'Register - area', 'question_text', "Enter your town/area:")
 reg_field = nxt(reg_area, 'Register - field', 'message', "Choose your field:")
@@ -90,51 +158,45 @@ opt(reg_field, '3', 'Warehouse/Driver', 'message', THANKS_REG)
 opt(reg_field, '4', 'Admin/General', 'message', THANKS_REG)
 opt(reg_field, '5', 'Other', 'message', THANKS_REG)
 
-# 2. Browse jobs
-browse = opt(root, '2', 'Browse jobs', 'message', "Jobs near you:")
-opt(browse, '1', 'Call Centre Agent - JHB', 'message',
-    "Call Centre Agent (JHB)\nR6 500/mo. Matric required.\nTo book: main menu > 3.")
-opt(browse, '2', 'Warehouse Asst - PTA', 'message',
-    "Warehouse Assistant (PTA)\nR5 800/mo. No experience needed.\nTo book: main menu > 3.")
-opt(browse, '3', 'Retail Cashier - Soweto', 'message',
-    "Retail Cashier (Soweto)\nR6 000/mo. Matric preferred.\nTo book: main menu > 3.")
-home(browse, '0', 'Main menu')
+# 2. Browse jobs (DYNAMIC — lists live jobs)
+browse = opt(root, '2', 'Browse jobs', 'execute_code', extra={'code': LOAD_JOBS})
+nxt(browse, 'Browse - list', 'message',
+    "Jobs near you:\n{{variables.job_menu}}\nTo book, choose 'Book interview' from the main menu.")
 
-# 3. Book an interview  (job -> slot -> confirm -> booked)
-book = opt(root, '3', 'Book interview', 'message', "Select a job to interview for:")
-def booking_job(value, label, header):
-    job = opt(book, value, label, 'message', header + "\nPick an interview slot:")
-    for sval, slabel in (('1', 'Mon 12 Aug 09:00'), ('2', 'Mon 12 Aug 11:00'), ('3', 'Tue 13 Aug 10:00')):
-        slot = opt(job, sval, slabel, 'message', "%s\n%s" % (label, slabel))
-        opt(slot, '1', 'Confirm', 'message',
-            "Booked! Ref CW10432.\n%s, %s.\nWe'll SMS the address & reminders." % (label, slabel))
-        opt(slot, '2', 'Cancel', 'message', "Booking cancelled. Dial in again to pick another slot.")
-    home(job, '0', 'Back to main menu')
-booking_job('1', 'Call Centre Agent - JHB', "Call Centre Agent (JHB)")
-booking_job('2', 'Warehouse Asst - PTA', "Warehouse Assistant (PTA)")
-home(book, '0', 'Main menu')
+# 3. Book an interview (DYNAMIC — job -> slot -> confirm -> booking)
+book = opt(root, '3', 'Book interview', 'execute_code', extra={'code': LOAD_JOBS})
+book_pick = nxt(book, 'Book - pick job', 'question_text',
+                "Select a job to interview for:\n{{variables.job_menu}}")
+book_resolve = nxt(book_pick, 'Book - resolve job', 'execute_code', extra={'code': RESOLVE_JOB})
+slot_pick = nxt(book_resolve, 'Book - pick slot', 'question_text',
+                "Pick an interview slot:\n{{variables.slot_menu}}")
+slot_resolve = nxt(slot_pick, 'Book - resolve slot', 'execute_code', extra={'code': RESOLVE_SLOT})
+confirm = nxt(slot_resolve, 'Book - confirm', 'message',
+              "Confirm interview:\n{{variables.chosen_job_label}}\n{{variables.chosen_slot_label}}")
+c_yes = opt(confirm, '1', 'Confirm', 'execute_code', extra={'code': BOOK_CREATE})
+nxt(c_yes, 'Book - booked', 'message',
+    "Booked! Ref {{variables.booking_ref}}.\n{{variables.chosen_job_label}}\n{{variables.chosen_slot_label}}.\nWe'll SMS the address & reminders.")
+opt(confirm, '2', 'Cancel', 'message', "Booking cancelled. Dial in again to pick another slot.")
 
-# 4. Check my status
+# 4. Check my status (static example)
 status = opt(root, '4', 'My status', 'message', "Your applications:")
 opt(status, '1', 'Call Centre Agent - Interview booked', 'message',
-    "Call Centre Agent (JHB)\nStatus: Interview booked\nMon 12 Aug 09:00 - Ref CW10432\nWe'll SMS reminders.")
+    "Call Centre Agent (JHB)\nStatus: Interview booked\nWe'll SMS reminders.")
 opt(status, '2', 'Warehouse Asst - Under review', 'message',
     "Warehouse Assistant (PTA)\nStatus: Under review. We'll SMS you if shortlisted.")
 home(status, '0', 'Main menu')
 
-# 5. My interviews  (list -> action -> reschedule/cancel)
+# 5. My interviews (static example)
 mine = opt(root, '5', 'My interviews', 'message', "Your interviews:")
-iv = opt(mine, '1', 'Call Centre Agent - Mon 12 Aug 09:00', 'message',
-         "Call Centre Agent, Mon 12 Aug 09:00")
+iv = opt(mine, '1', 'Call Centre Agent - upcoming', 'message', "Call Centre Agent, upcoming")
 resch = opt(iv, '1', 'Reschedule', 'message', "Pick a new slot:")
-opt(resch, '1', 'Tue 13 Aug 10:00', 'message', "Rescheduled to Tue 13 Aug 10:00. SMS confirmation sent.")
-opt(resch, '2', 'Wed 14 Aug 14:00', 'message', "Rescheduled to Wed 14 Aug 14:00. SMS confirmation sent.")
+opt(resch, '1', 'Next available slot', 'message', "Rescheduled. SMS confirmation sent.")
 canc = opt(iv, '2', 'Cancel', 'message', "Cancel this interview?")
 opt(canc, '1', 'Yes, cancel', 'message', "Interview cancelled. Rebook anytime by dialling in.")
 opt(canc, '2', 'No, keep it', 'message', "Kept. We'll SMS you a reminder before the interview.")
 home(mine, '0', 'Main menu')
 
-# 6. Talk to a consultant
+# 6. Consultant (static)
 cons = opt(root, '6', 'Consultant', 'message', "Request a callback?")
 opt(cons, '1', 'Yes, call me', 'message',
     "Thanks! A Chat2Work consultant will call you on this number within 1 business day.")
@@ -143,9 +205,7 @@ opt(cons, '2', 'No', 'message', "No problem. Dial in anytime for jobs & intervie
 # 0. Exit
 opt(root, '0', 'Exit', 'message', "Goodbye! Dial *384*0000# anytime for jobs & interviews.")
 
-# Publish once the tree exists.
 bot.status = 'published'
-
 env.cr.commit()
-print("PROVISIONED bot id=%s steps=%s account=%s (%s)" % (
-    bot.id, len(bot.step_ids), account.id, account.service_code))
+print("PROVISIONED bot id=%s steps=%s vars=%s account=%s (%s)" % (
+    bot.id, len(bot.step_ids), len(bot.bot_variable_ids), account.id, account.service_code))
