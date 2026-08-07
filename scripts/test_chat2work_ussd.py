@@ -36,11 +36,19 @@ run("My interviews > reschedule (main > 5 > 1 > 2 > 2)", [None, '5', '1', '2', '
 run("My interviews > cancel (main > 5 > 1 > 1 > 1)", [None, '5', '1', '1', '1'])
 run("Register (main > 1 > name > area > field)", [None, '1', 'John Dube', 'Soweto', '1'])
 
+run("Consultant callback (main > 6 > 1)", [None, '6', '1'])
+
 cand = env['chat2work.candidate'].sudo().search([('partner_id', '=', p.id)], limit=1)
 print("\nCANDIDATE PROFILE created:", bool(cand))
 if cand:
     print("  name=%r field=%r location=%r phone=%r via=%r" % (
         cand.name, cand.field, cand.location, cand.phone, cand.registered_via))
+
+cb = env['chat2work.callback.request'].sudo().search([('partner_id', '=', p.id)], limit=1)
+print("CALLBACK REQUEST created:", bool(cb))
+if cb:
+    print("  phone=%r state=%r candidate=%r via=%r" % (
+        cb.phone, cb.state, cb.candidate_id.name, cb.channel))
 
 env.cr.rollback()   # test only — don't persist the sim session/messages
 print("\nDONE (rolled back test session).")

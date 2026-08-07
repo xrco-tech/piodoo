@@ -150,10 +150,54 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <!-- ── Callback request ────────────────────────────────────────────── -->
+    <record id="view_chat2work_callback_list" model="ir.ui.view">
+        <field name="name">chat2work.callback.request.list</field>
+        <field name="model">chat2work.callback.request</field>
+        <field name="arch" type="xml">
+            <list string="Callback Requests" decoration-warning="state == 'new'" decoration-muted="state in ('done','cancelled')">
+                <field name="create_date" string="Requested"/>
+                <field name="partner_id"/>
+                <field name="phone"/>
+                <field name="candidate_id"/>
+                <field name="channel"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chat2work_callback_form" model="ir.ui.view">
+        <field name="name">chat2work.callback.request.form</field>
+        <field name="model">chat2work.callback.request</field>
+        <field name="arch" type="xml">
+            <form string="Callback Request">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="phone"/>
+                            <field name="candidate_id"/>
+                        </group>
+                        <group>
+                            <field name="state"/>
+                            <field name="channel"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="Consultant notes…"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chat2work_callback" model="ir.actions.act_window">
+        <field name="name">Callback Requests</field>
+        <field name="res_model">chat2work.callback.request</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
     <!-- ── Menus ───────────────────────────────────────────────────────── -->
     <menuitem id="menu_chat2work_root" name="Chat2Work" sequence="45"/>
     <menuitem id="menu_chat2work_candidates" name="Candidates" parent="menu_chat2work_root" action="action_chat2work_candidate" sequence="5"/>
     <menuitem id="menu_chat2work_jobs" name="Jobs" parent="menu_chat2work_root" action="action_chat2work_job" sequence="10"/>
     <menuitem id="menu_chat2work_slots" name="Interview Slots" parent="menu_chat2work_root" action="action_chat2work_slot" sequence="20"/>
     <menuitem id="menu_chat2work_bookings" name="Bookings" parent="menu_chat2work_root" action="action_chat2work_booking" sequence="30"/>
+    <menuitem id="menu_chat2work_callbacks" name="Callback Requests" parent="menu_chat2work_root" action="action_chat2work_callback" sequence="40"/>
 </odoo>

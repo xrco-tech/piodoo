@@ -161,3 +161,36 @@ class Chat2workInterviewBooking(models.Model):
         new_slot.ensure_one()
         self.write({'slot_id': new_slot.id, 'job_id': new_slot.job_id.id})
         return True
+
+
+class Chat2workCallbackRequest(models.Model):
+    _name = 'chat2work.callback.request'
+    _description = 'Chat2Work Callback Request'
+    _order = 'create_date desc'
+    _rec_name = 'phone'
+
+    partner_id = fields.Many2one('res.partner', 'Contact')
+    phone = fields.Char('Phone')
+    candidate_id = fields.Many2one('chat2work.candidate', 'Candidate')
+    state = fields.Selection([
+        ('new', 'New'), ('in_progress', 'In Progress'),
+        ('done', 'Done'), ('cancelled', 'Cancelled'),
+    ], default='new', required=True)
+    channel = fields.Char('Requested Via', default='ussd')
+    notes = fields.Text('Notes')
+
+    @api.model
+    def request_callback(self, partner=None, phone=None, channel='ussd'):
+        """Log a callback request for a caller. Used by the USSD flow."""
+        phone = phone or (partner and (partner.mobile or partner.phone)) or ''
+        cand = self.env['chat2work.candidate']
+        if partner:
+            cand = cand.search([('partner_id', '=', partner.id)], limit=1)
+        if not cand and phone:
+            cand = self.env['chat2work.candidate'].search([('phone', '=', phone)], limit=1)
+        return self.create({
+            'partner_id': partner.id if partner else False,
+            'phone': phone,
+            'candidate_id': cand.id if cand else False,
+            'channel': channel,
+        })

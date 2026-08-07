@@ -238,6 +238,12 @@ phone = (partner.mobile or partner.phone or '') if partner else ''
 env['chat2work.candidate'].sudo().upsert(partner=partner, phone=phone, name=name, location=loc, field=field, registered_via='ussd')
 """
 
+CALLBACK_DO = HELP + """
+partner = _contact.partner_id
+phone = (partner.mobile or partner.phone or '') if partner else ''
+env['chat2work.callback.request'].sudo().request_callback(partner=partner, phone=phone, channel='ussd')
+"""
+
 # ── 3. Root: main menu ──────────────────────────────────────────────────────
 root = S('Main menu', None, 'message', "Chat2Work - Jobs & Interviews\nReply with a number:")
 
@@ -293,9 +299,10 @@ resch_resolve = nxt(resch_pick, 'Reschedule - resolve slot', 'execute_code', ext
 resch_do = nxt(resch_resolve, 'Reschedule - apply', 'execute_code', extra={'code': RESCH_DO})
 nxt(resch_do, 'Reschedule - done', 'message', "Rescheduled to {{variables.chosen_slot_label}}. SMS confirmation sent.")
 
-# 6. Consultant (static)
+# 6. Consultant (DYNAMIC — logs a chat2work.callback.request)
 cons = opt(root, '6', 'Consultant', 'message', "Request a callback?")
-opt(cons, '1', 'Yes, call me', 'message',
+cons_yes = opt(cons, '1', 'Yes, call me', 'execute_code', extra={'code': CALLBACK_DO})
+nxt(cons_yes, 'Consultant - done', 'message',
     "Thanks! A Chat2Work consultant will call you on this number within 1 business day.")
 opt(cons, '2', 'No', 'message', "No problem. Dial in anytime for jobs & interviews.")
 
