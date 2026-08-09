@@ -50,5 +50,8 @@ if cb:
     print("  phone=%r state=%r candidate=%r via=%r" % (
         cb.phone, cb.state, cb.candidate_id.name, cb.channel))
 
+sms_ct = env['sms.sms'].sudo().search_count([('number', '=', '+27600000009')])
+print("SMS messages created for caller (booking/reschedule/callback):", sms_ct)
+
 env.cr.rollback()   # test only — don't persist the sim session/messages
 print("\nDONE (rolled back test session).")

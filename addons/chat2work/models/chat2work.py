@@ -1,6 +1,25 @@
 # -*- coding: utf-8 -*-
 
+import logging
+
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
+
+
+def _send_sms(env, number, body):
+    """Best-effort SMS via core sms.sms. Never raises — a failed/unconfigured
+    SMS gateway must not break the booking/callback it confirms."""
+    if not number:
+        return False
+    try:
+        env['sms.sms'].sudo().create({
+            'number': number, 'body': body, 'state': 'outgoing',
+        })._send()
+        return True
+    except Exception as e:  # noqa: BLE001
+        _logger.warning("chat2work: SMS to %s failed: %s", number, e)
+        return False
 
 
 class Chat2workJob(models.Model):
@@ -141,14 +160,23 @@ class Chat2workInterviewBooking(models.Model):
 
     @api.model
     def book_slot(self, slot, partner=None, phone=None):
-        """Create a booking for `slot`. Used by the USSD flow."""
+        """Create a booking for `slot` and SMS a confirmation. Used by USSD."""
         slot.ensure_one()
-        return self.create({
+        booking = self.create({
             'slot_id': slot.id,
             'job_id': slot.job_id.id,
             'partner_id': partner.id if partner else False,
             'phone': phone or (partner and (partner.mobile or partner.phone)) or '',
         })
+        booking._send_confirmation_sms()
+        return booking
+
+    def _send_confirmation_sms(self):
+        for bk in self:
+            number = bk.phone or (bk.partner_id and (bk.partner_id.mobile or bk.partner_id.phone)) or ''
+            body = ("Chat2Work: interview booked. %s on %s. Ref %s. We'll SMS the address & reminders."
+                    % (bk.job_id.name or '', bk.slot_id.ussd_label() if bk.slot_id else 'TBD', bk.reference))
+            _send_sms(self.env, number, body)
 
     def action_cancel(self):
         """Cancel the booking(s). Used by the USSD flow."""
@@ -156,10 +184,13 @@ class Chat2workInterviewBooking(models.Model):
         return True
 
     def reschedule(self, new_slot):
-        """Move this booking to a different (available) slot."""
+        """Move this booking to a different (available) slot + SMS the update."""
         self.ensure_one()
         new_slot.ensure_one()
         self.write({'slot_id': new_slot.id, 'job_id': new_slot.job_id.id})
+        number = self.phone or (self.partner_id and (self.partner_id.mobile or self.partner_id.phone)) or ''
+        _send_sms(self.env, number,
+                  "Chat2Work: interview rescheduled to %s. Ref %s." % (new_slot.ussd_label(), self.reference))
         return True
 
 
@@ -188,9 +219,12 @@ class Chat2workCallbackRequest(models.Model):
             cand = cand.search([('partner_id', '=', partner.id)], limit=1)
         if not cand and phone:
             cand = self.env['chat2work.candidate'].search([('phone', '=', phone)], limit=1)
-        return self.create({
+        rec = self.create({
             'partner_id': partner.id if partner else False,
             'phone': phone,
             'candidate_id': cand.id if cand else False,
             'channel': channel,
         })
+        _send_sms(self.env, phone,
+                  "Chat2Work: thanks for your callback request. A consultant will call you within 1 business day.")
+        return rec

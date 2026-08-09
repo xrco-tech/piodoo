@@ -15,7 +15,7 @@ dynamic.
     'author': 'XR Co.',
     'website': 'https://github.com/xrco-tech/piodoo',
     'license': 'LGPL-3',
-    'depends': ['base', 'contacts'],
+    'depends': ['base', 'contacts', 'sms'],
     'data': [
         'security/ir.model.access.csv',
         'data/chat2work_data.xml',
