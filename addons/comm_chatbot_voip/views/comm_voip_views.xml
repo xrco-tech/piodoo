@@ -9,6 +9,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="provider"/>
+                <field name="usage"/>
                 <field name="caller_id"/>
                 <field name="is_default"/>
                 <field name="call_count"/>
@@ -30,24 +31,28 @@
                     <group>
                         <group>
                             <field name="provider"/>
+                            <field name="usage"/>
                             <field name="caller_id"/>
                             <field name="is_default"/>
                             <field name="active"/>
                         </group>
                         <group>
-                            <field name="webhook_hint" readonly="1"/>
+                            <field name="webhook_hint" readonly="1" invisible="is_sip"/>
                             <field name="call_count"/>
+                            <field name="is_sip" invisible="1"/>
                         </group>
                     </group>
-                    <group string="Cloud API (Infobip / Twilio / other)"
-                           invisible="provider == 'sip'">
+                    <group string="Cloud Voice API (Infobip / Africa's Talking / Twilio / other)"
+                           invisible="is_sip">
                         <field name="base_url" placeholder="e.g. jj865v.api.infobip.com"/>
                         <field name="api_key" password="True"/>
                     </group>
-                    <group string="SIP Trunk / PBX" invisible="provider != 'sip'">
+                    <group string="SIP / WebRTC Softphone (SIP trunk / Axivox / OnSIP)"
+                           invisible="not is_sip">
                         <field name="sip_domain"/>
                         <field name="sip_username"/>
                         <field name="sip_password" password="True"/>
+                        <field name="sip_ws_url" placeholder="wss://…"/>
                     </group>
                 </sheet>
             </form>

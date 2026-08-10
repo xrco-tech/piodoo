@@ -14,23 +14,46 @@ class CommVoipAccount(models.Model):
     active = fields.Boolean(default=True)
     is_default = fields.Boolean('Default Account')
 
+    # What this account is used for — an app can run an agent softphone AND
+    # an automation/API account side by side under the same voip channel.
+    usage = fields.Selection([
+        ('agent', 'Agent Softphone'),
+        ('automation', 'Automation / API'),
+        ('both', 'Both'),
+    ], string='Usage', default='automation', required=True)
+
     provider = fields.Selection([
+        # Cloud Voice APIs (REST + webhooks) — automation-friendly.
         ('infobip', 'Infobip Voice'),
-        ('sip', 'SIP Trunk / PBX'),
+        ('africas_talking', "Africa's Talking Voice"),
         ('twilio', 'Twilio'),
+        # SIP / WebRTC softphone (agent-facing).
+        ('sip', 'SIP Trunk / PBX'),
+        ('axivox', 'Axivox (SIP/WebRTC)'),
+        ('onsip', 'OnSIP (SIP/WebRTC)'),
         ('other', 'Other'),
     ], string='Provider', default='other', required=True)
 
-    # Cloud-API providers (Infobip / Twilio / other HTTP).
+    # Which providers are SIP/WebRTC (softphone) vs cloud-API (REST).
+    is_sip = fields.Boolean(compute='_compute_is_sip')
+
+    # Cloud-API providers (Infobip / Africa's Talking / Twilio / other HTTP).
     base_url = fields.Char('API Base URL')
     api_key = fields.Char('API Key / Auth Token')
     caller_id = fields.Char('Caller ID / From Number',
                             help="The number/ID shown to the person being called.")
 
-    # SIP trunk / PBX credentials (used when provider = sip).
+    # SIP / WebRTC credentials (provider = sip / axivox / onsip).
     sip_domain = fields.Char('SIP Domain')
     sip_username = fields.Char('SIP Username')
     sip_password = fields.Char('SIP Password')
+    sip_ws_url = fields.Char('WebSocket URL (WSS)',
+                             help="Secure WebSocket the browser softphone connects to (WebRTC).")
+
+    @api.depends('provider')
+    def _compute_is_sip(self):
+        for rec in self:
+            rec.is_sip = rec.provider in ('sip', 'axivox', 'onsip')
 
     webhook_hint = fields.Char(
         'Inbound Webhook', compute='_compute_webhook_hint',
