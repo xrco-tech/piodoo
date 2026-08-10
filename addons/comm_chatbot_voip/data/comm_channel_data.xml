@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="channel_voip" model="comm.channel">
+            <field name="name">VoIP Calls</field>
+            <field name="code">voip</field>
+            <field name="adapter_key">voip</field>
+            <field name="sequence">45</field>
+            <field name="supports_media_audio" eval="True"/>
+            <field name="is_synchronous" eval="True"/>
+            <field name="regulatory_lock" eval="True"/>
+        </record>
+    </data>
+</odoo>

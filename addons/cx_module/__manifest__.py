@@ -50,6 +50,8 @@ Odoo so the shell installs clean on its own.
         'comm_whatsapp_billing',
         # Phase 4 — Marketing (omnichannel campaign engine + budget caps):
         'comm_campaign',
+        # VoIP Calls channel (foundation: channel + account + call log).
+        'comm_chatbot_voip',
         # Second inbox design: surfaces the Contact Centre (Gen-1) inbox as-is
         # AND lets the UCX-native CC-skin inbox reuse its o_cc_inbox_* styles.
         # NOTE: this pulls the Gen-1 Contact Centre app into UCX's dep graph

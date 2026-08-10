@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── VoIP Account ────────────────────────────────────────────────── -->
+    <record id="view_comm_voip_account_list" model="ir.ui.view">
+        <field name="name">comm.voip.account.list</field>
+        <field name="model">comm.voip.account</field>
+        <field name="arch" type="xml">
+            <list string="VoIP Accounts">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="provider"/>
+                <field name="caller_id"/>
+                <field name="is_default"/>
+                <field name="call_count"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_comm_voip_account_form" model="ir.ui.view">
+        <field name="name">comm.voip.account.form</field>
+        <field name="model">comm.voip.account</field>
+        <field name="arch" type="xml">
+            <form string="VoIP Account">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Chat2Work Voice"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="provider"/>
+                            <field name="caller_id"/>
+                            <field name="is_default"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="webhook_hint" readonly="1"/>
+                            <field name="call_count"/>
+                        </group>
+                    </group>
+                    <group string="Cloud API (Infobip / Twilio / other)"
+                           invisible="provider == 'sip'">
+                        <field name="base_url" placeholder="e.g. jj865v.api.infobip.com"/>
+                        <field name="api_key" password="True"/>
+                    </group>
+                    <group string="SIP Trunk / PBX" invisible="provider != 'sip'">
+                        <field name="sip_domain"/>
+                        <field name="sip_username"/>
+                        <field name="sip_password" password="True"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_comm_voip_account" model="ir.actions.act_window">
+        <field name="name">VoIP Accounts</field>
+        <field name="res_model">comm.voip.account</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a VoIP provider account</p>
+            <p>Configure the provider (Infobip Voice / SIP / Twilio) that will place and receive VoIP calls.</p>
+        </field>
+    </record>
+
+    <!-- ── VoIP Call log ───────────────────────────────────────────────── -->
+    <record id="view_comm_voip_call_list" model="ir.ui.view">
+        <field name="name">comm.voip.call.list</field>
+        <field name="model">comm.voip.call</field>
+        <field name="arch" type="xml">
+            <list string="VoIP Calls"
+                  decoration-success="state == 'completed'"
+                  decoration-danger="state in ('failed','no_answer','busy')"
+                  decoration-muted="state == 'cancelled'">
+                <field name="start_time"/>
+                <field name="direction" widget="badge"
+                       decoration-info="direction == 'incoming'"
+                       decoration-success="direction == 'outgoing'"/>
+                <field name="contact_display" string="Contact"/>
+                <field name="from_number" optional="show"/>
+                <field name="to_number" optional="show"/>
+                <field name="state" widget="badge"/>
+                <field name="duration_display" string="Duration"/>
+                <field name="account_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_comm_voip_call_form" model="ir.ui.view">
+        <field name="name">comm.voip.call.form</field>
+        <field name="model">comm.voip.call</field>
+        <field name="arch" type="xml">
+            <form string="VoIP Call">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="contact_display" string="Contact"/>
+                        <h1><field name="contact_display" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="direction"/>
+                            <field name="from_number"/>
+                            <field name="to_number"/>
+                            <field name="partner_id"/>
+                            <field name="account_id"/>
+                        </group>
+                        <group>
+                            <field name="state"/>
+                            <field name="start_time"/>
+                            <field name="end_time"/>
+                            <field name="duration_display" string="Duration"/>
+                            <field name="external_id"/>
+                            <field name="conversation_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="recording_url" widget="url"/>
+                    </group>
+                    <field name="notes" placeholder="Call notes…"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_comm_voip_call_search" model="ir.ui.view">
+        <field name="name">comm.voip.call.search</field>
+        <field name="model">comm.voip.call</field>
+        <field name="arch" type="xml">
+            <search string="Search VoIP Calls">
+                <field name="contact_display"/>
+                <field name="from_number"/>
+                <field name="to_number"/>
+                <field name="account_id"/>
+                <separator/>
+                <filter string="Incoming" name="incoming" domain="[('direction','=','incoming')]"/>
+                <filter string="Outgoing" name="outgoing" domain="[('direction','=','outgoing')]"/>
+                <separator/>
+                <filter string="Completed" name="completed" domain="[('state','=','completed')]"/>
+                <filter string="Missed / Failed" name="missed" domain="[('state','in',('no_answer','busy','failed'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Direction" name="g_dir" context="{'group_by':'direction'}"/>
+                    <filter string="Status" name="g_state" context="{'group_by':'state'}"/>
+                    <filter string="Account" name="g_acct" context="{'group_by':'account_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_comm_voip_call" model="ir.actions.act_window">
+        <field name="name">VoIP Calls</field>
+        <field name="res_model">comm.voip.call</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_comm_voip_call_search"/>
+    </record>
+</odoo>

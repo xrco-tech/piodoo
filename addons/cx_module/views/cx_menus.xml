@@ -135,6 +135,13 @@
               action="comm_whatsapp_calling.action_whatsapp_call_log"
               sequence="5"/>
 
+    <!-- VoIP call log (SIP / Infobip Voice / Twilio, once wired). -->
+    <menuitem id="menu_cx_voice_voip_calls"
+              name="VoIP Calls"
+              parent="menu_cx_voice_tab"
+              action="comm_chatbot_voip.action_comm_voip_call"
+              sequence="8"/>
+
     <menuitem id="menu_cx_voice_dashboard"
               name="Calls Dashboard"
               parent="menu_cx_voice_tab"
@@ -400,6 +407,12 @@
               parent="menu_cx_config"
               action="comm_sms.action_comm_sms_account"
               sequence="30"/>
+
+    <menuitem id="menu_cx_config_voip_accounts"
+              name="VoIP Accounts"
+              parent="menu_cx_config"
+              action="comm_chatbot_voip.action_comm_voip_account"
+              sequence="35"/>
 
     <!-- Email servers (the Email channel sends via mail.mail / these servers). -->
     <menuitem id="menu_cx_config_mail_out"

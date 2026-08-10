@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_comm_voip_account_user,comm.voip.account.user,model_comm_voip_account,base.group_user,1,0,0,0
+access_comm_voip_account_manager,comm.voip.account.manager,model_comm_voip_account,base.group_system,1,1,1,1
+access_comm_voip_call_user,comm.voip.call.user,model_comm_voip_call,base.group_user,1,1,1,1
+access_comm_voip_call_manager,comm.voip.call.manager,model_comm_voip_call,base.group_system,1,1,1,1
