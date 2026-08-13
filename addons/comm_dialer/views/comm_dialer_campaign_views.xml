@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_comm_dialer_campaign_list" model="ir.ui.view">
+        <field name="name">comm.dialer.campaign.list</field>
+        <field name="model">comm.dialer.campaign</field>
+        <field name="arch" type="xml">
+            <list string="Dialer Campaigns"
+                  decoration-success="state == 'running'"
+                  decoration-muted="state == 'done'">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="mode"/>
+                <field name="account_id"/>
+                <field name="contact_pending" string="Pending"/>
+                <field name="ready_agents" string="Ready"/>
+                <field name="live_calls" string="Live"/>
+                <field name="connect_rate" string="Connect %" widget="percentage" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'running'"
+                       decoration-warning="state == 'paused'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_dialer_campaign_form" model="ir.ui.view">
+        <field name="name">comm.dialer.campaign.form</field>
+        <field name="model">comm.dialer.campaign</field>
+        <field name="arch" type="xml">
+            <form string="Dialer Campaign">
+                <header>
+                    <button name="action_start" type="object" string="Start"
+                            class="btn-primary" invisible="state == 'running'"/>
+                    <button name="action_pause" type="object" string="Pause"
+                            invisible="state != 'running'"/>
+                    <button name="action_reset" type="object" string="Reset to Draft"
+                            invisible="state in ('draft',)"/>
+                    <button name="action_mark_done" type="object" string="Close"
+                            invisible="state in ('done', 'draft')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,running,paused,done"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Q3 Interview Callbacks"/></h1>
+                    </div>
+                    <group>
+                        <group string="Dialing">
+                            <field name="mode"/>
+                            <field name="account_id"/>
+                            <field name="max_lines"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group string="Calling Window (company tz)">
+                            <field name="window_start" widget="float_time"/>
+                            <field name="window_end" widget="float_time"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Retry Policy">
+                            <field name="max_attempts"/>
+                            <field name="retry_gap_hours"/>
+                        </group>
+                        <group string="Predictive Pacing"
+                               invisible="mode != 'predictive'">
+                            <field name="pacing_ratio"/>
+                            <field name="target_abandon_rate"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Live">
+                            <field name="ready_agents"/>
+                            <field name="live_calls"/>
+                        </group>
+                        <group string="Progress">
+                            <field name="contact_total"/>
+                            <field name="contact_pending"/>
+                            <field name="contact_done"/>
+                            <field name="connect_rate" widget="percentage"/>
+                            <field name="abandon_rate" widget="percentage"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Call List" name="contacts">
+                            <field name="contact_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="partner_id"/>
+                                    <field name="number"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="attempts"/>
+                                    <field name="last_disposition_id" optional="show"/>
+                                    <field name="next_attempt" optional="hide"/>
+                                    <field name="call_count" string="Calls"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Agents" name="agents">
+                            <field name="session_ids">
+                                <list>
+                                    <field name="user_id"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="current_call_id" optional="show"/>
+                                    <field name="last_state_change"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_comm_dialer_campaign" model="ir.actions.act_window">
+        <field name="name">Dialer Campaigns</field>
+        <field name="res_model">comm.dialer.campaign</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create an outbound dialer campaign</p>
+            <p>Pick a VoIP account, load a call list, and choose preview / progressive /
+               predictive pacing.</p>
+        </field>
+    </record>
+</odoo>

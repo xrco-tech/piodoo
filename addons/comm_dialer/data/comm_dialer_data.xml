@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Pacing cron. Disabled by default: turn it on only once a real provider
+         is wired into comm.voip.account.originate()/bridge(), otherwise it will
+         create call-log rows with no telephony behind them. -->
+    <record id="ir_cron_dialer_pace" model="ir.cron">
+        <field name="name">Dialer: pace outbound campaigns</field>
+        <field name="model_id" ref="model_comm_dialer_campaign"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_pace()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="False"/>
+    </record>
+</odoo>

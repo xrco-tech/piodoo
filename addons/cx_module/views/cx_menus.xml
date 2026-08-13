@@ -142,6 +142,21 @@
               action="comm_chatbot_voip.action_comm_voip_call"
               sequence="8"/>
 
+    <!-- Outbound dialer: campaigns (progressive / predictive) + the agent
+         console. From comm_dialer. -->
+    <menuitem id="menu_cx_voice_dialer"
+              name="Dialer Campaigns"
+              parent="menu_cx_voice_tab"
+              action="comm_dialer.action_comm_dialer_campaign"
+              groups="cx_module.group_cx_manager"
+              sequence="11"/>
+
+    <menuitem id="menu_cx_voice_dialer_console"
+              name="My Dialer Console"
+              parent="menu_cx_voice_tab"
+              action="comm_dialer.action_comm_dialer_my_console"
+              sequence="12"/>
+
     <menuitem id="menu_cx_voice_dashboard"
               name="Calls Dashboard"
               parent="menu_cx_voice_tab"
@@ -413,6 +428,13 @@
               parent="menu_cx_config"
               action="comm_chatbot_voip.action_comm_voip_account"
               sequence="35"/>
+
+    <!-- Do-Not-Call list (POPIA / CPA opt-out) — checked before every dial. -->
+    <menuitem id="menu_cx_config_dnc"
+              name="Do-Not-Call List"
+              parent="menu_cx_config"
+              action="comm_dialer.action_comm_dialer_dnc"
+              sequence="36"/>
 
     <!-- Email servers (the Email channel sends via mail.mail / these servers). -->
     <menuitem id="menu_cx_config_mail_out"

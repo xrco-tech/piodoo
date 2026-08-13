@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_comm_dialer_campaign_user,comm.dialer.campaign.user,model_comm_dialer_campaign,base.group_user,1,1,1,0
+access_comm_dialer_campaign_admin,comm.dialer.campaign.admin,model_comm_dialer_campaign,base.group_system,1,1,1,1
+access_comm_dialer_contact_user,comm.dialer.contact.user,model_comm_dialer_contact,base.group_user,1,1,1,1
+access_comm_dialer_agent_user,comm.dialer.agent.session.user,model_comm_dialer_agent_session,base.group_user,1,1,1,0
+access_comm_dialer_agent_admin,comm.dialer.agent.session.admin,model_comm_dialer_agent_session,base.group_system,1,1,1,1
+access_comm_dialer_dnc_user,comm.dialer.dnc.user,model_comm_dialer_dnc,base.group_user,1,1,1,0
+access_comm_dialer_dnc_admin,comm.dialer.dnc.admin,model_comm_dialer_dnc,base.group_system,1,1,1,1

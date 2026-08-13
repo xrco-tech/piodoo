@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_comm_dialer_agent_list" model="ir.ui.view">
+        <field name="name">comm.dialer.agent.session.list</field>
+        <field name="model">comm.dialer.agent.session</field>
+        <field name="arch" type="xml">
+            <list string="Dialer Agents"
+                  decoration-success="state == 'ready'"
+                  decoration-info="state == 'on_call'"
+                  decoration-warning="state in ('wrap','paused')"
+                  decoration-muted="state == 'offline'">
+                <field name="user_id"/>
+                <field name="campaign_id"/>
+                <field name="state" widget="badge"/>
+                <field name="current_call_id" optional="show"/>
+                <field name="last_state_change"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_dialer_agent_form" model="ir.ui.view">
+        <field name="name">comm.dialer.agent.session.form</field>
+        <field name="model">comm.dialer.agent.session</field>
+        <field name="arch" type="xml">
+            <form string="Dialer Console">
+                <header>
+                    <button name="action_ready" type="object" string="Go Ready"
+                            class="btn-success" invisible="state == 'ready'"/>
+                    <button name="action_wrap" type="object" string="Wrap-up"
+                            invisible="state != 'on_call'"/>
+                    <button name="action_pause" type="object" string="Pause"
+                            invisible="state in ('paused','offline')"/>
+                    <button name="action_offline" type="object" string="Go Offline"
+                            invisible="state == 'offline'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="offline,ready,on_call,wrap,paused"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="campaign_id"/>
+                        </group>
+                        <group>
+                            <field name="current_call_id"/>
+                            <field name="last_state_change"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_comm_dialer_agent" model="ir.actions.act_window">
+        <field name="name">Dialer Agents</field>
+        <field name="res_model">comm.dialer.agent.session</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- 'My Dialer Console' — opens (creating if needed) the caller's own session. -->
+    <record id="action_comm_dialer_my_console" model="ir.actions.server">
+        <field name="name">My Dialer Console</field>
+        <field name="model_id" ref="model_comm_dialer_agent_session"/>
+        <field name="state">code</field>
+        <field name="code">action = model.open_my_session()</field>
+    </record>
+</odoo>

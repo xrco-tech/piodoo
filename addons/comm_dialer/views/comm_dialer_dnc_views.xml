@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_comm_dialer_dnc_list" model="ir.ui.view">
+        <field name="name">comm.dialer.dnc.list</field>
+        <field name="model">comm.dialer.dnc</field>
+        <field name="arch" type="xml">
+            <list string="Do-Not-Call List" editable="bottom">
+                <field name="number"/>
+                <field name="partner_id"/>
+                <field name="reason"/>
+                <field name="create_date" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_comm_dialer_dnc" model="ir.actions.act_window">
+        <field name="name">Do-Not-Call List</field>
+        <field name="res_model">comm.dialer.dnc</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">The Do-Not-Call list is empty</p>
+            <p>Numbers here are skipped by every dialer campaign (POPIA / CPA opt-out).</p>
+        </field>
+    </record>
+</odoo>
