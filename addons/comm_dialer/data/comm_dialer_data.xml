@@ -10,7 +10,6 @@
         <field name="code">model._cron_pace()</field>
         <field name="interval_number">1</field>
         <field name="interval_type">minutes</field>
-        <field name="numbercall">-1</field>
         <field name="active" eval="False"/>
     </record>
 </odoo>
