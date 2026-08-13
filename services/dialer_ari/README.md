@@ -13,5 +13,10 @@ AMD → bridge to a Ready agent, then write the outcome back to Odoo.
 - An Odoo user (ODOO_USER) + API key with access to comm.voip.call and
   comm.dialer.contact.
 - A comm.voip.account (provider=asterisk) filled in: ARI URL/user/pass, trunk.
-- TODO in bridge.py: map an agent (res.users id) to its PJSIP endpoint, and
-  add a compliance message on abandoned/machine calls.
+- Each agent needs a **SIP endpoint** set (res.users.dialer_sip_ext, editable on
+  the Dialer Console / agent session as "SIP Endpoint") matching a pjsip.conf
+  endpoint. The service bridges to PJSIP/<ext>; Ready agents without an ext are
+  skipped. Progressive pre-assigns the agent at dial time; predictive binds a
+  Ready agent on answer.
+- Remaining TODO in bridge.py: play a compliance message on abandoned/machine
+  calls before hangup.

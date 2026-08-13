@@ -75,6 +75,9 @@ class CommDialerContact(models.Model):
             'state': 'queued',
             'start_time': fields.Datetime.now(),
             'dialer_contact_id': self.id,
+            # Progressive: bind the pre-assigned agent so the bridge service
+            # knows exactly who to connect on answer. Predictive: empty.
+            'dialer_agent_session_id': agent.id if agent else False,
         })
         result = account.originate(self.number, from_number=account.caller_id)
         if result.get('external_id'):

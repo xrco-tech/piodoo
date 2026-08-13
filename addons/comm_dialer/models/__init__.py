@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from . import res_users
 from . import comm_voip_account
 from . import comm_voip_call
 from . import comm_dialer_dnc

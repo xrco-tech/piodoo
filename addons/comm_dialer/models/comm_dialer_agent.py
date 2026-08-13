@@ -23,6 +23,10 @@ class CommDialerAgentSession(models.Model):
     ], default='offline', required=True)
     current_call_id = fields.Many2one('comm.voip.call', 'Current Call',
                                       ondelete='set null')
+    # PJSIP endpoint to bridge answered calls to. Stored so the ARI bridge
+    # service can filter Ready agents that actually have an endpoint.
+    sip_ext = fields.Char(related='user_id.dialer_sip_ext', string='SIP Endpoint',
+                          store=True, readonly=False)
     last_state_change = fields.Datetime(default=fields.Datetime.now)
 
     _sql_constraints = [

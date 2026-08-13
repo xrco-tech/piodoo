@@ -61,7 +61,11 @@ class Odoo:
         return self.models.execute_kw(ODOO_DB, self.uid, ODOO_PASS, model, method, args, kw or {})
 
     def pending_calls(self, limit=20):
-        """Queued outgoing calls on Asterisk accounts, not yet originated."""
+        """Queued outgoing calls on Asterisk accounts, not yet originated.
+
+        Carries the pre-assigned agent (progressive) as agent_sip_ext +
+        dialer_agent_session_id, and the campaign (for predictive pick-on-answer).
+        """
         if not self._asterisk_accounts:
             return []
         return self._call('comm.voip.call', 'search_read', [[
@@ -69,18 +73,28 @@ class Odoo:
             ['external_id', 'in', [False, '']],
             ['dialer_contact_id', '!=', False],
             ['account_id', 'in', self._asterisk_accounts],
-        ]], {'fields': ['id', 'to_number', 'dialer_contact_id'], 'limit': limit})
+        ]], {'fields': ['id', 'to_number', 'dialer_contact_id',
+                        'dialer_agent_session_id', 'agent_sip_ext',
+                        'dialer_campaign_id'], 'limit': limit})
 
     def set_call(self, call_id, vals):
         self._call('comm.voip.call', 'write', [[call_id], vals])
 
     def ready_agent(self, campaign_id):
-        """One Ready agent for the campaign (returns user id or None). TODO: map
-        the user to a PJSIP endpoint (store an ext on res.users or the session)."""
-        ids = self._call('comm.dialer.agent.session', 'search_read', [[
+        """Pick one Ready agent (with an endpoint) for the campaign. Returns
+        {'session_id', 'ext'} or None. Used by predictive, which binds an agent
+        only once a human answers."""
+        if not campaign_id:
+            return None
+        rows = self._call('comm.dialer.agent.session', 'search_read', [[
             ['state', '=', 'ready'], ['campaign_id', '=', campaign_id],
-        ]], {'fields': ['user_id'], 'limit': 1})
-        return ids[0]['user_id'][0] if ids else None
+            ['sip_ext', 'not in', [False, '']],
+        ]], {'fields': ['sip_ext'], 'limit': 1})
+        return {'session_id': rows[0]['id'], 'ext': rows[0]['sip_ext']} if rows else None
+
+    def set_agent(self, session_id, vals):
+        if session_id:
+            self._call('comm.dialer.agent.session', 'write', [[session_id], vals])
 
     def register_result(self, contact_id, outcome):
         self._call('comm.dialer.contact', 'register_result', [[contact_id], outcome])
@@ -143,10 +157,15 @@ async def poll_odoo(odoo, ari, loop):
                 try:
                     ch = await ari.originate(endpoint, 'outbound', CALLER_ID,
                                              {'CALL_ID': str(c['id'])})
+                    sess = c.get('dialer_agent_session_id')
+                    camp = c.get('dialer_campaign_id')
                     LIVE[ch['id']] = {
                         'call_id': c['id'],
                         'contact_id': c['dialer_contact_id'][0],
-                        'campaign_id': None,  # filled from contact if needed
+                        'campaign_id': camp[0] if camp else None,
+                        # Pre-assigned agent (progressive); empty for predictive.
+                        'session_id': sess[0] if sess else None,
+                        'pre_ext': c.get('agent_sip_ext') or None,
                     }
                     await loop.run_in_executor(
                         None, odoo.set_call, c['id'],
@@ -181,34 +200,61 @@ async def handle_events(odoo, ari, loop):
                     if not info:
                         continue
                     amd = await ari.get_var(cid, 'AMDSTATUS')  # HUMAN / MACHINE / NOTSURE
-                    agent = await loop.run_in_executor(None, odoo.ready_agent, info['campaign_id'])
-                    if amd == 'MACHINE' or not agent:
-                        # Abandoned (predictive over-dial) or answering machine.
-                        # TODO: play a short compliance message before hangup.
+
+                    # Progressive pre-assigned an agent; predictive picks one now.
+                    ext = info.get('pre_ext')
+                    session_id = info.get('session_id')
+                    if not ext:
+                        picked = await loop.run_in_executor(
+                            None, odoo.ready_agent, info['campaign_id'])
+                        if picked:
+                            ext, session_id = picked['ext'], picked['session_id']
+
+                    if amd == 'MACHINE' or not ext:
+                        # Answering machine, or no agent free (predictive over-dial)
+                        # => abandoned. TODO: play a short compliance message first.
                         await ari.hangup(cid)
                         await loop.run_in_executor(None, odoo.set_call, info['call_id'],
                                                    {'state': 'cancelled'})
+                        # Release a pre-reserved agent back to Ready.
+                        if info.get('session_id'):
+                            await loop.run_in_executor(
+                                None, odoo.set_agent, info['session_id'],
+                                {'state': 'ready', 'current_call_id': False})
                     else:
                         bridge = await ari.create_bridge()
                         await ari.add_to_bridge(bridge['id'], cid)
-                        # TODO: map `agent` user id -> PJSIP endpoint (e.g. 'PJSIP/1001')
-                        agent_ep = f'PJSIP/{agent}'  # placeholder mapping
+                        agent_ep = f'PJSIP/{ext}'
                         try:
                             ach = await ari.originate(agent_ep, 'agent', CALLER_ID)
                             await ari.add_to_bridge(bridge['id'], ach['id'])
                             info['bridge_id'] = bridge['id']
+                            info['session_id'] = session_id  # bound agent (predictive)
                             await loop.run_in_executor(None, odoo.set_call, info['call_id'],
                                                        {'state': 'in_progress'})
+                            await loop.run_in_executor(
+                                None, odoo.set_agent, session_id,
+                                {'state': 'on_call', 'current_call_id': info['call_id']})
                         except Exception:
                             _log.exception('agent bridge failed; dropping call')
                             await ari.hangup(cid)
                             await loop.run_in_executor(None, odoo.set_call, info['call_id'],
                                                        {'state': 'cancelled'})
+                            if session_id:
+                                await loop.run_in_executor(
+                                    None, odoo.set_agent, session_id,
+                                    {'state': 'ready', 'current_call_id': False})
 
                 elif kind in ('StasisEnd', 'ChannelDestroyed'):
                     info = LIVE.pop(cid, None)
                     if not info:
                         continue
+                    # Release the bound agent into wrap-up (they disposition, then
+                    # go Ready again for the next call).
+                    if info.get('session_id'):
+                        await loop.run_in_executor(
+                            None, odoo.set_agent, info['session_id'],
+                            {'state': 'wrap', 'current_call_id': False})
                     cause = (ev.get('cause_txt') or '').lower()
                     # Map hangup cause -> our outcome.
                     if 'normal' in cause or ev.get('cause') == 16:
