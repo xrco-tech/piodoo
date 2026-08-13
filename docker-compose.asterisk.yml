@@ -1,0 +1,34 @@
+# Opt-in overlay that adds the Asterisk media engine + the ARI bridge service
+# to the odoo-stack. Nothing here runs unless you explicitly include it:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.asterisk.yml up -d asterisk dialer_ari
+#
+# Prereqs: copy asterisk/env.sample to .env and fill in Vox creds + EXTERNAL_IP.
+# Asterisk uses host networking because RTP media needs the host's UDP ports —
+# it will NOT work behind the Cloudflare tunnel (that's HTTP/WS only).
+services:
+  asterisk:
+    image: andrius/asterisk:20-current   # pin to a digest before production
+    network_mode: host                    # RTP media needs host UDP ports
+    env_file: [.env]
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - ./asterisk/etc:/etc/asterisk/templates:ro
+      - ./asterisk/entrypoint.sh:/entrypoint.sh:ro
+      - ./asterisk/keys:/etc/asterisk/keys:ro   # WSS cert/key (fullchain.pem, privkey.pem)
+    restart: unless-stopped
+
+  dialer_ari:
+    build: ./services/dialer_ari
+    env_file: [.env]
+    environment:
+      # Asterisk is host-networked, so reach ARI on the host address.
+      ARI_URL: "http://${EXTERNAL_IP}:8088"
+      # Odoo: reach the app over the compose network (service name 'odoo').
+      ODOO_URL: "http://odoo:8069"
+      ODOO_DB: "odoo"
+      ODOO_USER: "dialer@bot"          # a dedicated Odoo user (create it) + API key
+      ODOO_PASSWORD: "CHANGE_ME_ODOO_API_KEY"
+      POLL_INTERVAL: "2"
+    restart: unless-stopped
+    depends_on: [asterisk]
