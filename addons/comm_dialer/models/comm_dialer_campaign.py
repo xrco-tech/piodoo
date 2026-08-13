@@ -128,16 +128,42 @@ class CommDialerCampaign(models.Model):
             '|', ('next_attempt', '=', False), ('next_attempt', '<=', now),
         ], order='sequence, id', limit=1)
 
-    def _lines_to_open(self, ready_count, room):
-        """How many new call legs to open this tick."""
+    def _answer_rate(self, window=200):
+        """Rolling answer rate (answered / dialed) over the last `window`
+        attempts on this campaign. Falls back to a cold-start assumption until
+        enough calls have accumulated to be meaningful."""
         self.ensure_one()
-        if self.mode == 'preview':
+        Call = self.env['comm.voip.call']
+        dialed = Call.search([('dialer_contact_id.campaign_id', '=', self.id)],
+                             order='id desc', limit=window)
+        if len(dialed) < 20:
+            return 0.35  # cold-start guess until real data lands
+        answered = len(dialed.filtered(lambda c: c.state in ('in_progress', 'completed')))
+        return max(0.05, answered / len(dialed))
+
+    def _lines_to_open(self, ready_count, room, live=0):
+        """How many new call legs to open this tick.
+
+        Progressive: one line per free agent.
+        Predictive: over-dial by pacing_ratio ÷ live answer-rate, then apply an
+        abandon governor so expected dropped calls stay within target_abandon_rate,
+        and subtract calls already in flight so we target a concurrency level
+        rather than stacking every tick."""
+        self.ensure_one()
+        if self.mode == 'preview' or ready_count <= 0:
             return 0
         if self.mode == 'progressive':
-            base = ready_count
-        else:  # predictive — over-dial by the pacing ratio, governed elsewhere.
-            base = math.ceil(ready_count * max(self.pacing_ratio, 1.0))
-        return max(0, min(base, room))
+            return max(0, min(ready_count, room))
+
+        # Predictive.
+        ar = self._answer_rate()
+        t = min(0.99, max(0.0, self.target_abandon_rate / 100.0))
+        # Governor: cap concurrent answers so abandon rate (1 - agents/answers) <= t
+        #   answers <= ready / (1 - t)   =>   lines <= answers / ar
+        lines_cap = math.floor((ready_count / max(1e-3, 1 - t)) / ar)
+        desired = math.ceil(ready_count / ar * max(self.pacing_ratio, 1.0))
+        target_total = min(desired, lines_cap)
+        return max(0, min(target_total - live, room))
 
     def _pace_once(self):
         self.ensure_one()
@@ -149,11 +175,16 @@ class CommDialerCampaign(models.Model):
                 self.state = 'done'
             return
 
-        room = (self.max_lines - self.live_calls) if self.max_lines else 9999
+        live = self.live_calls
+        if self.max_lines:
+            room = self.max_lines - live
+        else:
+            # Soft safety cap when unlimited, so a bug can't dial the world.
+            room = max(0, math.ceil(len(ready) * 5) - live)
         if room <= 0:
             return
 
-        lines = self._lines_to_open(len(ready), room)
+        lines = self._lines_to_open(len(ready), room, live)
         free_agents = list(ready)
         opened = 0
         for i in range(lines):

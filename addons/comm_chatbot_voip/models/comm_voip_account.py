@@ -31,8 +31,20 @@ class CommVoipAccount(models.Model):
         ('sip', 'SIP Trunk / PBX'),
         ('axivox', 'Axivox (SIP/WebRTC)'),
         ('onsip', 'OnSIP (SIP/WebRTC)'),
+        # Self-hosted media engine driven over ARI (progressive/predictive dialer
+        # + agent WebRTC): SIP trunk to the PSTN, agents register over WSS.
+        ('asterisk', 'Asterisk (ARI + SIP/WebRTC)'),
         ('other', 'Other'),
     ], string='Provider', default='other', required=True)
+
+    # Asterisk REST Interface (ARI) — used when provider = asterisk. The dialer's
+    # ARI bridge service authenticates here to originate / AMD / bridge calls.
+    ari_base_url = fields.Char('ARI Base URL', help="e.g. http://asterisk:8088")
+    ari_username = fields.Char('ARI Username')
+    ari_password = fields.Char('ARI Password')
+    ari_app = fields.Char('Stasis App', default='comm_dialer',
+                          help="Name of the ARI Stasis application the bridge service runs.")
+    trunk_name = fields.Char('SIP Trunk', help="PJSIP endpoint/trunk name for outbound PSTN calls (e.g. vox).")
 
     # Which providers are SIP/WebRTC (softphone) vs cloud-API (REST).
     is_sip = fields.Boolean(compute='_compute_is_sip')
@@ -53,7 +65,7 @@ class CommVoipAccount(models.Model):
     @api.depends('provider')
     def _compute_is_sip(self):
         for rec in self:
-            rec.is_sip = rec.provider in ('sip', 'axivox', 'onsip')
+            rec.is_sip = rec.provider in ('sip', 'axivox', 'onsip', 'asterisk')
 
     webhook_hint = fields.Char(
         'Inbound Webhook', compute='_compute_webhook_hint',

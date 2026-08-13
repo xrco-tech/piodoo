@@ -47,12 +47,20 @@
                         <field name="base_url" placeholder="e.g. jj865v.api.infobip.com"/>
                         <field name="api_key" password="True"/>
                     </group>
-                    <group string="SIP / WebRTC Softphone (SIP trunk / Axivox / OnSIP)"
+                    <group string="SIP / WebRTC Softphone (SIP trunk / Axivox / OnSIP / Asterisk)"
                            invisible="not is_sip">
                         <field name="sip_domain"/>
                         <field name="sip_username"/>
                         <field name="sip_password" password="True"/>
                         <field name="sip_ws_url" placeholder="wss://…"/>
+                    </group>
+                    <group string="Asterisk ARI (dialer bridge service)"
+                           invisible="provider != 'asterisk'">
+                        <field name="ari_base_url"/>
+                        <field name="ari_username"/>
+                        <field name="ari_password" password="True"/>
+                        <field name="ari_app"/>
+                        <field name="trunk_name"/>
                     </group>
                 </sheet>
             </form>
