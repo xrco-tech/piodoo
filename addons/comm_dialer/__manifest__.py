@@ -40,7 +40,17 @@ provider is wired into comm.voip.account.originate/bridge).
         'views/comm_dialer_agent_views.xml',
         'views/comm_dialer_dnc_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            # Vendored JsSIP (plain UMD, sets window.JsSIP) — must load first.
+            'comm_dialer/static/src/lib/jssip.min.js',
+            'comm_dialer/static/src/softphone/softphone.scss',
+            'comm_dialer/static/src/softphone/softphone.js',
+            'comm_dialer/static/src/softphone/softphone.xml',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,
 }
+

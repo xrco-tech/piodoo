@@ -54,6 +54,27 @@ class CommDialerAgentSession(models.Model):
                     'last_state_change': fields.Datetime.now()})
 
     @api.model
+    def get_softphone_config(self):
+        """Config for the current user's WebRTC softphone. Returns
+        {'enabled': False} when nothing is provisioned yet, so the widget stays
+        inert until an Asterisk account + the user's SIP endpoint exist."""
+        user = self.env.user
+        account = self.env['comm.voip.account'].search(
+            [('provider', '=', 'asterisk'), ('active', '=', True)],
+            order='is_default desc, sequence, id', limit=1)
+        if not account or not account.sip_ws_url or not user.dialer_sip_ext:
+            return {'enabled': False}
+        return {
+            'enabled': True,
+            'ws_url': account.sip_ws_url,
+            'domain': account.sip_domain or '',
+            'ext': user.dialer_sip_ext,
+            'secret': user.dialer_sip_secret or '',
+            'ice': account.get_ice_servers(),
+            'display': user.name,
+        }
+
+    @api.model
     def open_my_session(self):
         """Return (creating if needed) the current user's session record —
         used by the 'My Dialer Console' menu action."""

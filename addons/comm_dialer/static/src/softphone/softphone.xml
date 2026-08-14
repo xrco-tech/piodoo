@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="comm_dialer.Softphone">
+        <div class="o_dialer_softphone" t-if="state.enabled">
+            <button class="btn o_dialer_sp_btn" t-att-title="statusLabel">
+                <i class="fa fa-headphones"/>
+                <span class="o_dialer_sp_dot" t-att-class="dotClass"/>
+            </button>
+            <div class="o_dialer_sp_panel"
+                 t-if="state.status === 'ringing' || state.status === 'incall'">
+                <div class="o_dialer_sp_caller">
+                    <span class="o_dialer_sp_tag" t-esc="state.status === 'ringing' ? 'Incoming' : 'On call'"/>
+                    <span class="o_dialer_sp_num" t-esc="state.caller"/>
+                </div>
+                <div class="o_dialer_sp_actions">
+                    <button class="btn btn-sm btn-secondary"
+                            t-att-class="{ active: state.muted }"
+                            t-on-click="toggleMute"
+                            t-att-title="state.muted ? 'Unmute' : 'Mute'">
+                        <i t-att-class="state.muted ? 'fa fa-microphone-slash' : 'fa fa-microphone'"/>
+                    </button>
+                    <button class="btn btn-sm btn-danger" t-on-click="hangup" title="Hang up">
+                        <i class="fa fa-phone"/> End
+                    </button>
+                </div>
+            </div>
+            <audio t-ref="audio" autoplay="autoplay"/>
+        </div>
+    </t>
+</templates>

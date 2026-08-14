@@ -1,0 +1,68 @@
+.o_dialer_softphone {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    .o_dialer_sp_btn {
+        position: relative;
+        color: inherit;
+    }
+
+    // Status dot on the systray icon.
+    .o_dialer_sp_dot {
+        position: absolute;
+        right: 2px;
+        bottom: 2px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: 1px solid var(--o-navbar-bg, #fff);
+
+        &.o_sp_ok      { background: #28a745; }                 // registered
+        &.o_sp_incall  { background: #17a2b8; }                 // on call
+        &.o_sp_ring    { background: #ffc107; animation: o_sp_pulse 1s infinite; }
+        &.o_sp_wait    { background: #6c757d; }                 // connecting
+        &.o_sp_off     { background: #adb5bd; }                 // idle / unregistered
+        &.o_sp_err     { background: #dc3545; }                 // failed
+    }
+
+    .o_dialer_sp_panel {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        min-width: 220px;
+        margin-top: 4px;
+        padding: 10px 12px;
+        background: var(--o-view-background-color, #fff);
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 6px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+        z-index: 1050;
+
+        .o_dialer_sp_caller {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 8px;
+        }
+        .o_dialer_sp_tag {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            opacity: 0.6;
+        }
+        .o_dialer_sp_num {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .o_dialer_sp_actions {
+            display: flex;
+            gap: 8px;
+        }
+    }
+}
+
+@keyframes o_sp_pulse {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.3; }
+    100% { opacity: 1; }
+}
