@@ -31,7 +31,14 @@ mkdir -p asterisk/keys && cp <your fullchain/privkey> asterisk/keys/
 sudo ufw allow 5060/udp
 sudo ufw allow 8089/tcp
 sudo ufw allow 10000:10200/udp
+# TURN (coturn) — only if using it: signalling + TLS + relay range
+sudo ufw allow 3478
+sudo ufw allow 5349/tcp
+sudo ufw allow 20000:20200/udp
 ```
+If you're using TURN, also set `TURN_REALM` + `TURN_SECRET` in `.env`, and put the
+same `TURN URL` + `TURN Secret` on the Odoo VoIP account so agent softphones get
+ICE credentials.
 
 ## 3. Create the Odoo API user for the bridge service
 In Odoo: Settings ▸ Users → new user `dialer@bot`, give it access to the CX/dialer
@@ -56,7 +63,10 @@ For each agent, two halves must match:
 ## 6. Start the media engine + bridge service
 ```bash
 cd /home/ubuntu/odoo-stack
+# add `coturn` to the list if you're using TURN for agent audio
 docker compose -f docker-compose.yml -f docker-compose.asterisk.yml up -d asterisk dialer_ari
+# with TURN:
+# docker compose -f docker-compose.yml -f docker-compose.asterisk.yml up -d asterisk coturn dialer_ari
 ```
 
 ## 7. Verify the trunk + ARI

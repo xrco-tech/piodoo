@@ -61,6 +61,8 @@
                         <field name="ari_password" password="True"/>
                         <field name="ari_app"/>
                         <field name="trunk_name"/>
+                        <field name="turn_url"/>
+                        <field name="turn_secret" password="True"/>
                     </group>
                 </sheet>
             </form>

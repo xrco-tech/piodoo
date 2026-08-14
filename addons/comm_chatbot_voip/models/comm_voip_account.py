@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+import base64
+import hashlib
+import hmac
+import time
 
 from odoo import api, fields, models
 
@@ -45,6 +49,31 @@ class CommVoipAccount(models.Model):
     ari_app = fields.Char('Stasis App', default='comm_dialer',
                           help="Name of the ARI Stasis application the bridge service runs.")
     trunk_name = fields.Char('SIP Trunk', help="PJSIP endpoint/trunk name for outbound PSTN calls (e.g. vox).")
+
+    # TURN (coturn) — for agent WebRTC media relay behind NAT.
+    turn_url = fields.Char('TURN URL',
+                           help="e.g. turn:203.0.113.10:3478 — given to agent softphones for media relay.")
+    turn_secret = fields.Char('TURN Secret',
+                              help="coturn static-auth-secret; Odoo mints short-lived ICE credentials from it.")
+
+    def get_ice_servers(self, ttl=3600):
+        """ICE server config (STUN/TURN) for an agent's WebRTC softphone.
+
+        Uses coturn's use-auth-secret (REST) scheme: the username is an expiry
+        timestamp and the credential is base64(HMAC-SHA1(secret, username)), so
+        Odoo never ships the long-lived TURN secret to the browser."""
+        self.ensure_one()
+        servers = []
+        if self.turn_url and self.turn_secret:
+            username = '%d:%s' % (int(time.time()) + ttl, self.env.user.login)
+            digest = hmac.new(self.turn_secret.encode(), username.encode(),
+                              hashlib.sha1).digest()
+            servers.append({
+                'urls': [self.turn_url],
+                'username': username,
+                'credential': base64.b64encode(digest).decode(),
+            })
+        return servers
 
     # Which providers are SIP/WebRTC (softphone) vs cloud-API (REST).
     is_sip = fields.Boolean(compute='_compute_is_sip')
