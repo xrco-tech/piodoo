@@ -188,7 +188,12 @@ class CommDialerCampaign(models.Model):
                 self.state = 'done'
             return
 
-        live = self.live_calls
+        # Count in-flight directly — the live_calls computed field is not stored
+        # and can be stale within a transaction, which would break pacing.
+        live = self.env['comm.voip.call'].search_count([
+            ('dialer_campaign_id', '=', self.id),
+            ('state', 'in', ('queued', 'ringing', 'in_progress')),
+        ])
         if self.max_lines:
             room = self.max_lines - live
         else:
@@ -284,7 +289,10 @@ class CommDialerCampaign(models.Model):
                 else:
                     agent = self.session_ids.filtered(lambda s: s.state == 'ready')[:1]
                 if agent:
-                    call.write({'state': 'in_progress'})
+                    # Bind the agent onto the call too (predictive picks here),
+                    # so completion/teardown can release them.
+                    call.write({'state': 'in_progress',
+                                'dialer_agent_session_id': agent.id})
                     agent.write({'state': 'on_call', 'current_call_id': call.id,
                                  'last_state_change': now})
                 else:
