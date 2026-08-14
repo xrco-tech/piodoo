@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import math
+import random
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
@@ -58,6 +59,18 @@ class CommDialerCampaign(models.Model):
                                             "keep dropped (abandoned) calls at or below this.")
     max_lines = fields.Integer('Max Concurrent Lines', default=0,
                                help="Hard cap on simultaneous live calls (0 = unlimited).")
+
+    # ── Dry-run (simulated telephony — no provider needed) ────────────────
+    simulate = fields.Boolean(
+        'Dry-run (simulate)',
+        help="Run the whole loop against a SIMULATED telephony backend — no Vox / "
+             "Asterisk needed. Calls advance one stage per tick (queued → ringing → "
+             "answered/bridged → completed) so you can watch progressive and "
+             "predictive work in the UI.")
+    sim_answer_rate = fields.Float('Sim Answer Rate', default=0.35,
+                                   help="Fraction of dialled calls a human/machine picks up.")
+    sim_machine_rate = fields.Float('Sim Machine Rate', default=0.1,
+                                    help="Fraction of answered calls that are answering machines (AMD).")
 
     contact_ids = fields.One2many('comm.dialer.contact', 'campaign_id', 'Contacts')
     session_ids = fields.One2many('comm.dialer.agent.session', 'campaign_id', 'Agents')
@@ -205,8 +218,99 @@ class CommDialerCampaign(models.Model):
     def _cron_pace(self):
         """Cron entry point — paces every running campaign. Disabled by default;
         enable the cron once a real provider is wired into originate()/bridge()."""
-        for c in self.search([('state', '=', 'running')]):
+        for c in self.search([('state', '=', 'running'), ('simulate', '=', False)]):
             try:
                 c._pace_once()
             except Exception:  # one bad campaign must not stall the rest
                 _logger.exception("Dialer pacing failed for campaign %s", c.id)
+
+    # ── Dry-run simulation ───────────────────────────────────────────────
+    # Stands in for the ARI bridge service: advances each call one stage per
+    # tick and drives the exact same agent-state + retry transitions real
+    # telephony would, using simulated answer/AMD outcomes.
+    def action_sim_tick(self):
+        for c in self:
+            c._simulate_tick()
+        return True
+
+    def action_reset_contacts(self):
+        """Re-arm the call list and clear simulated calls, for repeat dry-runs."""
+        for c in self:
+            c.contact_ids.write({'state': 'pending', 'attempts': 0,
+                                 'next_attempt': False, 'last_disposition_id': False})
+            c.mapped('contact_ids.call_ids').unlink()
+            c.session_ids.filtered(lambda s: s.state != 'offline').write(
+                {'state': 'ready', 'current_call_id': False})
+        return True
+
+    def _sim_release(self, session, to_state):
+        if session:
+            session.write({'state': to_state, 'current_call_id': False,
+                           'last_state_change': fields.Datetime.now()})
+
+    def _simulate_tick(self):
+        self.ensure_one()
+        if not self.simulate or self.state != 'running':
+            return
+        Call = self.env['comm.voip.call']
+        now = fields.Datetime.now()
+        base = [('dialer_campaign_id', '=', self.id)]
+
+        # 0. Wrap-up completes → agents return to Ready (keeps the loop flowing).
+        self.session_ids.filtered(lambda s: s.state == 'wrap')._set_state('ready')
+
+        # 1. In-progress calls finish → completed.
+        for call in Call.search(base + [('state', '=', 'in_progress')]):
+            call.write({'state': 'completed', 'end_time': now,
+                        'duration': random.randint(20, 90)})
+            if call.dialer_contact_id:
+                call.dialer_contact_id.register_result('completed')
+            self._sim_release(call.dialer_agent_session_id, 'wrap')
+
+        # 2. Ringing calls resolve: answered? machine? agent free?
+        for call in Call.search(base + [('state', '=', 'ringing')]):
+            contact = call.dialer_contact_id
+            pre = call.dialer_agent_session_id  # progressive pre-assignment
+            if random.random() < self.sim_answer_rate:
+                if random.random() < self.sim_machine_rate:          # AMD: machine
+                    call.write({'state': 'no_answer', 'end_time': now})
+                    if contact:
+                        contact.register_result('no_answer')
+                    self._sim_release(pre, 'ready')
+                    continue
+                # Human — needs an agent.
+                if pre and pre.state == 'on_call':
+                    agent = pre
+                else:
+                    agent = self.session_ids.filtered(lambda s: s.state == 'ready')[:1]
+                if agent:
+                    call.write({'state': 'in_progress'})
+                    agent.write({'state': 'on_call', 'current_call_id': call.id,
+                                 'last_state_change': now})
+                else:
+                    # Human answered but no agent free → abandoned (predictive drop).
+                    call.write({'state': 'cancelled', 'end_time': now})
+                    if contact:
+                        contact.register_result('no_answer')
+            else:
+                outcome = 'busy' if random.random() < 0.3 else 'no_answer'
+                call.write({'state': outcome, 'end_time': now})
+                if contact:
+                    contact.register_result(outcome)
+                self._sim_release(pre, 'ready')
+
+        # 3. Queued → ringing (the "originate" the bridge service would perform).
+        Call.search(base + [('state', '=', 'queued')]).write({'state': 'ringing'})
+
+        # 4. Pace: open new lines for this tick.
+        self._pace_once()
+
+    @api.model
+    def _cron_simulate(self):
+        """Cron entry point for dry-run campaigns (safe to leave enabled — only
+        touches campaigns with simulate=True)."""
+        for c in self.search([('state', '=', 'running'), ('simulate', '=', True)]):
+            try:
+                c._simulate_tick()
+            except Exception:
+                _logger.exception("Dialer sim failed for campaign %s", c.id)

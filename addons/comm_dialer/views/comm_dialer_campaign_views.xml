@@ -36,6 +36,12 @@
                             invisible="state in ('draft',)"/>
                     <button name="action_mark_done" type="object" string="Close"
                             invisible="state in ('done', 'draft')"/>
+                    <button name="action_sim_tick" type="object" string="▶ Dry-run Tick"
+                            class="btn-primary"
+                            invisible="not simulate or state != 'running'"/>
+                    <button name="action_reset_contacts" type="object" string="Reset List"
+                            invisible="not simulate"
+                            confirm="Reset all contacts to Pending and clear simulated calls?"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,running,paused,done"/>
                 </header>
@@ -51,6 +57,7 @@
                             <field name="mode"/>
                             <field name="account_id"/>
                             <field name="max_lines"/>
+                            <field name="simulate"/>
                             <field name="active" invisible="1"/>
                         </group>
                         <group string="Calling Window (company tz)">
@@ -68,6 +75,10 @@
                             <field name="pacing_ratio"/>
                             <field name="target_abandon_rate"/>
                         </group>
+                    </group>
+                    <group string="Dry-run (simulated telephony)" invisible="not simulate">
+                        <field name="sim_answer_rate"/>
+                        <field name="sim_machine_rate"/>
                     </group>
                     <group>
                         <group string="Live">
