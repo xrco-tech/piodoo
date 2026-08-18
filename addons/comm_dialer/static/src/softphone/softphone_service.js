@@ -53,7 +53,15 @@ export const softphoneService = {
                     ensureAudio().srcObject = ev.streams[0];
                     ensureAudio().play().catch(() => {});
                 }
+                // Remote media is now flowing — safe to auto-record.
+                maybeAutoRecord();
             });
+        }
+
+        function maybeAutoRecord() {
+            if (state.autoRecord && !recorder && state.status === "incall") {
+                startRecording();
+            }
         }
 
         function onSession(e) {
@@ -75,11 +83,10 @@ export const softphoneService = {
                 callId = null;
             }
 
+            console.log("[softphone] incoming call, X-Voip-Call-Id =", callId, "autoRecord =", state.autoRecord);
             const onIncall = () => {
                 state.status = "incall";
-                if (state.autoRecord) {
-                    startRecording();
-                }
+                maybeAutoRecord(); // starts now if remote media is already up
             };
             s.on("accepted", onIncall);
             s.on("confirmed", onIncall);
@@ -136,8 +143,9 @@ export const softphoneService = {
                 const pc = session.connection;
                 const localTracks = pc.getSenders().map((s) => s.track).filter((t) => t && t.kind === "audio");
                 const remoteTracks = pc.getReceivers().map((r) => r.track).filter((t) => t && t.kind === "audio");
+                console.log("[softphone] startRecording tracks — local:", localTracks.length, "remote:", remoteTracks.length);
                 if (!localTracks.length || !remoteTracks.length) {
-                    return; // media not up yet
+                    return; // media not up yet — will retry on the track event
                 }
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 recCtx = new AudioCtx();
@@ -155,7 +163,9 @@ export const softphoneService = {
                 recorder.start();
                 recStartedAt = Date.now();
                 state.recording = true;
-            } catch {
+                console.log("[softphone] recording started");
+            } catch (err) {
+                console.warn("[softphone] startRecording failed:", err);
                 recorder = null;
                 state.recording = false;
             }
@@ -189,6 +199,7 @@ export const softphoneService = {
             } catch {
                 // ignore
             }
+            console.log("[softphone] stopRecording — chunks:", chunks.length, "callId:", targetCall);
             if (!chunks.length || !targetCall) {
                 return; // nothing recorded, or no call to attach to
             }
@@ -197,13 +208,14 @@ export const softphoneService = {
             form.append("recording", new Blob(chunks, { type: "audio/webm" }), "voip_recording.webm");
             form.append("duration", String(durationSeconds));
             try {
-                await fetch(`/voip/call/upload_recording/${targetCall}`, {
+                const resp = await fetch(`/voip/call/upload_recording/${targetCall}`, {
                     method: "POST",
                     credentials: "same-origin",
                     body: form,
                 });
-            } catch {
-                // best-effort — the call is already over
+                console.log("[softphone] recording upload status:", resp.status);
+            } catch (err) {
+                console.warn("[softphone] recording upload failed:", err);
             }
         }
 
