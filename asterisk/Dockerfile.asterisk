@@ -1,0 +1,16 @@
+# Minimal Asterisk image built from Debian — multi-arch (works on the ARM64 box).
+# Debian's asterisk package (20.x) includes chan_pjsip, res_http_websocket and
+# res_srtp (DTLS-SRTP), which is everything WebRTC needs.
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      asterisk \
+      asterisk-modules \
+      asterisk-core-sounds-en-gsm \
+      ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+# Config is mounted at runtime; entrypoint (mounted) renders templates then
+# execs `asterisk -f`.
+CMD ["asterisk", "-f"]
