@@ -32,7 +32,8 @@ export const softphoneService = {
         let recChunks = [];
         let recNodes = []; // keep graph nodes referenced so they aren't GC'd
         let recStartedAt = 0;
-        let callId = null; // comm.voip.call id, read from the INVITE header
+        let callId = null; // comm.voip.call this call is logged as
+        let myExt = "";    // this agent's own SIP extension (the call's "to")
 
         // One shared AudioContext, primed/kept-running by real user gestures so
         // the browser autoplay policy can't leave it suspended (which yields
@@ -92,21 +93,36 @@ export const softphoneService = {
             }
             session = s;
             const ri = s.remote_identity;
-            state.caller = (ri && ri.uri && ri.uri.user) || "Call";
+            const fromNumber = (ri && ri.uri && ri.uri.user) || "";
+            state.caller = fromNumber || "Call";
             state.status = "ringing";
             state.muted = false;
             state.recording = false;
-            // The ARI bridge stamps the comm.voip.call id on the agent leg so
-            // the recording attaches to the right call.
+            callId = null;
+            // The ARI bridge stamps the comm.voip.call id on the agent leg; if
+            // present we log against that record, otherwise we create one.
+            let headerId = null;
             try {
-                callId = (e.request && e.request.getHeader && e.request.getHeader("X-Voip-Call-Id")) || null;
+                headerId = (e.request && e.request.getHeader && e.request.getHeader("X-Voip-Call-Id")) || null;
             } catch {
-                callId = null;
+                headerId = null;
             }
+            console.debug("[softphone] incoming call, X-Voip-Call-Id =", headerId, "autoRecord =", state.autoRecord);
 
-            console.log("[softphone] incoming call, X-Voip-Call-Id =", callId, "autoRecord =", state.autoRecord);
-            const onIncall = () => {
+            let callStarted = false;
+            const onIncall = async () => {
                 state.status = "incall";
+                if (!callStarted) {
+                    callStarted = true;
+                    try {
+                        // Resolve/create the call record (fills from/to/start/state).
+                        callId = await orm.call("comm.dialer.agent.session", "softphone_call_start", [
+                            headerId, fromNumber, myExt,
+                        ]);
+                    } catch {
+                        callId = headerId ? parseInt(headerId, 10) || null : null;
+                    }
+                }
                 maybeAutoRecord(); // starts now if remote media is already up
             };
             s.on("accepted", onIncall);
@@ -146,9 +162,15 @@ export const softphoneService = {
         }
 
         function onEnded() {
+            const endedCall = callId;
             if (recorder) {
-                stopRecordingAndUpload();
+                stopRecordingAndUpload(); // captures callId synchronously
             }
+            if (endedCall) {
+                // Close out the call record (end_time + duration + state).
+                orm.call("comm.dialer.agent.session", "softphone_call_end", [endedCall]).catch(() => {});
+            }
+            callId = null;
             session = null;
             state.caller = "";
             state.muted = false;
@@ -164,7 +186,7 @@ export const softphoneService = {
                 const pc = session.connection;
                 const localTracks = pc.getSenders().map((s) => s.track).filter((t) => t && t.kind === "audio");
                 const remoteTracks = pc.getReceivers().map((r) => r.track).filter((t) => t && t.kind === "audio");
-                console.log("[softphone] startRecording tracks — local:", localTracks.length, "remote:", remoteTracks.length);
+                console.debug("[softphone] startRecording tracks — local:", localTracks.length, "remote:", remoteTracks.length);
                 if (!localTracks.length || !remoteTracks.length) {
                     return; // media not up yet — will retry on the track event
                 }
@@ -190,7 +212,7 @@ export const softphoneService = {
                 recorder.start(1000);
                 recStartedAt = Date.now();
                 state.recording = true;
-                console.log("[softphone] recording started");
+                console.debug("[softphone] recording started");
             } catch (err) {
                 console.warn("[softphone] startRecording failed:", err);
                 recorder = null;
@@ -225,7 +247,7 @@ export const softphoneService = {
             } catch {
                 // ignore
             }
-            console.log("[softphone] stopRecording — chunks:", chunks.length, "callId:", targetCall);
+            console.debug("[softphone] stopRecording — chunks:", chunks.length, "callId:", targetCall);
             if (!chunks.length || !targetCall) {
                 return; // nothing recorded, or no call to attach to
             }
@@ -239,7 +261,7 @@ export const softphoneService = {
                     credentials: "same-origin",
                     body: form,
                 });
-                console.log("[softphone] recording upload status:", resp.status);
+                console.debug("[softphone] recording upload status:", resp.status);
             } catch (err) {
                 console.warn("[softphone] recording upload failed:", err);
             }
@@ -293,6 +315,7 @@ export const softphoneService = {
             state._ice = cfg.ice || [];
             state.manual = !!cfg.manual_answer;
             state.autoRecord = !!cfg.auto_record;
+            myExt = cfg.ext || "";
             if (typeof window.JsSIP === "undefined") {
                 state.status = "failed";
                 return;

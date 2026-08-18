@@ -16,6 +16,7 @@ This is the telephony half of the dialer. It needs a live Asterisk (see
 depend on your dialplan/AMD tuning and how you map agents → SIP endpoints.
 """
 import asyncio
+import datetime
 import json
 import logging
 import os
@@ -272,7 +273,10 @@ async def handle_events(odoo, ari, loop):
                         state, outcome = 'no_answer', 'no_answer'
                     else:
                         state, outcome = 'failed', 'failed'
-                    await loop.run_in_executor(None, odoo.set_call, info['call_id'], {'state': state})
+                    end_ts = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+                    await loop.run_in_executor(
+                        None, odoo.set_call, info['call_id'],
+                        {'state': state, 'end_time': end_ts})  # duration auto-fills
                     await loop.run_in_executor(None, odoo.register_result, info['contact_id'], outcome)
 
 

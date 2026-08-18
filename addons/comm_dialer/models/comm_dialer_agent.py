@@ -81,6 +81,51 @@ class CommDialerAgentSession(models.Model):
         }
 
     @api.model
+    def softphone_call_start(self, header_call_id=None, from_number='', to_number='',
+                             direction='incoming'):
+        """Resolve (bridge-created) or create the comm.voip.call for a softphone
+        call, populating from/to/start/state. Returns the call id so the browser
+        can attach a recording and close the record on hangup."""
+        Call = self.env['comm.voip.call']
+        if header_call_id:
+            try:
+                call = Call.browse(int(header_call_id))
+            except (TypeError, ValueError):
+                call = Call.browse()
+            if call.exists():
+                vals = {}
+                if not call.start_time:
+                    vals['start_time'] = fields.Datetime.now()
+                if call.state in ('queued', 'ringing'):
+                    vals['state'] = 'in_progress'
+                if vals:
+                    call.write(vals)
+                return call.id
+        account = self.env['comm.voip.account'].search(
+            [('provider', '=', 'asterisk'), ('active', '=', True)],
+            order='is_default desc, sequence, id', limit=1)
+        call = Call.create({
+            'account_id': account.id if account else False,
+            'direction': direction,
+            'from_number': from_number or '',
+            'to_number': to_number or '',
+            'state': 'in_progress',
+            'start_time': fields.Datetime.now(),
+        })
+        return call.id
+
+    @api.model
+    def softphone_call_end(self, call_id):
+        """Close out a softphone call: end_time + state (duration auto-fills)."""
+        try:
+            call = self.env['comm.voip.call'].browse(int(call_id))
+        except (TypeError, ValueError):
+            return False
+        if call.exists() and call.state not in ('completed', 'failed', 'cancelled'):
+            call.write({'end_time': fields.Datetime.now(), 'state': 'completed'})
+        return True
+
+    @api.model
     def open_my_session(self):
         """Return (creating if needed) the current user's session record —
         used by the 'My Dialer Console' menu action."""

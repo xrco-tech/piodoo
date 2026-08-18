@@ -38,6 +38,18 @@ class CommVoipCall(models.Model):
     recording_player_html = fields.Html(
         string='Recording', compute='_compute_recording_player_html', sanitize=False)
 
+    def write(self, vals):
+        res = super().write(vals)
+        # Whenever a call is closed out (end_time set), fill duration from the
+        # span if it wasn't provided — covers softphone + ARI bridge paths.
+        if vals.get('end_time'):
+            for c in self:
+                if c.end_time and c.start_time and not c.duration:
+                    secs = int((c.end_time - c.start_time).total_seconds())
+                    if secs > 0:
+                        super(CommVoipCall, c).write({'duration': secs})
+        return res
+
     @api.depends('recording_ids')
     def _compute_has_recording(self):
         for rec in self:

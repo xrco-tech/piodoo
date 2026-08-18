@@ -33,7 +33,7 @@
         <field name="inherit_id" ref="comm_chatbot_voip.view_comm_voip_account_form"/>
         <field name="arch" type="xml">
             <field name="is_default" position="after">
-                <field name="auto_record"/>
+                <field name="auto_record" widget="boolean_toggle"/>
             </field>
         </field>
     </record>
