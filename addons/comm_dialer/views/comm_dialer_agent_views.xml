@@ -42,6 +42,7 @@
                             <field name="user_id"/>
                             <field name="sip_ext" placeholder="e.g. 1001"/>
                             <field name="sip_secret" password="True" placeholder="e.g. test1001secret"/>
+                            <field name="manual_answer"/>
                             <field name="campaign_id"/>
                         </group>
                         <group>

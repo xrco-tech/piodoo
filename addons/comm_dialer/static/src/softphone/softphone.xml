@@ -20,16 +20,30 @@
                       t-esc="state.status === 'ringing' ? 'Incoming call' : 'On call'"/>
                 <span class="o_dialer_sp_num" t-esc="state.caller"/>
             </div>
-            <button class="btn o_dialer_sp_mic"
-                    t-att-class="state.muted ? 'btn-warning' : 'btn-light'"
-                    t-on-click="() => this.toggleMute()"
-                    t-att-title="state.muted ? 'Unmute' : 'Mute'">
-                <i t-att-class="state.muted ? 'fa fa-microphone-slash' : 'fa fa-microphone'"/>
-            </button>
-            <button class="btn btn-danger o_dialer_sp_end"
-                    t-on-click="() => this.hangup()" title="Hang up">
-                <i class="fa fa-phone"/> End
-            </button>
+            <!-- Manual-answer: ring with Accept/Decline. -->
+            <t t-if="state.status === 'ringing' and state.manual">
+                <button class="btn btn-success o_dialer_sp_accept"
+                        t-on-click="() => this.accept()" title="Accept">
+                    <i class="fa fa-phone"/> Accept
+                </button>
+                <button class="btn btn-danger o_dialer_sp_decline"
+                        t-on-click="() => this.decline()" title="Decline">
+                    <i class="fa fa-times"/>
+                </button>
+            </t>
+            <!-- On call (or auto-answer ringing): mute + hang up. -->
+            <t t-else="">
+                <button class="btn o_dialer_sp_mic"
+                        t-att-class="state.muted ? 'btn-warning' : 'btn-light'"
+                        t-on-click="() => this.toggleMute()"
+                        t-att-title="state.muted ? 'Unmute' : 'Mute'">
+                    <i t-att-class="state.muted ? 'fa fa-microphone-slash' : 'fa fa-microphone'"/>
+                </button>
+                <button class="btn btn-danger o_dialer_sp_end"
+                        t-on-click="() => this.hangup()" title="Hang up">
+                    <i class="fa fa-phone"/> End
+                </button>
+            </t>
         </div>
     </t>
 

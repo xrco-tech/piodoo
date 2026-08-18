@@ -29,6 +29,8 @@ class CommDialerAgentSession(models.Model):
                           store=True, readonly=False)
     sip_secret = fields.Char(related='user_id.dialer_sip_secret', string='SIP Secret',
                              readonly=False)
+    manual_answer = fields.Boolean(related='user_id.dialer_manual_answer',
+                                   string='Manual Answer', readonly=False)
     last_state_change = fields.Datetime(default=fields.Datetime.now)
 
     _sql_constraints = [
@@ -74,6 +76,7 @@ class CommDialerAgentSession(models.Model):
             'secret': user.dialer_sip_secret or '',
             'ice': account.get_ice_servers(),
             'display': user.name,
+            'manual_answer': user.dialer_manual_answer,
         }
 
     @api.model

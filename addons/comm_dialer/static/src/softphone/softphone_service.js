@@ -19,6 +19,7 @@ export const softphoneService = {
             status: "idle", // idle | connecting | registered | unregistered | failed | ringing | incall
             caller: "",
             muted: false,
+            manual: false, // ring with Accept/Decline instead of auto-answering
         });
         let ua = null;
         let session = null;
@@ -63,14 +64,34 @@ export const softphoneService = {
             s.on("failed", onEnded);
             s.on("peerconnection", (ev) => attachAudio(ev.peerconnection));
 
-            // Auto-answer: the leg only reaches us once a human has answered.
-            s.answer({
+            // Auto-answer by default (the customer is already on the line). In
+            // manual mode we leave it ringing until the agent clicks Accept.
+            if (!state.manual) {
+                doAnswer();
+            }
+        }
+
+        function doAnswer() {
+            if (!session) {
+                return;
+            }
+            session.answer({
                 mediaConstraints: { audio: true, video: false },
                 pcConfig: { iceServers: state._ice || [] },
             });
-            if (s.connection) {
-                attachAudio(s.connection);
+            if (session.connection) {
+                attachAudio(session.connection);
             }
+        }
+
+        function accept() {
+            if (session && state.status === "ringing") {
+                doAnswer();
+            }
+        }
+
+        function decline() {
+            hangup();
         }
 
         function onEnded() {
@@ -115,6 +136,7 @@ export const softphoneService = {
             }
             state.enabled = true;
             state._ice = cfg.ice || [];
+            state.manual = !!cfg.manual_answer;
             if (typeof window.JsSIP === "undefined") {
                 state.status = "failed";
                 return;
@@ -146,7 +168,7 @@ export const softphoneService = {
         }
 
         init();
-        return { state, toggleMute, hangup };
+        return { state, toggleMute, hangup, accept, decline };
     },
 };
 

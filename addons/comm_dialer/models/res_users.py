@@ -15,3 +15,9 @@ class ResUsers(models.Model):
         'Dialer SIP Secret',
         help="Password the agent's browser softphone registers with (used when "
              "provisioning the matching Asterisk endpoint).")
+    dialer_manual_answer = fields.Boolean(
+        'Manual Answer',
+        help="Ring incoming dialer calls with Accept/Decline instead of "
+             "auto-answering. Auto-answer is standard for progressive/predictive "
+             "(the customer is already on the line); manual suits preview / "
+             "low-volume work or agents who want a moment before connecting.")

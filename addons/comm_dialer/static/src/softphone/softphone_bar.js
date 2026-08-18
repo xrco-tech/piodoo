@@ -27,6 +27,14 @@ export class DialerSoftphoneBar extends Component {
     hangup() {
         this.sp.hangup();
     }
+
+    accept() {
+        this.sp.accept();
+    }
+
+    decline() {
+        this.sp.decline();
+    }
 }
 
 registry.category("main_components").add("comm_dialer.softphone_bar", {
