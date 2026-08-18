@@ -45,7 +45,9 @@ provider is wired into comm.voip.account.originate/bridge).
             # Vendored JsSIP (plain UMD, sets window.JsSIP) — must load first.
             'comm_dialer/static/src/lib/jssip.min.js',
             'comm_dialer/static/src/softphone/softphone.scss',
-            'comm_dialer/static/src/softphone/softphone.js',
+            'comm_dialer/static/src/softphone/softphone_service.js',
+            'comm_dialer/static/src/softphone/softphone_systray.js',
+            'comm_dialer/static/src/softphone/softphone_bar.js',
             'comm_dialer/static/src/softphone/softphone.xml',
         ],
     },

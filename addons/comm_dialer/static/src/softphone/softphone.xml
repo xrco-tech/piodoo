@@ -1,30 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <t t-name="comm_dialer.Softphone">
+
+    <t t-name="comm_dialer.SoftphoneSystray">
         <div class="o_dialer_softphone" t-if="state.enabled">
-            <!-- In-call controls render INLINE in the navbar (not a floating
-                 dropdown) so they can't be overlapped by form content. -->
-            <div class="o_dialer_sp_live"
-                 t-if="state.status === 'ringing' || state.status === 'incall'">
-                <span class="o_dialer_sp_state"
-                      t-esc="state.status === 'ringing' ? 'Incoming' : 'On call'"/>
-                <span class="o_dialer_sp_num" t-esc="state.caller"/>
-                <button class="btn btn-sm o_dialer_sp_mic"
-                        t-att-class="state.muted ? 'btn-warning' : 'btn-light'"
-                        t-on-click="toggleMute"
-                        t-att-title="state.muted ? 'Unmute' : 'Mute'">
-                    <i t-att-class="state.muted ? 'fa fa-microphone-slash' : 'fa fa-microphone'"/>
-                </button>
-                <button class="btn btn-sm btn-danger o_dialer_sp_end"
-                        t-on-click="hangup" title="Hang up">
-                    <i class="fa fa-phone"/>
-                </button>
-            </div>
             <button class="btn o_dialer_sp_btn" t-att-title="statusLabel">
                 <i class="fa fa-headphones"/>
                 <span class="o_dialer_sp_dot" t-att-class="dotClass"/>
             </button>
-            <audio t-ref="audio" autoplay="autoplay"/>
         </div>
     </t>
+
+    <t t-name="comm_dialer.SoftphoneBar">
+        <div class="o_dialer_sp_bar" t-if="active">
+            <span class="o_dialer_sp_ic">
+                <i class="fa fa-phone" t-att-class="state.status === 'ringing' ? 'o_ring' : ''"/>
+            </span>
+            <div class="o_dialer_sp_meta">
+                <span class="o_dialer_sp_state"
+                      t-esc="state.status === 'ringing' ? 'Incoming call' : 'On call'"/>
+                <span class="o_dialer_sp_num" t-esc="state.caller"/>
+            </div>
+            <button class="btn o_dialer_sp_mic"
+                    t-att-class="state.muted ? 'btn-warning' : 'btn-light'"
+                    t-on-click="() => this.toggleMute()"
+                    t-att-title="state.muted ? 'Unmute' : 'Mute'">
+                <i t-att-class="state.muted ? 'fa fa-microphone-slash' : 'fa fa-microphone'"/>
+            </button>
+            <button class="btn btn-danger o_dialer_sp_end"
+                    t-on-click="() => this.hangup()" title="Hang up">
+                <i class="fa fa-phone"/> End
+            </button>
+        </div>
+    </t>
+
 </templates>
