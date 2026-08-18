@@ -149,6 +149,12 @@ export const softphoneService = {
                 }
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 recCtx = new AudioCtx();
+                // Auto-record starts programmatically (no user gesture), so the
+                // AudioContext is created suspended and would produce silent /
+                // zero-size buffers → MediaRecorder yields 0 chunks. Resume it.
+                if (recCtx.state === "suspended" && recCtx.resume) {
+                    recCtx.resume().catch(() => {});
+                }
                 const dest = recCtx.createMediaStreamDestination();
                 recCtx.createMediaStreamSource(new MediaStream(localTracks)).connect(dest);
                 recCtx.createMediaStreamSource(new MediaStream(remoteTracks)).connect(dest);
@@ -160,7 +166,8 @@ export const softphoneService = {
                         recChunks.push(ev.data);
                     }
                 };
-                recorder.start();
+                // Timeslice → emit a chunk each second (robust against stop timing).
+                recorder.start(1000);
                 recStartedAt = Date.now();
                 state.recording = true;
                 console.log("[softphone] recording started");
