@@ -27,6 +27,8 @@ class CommDialerAgentSession(models.Model):
     # service can filter Ready agents that actually have an endpoint.
     sip_ext = fields.Char(related='user_id.dialer_sip_ext', string='SIP Endpoint',
                           store=True, readonly=False)
+    sip_secret = fields.Char(related='user_id.dialer_sip_secret', string='SIP Secret',
+                             readonly=False)
     last_state_change = fields.Datetime(default=fields.Datetime.now)
 
     _sql_constraints = [
