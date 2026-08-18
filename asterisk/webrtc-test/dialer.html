@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>WebRTC test dialer (1002)</title>
+<script src="https://cdn.jsdelivr.net/gh/versatica/JsSIP@3.10.0/dist/jssip.min.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 460px; margin: 2rem auto; padding: 0 1rem; }
+  h2 { margin-bottom: .25rem; }
+  .muted { color: #666; font-size: 13px; margin-top: 0; }
+  label { display: block; margin: .5rem 0; font-size: 14px; }
+  input { width: 100%; padding: .45rem; box-sizing: border-box; }
+  .row { display: flex; gap: .5rem; align-items: center; }
+  button { padding: .5rem .9rem; cursor: pointer; }
+  #status { font-weight: 600; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#adb5bd; margin-right:6px; vertical-align:middle; }
+  .ok { background:#28a745 } .call { background:#17a2b8 } .err { background:#dc3545 }
+  pre { background:#f4f4f4; padding:.6rem; height:150px; overflow:auto; font-size:12px; }
+</style>
+</head>
+<body>
+  <h2>WebRTC test dialer</h2>
+  <p class="muted">Registers as <b>1002</b> and calls the Odoo softphone (1001). Second endpoint for the Tier-1 test — no install needed.</p>
+
+  <label>WSS URL <input id="ws" value="wss://YOUR_HOST:8089/ws"/></label>
+  <label>SIP domain <input id="domain" value="YOUR_HOST"/></label>
+  <div class="row">
+    <label style="flex:1">Extension <input id="ext" value="1002"/></label>
+    <label style="flex:1">Password <input id="pw" value="test1002secret"/></label>
+  </div>
+  <div class="row">
+    <button id="reg">Register</button>
+    <span id="status"><span class="dot" id="dot"></span>idle</span>
+  </div>
+
+  <hr/>
+  <label>Call extension <input id="target" value="1001"/></label>
+  <div class="row">
+    <button id="call">Call</button>
+    <button id="hang">Hang up</button>
+  </div>
+  <audio id="remote" autoplay></audio>
+  <pre id="log"></pre>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const log = (m) => { $("log").textContent += m + "\n"; $("log").scrollTop = 1e9; };
+  const setStatus = (t, cls) => { $("status").innerHTML = '<span class="dot ' + (cls||"") + '"></span>' + t; };
+  let ua = null, session = null;
+
+  $("reg").onclick = function () {
+    if (typeof JsSIP === "undefined") { setStatus("JsSIP failed to load", "err"); return; }
+    try {
+      const socket = new JsSIP.WebSocketInterface($("ws").value.trim());
+      ua = new JsSIP.UA({
+        sockets: [socket],
+        uri: "sip:" + $("ext").value.trim() + "@" + $("domain").value.trim(),
+        password: $("pw").value,
+        register: true,
+        session_timers: false,
+      });
+      ua.on("connected", () => log("ws connected"));
+      ua.on("disconnected", () => setStatus("disconnected", "err"));
+      ua.on("registered", () => setStatus("registered", "ok"));
+      ua.on("registrationFailed", (e) => { setStatus("registration failed", "err"); log("regFail: " + (e.cause||"")); });
+      ua.on("newRTCSession", onSession);
+      ua.start();
+      setStatus("connecting…");
+    } catch (err) { setStatus("error", "err"); log(String(err)); }
+  };
+
+  function onSession(e) {
+    session = e.session;
+    session.on("ended", () => { setStatus("registered", "ok"); log("call ended"); });
+    session.on("failed", (ev) => { setStatus("registered", "ok"); log("call failed: " + (ev.cause||"")); });
+    session.on("confirmed", () => setStatus("on call", "call"));
+    session.on("peerconnection", (ev) => attachAudio(ev.peerconnection));
+    if (session.connection) attachAudio(session.connection);
+  }
+
+  function attachAudio(pc) {
+    pc.addEventListener("track", (ev) => {
+      if (ev.streams && ev.streams[0]) { $("remote").srcObject = ev.streams[0]; }
+    });
+  }
+
+  $("call").onclick = function () {
+    if (!ua) { log("register first"); return; }
+    const target = "sip:" + $("target").value.trim() + "@" + $("domain").value.trim();
+    log("calling " + target);
+    ua.call(target, {
+      mediaConstraints: { audio: true, video: false },
+      pcConfig: { iceServers: [] },  // add TURN here if across NAT
+    });
+    setStatus("calling…", "call");
+  };
+
+  $("hang").onclick = function () { if (session) { try { session.terminate(); } catch (e) {} } };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# WebRTC-only TEST overlay — a trunk-less Asterisk with endpoints 1001 + 1002,
+# for validating the agent softphone (registration + auto-answer + audio) BEFORE
+# the Vox trunk exists. Reuses the same entrypoint (envsubst) and TLS keys.
+#
+#   cp asterisk/env.sample .env         # only EXTERNAL_IP + WSS cert paths matter here
+#   # put a valid TLS cert at asterisk/keys/fullchain.pem + privkey.pem
+#   docker compose -f docker-compose.yml -f docker-compose.asterisk-test.yml up -d asterisk-test
+#
+# Then: register the Odoo softphone as 1001 (secret test1001secret) and either
+#   (a) originate an echo call to it:
+#       docker compose -f docker-compose.yml -f docker-compose.asterisk-test.yml \
+#         exec asterisk-test asterisk -rx "channel originate PJSIP/1001 application Echo"
+#   (b) open asterisk/webrtc-test/dialer.html in a 2nd browser (registers as 1002) and call 1001.
+services:
+  asterisk-test:
+    image: andrius/asterisk:20-current
+    network_mode: host
+    env_file: [.env]
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - ./asterisk/webrtc-test:/etc/asterisk/templates:ro
+      - ./asterisk/entrypoint.sh:/entrypoint.sh:ro
+      - ./asterisk/keys:/etc/asterisk/keys:ro
+    restart: unless-stopped
