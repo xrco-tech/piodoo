@@ -28,7 +28,7 @@
                 </button>
                 <button class="btn btn-danger o_dialer_sp_decline"
                         t-on-click="() => this.decline()" title="Decline">
-                    <i class="fa fa-times"/>
+                    <i class="fa fa-times"/> Decline
                 </button>
             </t>
             <!-- On call (or auto-answer ringing): mute + hang up. -->
