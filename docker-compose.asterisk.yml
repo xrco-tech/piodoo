@@ -8,7 +8,7 @@
 # it will NOT work behind the Cloudflare tunnel (that's HTTP/WS only).
 services:
   asterisk:
-    image: andrius/asterisk:20-current   # pin to a digest before production
+    image: andrius/asterisk:18   # pin to a digest before production
     network_mode: host                    # RTP media needs host UDP ports
     env_file: [.env]
     entrypoint: ["/entrypoint.sh"]

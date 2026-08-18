@@ -13,7 +13,7 @@
 #   (b) open asterisk/webrtc-test/dialer.html in a 2nd browser (registers as 1002) and call 1001.
 services:
   asterisk-test:
-    image: andrius/asterisk:20-current
+    image: andrius/asterisk:18
     network_mode: host
     env_file: [.env]
     entrypoint: ["/entrypoint.sh"]
