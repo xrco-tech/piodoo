@@ -51,8 +51,12 @@ class VoipRecordingController(http.Controller):
             'mimetype': audio_file.mimetype or 'audio/webm',
             'recording_duration': duration_seconds,
         })
-        # Keep the legacy single-URL field pointing at the latest recording too.
-        call.recording_url = '/voip/call/recording/%s' % attachment.id
+        # Keep the legacy single-URL field pointing at the latest recording too,
+        # and queue the recording for transcription (the cron picks it up).
+        call.write({
+            'recording_url': '/voip/call/recording/%s' % attachment.id,
+            'transcript_state': 'pending',
+        })
         _logger.info('comm_dialer: stored recording (%d bytes) for call %s as attachment %s',
                      len(data), call_id, attachment.id)
         return request.make_json_response({'success': True, 'attachment_id': attachment.id})

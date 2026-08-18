@@ -1,0 +1,20 @@
+# Self-hosted Whisper speech-to-text, for call-recording transcription.
+# Audio never leaves the box (POPIA-friendly). Odoo reaches it on the compose
+# network as http://whisper:9000 (no host port needed).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.whisper.yml up -d whisper
+#
+# First start downloads the model (~150MB for base) into the whisper-cache volume.
+services:
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:v1.10.0
+    environment:
+      # tiny / base / small / medium / large-v3 — base is a good ARM-CPU balance.
+      ASR_MODEL: base
+      ASR_ENGINE: faster_whisper   # CTranslate2 — much faster on CPU
+    volumes:
+      - whisper-cache:/root/.cache
+    restart: unless-stopped
+
+volumes:
+  whisper-cache:
