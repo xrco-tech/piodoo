@@ -30,9 +30,30 @@ export const softphoneService = {
         // and MediaRecorder them, then upload to the call on stop.
         let recorder = null;
         let recChunks = [];
-        let recCtx = null;
+        let recNodes = []; // keep graph nodes referenced so they aren't GC'd
         let recStartedAt = 0;
         let callId = null; // comm.voip.call id, read from the INVITE header
+
+        // One shared AudioContext, primed/kept-running by real user gestures so
+        // the browser autoplay policy can't leave it suspended (which yields
+        // silent, zero-size MediaRecorder chunks).
+        let sharedCtx = null;
+        function primeAudioContext() {
+            try {
+                if (!sharedCtx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    sharedCtx = new AudioCtx();
+                }
+                if (sharedCtx.state === "suspended" && sharedCtx.resume) {
+                    sharedCtx.resume().catch(() => {});
+                }
+            } catch {
+                // ignore
+            }
+            return sharedCtx;
+        }
+        ["pointerdown", "keydown"].forEach((evt) =>
+            document.addEventListener(evt, primeAudioContext, { capture: true, passive: true }));
 
         function ensureAudio() {
             if (!audioEl) {
@@ -147,17 +168,16 @@ export const softphoneService = {
                 if (!localTracks.length || !remoteTracks.length) {
                     return; // media not up yet — will retry on the track event
                 }
-                const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                recCtx = new AudioCtx();
-                // Auto-record starts programmatically (no user gesture), so the
-                // AudioContext is created suspended and would produce silent /
-                // zero-size buffers → MediaRecorder yields 0 chunks. Resume it.
-                if (recCtx.state === "suspended" && recCtx.resume) {
-                    recCtx.resume().catch(() => {});
+                const ctx = primeAudioContext();
+                if (!ctx) {
+                    return;
                 }
-                const dest = recCtx.createMediaStreamDestination();
-                recCtx.createMediaStreamSource(new MediaStream(localTracks)).connect(dest);
-                recCtx.createMediaStreamSource(new MediaStream(remoteTracks)).connect(dest);
+                const dest = ctx.createMediaStreamDestination();
+                const localNode = ctx.createMediaStreamSource(new MediaStream(localTracks));
+                const remoteNode = ctx.createMediaStreamSource(new MediaStream(remoteTracks));
+                localNode.connect(dest);
+                remoteNode.connect(dest);
+                recNodes = [localNode, remoteNode, dest];
 
                 recChunks = [];
                 recorder = new MediaRecorder(dest.stream);
@@ -181,12 +201,12 @@ export const softphoneService = {
         async function stopRecordingAndUpload() {
             const rec = recorder;
             const chunks = recChunks;
-            const ctx = recCtx;
+            const nodes = recNodes;
             const startedAt = recStartedAt;
             const targetCall = callId;
             recorder = null;
             recChunks = [];
-            recCtx = null;
+            recNodes = [];
             state.recording = false;
             if (!rec) {
                 return;
@@ -199,10 +219,9 @@ export const softphoneService = {
                     resolve();
                 }
             });
+            // Tear down the graph nodes but keep the shared AudioContext alive.
             try {
-                if (ctx) {
-                    ctx.close();
-                }
+                nodes.forEach((n) => n.disconnect && n.disconnect());
             } catch {
                 // ignore
             }
