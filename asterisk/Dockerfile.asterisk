@@ -1,8 +1,10 @@
-# Minimal Asterisk image built from Debian — multi-arch (works on the ARM64 box).
-# NB: bookworm (Debian 12) dropped the asterisk package; trixie (Debian 13) ships
-# Asterisk 20.x with chan_pjsip, res_http_websocket and res_srtp (DTLS-SRTP) —
-# everything WebRTC needs.
-FROM debian:trixie-slim
+# Minimal Asterisk image — multi-arch (works on the ARM64 box).
+# NB: Debian dropped the asterisk package (bookworm/trixie/sid all lack it, which
+# is why prebuilt images compile from source). Ubuntu's `universe` repo maintains
+# it — noble (24.04) ships Asterisk 20.x with chan_pjsip, res_http_websocket and
+# res_srtp (DTLS-SRTP), everything WebRTC needs. Ubuntu images enable universe by
+# default and are published for arm64.
+FROM ubuntu:24.04
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
