@@ -1,7 +1,8 @@
 # Minimal Asterisk image built from Debian — multi-arch (works on the ARM64 box).
-# Debian's asterisk package (20.x) includes chan_pjsip, res_http_websocket and
-# res_srtp (DTLS-SRTP), which is everything WebRTC needs.
-FROM debian:bookworm-slim
+# NB: bookworm (Debian 12) dropped the asterisk package; trixie (Debian 13) ships
+# Asterisk 20.x with chan_pjsip, res_http_websocket and res_srtp (DTLS-SRTP) —
+# everything WebRTC needs.
+FROM debian:trixie-slim
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
