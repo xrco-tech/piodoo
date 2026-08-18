@@ -108,7 +108,10 @@ class CommVoipCall(models.Model):
         if not transcript:
             return {}
         ICP = self.env['ir.config_parameter'].sudo()
-        key = ICP.get_param('comm_chatbot.anthropic_api_key')
+        # Reuse whichever Anthropic key the instance already has configured
+        # (Gen-2 chatbot key, or the Gen-1 copilot key).
+        key = (ICP.get_param('comm_chatbot.anthropic_api_key')
+               or ICP.get_param('whatsapp.anthropic_api_key'))
         if not key:
             return {}
         model = ICP.get_param('comm_dialer.insight_model') or 'claude-haiku-4-5-20251001'
