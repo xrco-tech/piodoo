@@ -1,0 +1,5 @@
+# The Asterisk image is built purely from apt — it needs nothing from the build
+# context. Exclude everything (notably keys/, which is root-owned and unreadable
+# by the build) except the Dockerfile itself.
+*
+!Dockerfile.asterisk
