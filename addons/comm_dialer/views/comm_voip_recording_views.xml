@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Recording player on the VoIP call form (inherits comm_chatbot_voip). -->
+    <record id="view_comm_voip_call_form_recording" model="ir.ui.view">
+        <field name="name">comm.voip.call.form.recording</field>
+        <field name="model">comm.voip.call</field>
+        <field name="inherit_id" ref="comm_chatbot_voip.view_comm_voip_call_form"/>
+        <field name="arch" type="xml">
+            <field name="recording_url" position="before">
+                <field name="has_recording" invisible="1"/>
+                <field name="recording_player_html" widget="html"
+                       invisible="not has_recording" nolabel="0" string="Recording"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- 'Recorded' badge in the call list. -->
+    <record id="view_comm_voip_call_list_recording" model="ir.ui.view">
+        <field name="name">comm.voip.call.list.recording</field>
+        <field name="model">comm.voip.call</field>
+        <field name="inherit_id" ref="comm_chatbot_voip.view_comm_voip_call_list"/>
+        <field name="arch" type="xml">
+            <field name="duration_display" position="after">
+                <field name="has_recording" string="Rec" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Auto-record toggle on the VoIP account form. -->
+    <record id="view_comm_voip_account_form_autorecord" model="ir.ui.view">
+        <field name="name">comm.voip.account.form.autorecord</field>
+        <field name="model">comm.voip.account</field>
+        <field name="inherit_id" ref="comm_chatbot_voip.view_comm_voip_account_form"/>
+        <field name="arch" type="xml">
+            <field name="is_default" position="after">
+                <field name="auto_record"/>
+            </field>
+        </field>
+    </record>
+</odoo>

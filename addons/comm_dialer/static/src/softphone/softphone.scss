@@ -73,8 +73,12 @@
         white-space: nowrap;
     }
     .o_dialer_sp_mic,
+    .o_dialer_sp_rec,
     .o_dialer_sp_end {
         white-space: nowrap;
+    }
+    .o_dialer_sp_rec.btn-danger {
+        animation: o_sp_pulse 1.2s infinite;
     }
 }
 

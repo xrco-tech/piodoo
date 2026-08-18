@@ -31,13 +31,20 @@
                     <i class="fa fa-times"/> Decline
                 </button>
             </t>
-            <!-- On call (or auto-answer ringing): mute + hang up. -->
+            <!-- On call (or auto-answer ringing): mute + record + hang up. -->
             <t t-else="">
                 <button class="btn o_dialer_sp_mic"
                         t-att-class="state.muted ? 'btn-warning' : 'btn-light'"
                         t-on-click="() => this.toggleMute()"
                         t-att-title="state.muted ? 'Unmute' : 'Mute'">
                     <i t-att-class="state.muted ? 'fa fa-microphone-slash' : 'fa fa-microphone'"/>
+                </button>
+                <button class="btn o_dialer_sp_rec"
+                        t-if="state.status === 'incall'"
+                        t-att-class="state.recording ? 'btn-danger' : 'btn-light'"
+                        t-on-click="() => this.toggleRecord()"
+                        t-att-title="state.recording ? 'Stop recording' : 'Record'">
+                    <i class="fa fa-circle"/>
                 </button>
                 <button class="btn btn-danger o_dialer_sp_end"
                         t-on-click="() => this.hangup()" title="Hang up">

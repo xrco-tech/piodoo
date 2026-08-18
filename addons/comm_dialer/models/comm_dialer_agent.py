@@ -77,6 +77,7 @@ class CommDialerAgentSession(models.Model):
             'ice': account.get_ice_servers(),
             'display': user.name,
             'manual_answer': user.dialer_manual_answer,
+            'auto_record': account.auto_record,
         }
 
     @api.model

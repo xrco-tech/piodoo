@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
+
+RECORDING_MANAGER_GROUP = 'comm_whatsapp_calling.group_whatsapp_call_recording_manager'
 
 
 class CommVoipCall(models.Model):
@@ -18,3 +20,48 @@ class CommVoipCall(models.Model):
     dialer_campaign_id = fields.Many2one(
         related='dialer_contact_id.campaign_id', store=True,
         string='Dialer Campaign', index=True)
+
+    # ── Recording ─────────────────────────────────────────────────────────
+    # Mirrors comm_whatsapp_calling: the agent's browser softphone mixes both
+    # audio tracks and uploads the result (see /voip/call/upload_recording and
+    # static/src/softphone/softphone_service.js). res_field keeps these apart
+    # from any other attachment on the call.
+    recording_ids = fields.One2many(
+        'ir.attachment', 'res_id', string='Recordings',
+        domain=lambda self: [
+            ('res_model', '=', 'comm.voip.call'),
+            ('res_field', '=', 'recording_ids'),
+        ],
+    )
+    has_recording = fields.Boolean(
+        string='Recorded', compute='_compute_has_recording', store=False)
+    recording_player_html = fields.Html(
+        string='Recording', compute='_compute_recording_player_html', sanitize=False)
+
+    @api.depends('recording_ids')
+    def _compute_has_recording(self):
+        for rec in self:
+            rec.has_recording = bool(rec.recording_ids)
+
+    @api.depends('recording_ids')
+    def _compute_recording_player_html(self):
+        can_download = self.env.user.has_group(RECORDING_MANAGER_GROUP)
+        for rec in self:
+            if not rec.recording_ids:
+                rec.recording_player_html = False
+                continue
+            parts = []
+            for att in rec.recording_ids:
+                src = '/voip/call/recording/%s' % att.id
+                download_link = (
+                    '<a href="%s?download=1" style="margin-left:10px;">Download</a>' % src
+                    if can_download else '')
+                duration_label = (
+                    '<span style="margin-left:10px;color:#6b7280;">%s</span>'
+                    % att.recording_duration_display
+                    if att.recording_duration_display else '')
+                parts.append(
+                    '<div style="margin-bottom:10px;display:flex;align-items:center;">'
+                    '<audio controls preload="none" src="%s" style="max-width:420px;"></audio>'
+                    '%s%s</div>' % (src, duration_label, download_link))
+            rec.recording_player_html = ''.join(parts)

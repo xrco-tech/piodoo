@@ -35,6 +35,10 @@ export class DialerSoftphoneBar extends Component {
     decline() {
         this.sp.decline();
     }
+
+    toggleRecord() {
+        this.sp.toggleRecord();
+    }
 }
 
 registry.category("main_components").add("comm_dialer.softphone_bar", {

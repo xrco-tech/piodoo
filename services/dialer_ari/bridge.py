@@ -225,6 +225,13 @@ async def handle_events(odoo, ari, loop):
                         bridge = await ari.create_bridge()
                         await ari.add_to_bridge(bridge['id'], cid)
                         agent_ep = f'PJSIP/{ext}'
+                        # TODO (recording): to attach the agent's browser
+                        # recording to this comm.voip.call, the agent INVITE must
+                        # carry X-Voip-Call-Id. Originate via the dialplan instead
+                        # of Stasis — Local/{ext}@from-dialer-agent with channel
+                        # var __CALLID_HDR=info['call_id'] (see asterisk/etc/
+                        # extensions.conf [from-dialer-agent]) — then add the
+                        # Local channel to the bridge.
                         try:
                             ach = await ari.originate(agent_ep, 'agent', CALLER_ID)
                             await ari.add_to_bridge(bridge['id'], ach['id'])

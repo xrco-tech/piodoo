@@ -39,6 +39,7 @@ provider is wired into comm.voip.account.originate/bridge).
         'views/comm_dialer_contact_views.xml',
         'views/comm_dialer_agent_views.xml',
         'views/comm_dialer_dnc_views.xml',
+        'views/comm_voip_recording_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

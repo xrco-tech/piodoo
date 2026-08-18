@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 import logging
-from odoo import models
+from odoo import fields, models
 
 _logger = logging.getLogger(__name__)
 
 
 class CommVoipAccount(models.Model):
     _inherit = 'comm.voip.account'
+
+    auto_record = fields.Boolean(
+        'Auto-record calls',
+        help="Automatically start recording each answered call (for compliance). "
+             "Agents can also start/stop recording manually from the softphone.")
 
     def originate(self, to_number, from_number=None):
         """Place an outbound call leg to ``to_number``.
