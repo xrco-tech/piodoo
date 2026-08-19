@@ -25,3 +25,24 @@ services:
       - ./asterisk/entrypoint.sh:/entrypoint.sh:ro
       - ./asterisk/keys:/etc/asterisk/keys:ro
     restart: unless-stopped
+
+  # ARI bridge — drives progressive/predictive outbound against the TEST
+  # Asterisk. The "customer" leg is a local echo (Local/600@from-agents) instead
+  # of the Vox trunk, so the whole pacer→originate→bridge→agent flow works
+  # without the PSTN. Point DIAL_ENDPOINT at PJSIP/{to}@vox for production.
+  dialer_ari:
+    build: ./services/dialer_ari
+    environment:
+      ARI_URL: "http://${EXTERNAL_IP}:8088"
+      ARI_USERNAME: "${ARI_USERNAME}"
+      ARI_PASSWORD: "${ARI_PASSWORD}"
+      ARI_APP: "comm_dialer"
+      ODOO_URL: "http://odoo:8069"
+      ODOO_DB: "odoo"
+      ODOO_USER: "dialer@bot"
+      ODOO_PASSWORD: "dialer-bridge-4821"
+      DIAL_ENDPOINT: "Local/600@from-agents"   # test route (local echo/demo)
+      VOX_DID: "Dialer"
+      POLL_INTERVAL: "2"
+    restart: unless-stopped
+    depends_on: [asterisk-test]

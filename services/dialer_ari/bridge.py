@@ -34,6 +34,10 @@ ARI_PASS = os.environ.get('ARI_PASSWORD', '')
 ARI_APP = os.environ.get('ARI_APP', 'comm_dialer')
 TRUNK = os.environ.get('VOX_TRUNK', 'vox')
 CALLER_ID = os.environ.get('VOX_DID', '')
+# How to originate the customer leg. Prod: PJSIP/{to}@vox (the Vox trunk).
+# Test (no trunk): Local/600@from-agents — a local echo/demo that answers with
+# audio, so the whole pacer→bridge→agent flow can be proven without the PSTN.
+DIAL_ENDPOINT = os.environ.get('DIAL_ENDPOINT', 'PJSIP/{to}@' + TRUNK)
 POLL_INTERVAL = float(os.environ.get('POLL_INTERVAL', '2'))
 
 ODOO_URL = os.environ.get('ODOO_URL', 'http://odoo:8069')
@@ -154,7 +158,7 @@ async def poll_odoo(odoo, ari, loop):
             pending = await loop.run_in_executor(None, odoo.pending_calls)
             for c in pending:
                 to = c['to_number']
-                endpoint = f'PJSIP/{to}@{TRUNK}'
+                endpoint = DIAL_ENDPOINT.format(to=to)
                 try:
                     ch = await ari.originate(endpoint, 'outbound', CALLER_ID,
                                              {'CALL_ID': str(c['id'])})
@@ -226,15 +230,12 @@ async def handle_events(odoo, ari, loop):
                         bridge = await ari.create_bridge()
                         await ari.add_to_bridge(bridge['id'], cid)
                         agent_ep = f'PJSIP/{ext}'
-                        # TODO (recording): to attach the agent's browser
-                        # recording to this comm.voip.call, the agent INVITE must
-                        # carry X-Voip-Call-Id. Originate via the dialplan instead
-                        # of Stasis — Local/{ext}@from-dialer-agent with channel
-                        # var __CALLID_HDR=info['call_id'] (see asterisk/etc/
-                        # extensions.conf [from-dialer-agent]) — then add the
-                        # Local channel to the bridge.
+                        # Stamp the comm.voip.call id onto the agent INVITE so the
+                        # softphone logs against THIS call (no duplicate) and its
+                        # recording attaches here.
+                        agent_vars = {'PJSIP_HEADER(add,X-Voip-Call-Id)': str(info['call_id'])}
                         try:
-                            ach = await ari.originate(agent_ep, 'agent', CALLER_ID)
+                            ach = await ari.originate(agent_ep, 'agent', CALLER_ID, agent_vars)
                             await ari.add_to_bridge(bridge['id'], ach['id'])
                             info['bridge_id'] = bridge['id']
                             info['session_id'] = session_id  # bound agent (predictive)
