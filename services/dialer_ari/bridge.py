@@ -289,16 +289,19 @@ async def handle_events(odoo, ari, loop):
                         await loop.run_in_executor(
                             None, odoo.set_agent, info['session_id'],
                             {'state': 'wrap', 'current_call_id': False})
-                    cause = (ev.get('cause_txt') or '').lower()
-                    # Map hangup cause -> our outcome.
-                    if 'normal' in cause or ev.get('cause') == 16:
+                    if info.get('bridge_id'):
+                        # Reached an agent — a real contact. The agent sets the
+                        # actual disposition during wrap-up.
                         state, outcome = 'completed', 'completed'
-                    elif 'busy' in cause:
-                        state, outcome = 'busy', 'busy'
-                    elif 'no answer' in cause or 'no user' in cause:
-                        state, outcome = 'no_answer', 'no_answer'
                     else:
-                        state, outcome = 'failed', 'failed'
+                        # Never connected — classify from the hangup cause.
+                        cause = (ev.get('cause_txt') or '').lower()
+                        if 'busy' in cause:
+                            state, outcome = 'busy', 'busy'
+                        elif 'no answer' in cause or 'no user' in cause or 'unavailable' in cause:
+                            state, outcome = 'no_answer', 'no_answer'
+                        else:
+                            state, outcome = 'failed', 'failed'
                     end_ts = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                     await loop.run_in_executor(
                         None, odoo.set_call, info['call_id'],
