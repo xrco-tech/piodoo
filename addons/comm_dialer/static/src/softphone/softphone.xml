@@ -3,7 +3,8 @@
 
     <t t-name="comm_dialer.SoftphoneSystray">
         <div class="o_dialer_softphone" t-if="state.enabled">
-            <button class="btn o_dialer_sp_btn" t-att-title="statusLabel">
+            <button class="btn o_dialer_sp_btn" t-att-title="statusLabel"
+                    t-on-click="() => this.toggleDialer()">
                 <i class="fa fa-headphones"/>
                 <span class="o_dialer_sp_dot" t-att-class="dotClass"/>
             </button>
@@ -11,16 +12,15 @@
     </t>
 
     <t t-name="comm_dialer.SoftphoneBar">
+        <!-- In-call bar -->
         <div class="o_dialer_sp_bar" t-if="active">
             <span class="o_dialer_sp_ic">
                 <i class="fa fa-phone" t-att-class="state.status === 'ringing' ? 'o_ring' : ''"/>
             </span>
             <div class="o_dialer_sp_meta">
-                <span class="o_dialer_sp_state"
-                      t-esc="state.status === 'ringing' ? 'Incoming call' : 'On call'"/>
+                <span class="o_dialer_sp_state" t-esc="stateLabel"/>
                 <span class="o_dialer_sp_num" t-esc="state.caller"/>
             </div>
-            <!-- Manual-answer: ring with Accept/Decline. -->
             <t t-if="state.status === 'ringing' and state.manual">
                 <button class="btn btn-success o_dialer_sp_accept"
                         t-on-click="() => this.accept()" title="Accept">
@@ -31,7 +31,6 @@
                     <i class="fa fa-times"/> Decline
                 </button>
             </t>
-            <!-- On call (or auto-answer ringing): mute + record + hang up. -->
             <t t-else="">
                 <button class="btn o_dialer_sp_mic"
                         t-att-class="state.muted ? 'btn-warning' : 'btn-light'"
@@ -51,6 +50,30 @@
                     <i class="fa fa-phone"/> End
                 </button>
             </t>
+        </div>
+
+        <!-- Click-to-dial keypad (idle only) -->
+        <div class="o_dialer_sp_dialpad" t-if="state.dialerOpen and !active">
+            <div class="o_dialer_sp_dp_head">
+                <span>Dial</span>
+                <button class="btn btn-sm btn-light" t-on-click="() => this.closeDialer()" title="Close">
+                    <i class="fa fa-times"/>
+                </button>
+            </div>
+            <div class="o_dialer_sp_dp_input">
+                <input type="text" t-model="dial.value" placeholder="Number or extension"
+                       t-on-keydown="(ev) => this.onKeydown(ev)"/>
+                <button class="btn btn-sm btn-light" t-on-click="() => this.backspace()" title="Backspace">
+                    <i class="fa fa-long-arrow-left"/>
+                </button>
+            </div>
+            <div class="o_dialer_sp_dp_keys">
+                <button class="btn btn-light o_dp_key" t-foreach="keypad" t-as="k" t-key="k"
+                        t-on-click="() => this.press(k)" t-esc="k"/>
+            </div>
+            <button class="btn btn-success o_dialer_sp_dp_call" t-on-click="() => this.callNow()">
+                <i class="fa fa-phone"/> Call
+            </button>
         </div>
     </t>
 

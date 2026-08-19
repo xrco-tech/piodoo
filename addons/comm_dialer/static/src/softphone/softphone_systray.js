@@ -11,7 +11,12 @@ export class DialerSoftphoneSystray extends Component {
     static props = {};
 
     setup() {
-        this.state = useState(useService("dialer_softphone").state);
+        this.sp = useService("dialer_softphone");
+        this.state = useState(this.sp.state);
+    }
+
+    toggleDialer() {
+        this.sp.toggleDialer();
     }
 
     get dotClass() {

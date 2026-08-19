@@ -82,6 +82,55 @@
     }
 }
 
+// Click-to-dial keypad — floating, pinned bottom-right, above everything.
+.o_dialer_sp_dialpad {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 1080;
+    width: 240px;
+    padding: 12px;
+    background: var(--o-view-background-color, #fff);
+    color: var(--o-main-text-color, #111);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+
+    .o_dialer_sp_dp_head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    .o_dialer_sp_dp_input {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 10px;
+        input {
+            flex: 1;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+        }
+    }
+    .o_dialer_sp_dp_keys {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 10px;
+        .o_dp_key {
+            font-size: 18px;
+            font-weight: 500;
+            padding: 10px 0;
+        }
+    }
+    .o_dialer_sp_dp_call {
+        width: 100%;
+    }
+}
+
 @keyframes o_sp_pulse {
     0%   { opacity: 1; }
     50%  { opacity: 0.35; }

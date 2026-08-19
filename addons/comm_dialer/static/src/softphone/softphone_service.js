@@ -22,6 +22,7 @@ export const softphoneService = {
             manual: false, // ring with Accept/Decline instead of auto-answering
             recording: false,
             autoRecord: false,
+            dialerOpen: false, // manual click-to-dial panel visible
         });
         let ua = null;
         let session = null;
@@ -33,7 +34,8 @@ export const softphoneService = {
         let recNodes = []; // keep graph nodes referenced so they aren't GC'd
         let recStartedAt = 0;
         let callId = null; // comm.voip.call this call is logged as
-        let myExt = "";    // this agent's own SIP extension (the call's "to")
+        let myExt = "";    // this agent's own SIP extension
+        let myDomain = ""; // SIP domain, for outbound INVITEs
 
         // One shared AudioContext, primed/kept-running by real user gestures so
         // the browser autoplay policy can't leave it suspended (which yields
@@ -88,26 +90,28 @@ export const softphoneService = {
 
         function onSession(e) {
             const s = e.session;
-            if (s.direction !== "incoming") {
-                return; // the dialer bridges IN to us
-            }
             session = s;
+            const outgoing = s.direction === "outgoing";
             const ri = s.remote_identity;
-            const fromNumber = (ri && ri.uri && ri.uri.user) || "";
-            state.caller = fromNumber || "Call";
-            state.status = "ringing";
+            const peer = (ri && ri.uri && ri.uri.user) || "";
+            state.caller = peer || "Call";
+            state.status = outgoing ? "calling" : "ringing";
             state.muted = false;
             state.recording = false;
+            state.dialerOpen = false;
             callId = null;
-            // The ARI bridge stamps the comm.voip.call id on the agent leg; if
-            // present we log against that record, otherwise we create one.
+
+            // Incoming legs from the ARI bridge carry the comm.voip.call id.
             let headerId = null;
-            try {
-                headerId = (e.request && e.request.getHeader && e.request.getHeader("X-Voip-Call-Id")) || null;
-            } catch {
-                headerId = null;
+            if (!outgoing) {
+                try {
+                    headerId = (e.request && e.request.getHeader && e.request.getHeader("X-Voip-Call-Id")) || null;
+                } catch {
+                    headerId = null;
+                }
             }
-            console.debug("[softphone] incoming call, X-Voip-Call-Id =", headerId, "autoRecord =", state.autoRecord);
+            console.debug("[softphone]", outgoing ? "outgoing" : "incoming",
+                          "call, peer =", peer, "call-id =", headerId, "autoRecord =", state.autoRecord);
 
             let callStarted = false;
             const onIncall = async () => {
@@ -117,13 +121,16 @@ export const softphoneService = {
                     try {
                         // Resolve/create the call record (fills from/to/start/state).
                         callId = await orm.call("comm.dialer.agent.session", "softphone_call_start", [
-                            headerId, fromNumber, myExt,
+                            headerId,
+                            outgoing ? myExt : peer,   // from
+                            outgoing ? peer : myExt,   // to
+                            outgoing ? "outgoing" : "incoming",
                         ]);
                     } catch {
                         callId = headerId ? parseInt(headerId, 10) || null : null;
                     }
                 }
-                maybeAutoRecord(); // starts now if remote media is already up
+                maybeAutoRecord(); // starts once remote media is up
             };
             s.on("accepted", onIncall);
             s.on("confirmed", onIncall);
@@ -131,10 +138,39 @@ export const softphoneService = {
             s.on("failed", onEnded);
             s.on("peerconnection", (ev) => attachAudio(ev.peerconnection));
 
-            // Auto-answer by default (the customer is already on the line). In
-            // manual mode we leave it ringing until the agent clicks Accept.
-            if (!state.manual) {
+            if (outgoing) {
+                // ua.call() already set up local media; hook audio when the pc appears.
+                if (s.connection) {
+                    attachAudio(s.connection);
+                }
+            } else if (!state.manual) {
+                // Auto-answer inbound (the customer is already on the line).
                 doAnswer();
+            }
+        }
+
+        function dial(number) {
+            number = (number || "").trim();
+            if (!ua || !number) {
+                return;
+            }
+            if (["ringing", "calling", "incall"].includes(state.status)) {
+                return; // already on a call
+            }
+            try {
+                ua.call("sip:" + number + "@" + myDomain, {
+                    mediaConstraints: { audio: true, video: false },
+                    pcConfig: { iceServers: state._ice || [] },
+                });
+                // onSession fires for the outgoing session and wires the rest.
+            } catch (err) {
+                console.warn("[softphone] dial failed:", err);
+            }
+        }
+
+        function toggleDialer() {
+            if (state.status === "registered") {
+                state.dialerOpen = !state.dialerOpen;
             }
         }
 
@@ -316,6 +352,7 @@ export const softphoneService = {
             state.manual = !!cfg.manual_answer;
             state.autoRecord = !!cfg.auto_record;
             myExt = cfg.ext || "";
+            myDomain = cfg.domain || "";
             if (typeof window.JsSIP === "undefined") {
                 state.status = "failed";
                 return;
@@ -347,7 +384,7 @@ export const softphoneService = {
         }
 
         init();
-        return { state, toggleMute, hangup, accept, decline, toggleRecord };
+        return { state, toggleMute, hangup, accept, decline, toggleRecord, dial, toggleDialer };
     },
 };
 
