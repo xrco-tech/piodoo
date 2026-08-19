@@ -9,9 +9,11 @@ services:
   whisper:
     image: onerahmet/openai-whisper-asr-webservice:v1.10.0
     environment:
-      # tiny / base / small / medium / large-v3 — base is a good ARM-CPU balance.
-      ASR_MODEL: base
-      ASR_ENGINE: faster_whisper   # CTranslate2 — much faster on CPU
+      # Set in .env (WHISPER_MODEL / WHISPER_ENGINE). Model: tiny / base / small /
+      # medium / large-v3 — 'small' is a good accuracy/speed balance on ARM CPU.
+      # Changing the model needs a container recreate (it loads one model at start).
+      ASR_MODEL: ${WHISPER_MODEL:-small}
+      ASR_ENGINE: ${WHISPER_ENGINE:-faster_whisper}   # CTranslate2 — faster on CPU
     volumes:
       - whisper-cache:/root/.cache
     restart: unless-stopped
