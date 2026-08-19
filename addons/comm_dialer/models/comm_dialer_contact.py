@@ -121,3 +121,4 @@ class CommDialerContact(models.Model):
                     'reason': 'Requested during dialer call',
                 })
         self.write(vals)
+        return True  # XML-RPC (bridge) can't marshal a None return
