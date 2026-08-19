@@ -41,7 +41,7 @@ services:
       ODOO_DB: "odoo"
       ODOO_USER: "dialer@bot"
       ODOO_PASSWORD: "dialer-bridge-4821"
-      DIAL_ENDPOINT: "Local/600@from-agents"   # test route (local echo/demo)
+      DIAL_ENDPOINT: "Local/600@from-agents/n"   # test route (/n = no Local optimisation)
       VOX_DID: "Dialer"
       POLL_INTERVAL: "2"
     restart: unless-stopped

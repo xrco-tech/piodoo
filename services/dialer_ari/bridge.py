@@ -251,6 +251,8 @@ async def handle_events(odoo, ari, loop):
                             continue
                         info['agent_cid'] = ach['id']
                         AGENT_PENDING[ach['id']] = {'bridge_id': bridge['id'], 'customer_cid': cid}
+                        _log.info('customer %s bridged; agent %s originated (call %s)',
+                                  cid, ach['id'], info['call_id'])
                         await loop.run_in_executor(None, odoo.set_call, info['call_id'],
                                                    {'state': 'in_progress'})
                         await loop.run_in_executor(
@@ -259,16 +261,19 @@ async def handle_events(odoo, ari, loop):
                     elif role == 'agent':
                         # Agent leg answered (entered Stasis) — join it to the bridge.
                         pend = AGENT_PENDING.pop(cid, None)
+                        _log.info('agent StasisStart %s (pending=%s)', cid, bool(pend))
                         if pend:
                             AGENT_ACTIVE[cid] = pend['customer_cid']
                             try:
                                 await ari.add_to_bridge(pend['bridge_id'], cid)
+                                _log.info('agent %s joined bridge %s', cid, pend['bridge_id'])
                             except Exception:
                                 _log.exception('add agent to bridge failed')
                                 await ari.hangup(cid)
                                 await ari.hangup(pend['customer_cid'])
 
                 elif kind in ('StasisEnd', 'ChannelDestroyed'):
+                    _log.info('%s %s', kind, cid)
                     # Agent leg gone => hang up the customer (which finalizes below).
                     cust = AGENT_ACTIVE.pop(cid, None)
                     AGENT_PENDING.pop(cid, None)
