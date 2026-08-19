@@ -111,7 +111,7 @@ class CommVoipCall(models.Model):
         # Reuse whichever Anthropic key the instance already has configured
         # (Gen-2 chatbot key, or the Gen-1 copilot key).
         key = (ICP.get_param('comm_chatbot.anthropic_api_key')
-               or ICP.get_param('whatsapp.anthropic_api_key'))
+               or ICP.get_param('whatsapp.anthropic_api_key') or '').strip()
         if not key:
             return {}
         model = ICP.get_param('comm_dialer.insight_model') or 'claude-haiku-4-5-20251001'
@@ -148,18 +148,25 @@ class CommVoipCall(models.Model):
             return
         try:
             text = self._transcribe_recording()
-            vals = {'transcript': text or '', 'transcript_state': 'done'}
-            insights = self._run_ai_insights(text) if text else {}
+        except Exception:
+            _logger.exception("comm_dialer: transcription failed for call %s", self.id)
+            self.write({'transcript_state': 'failed'})
+            return
+        vals = {'transcript': text or '', 'transcript_state': 'done'}
+        # AI insights are best-effort — never lose the transcript if they fail.
+        if text:
+            try:
+                insights = self._run_ai_insights(text)
+            except Exception:
+                _logger.exception("comm_dialer: AI insights failed for call %s", self.id)
+                insights = {}
             if insights:
                 vals['ai_summary'] = (insights.get('summary') or '')[:2000]
                 sentiment = (insights.get('sentiment') or '').strip().lower()
                 if sentiment in ('positive', 'neutral', 'negative'):
                     vals['ai_sentiment'] = sentiment
                 vals['ai_suggested_disposition'] = (insights.get('disposition') or '')[:120]
-            self.write(vals)
-        except Exception:
-            _logger.exception("comm_dialer: transcription failed for call %s", self.id)
-            self.write({'transcript_state': 'failed'})
+        self.write(vals)
 
     def action_transcribe(self):
         for call in self:
