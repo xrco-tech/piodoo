@@ -20,6 +20,7 @@ import datetime
 import json
 import logging
 import os
+import threading
 import xmlrpc.client
 
 import aiohttp
@@ -51,6 +52,9 @@ class Odoo:
     """Thin blocking XML-RPC client; calls are run in a thread executor."""
 
     def __init__(self):
+        # xmlrpc ServerProxy shares one HTTP connection — serialize calls (the
+        # poll loop and ARI event handlers both hit Odoo via the executor).
+        self._lock = threading.Lock()
         common = xmlrpc.client.ServerProxy(f'{ODOO_URL}/xmlrpc/2/common')
         self.uid = common.authenticate(ODOO_DB, ODOO_USER, ODOO_PASS, {})
         if not self.uid:
@@ -63,7 +67,8 @@ class Odoo:
                   self.uid, self._asterisk_accounts)
 
     def _call(self, model, method, args, kw=None):
-        return self.models.execute_kw(ODOO_DB, self.uid, ODOO_PASS, model, method, args, kw or {})
+        with self._lock:
+            return self.models.execute_kw(ODOO_DB, self.uid, ODOO_PASS, model, method, args, kw or {})
 
     def pending_calls(self, limit=20):
         """Queued outgoing calls on Asterisk accounts, not yet originated.
