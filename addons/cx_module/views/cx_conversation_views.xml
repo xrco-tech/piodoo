@@ -44,6 +44,27 @@
         <field name="domain">[('primary_channel_id.code', 'in', ['whatsapp', 'sms'])]</field>
     </record>
 
+    <!-- ── Message-level logs per channel (for the Messages tab, mirroring the
+         Voice tab's per-type call logs). comm.interaction = one row per message. -->
+    <record id="action_cx_msg_whatsapp" model="ir.actions.act_window">
+        <field name="name">WhatsApp Messages</field>
+        <field name="res_model">comm.interaction</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('channel_id.code', '=', 'whatsapp')]</field>
+    </record>
+    <record id="action_cx_msg_sms" model="ir.actions.act_window">
+        <field name="name">SMS Messages</field>
+        <field name="res_model">comm.interaction</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('channel_id.code', '=', 'sms')]</field>
+    </record>
+    <record id="action_cx_msg_email" model="ir.actions.act_window">
+        <field name="name">Emails</field>
+        <field name="res_model">comm.interaction</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('channel_id.code', '=', 'email')]</field>
+    </record>
+
     <!-- Customers &gt; Companies: res.partner filtered to companies. -->
     <record id="action_cx_companies" model="ir.actions.act_window">
         <field name="name">Companies</field>

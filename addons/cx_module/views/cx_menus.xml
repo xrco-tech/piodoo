@@ -121,6 +121,38 @@
               action="comm_chatbot.action_comm_interaction"
               sequence="60"/>
 
+    <!-- ============ Messages (per-channel message logs) ============ -->
+    <!-- Mirrors the Voice tab: one place for the message logs, split by channel.
+         Backed by comm.interaction (one row per message). -->
+    <menuitem id="menu_cx_messages_tab"
+              name="Messages"
+              parent="menu_cx_root"
+              sequence="23"/>
+
+    <menuitem id="menu_cx_msg_whatsapp"
+              name="WhatsApp"
+              parent="menu_cx_messages_tab"
+              action="action_cx_msg_whatsapp"
+              sequence="10"/>
+
+    <menuitem id="menu_cx_msg_sms"
+              name="SMS"
+              parent="menu_cx_messages_tab"
+              action="action_cx_msg_sms"
+              sequence="20"/>
+
+    <menuitem id="menu_cx_msg_email"
+              name="Email"
+              parent="menu_cx_messages_tab"
+              action="action_cx_msg_email"
+              sequence="30"/>
+
+    <menuitem id="menu_cx_msg_all"
+              name="All Messages"
+              parent="menu_cx_messages_tab"
+              action="comm_chatbot.action_comm_interaction"
+              sequence="40"/>
+
     <!-- ============ Voice (voice operations) ============ -->
     <!-- All voice under one tab: the live call log (agents), the manager
          dashboard, and admin teams/routing. From comm_whatsapp_calling. -->
