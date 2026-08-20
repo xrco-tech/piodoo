@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import re
+
 from odoo import api, fields, models
 
 RECORDING_MANAGER_GROUP = 'comm_whatsapp_calling.group_whatsapp_call_recording_manager'
@@ -59,11 +61,41 @@ class CommVoipCall(models.Model):
         super()._do_transcription()
         self._sync_to_conversation()
 
+    def _find_or_create_partner(self):
+        """Match the call's number to a res.partner (tolerant last-9-digits
+        match), or create one. Creation is gated by comm_dialer.auto_create_partner
+        (default on) so it can be turned off for POPIA-strict setups."""
+        self.ensure_one()
+        number = (self.to_number if self.direction == 'outgoing' else self.from_number) or ''
+        number = number.strip()
+        if not number:
+            return self.env['res.partner']
+        Partner = self.env['res.partner']
+        digits = re.sub(r'\D', '', number)
+        partner = Partner.browse()
+        if len(digits) >= 6:
+            tail = digits[-9:]  # national significant number, format-tolerant
+            partner = Partner.search(
+                ['|', ('phone', 'like', tail), ('mobile', 'like', tail)], limit=1)
+        if not partner:
+            partner = Partner.search(
+                ['|', ('phone', '=', number), ('mobile', '=', number)], limit=1)
+        if not partner:
+            allow = self.env['ir.config_parameter'].sudo().get_param(
+                'comm_dialer.auto_create_partner', '1')
+            if allow not in ('0', 'False', 'false'):
+                partner = Partner.create({'name': number, 'phone': number})
+        return partner
+
     def _sync_to_conversation(self):
         """Surface this VoIP call in the omnichannel inbox: find/open a
         comm.conversation for the partner on the 'voip' channel and add (or
         update) a call interaction. Idempotent; skipped without a partner."""
         self.ensure_one()
+        if not self.partner_id:
+            partner = self._find_or_create_partner()
+            if partner:
+                self.partner_id = partner.id
         if not self.partner_id:
             return
         channel = self.env.ref('comm_chatbot_voip.channel_voip', raise_if_not_found=False)
