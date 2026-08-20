@@ -61,6 +61,12 @@ class CommVoipCall(models.Model):
         super()._do_transcription()
         self._sync_to_conversation()
 
+    @api.model
+    def _cron_transcribe_all(self):
+        """Cron entry point — transcribe every recorded call, all types."""
+        self._cron_transcribe_pending()
+        self.env['whatsapp.call.log']._cron_transcribe_pending()
+
     def _find_or_create_partner(self):
         """Match the call's number to a res.partner (tolerant last-9-digits
         match), or create one. Creation is gated by comm_dialer.auto_create_partner
