@@ -104,7 +104,7 @@ export class CxInboxCc extends Component {
             this.state.messages = await this.orm.searchRead(
                 "comm.interaction",
                 [["conversation_id", "=", id]],
-                ["channel_code", "direction", "raw_body", "rendered_body", "status", "at"],
+                ["channel_code", "direction", "raw_body", "rendered_body", "status", "at", "recording_url", "recording_duration"],
                 { order: "at asc", limit: 500 }
             );
         } finally {

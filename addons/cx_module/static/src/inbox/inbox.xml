@@ -110,6 +110,11 @@
                                         <t t-esc="msg.at"/>
                                     </div>
                                     <div style="white-space: pre-wrap;"><t t-esc="msg.rendered_body or msg.raw_body"/></div>
+                                    <div class="mt-1" t-if="msg.recording_url">
+                                        <audio controls="controls" preload="none" t-att-src="msg.recording_url"
+                                               style="max-width:260px;height:32px;"/>
+                                        <span class="small opacity-75 ms-1" t-if="msg.recording_duration"><t t-esc="msg.recording_duration"/></span>
+                                    </div>
                                     <div class="small opacity-75" t-if="msg.direction === 'outbound'"><t t-esc="msg.status"/></div>
                                 </div>
                             </div>

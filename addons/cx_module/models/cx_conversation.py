@@ -151,6 +151,27 @@ class CommInteraction(models.Model):
 
     channel_code = fields.Char(
         related='channel_id.code', string='Channel Code')
+    # A playable recording for call interactions (VoIP): resolved from the
+    # source call's attachment so the inbox can render an <audio> control.
+    recording_url = fields.Char(compute='_compute_recording', string='Recording URL')
+    recording_duration = fields.Char(compute='_compute_recording', string='Recording Duration')
+
+    @api.depends('source_model', 'source_id')
+    def _compute_recording(self):
+        Att = self.env['ir.attachment'].sudo()
+        for it in self:
+            url = dur = False
+            if it.source_model == 'comm.voip.call' and it.source_id:
+                att = Att.search([
+                    ('res_model', '=', 'comm.voip.call'),
+                    ('res_id', '=', it.source_id),
+                    ('res_field', '=', 'recording_ids'),
+                ], order='id desc', limit=1)
+                if att:
+                    url = '/voip/call/recording/%s' % att.id
+                    dur = att.recording_duration_display
+            it.recording_url = url
+            it.recording_duration = dur
 
     @api.model_create_multi
     def create(self, vals_list):
