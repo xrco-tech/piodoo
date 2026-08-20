@@ -11,7 +11,7 @@ auto-install pattern as comm_whatsapp_calling_chatbot.
 """,
     "author": "Tsela NavTech",
     "license": "LGPL-3",
-    "depends": ["contact_centre", "comm_whatsapp", "comm_whatsapp_calling", "mail"],
+    "depends": ["contact_centre", "comm_whatsapp", "comm_whatsapp_calling", "comm_chatbot_voip", "mail"],
     "data": [
         "views/contact_centre_contact_views.xml",
         "data/backfill_missed_call_mislabeling.xml",

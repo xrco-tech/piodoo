@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
 import re
 
 from odoo import api, fields, models
 
+_logger = logging.getLogger(__name__)
 RECORDING_MANAGER_GROUP = 'comm_whatsapp_calling.group_whatsapp_call_recording_manager'
 
 
@@ -149,6 +151,13 @@ class CommVoipCall(models.Model):
                 'source_id': self.id,
             })
         conv.touch()
+
+        # Also surface in the Gen-1 Contact Centre inbox, if that stack is installed.
+        if 'contact.centre.contact' in self.env:
+            try:
+                self.env['contact.centre.contact'].sudo()._sync_voip_call(self)
+            except Exception:
+                _logger.exception("comm_dialer: Gen-1 inbox sync failed for call %s", self.id)
 
     @api.depends('recording_ids')
     def _compute_has_recording(self):

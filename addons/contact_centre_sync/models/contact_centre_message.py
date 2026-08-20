@@ -8,14 +8,17 @@ class ContactCentreMessage(models.Model):
 
     channel = fields.Selection(selection_add=[("voice", "Voice")], ondelete={"voice": "cascade"})
     whatsapp_call_log_id = fields.Many2one("whatsapp.call.log", ondelete="set null", index=True)
+    comm_voip_call_id = fields.Many2one("comm.voip.call", ondelete="set null", index=True)
 
     # Surfaced so the Inbox thread pane can offer inline playback right
-    # on a call's message bubble, without a second round trip through
-    # whatsapp.call.log — reuses the same streaming route/permissions
-    # as everywhere else (comm_whatsapp_calling's /whatsapp/call/
-    # recording/<id> route already gates read vs. download correctly).
+    # on a call's message bubble. call_recording_url is data-driven so it works
+    # for BOTH WhatsApp calls (/whatsapp/call/recording/<id>) and VoIP calls
+    # (/voip/call/recording/<id>) — each route gates read vs. download.
     call_recording_id = fields.Many2one(
         "ir.attachment", compute="_compute_call_recording_id", store=False,
+    )
+    call_recording_url = fields.Char(
+        compute="_compute_call_recording_id", store=False,
     )
     call_recording_duration = fields.Char(
         related="call_recording_id.recording_duration_display", string="Recording Length",
@@ -32,7 +35,18 @@ class ContactCentreMessage(models.Model):
         string="Call Disposition Note", store=False,
     )
 
-    @api.depends("whatsapp_call_log_id.recording_ids")
+    @api.depends("whatsapp_call_log_id.recording_ids", "comm_voip_call_id.recording_ids")
     def _compute_call_recording_id(self):
         for rec in self:
-            rec.call_recording_id = rec.whatsapp_call_log_id.recording_ids[:1]
+            att = self.env["ir.attachment"]
+            url = False
+            if rec.whatsapp_call_log_id:
+                att = rec.whatsapp_call_log_id.recording_ids[:1]
+                if att:
+                    url = "/whatsapp/call/recording/%s" % att.id
+            elif rec.comm_voip_call_id:
+                att = rec.comm_voip_call_id.recording_ids[:1]
+                if att:
+                    url = "/voip/call/recording/%s" % att.id
+            rec.call_recording_id = att[:1]
+            rec.call_recording_url = url

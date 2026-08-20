@@ -91,6 +91,38 @@ class ContactCentreContact(models.Model):
             "whatsapp_message_id": wa_message.id,
         })
 
+    def _sync_voip_call(self, call):
+        """Mirror _sync_whatsapp_call for VoIP calls (comm.voip.call), so they
+        surface in the Gen-1 inbox with a playable recording + transcript."""
+        if not call.partner_id:
+            return
+        contact = self._find_or_create_contact_for_partner(call.partner_id)
+        direction = "inbound" if call.direction == "incoming" else "outbound"
+        label = "Incoming call" if direction == "inbound" else "Outgoing call"
+        state_label = dict(call._fields["state"].selection).get(call.state, call.state or "")
+        body = "%s — %s (%s)" % (label, call.duration_display or "—", state_label)
+        if call.ai_summary:
+            body += "\n" + call.ai_summary
+        if call.transcript:
+            body += "\n\nTranscript:\n" + call.transcript
+        Message = self.env["contact.centre.message"].sudo()
+        existing = Message.search([("comm_voip_call_id", "=", call.id)], limit=1)
+        vals = {
+            "contact_id": contact.id,
+            "channel": "voice",
+            "direction": direction,
+            "message_type": "text",
+            "body_text": body,
+            "status": "delivered",
+            "message_timestamp": call.end_time or call.start_time or fields.Datetime.now(),
+            "provider_message_id": call.external_id or str(call.id),
+            "comm_voip_call_id": call.id,
+        }
+        if existing:
+            existing.write(vals)
+        else:
+            Message.create(vals)
+
     def _call_summary(self, call_log, direction):
         label = "Incoming call" if direction == "inbound" else "Outgoing call"
         if call_log.is_missed:
