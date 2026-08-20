@@ -1,0 +1,105 @@
+// UCX inbox — Contact Centre skin.
+//
+// Vendored from contact_centre_inbox's o_cc_inbox_* stylesheet so UCX no longer
+// has to depend on the Gen-1 inbox module just to borrow its look. Only the
+// rules this component actually uses are kept: the Gen-1-only bits (voice
+// script bubbles, the side-panel tab strip, call-picker rows) have no Gen-2
+// equivalent and are deliberately not carried over.
+//
+// Namespaced o_cx_inbox_cc_* rather than o_cc_inbox_* so that a database with
+// both modules installed loads two independent stylesheets instead of two
+// competing definitions of the same selectors.
+
+.o_cx_inbox_cc {
+    height: 100%;
+    background: var(--o-view-background-color, #fff);
+    // .o_action's own rules default to flex-direction: column (header
+    // stacked over content) - force row so the 3 panes sit side by side.
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+
+    .o_cx_inbox_cc_pane_header {
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        background: var(--o-gray-100, #f8f9fa);
+        flex-shrink: 0;
+    }
+
+    // ── Left: conversation list ──────────────────────────────────────
+    .o_cx_inbox_cc_list {
+        width: 320px;
+        min-width: 320px;
+        background: var(--o-gray-100, #f8f9fa);
+        border-right: 1px solid var(--o-gray-300, #dee2e6) !important;
+    }
+
+    .o_cx_inbox_cc_contact {
+        border-left: 4px solid transparent;
+        transition: background-color 0.1s ease;
+
+        &:hover {
+            background: var(--o-gray-200, #e9ecef);
+        }
+
+        &.o_cx_inbox_cc_contact_selected {
+            border-left-color: var(--bs-primary, #0d6efd);
+            background: var(--o-view-background-color, #fff);
+        }
+    }
+
+    // ── Center: thread ────────────────────────────────────────────────
+    .o_cx_inbox_cc_thread {
+        background: var(--o-view-background-color, #fff);
+    }
+
+    .o_cx_inbox_cc_bubble {
+        max-width: 65%;
+        border-radius: 12px;
+    }
+
+    // Auto-grows via JS up to ~8 lines, then scrolls instead of growing further.
+    .o_cx_inbox_cc_composer {
+        resize: none;
+        overflow-y: auto;
+        max-height: 12rem;
+    }
+
+    // ── Template picker dropdown (anchored to the thread header) ───────
+    .o_cx_inbox_cc_picker {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 10;
+        min-width: 220px;
+        max-height: 300px;
+        overflow-y: auto;
+        background: var(--o-view-background-color, #fff);
+        border: 1px solid var(--o-gray-300, #dee2e6);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        margin-top: 0.25rem;
+    }
+
+    // ── Right: copilot + notes ────────────────────────────────────────
+    .o_cx_inbox_cc_side {
+        width: 320px;
+        min-width: 320px;
+        background: var(--o-gray-100, #f8f9fa);
+        border-left: 1px solid var(--o-gray-300, #dee2e6) !important;
+        transition: width 0.15s ease, min-width 0.15s ease;
+
+        &.o_cx_inbox_cc_side_wide {
+            width: 650px;
+            min-width: 650px;
+        }
+    }
+
+    .o_cx_inbox_cc_side_section {
+        background: var(--o-view-background-color, #fff);
+        border-radius: 8px;
+        margin: 0.75rem;
+        padding: 0.75rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+}

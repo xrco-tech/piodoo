@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The original Contact Centre inbox as-is (Gen-1 contact.centre data +
+         voice-script/call-picker), surfaced inside the UCX app.
+         Only for users with Contact Centre access.
+
+         Sequence 14 keeps its original position: after "Inbox" (10) and
+         "Inbox (CC design)" (12), before "Live Chat" (20). -->
+    <menuitem id="menu_cx_inbox_contact_centre"
+              name="Inbox (Contact Centre)"
+              parent="cx_module.menu_cx_conversations"
+              action="contact_centre_inbox.action_contact_centre_inbox"
+              groups="contact_centre.group_contact_centre_agent"
+              sequence="14"/>
+</odoo>

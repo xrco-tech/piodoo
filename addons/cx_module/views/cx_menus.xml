@@ -87,14 +87,11 @@
               action="action_cx_inbox_cc"
               sequence="12"/>
 
-    <!-- The original Contact Centre inbox as-is (Gen-1 contact.centre data +
-         voice-script/call-picker). Only for users with Contact Centre access. -->
-    <menuitem id="menu_cx_inbox_contact_centre"
-              name="Inbox (Contact Centre)"
-              parent="menu_cx_conversations"
-              action="contact_centre_inbox.action_contact_centre_inbox"
-              groups="contact_centre.group_contact_centre_agent"
-              sequence="14"/>
+    <!-- The original Contact Centre inbox (Gen-1 data + voice-script/call-picker)
+         used to be surfaced here at sequence 14. It now lives in the optional
+         glue module cx_module_contact_centre, so UCX itself carries no
+         dependency on contact_centre_inbox. Install that module to get the
+         menu item back. -->
 
     <menuitem id="menu_cx_livechat"
               name="Live Chat"

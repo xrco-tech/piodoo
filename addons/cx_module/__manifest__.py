@@ -54,11 +54,14 @@ Odoo so the shell installs clean on its own.
         'comm_chatbot_voip',
         # Outbound dialer (progressive / predictive) on top of the voip channel.
         'comm_dialer',
-        # Second inbox design: surfaces the Contact Centre (Gen-1) inbox as-is
-        # AND lets the UCX-native CC-skin inbox reuse its o_cc_inbox_* styles.
-        # NOTE: this pulls the Gen-1 Contact Centre app into UCX's dep graph
-        # (already installed on this instance).
-        'contact_centre_inbox',
+        # Shared message-template taxonomy (contact.centre.template), used by
+        # both UCX inboxes and by the Configuration > Templates menus. This is
+        # the ONLY remaining Gen-1 edge: the Gen-1 inbox dependency was dropped
+        # (its skin is vendored into static/src/inbox_cc/inbox_cc.scss, and the
+        # "Inbox (Contact Centre)" menu moved to the optional glue module
+        # cx_module_contact_centre). Retiring this edge means porting
+        # contact.centre.template to a UCX-native model.
+        'contact_centre',
     ],
     'data': [
         'security/cx_module_groups.xml',
@@ -81,6 +84,7 @@ Odoo so the shell installs clean on its own.
             'cx_module/static/src/inbox/inbox.scss',
             'cx_module/static/src/inbox/inbox.js',
             'cx_module/static/src/inbox/inbox.xml',
+            'cx_module/static/src/inbox_cc/inbox_cc.scss',
             'cx_module/static/src/inbox_cc/inbox_cc.js',
             'cx_module/static/src/inbox_cc/inbox_cc.xml',
             'cx_module/static/src/flow/flow.scss',

@@ -1,7 +1,8 @@
 /** @odoo-module **/
 // UCX inbox — Contact Centre skin, Gen-2 data.
-// Reuses contact_centre_inbox's o_cc_inbox_* skin (loaded via the module dep)
-// but binds to comm.conversation / comm.interaction and the UCX AI Copilot.
+// The skin is UCX's own (inbox_cc.scss, o_cx_inbox_cc_*): it was vendored from
+// contact_centre_inbox so UCX carries no dependency on the Gen-1 inbox module.
+// Binds to comm.conversation / comm.interaction and the UCX AI Copilot.
 // The Gen-1-only bits (voice-script panel, call-picker) are intentionally left
 // out — there's no Gen-2 equivalent yet.
 import { Component, useState, useRef, useEffect, onWillStart, onWillDestroy } from "@odoo/owl";
