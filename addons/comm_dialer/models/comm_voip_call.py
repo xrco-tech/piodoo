@@ -42,14 +42,75 @@ class CommVoipCall(models.Model):
     def write(self, vals):
         res = super().write(vals)
         # Whenever a call is closed out (end_time set), fill duration from the
-        # span if it wasn't provided — covers softphone + ARI bridge paths.
+        # span if it wasn't provided, and surface the call in the omnichannel
+        # inbox as a conversation interaction — covers softphone + ARI paths.
         if vals.get('end_time'):
             for c in self:
                 if c.end_time and c.start_time and not c.duration:
                     secs = int((c.end_time - c.start_time).total_seconds())
                     if secs > 0:
                         super(CommVoipCall, c).write({'duration': secs})
+                c._sync_to_conversation()
         return res
+
+    def _do_transcription(self):
+        # After (re)transcribing, refresh the inbox interaction so the transcript
+        # + AI summary show in the conversation timeline.
+        super()._do_transcription()
+        self._sync_to_conversation()
+
+    def _sync_to_conversation(self):
+        """Surface this VoIP call in the omnichannel inbox: find/open a
+        comm.conversation for the partner on the 'voip' channel and add (or
+        update) a call interaction. Idempotent; skipped without a partner."""
+        self.ensure_one()
+        if not self.partner_id:
+            return
+        channel = self.env.ref('comm_chatbot_voip.channel_voip', raise_if_not_found=False)
+        if not channel:
+            return
+        Conv = self.env['comm.conversation']
+        conv = self.conversation_id
+        if not conv:
+            conv = Conv.search([
+                ('partner_id', '=', self.partner_id.id),
+                ('lifecycle_state', 'in', ('open', 'waiting')),
+            ], limit=1, order='last_activity_at desc')
+            if not conv:
+                conv = Conv.create({
+                    'partner_id': self.partner_id.id,
+                    'primary_channel_id': channel.id,
+                })
+            self.conversation_id = conv.id
+
+        direction = 'inbound' if self.direction == 'incoming' else 'outbound'
+        state_label = dict(self._fields['state'].selection).get(self.state, self.state or '')
+        body = '\U0001F4DE %s call — %s (%s)' % (
+            'Inbound' if direction == 'inbound' else 'Outbound',
+            self.duration_display or '—', state_label)
+        if self.ai_summary:
+            body += '\n' + self.ai_summary
+        if self.transcript:
+            body += '\n\nTranscript:\n' + self.transcript
+
+        Interaction = self.env['comm.interaction']
+        existing = Interaction.search([
+            ('source_model', '=', 'comm.voip.call'), ('source_id', '=', self.id)], limit=1)
+        if existing:
+            existing.write({'raw_body': body, 'rendered_body': body})
+        else:
+            Interaction.create({
+                'conversation_id': conv.id,
+                'channel_id': channel.id,
+                'direction': direction,
+                'at': self.end_time or self.start_time or fields.Datetime.now(),
+                'raw_body': body,
+                'rendered_body': body,
+                'status': 'received',
+                'source_model': 'comm.voip.call',
+                'source_id': self.id,
+            })
+        conv.touch()
 
     @api.depends('recording_ids')
     def _compute_has_recording(self):
