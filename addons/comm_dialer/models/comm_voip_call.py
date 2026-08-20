@@ -6,6 +6,7 @@ RECORDING_MANAGER_GROUP = 'comm_whatsapp_calling.group_whatsapp_call_recording_m
 
 class CommVoipCall(models.Model):
     # Transcription + AI insights come from the shared mixin (also on whatsapp.call.log).
+    _name = 'comm.voip.call'
     _inherit = ['comm.voip.call', 'comm.call.transcription.mixin']
 
     # Back-link so a call originated by the dialer knows its call-list row.
