@@ -32,7 +32,8 @@
         <field name="name">Dialer: transcribe call recordings</field>
         <field name="model_id" ref="comm_chatbot_voip.model_comm_voip_call"/>
         <field name="state">code</field>
-        <field name="code">model._cron_transcribe_pending()</field>
+        <field name="code">model._cron_transcribe_pending()
+env['whatsapp.call.log']._cron_transcribe_pending()</field>
         <field name="interval_number">2</field>
         <field name="interval_type">minutes</field>
         <field name="active" eval="True"/>

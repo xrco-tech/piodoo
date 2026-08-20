@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Transcript + AI insights on WhatsApp calls (same mixin as VoIP). -->
+    <record id="view_whatsapp_call_log_form_transcript" model="ir.ui.view">
+        <field name="name">whatsapp.call.log.form.transcript</field>
+        <field name="model">whatsapp.call.log</field>
+        <field name="inherit_id" ref="comm_whatsapp_calling.view_whatsapp_call_log_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_transcribe" type="object" string="Transcribe"
+                        icon="fa-file-text-o" invisible="not has_recording"/>
+            </xpath>
+            <xpath expr="//page[@name='recording']" position="after">
+                <page string="Transcript" name="transcript" invisible="not has_recording">
+                    <group>
+                        <field name="transcript_state"/>
+                        <field name="ai_summary" readonly="1"
+                               placeholder="Runs after transcription…"/>
+                        <field name="ai_sentiment" readonly="1" widget="badge"
+                               decoration-success="ai_sentiment == 'positive'"
+                               decoration-warning="ai_sentiment == 'neutral'"
+                               decoration-danger="ai_sentiment == 'negative'"/>
+                        <field name="ai_suggested_disposition" readonly="1"/>
+                    </group>
+                    <field name="transcript" readonly="1" nolabel="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 'Transcript' badge in the WhatsApp call list. -->
+    <record id="view_whatsapp_call_log_list_transcript" model="ir.ui.view">
+        <field name="name">whatsapp.call.log.list.transcript</field>
+        <field name="model">whatsapp.call.log</field>
+        <field name="inherit_id" ref="comm_whatsapp_calling.view_whatsapp_call_log_list"/>
+        <field name="arch" type="xml">
+            <field name="has_recording" position="after">
+                <field name="transcript_state" string="Transcript" widget="badge"
+                       decoration-success="transcript_state == 'done'"
+                       decoration-warning="transcript_state == 'pending'"
+                       decoration-danger="transcript_state == 'failed'"
+                       optional="hide"/>
+            </field>
+        </field>
+    </record>
+</odoo>

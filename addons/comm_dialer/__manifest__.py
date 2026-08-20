@@ -40,6 +40,7 @@ provider is wired into comm.voip.account.originate/bridge).
         'views/comm_dialer_agent_views.xml',
         'views/comm_dialer_dnc_views.xml',
         'views/comm_voip_recording_views.xml',
+        'views/whatsapp_call_transcript_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
