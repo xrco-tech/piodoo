@@ -1,0 +1,18 @@
+// Make the Odoo apps menu scroll on mobile.
+//
+// The apps sidebar (.o_app_menu_sidebar) is a fixed-height flex column whose
+// content area (.o_burger_menu_content) has overflow-auto — but it was missing
+// `min-height: 0`, so in a flex column the child can't shrink below its content
+// height and, with many installed apps, the bottom app icons were clipped
+// instead of scrolling. Add min-height:0 (the flexbox-scroll fix) and use the
+// dynamic viewport height so the mobile browser chrome doesn't hide the last row.
+.o_app_menu_sidebar {
+    max-height: 100vh;
+    max-height: 100dvh;
+
+    .o_burger_menu_content {
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}

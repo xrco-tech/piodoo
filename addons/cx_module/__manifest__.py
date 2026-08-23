@@ -81,6 +81,7 @@ Odoo so the shell installs clean on its own.
     ],
     'assets': {
         'web.assets_backend': [
+            'cx_module/static/src/apps_menu_scroll.scss',
             'cx_module/static/src/inbox/inbox.scss',
             'cx_module/static/src/inbox/inbox.js',
             'cx_module/static/src/inbox/inbox.xml',
