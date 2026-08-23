@@ -51,11 +51,17 @@
 }
 
 .o_home_screen_dashboard {
-    min-height: 100%;
+    /* Bound the height to the parent so overflow-y actually scrolls — with
+       min-height:100% the container grows past the viewport and the parent
+       clips it (no scroll, bottom tiles cut off), especially on mobile. */
+    height: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
     background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
     padding: 0;
     margin: 0;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Header Section - Hidden */
@@ -232,6 +238,7 @@
     .o_home_apps_grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 16px;
+        max-width: 100%;
     }
 
     .o_home_app_card {
@@ -260,19 +267,22 @@
     }
 
     .o_home_apps_grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        max-width: 100%;
     }
 
     .o_home_app_card {
-        width: 100px;
-        padding: 14px 10px;
+        width: 100%;
+        max-width: 100px;
+        padding: 12px 6px;
+        min-height: 96px;
     }
 
     .o_home_app_icon,
     .o_home_app_icon_img {
-        width: 52px;
-        height: 52px;
+        width: 48px;
+        height: 48px;
     }
 
     .o_home_app_icon i {
