@@ -263,6 +263,7 @@ export class ContactCentreInbox extends Component {
                 [["contact_id", "=", contactId]],
                 ["channel", "direction", "body_text", "status", "message_timestamp", "message_type",
                  "call_recording_id", "call_recording_url", "call_recording_duration",
+                 "voice_transcript",
                  "call_disposition_id", "call_disposition_note"],
                 { order: "message_timestamp asc", limit: 200 }
             );

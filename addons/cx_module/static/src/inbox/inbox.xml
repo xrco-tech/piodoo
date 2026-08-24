@@ -119,6 +119,9 @@
                                                style="max-width:260px;height:32px;"/>
                                         <span class="small opacity-75 ms-1" t-if="msg.recording_duration"><t t-esc="msg.recording_duration"/></span>
                                     </div>
+                                    <div class="mt-1 small fst-italic opacity-75" t-if="msg.transcript" style="white-space:pre-wrap;">
+                                        <i class="fa fa-quote-left me-1"/><t t-esc="msg.transcript"/>
+                                    </div>
                                     <div class="small opacity-75" t-if="msg.direction === 'outbound'"><t t-esc="msg.status"/></div>
                                 </div>
                             </div>

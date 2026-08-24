@@ -24,6 +24,13 @@ class ContactCentreMessage(models.Model):
         related="call_recording_id.recording_duration_display", string="Recording Length",
     )
 
+    # Whisper transcript for an inbound WhatsApp voice note, surfaced so the
+    # Inbox can show it under the player (computed, not related — the transcript
+    # field only exists when comm_dialer is installed).
+    voice_transcript = fields.Text(
+        compute="_compute_call_recording_id", store=False, string="Voice Note Transcript",
+    )
+
     # Surface the call's wrap-up disposition + note on the message so the
     # Inbox thread can show a call's outcome inline, next to its recording.
     call_disposition_id = fields.Many2one(
@@ -35,11 +42,13 @@ class ContactCentreMessage(models.Model):
         string="Call Disposition Note", store=False,
     )
 
-    @api.depends("whatsapp_call_log_id.recording_ids", "comm_voip_call_id.recording_ids")
+    @api.depends("whatsapp_call_log_id.recording_ids", "comm_voip_call_id.recording_ids",
+                 "whatsapp_message_id.media_attachment_id", "whatsapp_message_id.message_type")
     def _compute_call_recording_id(self):
         for rec in self:
             att = self.env["ir.attachment"]
             url = False
+            trans = False
             if rec.whatsapp_call_log_id:
                 att = rec.whatsapp_call_log_id.recording_ids[:1]
                 if att:
@@ -48,5 +57,14 @@ class ContactCentreMessage(models.Model):
                 att = rec.comm_voip_call_id.recording_ids[:1]
                 if att:
                     url = "/voip/call/recording/%s" % att.id
+            elif (rec.whatsapp_message_id
+                    and rec.whatsapp_message_id.message_type == "audio"
+                    and rec.whatsapp_message_id.media_attachment_id):
+                att = rec.whatsapp_message_id.media_attachment_id
+                url = "/whatsapp/voice_note/%s" % att.id
+                # transcript only exists when comm_dialer is installed.
+                if "transcript" in rec.whatsapp_message_id._fields:
+                    trans = rec.whatsapp_message_id.transcript or False
             rec.call_recording_id = att[:1]
             rec.call_recording_url = url
+            rec.voice_transcript = trans

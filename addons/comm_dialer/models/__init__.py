@@ -5,6 +5,7 @@ from . import transcription_mixin
 from . import comm_voip_account
 from . import comm_voip_call
 from . import whatsapp_call_log
+from . import whatsapp_message
 from . import comm_dialer_dnc
 from . import comm_dialer_campaign
 from . import comm_dialer_contact

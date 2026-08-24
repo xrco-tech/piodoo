@@ -151,16 +151,20 @@ class CommInteraction(models.Model):
 
     channel_code = fields.Char(
         related='channel_id.code', string='Channel Code')
-    # A playable recording for call interactions (VoIP): resolved from the
-    # source call's attachment so the inbox can render an <audio> control.
+    # A playable recording for call interactions (VoIP) and WhatsApp voice notes:
+    # resolved from the source record's attachment so the inbox can render an
+    # <audio> control. `transcript` carries a voice note's Whisper transcript
+    # (calls already fold their transcript into the interaction body).
     recording_url = fields.Char(compute='_compute_recording', string='Recording URL')
     recording_duration = fields.Char(compute='_compute_recording', string='Recording Duration')
+    transcript = fields.Text(compute='_compute_recording', string='Voice Transcript')
 
     @api.depends('source_model', 'source_id')
     def _compute_recording(self):
         Att = self.env['ir.attachment'].sudo()
+        WaMsg = self.env['whatsapp.message'].sudo()
         for it in self:
-            url = dur = False
+            url = dur = trans = False
             if it.source_model == 'comm.voip.call' and it.source_id:
                 att = Att.search([
                     ('res_model', '=', 'comm.voip.call'),
@@ -170,8 +174,14 @@ class CommInteraction(models.Model):
                 if att:
                     url = '/voip/call/recording/%s' % att.id
                     dur = att.recording_duration_display
+            elif it.source_model == 'whatsapp.message' and it.source_id:
+                msg = WaMsg.browse(it.source_id)
+                if msg.exists() and msg.message_type == 'audio' and msg.media_attachment_id:
+                    url = '/whatsapp/voice_note/%s' % msg.media_attachment_id.id
+                    trans = msg.transcript or False
             it.recording_url = url
             it.recording_duration = dur
+            it.transcript = trans
 
     @api.model_create_multi
     def create(self, vals_list):

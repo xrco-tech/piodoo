@@ -65,9 +65,11 @@ class CommVoipCall(models.Model):
 
     @api.model
     def _cron_transcribe_all(self):
-        """Cron entry point — transcribe every recorded call, all types."""
+        """Cron entry point — transcribe every recorded call, all types, plus
+        inbound WhatsApp voice notes (same Whisper + Claude pipeline)."""
         self._cron_transcribe_pending()
         self.env['whatsapp.call.log']._cron_transcribe_pending()
+        self.env['whatsapp.message']._cron_transcribe_voice_notes()
 
     def _find_or_create_partner(self):
         """Match the call's number to a res.partner (tolerant last-9-digits

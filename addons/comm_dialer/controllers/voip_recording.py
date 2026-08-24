@@ -94,3 +94,29 @@ class VoipRecordingController(http.Controller):
             ('Cache-Control', 'private, max-age=0'),
         ]
         return request.make_response(data, headers=headers)
+
+    @http.route(
+        '/whatsapp/voice_note/<int:attachment_id>',
+        type='http', auth='user', methods=['GET'],
+    )
+    def stream_voice_note(self, attachment_id, **kwargs):
+        """Serve an inbound WhatsApp voice-note's audio inline for anyone who can
+        read the underlying whatsapp.message (so the inbox can render a player)."""
+        attachment = request.env['ir.attachment'].sudo().browse(attachment_id)
+        if not attachment.exists() or attachment.res_model != 'whatsapp.message':
+            return request.not_found()
+
+        # Non-sudo read so this only serves audio the requesting user may see.
+        visible = request.env['whatsapp.message'].search(
+            [('id', '=', attachment.res_id)], limit=1)
+        if not visible:
+            return request.not_found()
+
+        data = base64.b64decode(attachment.datas or b'')
+        headers = [
+            ('Content-Type', attachment.mimetype or 'audio/ogg'),
+            ('Content-Length', str(len(data))),
+            ('Content-Disposition', 'inline; filename="%s"' % attachment.name),
+            ('Cache-Control', 'private, max-age=0'),
+        ]
+        return request.make_response(data, headers=headers)
