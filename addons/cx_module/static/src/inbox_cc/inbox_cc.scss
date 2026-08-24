@@ -132,7 +132,8 @@
             top: 0;
             right: 0;
             height: 100%;
-            width: min(92%, 420px);
+            width: 92%;
+            max-width: 420px;
             min-width: 0 !important;
             transform: translateX(100%);
             transition: transform 0.2s ease;
