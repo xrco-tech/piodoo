@@ -64,6 +64,10 @@
                         <t t-else="">Thread</t>
                     </span>
                     <div class="ms-auto d-flex gap-2" t-if="state.selectedContactId">
+                        <button class="btn btn-sm btn-outline-secondary d-md-none" t-on-click="toggleSide"
+                                title="Copilot &amp; notes">
+                            <i class="fa fa-magic"/>
+                        </button>
                         <div class="position-relative">
                             <button class="btn btn-sm btn-success" t-on-click="toggleCallPicker">
                                 <i class="fa fa-phone me-1"/>Call WhatsApp
@@ -183,9 +187,12 @@
                 </t>
             </div>
 
+            <!-- Mobile-only backdrop: tap outside the drawer to close it. -->
+            <div class="o_cc_inbox_backdrop d-md-none" t-if="state.showSide" t-on-click="toggleSide"/>
+
             <!-- ── Right: AI copilot + internal notes ───────────────── -->
             <div class="o_cc_inbox_side d-flex flex-column overflow-auto"
-                 t-att-class="{'o_cc_inbox_side_wide': state.showInternalNotes or state.showVoiceScript}">
+                 t-att-class="{'o_cc_inbox_side_wide': state.showInternalNotes or state.showVoiceScript, 'o_cc_inbox_side_open': state.showSide}">
                 <div class="o_cc_inbox_pane_header">Copilot &amp; Notes</div>
                 <div t-if="state.showVoiceScript and state.selectedContactId" class="o_cc_inbox_tabs d-flex border-bottom">
                     <button class="o_cc_inbox_tab" t-att-class="{'o_cc_inbox_tab_active': state.rightPaneTab === 'script'}"

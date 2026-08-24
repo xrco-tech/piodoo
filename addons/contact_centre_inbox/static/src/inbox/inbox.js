@@ -20,6 +20,7 @@ export class ContactCentreInbox extends Component {
         this.orm = useService("orm");
         this.busService = useService("bus_service");
         this.notification = useService("notification");
+        this.ui = useService("ui");
 
         // Set when opened via a campaign's "Open Workspace" smart button
         // (contact.centre.campaign.action_open_workspace) - plain instance
@@ -40,6 +41,7 @@ export class ContactCentreInbox extends Component {
             composerText: "",
             composerChannel: "whatsapp",
             showLeftPane: true,
+            showSide: false,
             showInternalNotes: false,
             aiAvailable: false,
             ai: { ai_summary: "", ai_sentiment: false, ai_suggested_reply: "", ai_analyzed_date: false },
@@ -131,6 +133,11 @@ export class ContactCentreInbox extends Component {
     async selectContact(contactId) {
         this.state.selectedContactId = contactId;
         this.state.selectedContact = this.state.contacts.find((c) => c.id === contactId) || false;
+        // On phones, collapse the list so the thread takes over (master-detail).
+        if (this.ui.isSmall) {
+            this.state.showLeftPane = false;
+            this.state.showSide = false;
+        }
         await Promise.all([
             this.loadMessages(contactId),
             this.loadAiPanel(contactId),
@@ -328,6 +335,10 @@ export class ContactCentreInbox extends Component {
         this.state.showLeftPane = !this.state.showLeftPane;
     }
 
+    toggleSide() {
+        this.state.showSide = !this.state.showSide;
+    }
+
     async toggleCallPicker() {
         this.state.showCallPicker = !this.state.showCallPicker;
         if (this.state.showCallPicker && !this.state.voiceChatbots.length) {
@@ -378,6 +389,11 @@ export class ContactCentreInbox extends Component {
             this.state.voiceChatbotName = chatbot ? chatbot.name : "";
             this.state.showVoiceScript = true;
             this.state.rightPaneTab = "script";
+            // On phones the right pane is an off-canvas drawer — slide it in so
+            // the agent can follow the script.
+            if (this.ui.isSmall) {
+                this.state.showSide = true;
+            }
         }
     }
 

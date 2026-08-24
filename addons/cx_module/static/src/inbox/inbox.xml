@@ -59,7 +59,11 @@
                         <t t-if="state.selected"><t t-esc="state.selected.partner_id ? state.selected.partner_id[1] : state.selected.name"/></t>
                         <t t-else="">Thread</t>
                     </span>
-                    <div class="ms-auto position-relative" t-if="state.selectedId">
+                    <div class="ms-auto position-relative d-flex gap-2" t-if="state.selectedId">
+                        <button class="btn btn-sm btn-outline-secondary d-md-none" t-on-click="toggleSide"
+                                title="Disposition &amp; notes">
+                            <i class="fa fa-sliders"/>
+                        </button>
                         <button class="btn btn-sm btn-primary" t-on-click="toggleTemplatePicker">
                             <i class="fa fa-paper-plane me-1"/>Send Template
                         </button>
@@ -137,8 +141,12 @@
                 </t>
             </div>
 
+            <!-- Mobile-only backdrop: tap outside the drawer to close it. -->
+            <div class="o_cx_inbox_backdrop d-md-none" t-if="state.showSide" t-on-click="toggleSide"/>
+
             <!-- ── Right: disposition + internal notes (comm.conversation is a mail.thread) ── -->
-            <div class="o_cx_inbox_side d-flex flex-column overflow-auto">
+            <div class="o_cx_inbox_side d-flex flex-column overflow-auto"
+                 t-att-class="{'o_cx_inbox_side_open': state.showSide}">
                 <div class="o_cx_inbox_pane_header">Disposition &amp; Notes</div>
                 <t t-if="!state.selectedId">
                     <div class="p-3 text-muted small">Select a conversation to set its outcome and see its internal notes</div>

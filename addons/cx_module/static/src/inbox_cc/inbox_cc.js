@@ -22,6 +22,7 @@ export class CxInboxCc extends Component {
     setup() {
         this.orm = useService("orm");
         this.busService = useService("bus_service");
+        this.ui = useService("ui");
 
         this.state = useState({
             loadingList: true,
@@ -35,6 +36,7 @@ export class CxInboxCc extends Component {
             composerText: "",
             composerChannel: "whatsapp",
             showLeftPane: true,
+            showSide: false,
             showNotes: false,
             ai: {},
             aiLoading: false,
@@ -96,6 +98,11 @@ export class CxInboxCc extends Component {
         const code = this.state.selected && this.state.selected.primary_channel_code;
         this.state.composerChannel = SENDABLE_CHANNELS.includes(code) ? code : "whatsapp";
         this.state.showNotes = false;
+        // On phones, collapse the list so the thread takes over (master-detail).
+        if (this.ui.isSmall) {
+            this.state.showLeftPane = false;
+            this.state.showSide = false;
+        }
         await Promise.all([this.loadMessages(id), this.loadCopilot(id)]);
     }
 
@@ -261,6 +268,10 @@ export class CxInboxCc extends Component {
 
     toggleLeftPane() {
         this.state.showLeftPane = !this.state.showLeftPane;
+    }
+
+    toggleSide() {
+        this.state.showSide = !this.state.showSide;
     }
 
     toggleNotes() {

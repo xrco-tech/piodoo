@@ -61,3 +61,51 @@
         background: var(--o-view-background-color, #fff);
     }
 }
+
+// ── Mobile: master-detail (list ↔ thread) + off-canvas notes drawer ────
+@media (max-width: 767.98px) {
+    .o_cx_inbox {
+        position: relative;
+
+        // List takes the whole screen; selecting a conversation collapses it
+        // (JS) so the thread shows. The header back-button re-opens the list.
+        .o_cx_inbox_list {
+            width: 100% !important;
+            min-width: 0 !important;
+            border-right: 0 !important;
+        }
+        // While the list is mounted, the thread stays hidden behind it.
+        .o_cx_inbox_list ~ .o_cx_inbox_thread {
+            display: none !important;
+        }
+
+        .o_cx_inbox_bubble {
+            max-width: 85%;
+        }
+
+        // Disposition/notes pane slides in from the right as a drawer.
+        .o_cx_inbox_side {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: min(88%, 360px);
+            min-width: 0 !important;
+            transform: translateX(100%);
+            transition: transform 0.2s ease;
+            z-index: 1046;
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.2);
+
+            &.o_cx_inbox_side_open {
+                transform: translateX(0);
+            }
+        }
+
+        .o_cx_inbox_backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            z-index: 1045;
+        }
+    }
+}

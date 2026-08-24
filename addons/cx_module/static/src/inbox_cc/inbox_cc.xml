@@ -63,7 +63,11 @@
                         </t>
                         <t t-else="">Thread</t>
                     </span>
-                    <div class="ms-auto position-relative" t-if="state.selectedId">
+                    <button class="btn btn-sm btn-outline-secondary d-md-none ms-auto" t-if="state.selectedId"
+                            t-on-click="toggleSide" title="Copilot &amp; notes">
+                        <i class="fa fa-magic"/>
+                    </button>
+                    <div class="ms-md-auto position-relative" t-if="state.selectedId">
                         <button class="btn btn-sm btn-primary" t-on-click="toggleTemplatePicker">
                             <i class="fa fa-paper-plane me-1"/>Send Template
                         </button>
@@ -145,9 +149,12 @@
                 </t>
             </div>
 
+            <!-- Mobile-only backdrop: tap outside the drawer to close it. -->
+            <div class="o_cx_inbox_cc_backdrop d-md-none" t-if="state.showSide" t-on-click="toggleSide"/>
+
             <!-- ── Right: AI copilot + internal notes ───────────────── -->
             <div class="o_cx_inbox_cc_side d-flex flex-column overflow-auto"
-                 t-att-class="{'o_cx_inbox_cc_side_wide': state.showNotes}">
+                 t-att-class="{'o_cx_inbox_cc_side_wide': state.showNotes, 'o_cx_inbox_cc_side_open': state.showSide}">
                 <div class="o_cx_inbox_cc_pane_header">Copilot &amp; Notes</div>
                 <t t-if="!state.selectedId">
                     <div class="p-3 text-muted small">

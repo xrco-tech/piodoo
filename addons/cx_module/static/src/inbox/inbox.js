@@ -18,6 +18,7 @@ export class CxInbox extends Component {
     setup() {
         this.orm = useService("orm");
         this.busService = useService("bus_service");
+        this.ui = useService("ui");
 
         this.state = useState({
             loadingList: true,
@@ -31,6 +32,7 @@ export class CxInbox extends Component {
             composerText: "",
             composerChannel: "whatsapp",
             showLeftPane: true,
+            showSide: false,
             dispositions: [],
             dispositionId: false,
             dispositionNote: "",
@@ -95,6 +97,12 @@ export class CxInbox extends Component {
         this.state.selected = this.state.conversations.find((c) => c.id === id) || false;
         const code = this.state.selected && this.state.selected.primary_channel_code;
         this.state.composerChannel = SENDABLE_CHANNELS.includes(code) ? code : "whatsapp";
+        // On phones the three panes can't sit side by side: collapse the list so
+        // the thread takes over (master-detail). The header back-button re-opens it.
+        if (this.ui.isSmall) {
+            this.state.showLeftPane = false;
+            this.state.showSide = false;
+        }
         await Promise.all([this.loadMessages(id), this.loadDisposition(id)]);
     }
 
@@ -236,6 +244,10 @@ export class CxInbox extends Component {
 
     toggleLeftPane() {
         this.state.showLeftPane = !this.state.showLeftPane;
+    }
+
+    toggleSide() {
+        this.state.showSide = !this.state.showSide;
     }
 
     _scrollThreadToBottom() {

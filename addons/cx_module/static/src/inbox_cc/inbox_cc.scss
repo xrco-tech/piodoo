@@ -103,3 +103,51 @@
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     }
 }
+
+// ── Mobile: master-detail (list ↔ thread) + off-canvas copilot drawer ──
+@media (max-width: 767.98px) {
+    .o_cx_inbox_cc {
+        position: relative;
+
+        .o_cx_inbox_cc_list {
+            width: 100% !important;
+            min-width: 0 !important;
+            border-right: 0 !important;
+        }
+        // While the list is mounted it fills the screen; the thread stays hidden
+        // behind it. Selecting a conversation collapses the list (JS).
+        .o_cx_inbox_cc_list ~ .o_cx_inbox_cc_thread {
+            display: none !important;
+        }
+
+        .o_cx_inbox_cc_bubble {
+            max-width: 85%;
+        }
+
+        // Copilot + notes pane slides in from the right as a drawer, overriding
+        // both the default and the "wide" (notes-open) desktop widths.
+        .o_cx_inbox_cc_side,
+        .o_cx_inbox_cc_side.o_cx_inbox_cc_side_wide {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: min(92%, 420px);
+            min-width: 0 !important;
+            transform: translateX(100%);
+            transition: transform 0.2s ease;
+            z-index: 1046;
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.2);
+        }
+        .o_cx_inbox_cc_side.o_cx_inbox_cc_side_open {
+            transform: translateX(0);
+        }
+
+        .o_cx_inbox_cc_backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            z-index: 1045;
+        }
+    }
+}
