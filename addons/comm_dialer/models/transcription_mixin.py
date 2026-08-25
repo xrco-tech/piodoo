@@ -55,7 +55,11 @@ class CallTranscriptionMixin(models.AbstractModel):
             self._whisper_url() + '/asr',
             params={'task': 'transcribe', 'output': 'txt', 'encode': 'true'},
             files={'audio_file': (att.name or 'audio.webm', audio, att.mimetype or 'audio/webm')},
-            timeout=600,
+            # Keep this bounded: this runs inside the transcribe cron, which holds
+            # a lock on its ir_cron row for the whole run — a hung Whisper request
+            # here would block `-u comm_dialer` deploys. 180s covers any realistic
+            # call/voice-note on the 'small' model (faster than realtime).
+            timeout=180,
         )
         resp.raise_for_status()
         return (resp.text or '').strip()
@@ -129,8 +133,13 @@ class CallTranscriptionMixin(models.AbstractModel):
         return True
 
     @api.model
-    def _cron_transcribe_pending(self, limit=20):
-        """Transcribe any recorded call not yet done — voip + whatsapp + …"""
+    def _cron_transcribe_pending(self, limit=10):
+        """Transcribe any recorded call not yet done — voip + whatsapp + …
+
+        Small batches on purpose: the cron runs every 2 min and holds the
+        ir_cron row lock for its whole run, so keeping each run short shrinks
+        the window in which a `-u comm_dialer` deploy can collide with it.
+        """
         pending = self.search([('transcript_state', 'in', ('none', 'pending')),
                                ('recording_ids', '!=', False)], limit=limit)
         for rec in pending:
