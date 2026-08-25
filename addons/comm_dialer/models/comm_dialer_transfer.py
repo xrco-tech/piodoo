@@ -32,11 +32,28 @@ class CommDialerTransfer(models.Model):
     target_session_id = fields.Integer('Target Session')
     state = fields.Selection([
         ('requested', 'Requested'),
-        ('active', 'In Progress'),
+        ('active', 'Connecting'),      # blind: originating / attended: setting up consult
+        ('consulting', 'Consulting'),  # attended: agent talking to the target, caller on hold
+        ('completing', 'Completing'),  # attended: agent chose Complete
+        ('cancelling', 'Cancelling'),  # attended: agent chose Cancel
         ('done', 'Done'),
+        ('cancelled', 'Cancelled'),
         ('failed', 'Failed'),
     ], default='requested', index=True)
     error = fields.Char('Error')
+
+    # ── Attended-transfer decisions (the service acts on the state change) ──
+    def action_complete(self):
+        for t in self:
+            if t.mode == 'attended' and t.state in ('active', 'consulting'):
+                t.state = 'completing'
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_cancel(self):
+        for t in self:
+            if t.mode == 'attended' and t.state in ('active', 'consulting'):
+                t.state = 'cancelling'
+        return {'type': 'ir.actions.act_window_close'}
 
 
 class CommDialerTransferWizard(models.TransientModel):
@@ -45,8 +62,10 @@ class CommDialerTransferWizard(models.TransientModel):
 
     call_id = fields.Many2one('comm.voip.call', 'Call', required=True)
     source_session_id = fields.Many2one('comm.dialer.agent.session', 'Current Agent')
-    mode = fields.Selection(
-        [('blind', 'Blind — hand off immediately')], default='blind', required=True)
+    mode = fields.Selection([
+        ('blind', 'Blind — hand off immediately'),
+        ('attended', 'Attended — consult first'),
+    ], default='blind', required=True)
     target_agent_session_id = fields.Many2one(
         'comm.dialer.agent.session', 'Transfer to', required=True)
 
@@ -67,13 +86,26 @@ class CommDialerTransferWizard(models.TransientModel):
         tgt = self.target_agent_session_id
         if not tgt.sip_ext:
             raise UserError(_("The chosen agent has no SIP endpoint."))
-        self.env['comm.dialer.transfer'].create({
+        xfer = self.env['comm.dialer.transfer'].create({
             'call_id': self.call_id.id,
             'mode': self.mode,
             'target_agent_session_id': tgt.id,
             'target_endpoint': 'PJSIP/%s' % tgt.sip_ext,
             'target_session_id': tgt.id,
         })
+        if self.mode == 'attended':
+            # Open the consult control panel — the caller goes on hold while the
+            # agent talks to the target, then Complete or Cancel from here.
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Attended Transfer'),
+                'res_model': 'comm.dialer.transfer',
+                'res_id': xfer.id,
+                'view_mode': 'form',
+                'view_id': self.env.ref(
+                    'comm_dialer.view_comm_dialer_transfer_consult_form').id,
+                'target': 'new',
+            }
         return {
             'type': 'ir.actions.client', 'tag': 'display_notification',
             'params': {

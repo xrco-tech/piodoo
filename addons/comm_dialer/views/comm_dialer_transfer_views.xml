@@ -31,6 +31,39 @@
         <field name="target">new</field>
     </record>
 
+    <!-- Attended-transfer consult panel (opened after "Transfer" in attended mode).
+         The caller is on hold; the agent talks to the target, then decides. -->
+    <record id="view_comm_dialer_transfer_consult_form" model="ir.ui.view">
+        <field name="name">comm.dialer.transfer.consult.form</field>
+        <field name="model">comm.dialer.transfer</field>
+        <field name="arch" type="xml">
+            <form string="Attended Transfer">
+                <header>
+                    <button name="action_complete" type="object" string="Complete transfer"
+                            class="btn-primary"
+                            invisible="state not in ('active', 'consulting')"/>
+                    <button name="action_cancel" type="object" string="Cancel (back to caller)"
+                            class="btn-secondary"
+                            invisible="state not in ('active', 'consulting')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="active,consulting,done"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        The caller is on <b>hold</b>. You're being connected to the target
+                        agent to consult — then <b>Complete</b> to hand the caller over, or
+                        <b>Cancel</b> to return to the caller.
+                    </div>
+                    <group>
+                        <field name="call_id" readonly="1"/>
+                        <field name="target_agent_session_id" readonly="1"/>
+                        <field name="error" readonly="1" invisible="not error"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <!-- Transfer log (audit / debugging) -->
     <record id="view_comm_dialer_transfer_list" model="ir.ui.view">
         <field name="name">comm.dialer.transfer.list</field>

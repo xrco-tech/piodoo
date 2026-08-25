@@ -125,12 +125,18 @@ class Odoo:
     def set_barge(self, barge_id, vals):
         self._call('comm.dialer.barge', 'write', [[barge_id], vals])
 
-    # ── Call transfer (blind) ─────────────────────────────────────────────
+    # ── Call transfer (blind + attended) ──────────────────────────────────
     def pending_transfers(self, limit=10):
         return self._call('comm.dialer.transfer', 'search_read', [[
-            ['state', '=', 'requested'], ['mode', '=', 'blind'],
-        ]], {'fields': ['id', 'call_id', 'target_endpoint', 'target_session_id'],
+            ['state', '=', 'requested'],
+        ]], {'fields': ['id', 'call_id', 'mode', 'target_endpoint', 'target_session_id'],
              'limit': limit})
+
+    def deciding_transfers(self, limit=10):
+        """Attended transfers the agent has resolved (Complete / Cancel)."""
+        return self._call('comm.dialer.transfer', 'search_read', [[
+            ['state', 'in', ['completing', 'cancelling']],
+        ]], {'fields': ['id', 'state'], 'limit': limit})
 
     def set_transfer(self, transfer_id, vals):
         self._call('comm.dialer.transfer', 'write', [[transfer_id], vals])
@@ -179,6 +185,25 @@ class Ari:
                                params={'channel': channel_id}, auth=self.auth) as r:
             r.raise_for_status()
 
+    async def remove_from_bridge(self, bridge_id, channel_id):
+        async with self.s.post(f'{self.base}/bridges/{bridge_id}/removeChannel',
+                               params={'channel': channel_id}, auth=self.auth) as r:
+            r.raise_for_status()
+
+    async def destroy_bridge(self, bridge_id):
+        async with self.s.delete(f'{self.base}/bridges/{bridge_id}', auth=self.auth) as r:
+            return r.status
+
+    async def moh_start(self, bridge_id):
+        # Hold music for everyone left in the bridge (needs a musiconclass on
+        # Asterisk; best-effort — silence if none configured).
+        async with self.s.post(f'{self.base}/bridges/{bridge_id}/moh', auth=self.auth) as r:
+            return r.status
+
+    async def moh_stop(self, bridge_id):
+        async with self.s.delete(f'{self.base}/bridges/{bridge_id}/moh', auth=self.auth) as r:
+            return r.status
+
     async def get_var(self, channel_id, var):
         async with self.s.get(f'{self.base}/channels/{channel_id}/variable',
                               params={'variable': var}, auth=self.auth) as r:
@@ -195,8 +220,11 @@ class Ari:
 LIVE = {}           # customer channel_id -> {call_id, contact_id, campaign_id, bridge_id, session_id, agent_cid}
 AGENT_PENDING = {}  # agent channel_id -> {bridge_id, customer_cid}  (before it joins)
 AGENT_ACTIVE = {}   # agent channel_id -> customer_cid              (bridged)
-TRANSFER_PENDING = {}  # transfer-target channel_id -> {transfer_id, call_id, customer_cid,
-                       #   bridge_id, orig_agent_cid, orig_session_id, target_session_id}
+TRANSFER_PENDING = {}  # transfer-target channel_id -> {kind: blind|consult, transfer_id,
+                       #   call_id, customer_cid, bridge_id, orig_agent_cid, orig_session_id,
+                       #   target_session_id, consult_bridge_id (attended)}
+CONSULT = {}           # transfer_id -> attended-transfer context (once the target has joined
+                       #   the consult bridge), used by Complete / Cancel
 
 
 # ── The two loops ───────────────────────────────────────────────────────────
@@ -272,11 +300,116 @@ async def poll_barges(odoo, ari, loop):
         await asyncio.sleep(POLL_INTERVAL)
 
 
+async def _start_blind(odoo, ari, loop, t, cust_cid, info):
+    call_id = info['call_id']
+    agent_vars = {'PJSIP_HEADER(add,X-Voip-Call-Id)': str(call_id)}
+    tach = await ari.originate(t['target_endpoint'], 'transfer', CALLER_ID, agent_vars)
+    TRANSFER_PENDING[tach['id']] = {
+        'kind': 'blind', 'transfer_id': t['id'], 'call_id': call_id, 'customer_cid': cust_cid,
+        'bridge_id': info.get('bridge_id'), 'orig_agent_cid': info.get('agent_cid'),
+        'orig_session_id': info.get('session_id'), 'target_session_id': t.get('target_session_id'),
+    }
+    _log.info('blind transfer %s: originated %s for call %s',
+              t['id'], t['target_endpoint'], call_id)
+
+
+async def _start_attended(odoo, ari, loop, t, cust_cid, info):
+    """Put the caller on hold, move the current agent into a consult bridge, and
+    ring the target there. Completion/cancel happens on the agent's decision."""
+    call_id = info['call_id']
+    B = info.get('bridge_id')
+    A = info.get('agent_cid')
+    consult = await ari.create_bridge()
+    try:
+        await ari.moh_start(B)                 # caller on hold (best-effort)
+        await ari.remove_from_bridge(B, A)     # move the agent out to consult
+        await ari.add_to_bridge(consult['id'], A)
+    except Exception:
+        _log.exception('attended setup failed for %s — restoring', t['id'])
+        try:
+            await ari.moh_stop(B)
+            await ari.add_to_bridge(B, A)
+            await ari.destroy_bridge(consult['id'])
+        except Exception:
+            pass
+        raise
+    agent_vars = {'PJSIP_HEADER(add,X-Voip-Call-Id)': str(call_id)}
+    tach = await ari.originate(t['target_endpoint'], 'consult', CALLER_ID, agent_vars)
+    TRANSFER_PENDING[tach['id']] = {
+        'kind': 'consult', 'transfer_id': t['id'], 'call_id': call_id, 'customer_cid': cust_cid,
+        'bridge_id': B, 'consult_bridge_id': consult['id'], 'orig_agent_cid': A,
+        'orig_session_id': info.get('session_id'), 'target_session_id': t.get('target_session_id'),
+    }
+    _log.info('attended transfer %s: consulting %s for call %s (caller on hold)',
+              t['id'], t['target_endpoint'], call_id)
+
+
+async def _complete_attended(odoo, ari, loop, t):
+    c = CONSULT.get(t['id'])
+    if not c:
+        await loop.run_in_executor(None, odoo.set_transfer, t['id'],
+            {'state': 'failed', 'error': 'consult context lost'})
+        return
+    if not c.get('target_cid'):
+        return  # target not on the consult yet — try again next tick
+    T, B, A = c['target_cid'], c['bridge_id'], c['orig_agent_cid']
+    try:
+        await ari.remove_from_bridge(c['consult_bridge_id'], T)
+        await ari.moh_stop(B)
+        await ari.add_to_bridge(B, T)          # target now with the caller
+        AGENT_ACTIVE.pop(A, None)              # so the old agent's end won't kill the caller
+        await ari.hangup(A)
+        live = LIVE.get(c['customer_cid'])
+        if live:
+            live['agent_cid'] = T
+            live['session_id'] = c.get('target_session_id')
+        AGENT_ACTIVE[T] = c['customer_cid']
+        if c.get('orig_session_id'):
+            await loop.run_in_executor(None, odoo.set_agent, c['orig_session_id'],
+                {'state': 'ready', 'current_call_id': False})
+        if c.get('target_session_id'):
+            await loop.run_in_executor(None, odoo.set_agent, c['target_session_id'],
+                {'state': 'on_call', 'current_call_id': c['call_id']})
+        await loop.run_in_executor(None, odoo.set_call, c['call_id'],
+            {'dialer_agent_session_id': c.get('target_session_id')})
+        await ari.destroy_bridge(c['consult_bridge_id'])
+        await loop.run_in_executor(None, odoo.set_transfer, t['id'], {'state': 'done'})
+        _log.info('attended transfer %s completed — call %s handed to %s',
+                  t['id'], c['call_id'], T)
+    except Exception:
+        _log.exception('attended complete failed for %s', t['id'])
+        await loop.run_in_executor(None, odoo.set_transfer, t['id'],
+            {'state': 'failed', 'error': 'complete failed'})
+    finally:
+        CONSULT.pop(t['id'], None)
+
+
+async def _cancel_attended(odoo, ari, loop, t):
+    c = CONSULT.get(t['id'])
+    if c:
+        A, B = c['orig_agent_cid'], c['bridge_id']
+        for coro in (
+            lambda: ari.hangup(c['target_cid']) if c.get('target_cid') else None,
+            lambda: ari.remove_from_bridge(c['consult_bridge_id'], A),
+            lambda: ari.add_to_bridge(B, A),      # agent back with the caller
+            lambda: ari.moh_stop(B),
+            lambda: ari.destroy_bridge(c['consult_bridge_id']),
+        ):
+            try:
+                res = coro()
+                if res is not None:
+                    await res
+            except Exception:
+                pass
+        CONSULT.pop(t['id'], None)
+    await loop.run_in_executor(None, odoo.set_transfer, t['id'], {'state': 'cancelled'})
+    _log.info('attended transfer %s cancelled — agent back with caller', t['id'])
+
+
 async def poll_transfers(odoo, ari, loop):
-    """Every tick: start requested BLIND transfers — originate the target agent
-    into Stasis (role 'transfer'); the completion is finished in handle_events
-    once the target answers, so the original agent is only dropped after the
-    target is actually on the call."""
+    """Every tick: start requested transfers (blind or attended), and act on
+    attended Complete/Cancel decisions. Requests are claimed (-> 'active') before
+    any ARI work so a slow tick can't start them twice."""
     while True:
         try:
             for t in await loop.run_in_executor(None, odoo.pending_transfers):
@@ -287,25 +420,22 @@ async def poll_transfers(odoo, ari, loop):
                     await loop.run_in_executor(None, odoo.set_transfer, t['id'],
                         {'state': 'failed', 'error': 'call not live on this bridge'})
                     continue
-                info = LIVE[cust_cid]
+                # Claim first, then do the ARI work.
+                await loop.run_in_executor(None, odoo.set_transfer, t['id'], {'state': 'active'})
                 try:
-                    agent_vars = {'PJSIP_HEADER(add,X-Voip-Call-Id)': str(call_id)}
-                    tach = await ari.originate(t['target_endpoint'], 'transfer',
-                                               CALLER_ID, agent_vars)
-                    TRANSFER_PENDING[tach['id']] = {
-                        'transfer_id': t['id'], 'call_id': call_id, 'customer_cid': cust_cid,
-                        'bridge_id': info.get('bridge_id'),
-                        'orig_agent_cid': info.get('agent_cid'),
-                        'orig_session_id': info.get('session_id'),
-                        'target_session_id': t.get('target_session_id'),
-                    }
-                    await loop.run_in_executor(None, odoo.set_transfer, t['id'], {'state': 'active'})
-                    _log.info('transfer %s: originated %s for call %s',
-                              t['id'], t['target_endpoint'], call_id)
+                    if t.get('mode') == 'attended':
+                        await _start_attended(odoo, ari, loop, t, cust_cid, LIVE[cust_cid])
+                    else:
+                        await _start_blind(odoo, ari, loop, t, cust_cid, LIVE[cust_cid])
                 except Exception as e:
-                    _log.exception('transfer originate failed for %s', t['id'])
+                    _log.exception('transfer start failed for %s', t['id'])
                     await loop.run_in_executor(None, odoo.set_transfer, t['id'],
                         {'state': 'failed', 'error': str(e)[:200]})
+            for t in await loop.run_in_executor(None, odoo.deciding_transfers):
+                if t.get('state') == 'completing':
+                    await _complete_attended(odoo, ari, loop, t)
+                elif t.get('state') == 'cancelling':
+                    await _cancel_attended(odoo, ari, loop, t)
         except Exception:
             _log.exception('transfer poll loop error')
         await asyncio.sleep(POLL_INTERVAL)
@@ -437,6 +567,27 @@ async def handle_events(odoo, ari, loop):
                                 None, odoo.set_transfer, pend['transfer_id'],
                                 {'state': 'failed', 'error': 'bridge failed'})
 
+                    elif role == 'consult':
+                        # Attended transfer: the target answered the consult leg.
+                        pend = TRANSFER_PENDING.pop(cid, None)
+                        _log.info('consult StasisStart %s (pending=%s)', cid, bool(pend))
+                        if not pend:
+                            continue
+                        try:
+                            await ari.add_to_bridge(pend['consult_bridge_id'], cid)
+                            CONSULT[pend['transfer_id']] = dict(pend, target_cid=cid)
+                            await loop.run_in_executor(
+                                None, odoo.set_transfer, pend['transfer_id'],
+                                {'state': 'consulting'})
+                            _log.info('attended transfer %s: consult up (target %s)',
+                                      pend['transfer_id'], cid)
+                        except Exception:
+                            _log.exception('consult join failed')
+                            await ari.hangup(cid)
+                            await loop.run_in_executor(
+                                None, odoo.set_transfer, pend['transfer_id'],
+                                {'state': 'failed', 'error': 'consult bridge failed'})
+
                 elif kind in ('StasisEnd', 'ChannelDestroyed'):
                     _log.info('%s %s', kind, cid)
                     # A transfer target that never answered/joined — fail the
@@ -445,6 +596,20 @@ async def handle_events(odoo, ari, loop):
                     if tpend:
                         _log.info('transfer %s: target %s gone before joining',
                                   tpend['transfer_id'], cid)
+                        if tpend.get('kind') == 'consult':
+                            # Undo the hold/consult so the original call resumes.
+                            for coro in (
+                                lambda: ari.remove_from_bridge(
+                                    tpend['consult_bridge_id'], tpend['orig_agent_cid']),
+                                lambda: ari.add_to_bridge(
+                                    tpend['bridge_id'], tpend['orig_agent_cid']),
+                                lambda: ari.moh_stop(tpend['bridge_id']),
+                                lambda: ari.destroy_bridge(tpend['consult_bridge_id']),
+                            ):
+                                try:
+                                    await coro()
+                                except Exception:
+                                    pass
                         await loop.run_in_executor(
                             None, odoo.set_transfer, tpend['transfer_id'],
                             {'state': 'failed', 'error': 'target did not answer'})
