@@ -186,6 +186,22 @@
               action="comm_dialer.action_comm_dialer_my_console"
               sequence="12"/>
 
+    <!-- Supervisor monitoring: live calls board (Listen/Whisper/Barge) + the
+         audit list of monitor sessions. Gated to the Dialer Supervisor group. -->
+    <menuitem id="menu_cx_voice_live_monitor"
+              name="Live Calls (Monitor)"
+              parent="menu_cx_voice_tab"
+              action="comm_dialer.action_comm_dialer_live_monitor"
+              groups="comm_dialer.group_dialer_supervisor"
+              sequence="13"/>
+
+    <menuitem id="menu_cx_voice_monitor_sessions"
+              name="Monitor Sessions"
+              parent="menu_cx_voice_tab"
+              action="comm_dialer.action_comm_dialer_barge"
+              groups="comm_dialer.group_dialer_supervisor"
+              sequence="14"/>
+
     <menuitem id="menu_cx_voice_dashboard"
               name="Calls Dashboard"
               parent="menu_cx_voice_tab"

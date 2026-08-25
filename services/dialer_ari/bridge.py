@@ -109,6 +109,22 @@ class Odoo:
     def register_result(self, contact_id, outcome):
         self._call('comm.dialer.contact', 'register_result', [[contact_id], outcome])
 
+    # ── Supervisor monitoring (Listen / Whisper / Barge) ──────────────────
+    def pending_barges(self, limit=10):
+        """Supervisor monitor requests not yet originated."""
+        return self._call('comm.dialer.barge', 'search_read', [[
+            ['state', '=', 'requested'],
+        ]], {'fields': ['id', 'supervisor_ext', 'agent_ext', 'mode'], 'limit': limit})
+
+    def stopping_barges(self, limit=10):
+        """Active monitor sessions the supervisor asked to stop."""
+        return self._call('comm.dialer.barge', 'search_read', [[
+            ['state', '=', 'active'], ['stop_requested', '=', True],
+        ]], {'fields': ['id', 'external_channel_id'], 'limit': limit})
+
+    def set_barge(self, barge_id, vals):
+        self._call('comm.dialer.barge', 'write', [[barge_id], vals])
+
 
 # ── ARI (REST + WebSocket) ──────────────────────────────────────────────────
 class Ari:
@@ -121,6 +137,20 @@ class Ari:
         params = {
             'endpoint': endpoint, 'app': ARI_APP, 'appArgs': app_args,
             'callerId': caller_id, 'timeout': 30,
+        }
+        payload = {'variables': variables or {}}
+        async with self.s.post(f'{self.base}/channels', params=params,
+                               json=payload, auth=self.auth) as r:
+            r.raise_for_status()
+            return await r.json()
+
+    async def originate_dialplan(self, endpoint, context, extension, caller_id,
+                                 variables=None, priority=1):
+        """Originate a channel into the DIALPLAN (not Stasis) — used to drop the
+        supervisor into ChanSpy, which is a dialplan app."""
+        params = {
+            'endpoint': endpoint, 'context': context, 'extension': extension,
+            'priority': priority, 'callerId': caller_id, 'timeout': 30,
         }
         payload = {'variables': variables or {}}
         async with self.s.post(f'{self.base}/channels', params=params,
@@ -188,6 +218,45 @@ async def poll_odoo(odoo, ari, loop):
                     await loop.run_in_executor(None, odoo.set_call, c['id'], {'state': 'failed'})
         except Exception:
             _log.exception('poll loop error')
+        await asyncio.sleep(POLL_INTERVAL)
+
+
+SPY_CONTEXT = os.environ.get('SPY_CONTEXT', 'supervisor-spy')
+SPY_EXTEN = os.environ.get('SPY_EXTEN', 'spy')
+
+
+async def poll_barges(odoo, ari, loop):
+    """Every tick: start requested supervisor monitor sessions, and stop the
+    ones the supervisor asked to end. The supervisor's softphone is originated
+    into ChanSpy on the agent's channel (Listen/Whisper/Barge via SPY_OPTS)."""
+    while True:
+        try:
+            for b in await loop.run_in_executor(None, odoo.pending_barges):
+                try:
+                    opts = {'listen': 'q', 'whisper': 'qw', 'barge': 'qB'}.get(b['mode'], 'q')
+                    ch = await ari.originate_dialplan(
+                        f"PJSIP/{b['supervisor_ext']}", SPY_CONTEXT, SPY_EXTEN, CALLER_ID,
+                        {'SPY_TARGET': f"PJSIP/{b['agent_ext']}", 'SPY_OPTS': opts})
+                    await loop.run_in_executor(
+                        None, odoo.set_barge, b['id'],
+                        {'state': 'active', 'external_channel_id': ch['id']})
+                    _log.info('barge %s: %s %s PJSIP/%s',
+                              b['id'], b['supervisor_ext'], b['mode'], b['agent_ext'])
+                except Exception as e:
+                    _log.exception('barge originate failed for %s', b['id'])
+                    await loop.run_in_executor(
+                        None, odoo.set_barge, b['id'],
+                        {'state': 'failed', 'error': str(e)[:200]})
+            for b in await loop.run_in_executor(None, odoo.stopping_barges):
+                try:
+                    if b.get('external_channel_id'):
+                        await ari.hangup(b['external_channel_id'])
+                except Exception:
+                    _log.exception('barge stop hangup failed for %s', b['id'])
+                finally:
+                    await loop.run_in_executor(None, odoo.set_barge, b['id'], {'state': 'ended'})
+        except Exception:
+            _log.exception('barge poll loop error')
         await asyncio.sleep(POLL_INTERVAL)
 
 
@@ -316,6 +385,7 @@ async def main():
         ari = Ari(s)
         await asyncio.gather(
             poll_odoo(odoo, ari, loop),
+            poll_barges(odoo, ari, loop),
             handle_events(odoo, ari, loop),
         )
 

@@ -2,7 +2,8 @@
 import logging
 import re
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 RECORDING_MANAGER_GROUP = 'comm_whatsapp_calling.group_whatsapp_call_recording_manager'
@@ -61,6 +62,48 @@ class CommVoipCall(models.Model):
         # Label the remote side with the partner's name when known.
         caller = (self.partner_id.name if self.partner_id else '') or 'Caller'
         return 'Agent', caller
+
+    # ── Supervisor monitoring (Listen / Whisper / Barge) ───────────────────
+    def _start_barge(self, mode):
+        """Queue a supervisor monitor session on this live call. The dialer_ari
+        service picks it up and originates the supervisor's softphone into
+        ChanSpy on the agent's channel."""
+        self.ensure_one()
+        if self.state != 'in_progress':
+            raise UserError(_("You can only monitor a call that is in progress."))
+        sup_ext = self.env.user.dialer_sip_ext
+        if not sup_ext:
+            raise UserError(_(
+                "Your user has no SIP endpoint — register your softphone first."))
+        agent_ext = (self.dialer_agent_session_id.sip_ext
+                     if self.dialer_agent_session_id else False) or self.agent_sip_ext
+        if not agent_ext:
+            raise UserError(_("This call has no connected agent to monitor."))
+        self.env['comm.dialer.barge'].create({
+            'call_id': self.id,
+            'supervisor_id': self.env.user.id,
+            'supervisor_ext': sup_ext,
+            'agent_ext': agent_ext,
+            'mode': mode,
+        })
+        label = dict(self.env['comm.dialer.barge']._fields['mode'].selection).get(mode, mode)
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'type': 'success', 'title': _('Monitoring'),
+                'message': _('%s request sent — your softphone will ring shortly.') % label,
+                'sticky': False,
+            },
+        }
+
+    def action_supervisor_listen(self):
+        return self._start_barge('listen')
+
+    def action_supervisor_whisper(self):
+        return self._start_barge('whisper')
+
+    def action_supervisor_barge(self):
+        return self._start_barge('barge')
 
     def _do_transcription(self):
         # After (re)transcribing, refresh the inbox interaction so the transcript

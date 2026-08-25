@@ -6,3 +6,5 @@ access_comm_dialer_agent_user,comm.dialer.agent.session.user,model_comm_dialer_a
 access_comm_dialer_agent_admin,comm.dialer.agent.session.admin,model_comm_dialer_agent_session,base.group_system,1,1,1,1
 access_comm_dialer_dnc_user,comm.dialer.dnc.user,model_comm_dialer_dnc,base.group_user,1,1,1,0
 access_comm_dialer_dnc_admin,comm.dialer.dnc.admin,model_comm_dialer_dnc,base.group_system,1,1,1,1
+access_comm_dialer_barge_user,comm.dialer.barge.user,model_comm_dialer_barge,base.group_user,1,1,1,0
+access_comm_dialer_barge_admin,comm.dialer.barge.admin,model_comm_dialer_barge,base.group_system,1,1,1,1

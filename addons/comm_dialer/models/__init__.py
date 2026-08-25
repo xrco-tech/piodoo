@@ -10,3 +10,4 @@ from . import comm_dialer_dnc
 from . import comm_dialer_campaign
 from . import comm_dialer_contact
 from . import comm_dialer_agent
+from . import comm_dialer_barge

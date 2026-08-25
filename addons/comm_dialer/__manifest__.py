@@ -33,12 +33,14 @@ provider is wired into comm.voip.account.originate/bridge).
         'comm_whatsapp_calling',  # comm.disposition (outcome codes)
     ],
     'data': [
+        'security/comm_dialer_security.xml',
         'security/ir.model.access.csv',
         'data/comm_dialer_data.xml',
         'views/comm_dialer_campaign_views.xml',
         'views/comm_dialer_contact_views.xml',
         'views/comm_dialer_agent_views.xml',
         'views/comm_dialer_dnc_views.xml',
+        'views/comm_dialer_barge_views.xml',
         'views/comm_voip_recording_views.xml',
         'views/whatsapp_call_transcript_views.xml',
     ],
