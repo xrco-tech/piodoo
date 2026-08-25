@@ -549,8 +549,10 @@ const waCallService = {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 const audioCtx = new AudioCtx();
                 const dest = audioCtx.createMediaStreamDestination();
-                audioCtx.createMediaStreamSource(call.localStream).connect(dest);
-                audioCtx.createMediaStreamSource(call.remoteStream).connect(dest);
+                const localNode = audioCtx.createMediaStreamSource(call.localStream);
+                const remoteNode = audioCtx.createMediaStreamSource(call.remoteStream);
+                localNode.connect(dest);
+                remoteNode.connect(dest);
 
                 const chunks = [];
                 const recorder = new MediaRecorder(dest.stream);
@@ -558,6 +560,35 @@ const waCallService = {
                     if (ev.data && ev.data.size) chunks.push(ev.data);
                 };
                 recorder.start();
+
+                // Per-speaker mono recorders (agent = local, caller = remote) for
+                // a speaker-labelled transcript. Best-effort — never break the mix.
+                try {
+                    const destAgent = audioCtx.createMediaStreamDestination();
+                    localNode.connect(destAgent);
+                    const chunksAgent = [];
+                    const recorderAgent = new MediaRecorder(destAgent.stream);
+                    recorderAgent.ondataavailable = (ev) => {
+                        if (ev.data && ev.data.size) chunksAgent.push(ev.data);
+                    };
+                    recorderAgent.start();
+
+                    const destCaller = audioCtx.createMediaStreamDestination();
+                    remoteNode.connect(destCaller);
+                    const chunksCaller = [];
+                    const recorderCaller = new MediaRecorder(destCaller.stream);
+                    recorderCaller.ondataavailable = (ev) => {
+                        if (ev.data && ev.data.size) chunksCaller.push(ev.data);
+                    };
+                    recorderCaller.start();
+
+                    call.recorderAgent = recorderAgent;
+                    call.chunksAgent = chunksAgent;
+                    call.recorderCaller = recorderCaller;
+                    call.chunksCaller = chunksCaller;
+                } catch (chanErr) {
+                    warn("per-channel recorders failed:", chanErr);
+                }
 
                 call.audioContext = audioCtx;
                 call.mediaRecorder = recorder;
@@ -579,13 +610,21 @@ const waCallService = {
             const chunks = call.recordedChunks || [];
             const audioCtx = call.audioContext;
             const startedAt = call.recordingStartedAt;
+            const recAgent = call.recorderAgent;
+            const chunksAgent = call.chunksAgent || [];
+            const recCaller = call.recorderCaller;
+            const chunksCaller = call.chunksCaller || [];
             call.mediaRecorder = null;
+            call.recorderAgent = null;
+            call.recorderCaller = null;
             call.recording = false;
 
-            await new Promise((resolve) => {
-                recorder.addEventListener("stop", resolve, { once: true });
-                try { recorder.stop(); } catch (e) { resolve(); }
+            const stopOne = (r) => new Promise((resolve) => {
+                if (!r) { resolve(); return; }
+                r.addEventListener("stop", resolve, { once: true });
+                try { r.stop(); } catch (e) { resolve(); }
             });
+            await Promise.all([stopOne(recorder), stopOne(recAgent), stopOne(recCaller)]);
             try { audioCtx && audioCtx.close(); } catch (e) {}
 
             if (!chunks.length || !call.id) return;
@@ -594,6 +633,13 @@ const waCallService = {
             const form = new FormData();
             form.append("recording", blob, "call_recording.webm");
             form.append("duration", String(durationSeconds));
+            // Per-speaker mono streams for a speaker-labelled transcript.
+            if (chunksAgent.length) {
+                form.append("recording_agent", new Blob(chunksAgent, { type: "audio/webm" }), "agent.webm");
+            }
+            if (chunksCaller.length) {
+                form.append("recording_caller", new Blob(chunksCaller, { type: "audio/webm" }), "caller.webm");
+            }
             try {
                 await fetch(`/whatsapp/call/upload_recording/${call.id}`, {
                     method: "POST", credentials: "same-origin", body: form,

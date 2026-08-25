@@ -33,6 +33,13 @@ export const softphoneService = {
         let recChunks = [];
         let recNodes = []; // keep graph nodes referenced so they aren't GC'd
         let recStartedAt = 0;
+        // Per-speaker mono recorders (agent = local mic, caller = remote), fed
+        // to the backend for a speaker-labelled transcript. Best-effort: if they
+        // fail the mixed recording (and single-file transcription) still works.
+        let recorderAgent = null;
+        let recChunksAgent = [];
+        let recorderCaller = null;
+        let recChunksCaller = [];
         let callId = null; // comm.voip.call this call is logged as
         let myExt = "";    // this agent's own SIP extension
         let myDomain = ""; // SIP domain, for outbound INVITEs
@@ -249,6 +256,32 @@ export const softphoneService = {
                 recStartedAt = Date.now();
                 state.recording = true;
                 console.debug("[softphone] recording started");
+
+                // Per-speaker mono recorders (best-effort — never break the mix).
+                try {
+                    const destAgent = ctx.createMediaStreamDestination();
+                    localNode.connect(destAgent);
+                    recChunksAgent = [];
+                    recorderAgent = new MediaRecorder(destAgent.stream);
+                    recorderAgent.ondataavailable = (ev) => {
+                        if (ev.data && ev.data.size) { recChunksAgent.push(ev.data); }
+                    };
+                    recorderAgent.start(1000);
+
+                    const destCaller = ctx.createMediaStreamDestination();
+                    remoteNode.connect(destCaller);
+                    recChunksCaller = [];
+                    recorderCaller = new MediaRecorder(destCaller.stream);
+                    recorderCaller.ondataavailable = (ev) => {
+                        if (ev.data && ev.data.size) { recChunksCaller.push(ev.data); }
+                    };
+                    recorderCaller.start(1000);
+                    recNodes.push(destAgent, destCaller);
+                } catch (chanErr) {
+                    console.warn("[softphone] per-channel recorders failed:", chanErr);
+                    recorderAgent = null;
+                    recorderCaller = null;
+                }
             } catch (err) {
                 console.warn("[softphone] startRecording failed:", err);
                 recorder = null;
@@ -262,21 +295,27 @@ export const softphoneService = {
             const nodes = recNodes;
             const startedAt = recStartedAt;
             const targetCall = callId;
+            const recAgent = recorderAgent;
+            const chunksAgent = recChunksAgent;
+            const recCaller = recorderCaller;
+            const chunksCaller = recChunksCaller;
             recorder = null;
             recChunks = [];
             recNodes = [];
+            recorderAgent = null;
+            recChunksAgent = [];
+            recorderCaller = null;
+            recChunksCaller = [];
             state.recording = false;
             if (!rec) {
                 return;
             }
-            await new Promise((resolve) => {
-                rec.addEventListener("stop", resolve, { once: true });
-                try {
-                    rec.stop();
-                } catch {
-                    resolve();
-                }
+            const stopOne = (r) => new Promise((resolve) => {
+                if (!r) { resolve(); return; }
+                r.addEventListener("stop", resolve, { once: true });
+                try { r.stop(); } catch { resolve(); }
             });
+            await Promise.all([stopOne(rec), stopOne(recAgent), stopOne(recCaller)]);
             // Tear down the graph nodes but keep the shared AudioContext alive.
             try {
                 nodes.forEach((n) => n.disconnect && n.disconnect());
@@ -291,6 +330,13 @@ export const softphoneService = {
             const form = new FormData();
             form.append("recording", new Blob(chunks, { type: "audio/webm" }), "voip_recording.webm");
             form.append("duration", String(durationSeconds));
+            // Per-speaker mono streams for a speaker-labelled transcript.
+            if (chunksAgent && chunksAgent.length) {
+                form.append("recording_agent", new Blob(chunksAgent, { type: "audio/webm" }), "agent.webm");
+            }
+            if (chunksCaller && chunksCaller.length) {
+                form.append("recording_caller", new Blob(chunksCaller, { type: "audio/webm" }), "caller.webm");
+            }
             try {
                 const resp = await fetch(`/voip/call/upload_recording/${targetCall}`, {
                     method: "POST",

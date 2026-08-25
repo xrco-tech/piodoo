@@ -57,6 +57,11 @@ class CommVoipCall(models.Model):
                 c._sync_to_conversation()
         return res
 
+    def _transcript_speaker_labels(self):
+        # Label the remote side with the partner's name when known.
+        caller = (self.partner_id.name if self.partner_id else '') or 'Caller'
+        return 'Agent', caller
+
     def _do_transcription(self):
         # After (re)transcribing, refresh the inbox interaction so the transcript
         # + AI summary show in the conversation timeline.

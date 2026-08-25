@@ -51,6 +51,25 @@ class VoipRecordingController(http.Controller):
             'mimetype': audio_file.mimetype or 'audio/webm',
             'recording_duration': duration_seconds,
         })
+        # Optional per-speaker mono streams (agent + remote party), captured by
+        # the softphone alongside the mixed recording. Stored transiently and
+        # used by the transcription mixin for a speaker-labelled transcript; the
+        # mixin deletes them once done. Absent → single-file transcription.
+        for res_field, form_key in (('rec_channel_agent', 'recording_agent'),
+                                    ('rec_channel_caller', 'recording_caller')):
+            chan = request.httprequest.files.get(form_key)
+            if not chan:
+                continue
+            chan_data = chan.read()
+            if not chan_data:
+                continue
+            request.env['ir.attachment'].sudo().create({
+                'name': '%s_%s.webm' % (res_field, call.id),
+                'res_model': 'comm.voip.call', 'res_id': call.id, 'res_field': res_field,
+                'type': 'binary', 'datas': base64.b64encode(chan_data),
+                'mimetype': chan.mimetype or 'audio/webm',
+            })
+
         # Keep the legacy single-URL field pointing at the latest recording too,
         # and queue the recording for transcription (the cron picks it up).
         call.write({

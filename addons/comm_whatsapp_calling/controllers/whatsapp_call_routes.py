@@ -314,6 +314,29 @@ class WhatsappCallRoutes(http.Controller):
             "mimetype": audio_file.mimetype or "audio/webm",
             "recording_duration": duration_seconds,
         })
+
+        # Optional per-speaker mono streams (agent + remote party). Stored
+        # transiently for the transcription mixin (comm_dialer) to produce a
+        # speaker-labelled transcript; it deletes them once done. Only present
+        # when comm_dialer's dual-channel softphone capture is installed.
+        for res_field, form_key in (("rec_channel_agent", "recording_agent"),
+                                    ("rec_channel_caller", "recording_caller")):
+            chan = request.httprequest.files.get(form_key)
+            if not chan:
+                continue
+            chan_data = chan.read()
+            if not chan_data:
+                continue
+            request.env["ir.attachment"].sudo().create({
+                "name": f"{res_field}_{call_log.id}.webm",
+                "res_model": "whatsapp.call.log",
+                "res_id": call_log.id,
+                "res_field": res_field,
+                "type": "binary",
+                "datas": base64.b64encode(chan_data),
+                "mimetype": chan.mimetype or "audio/webm",
+            })
+
         _logger.info(
             "comm_whatsapp_calling: stored recording (%d bytes) for call %s as attachment %s",
             len(data), call_log_id, attachment.id,
