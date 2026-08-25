@@ -42,6 +42,7 @@ export class ContactCentreInbox extends Component {
             composerChannel: "whatsapp",
             showLeftPane: true,
             showSide: false,
+            transcribingId: false,
             showInternalNotes: false,
             aiAvailable: false,
             ai: { ai_summary: "", ai_sentiment: false, ai_suggested_reply: "", ai_analyzed_date: false },
@@ -263,7 +264,7 @@ export class ContactCentreInbox extends Component {
                 [["contact_id", "=", contactId]],
                 ["channel", "direction", "body_text", "status", "message_timestamp", "message_type",
                  "call_recording_id", "call_recording_url", "call_recording_duration",
-                 "voice_transcript",
+                 "voice_transcript", "whatsapp_message_id",
                  "call_disposition_id", "call_disposition_note"],
                 { order: "message_timestamp asc", limit: 200 }
             );
@@ -338,6 +339,22 @@ export class ContactCentreInbox extends Component {
 
     toggleSide() {
         this.state.showSide = !this.state.showSide;
+    }
+
+    // Manually transcribe a WhatsApp voice note now (same Whisper + Claude
+    // pipeline as the cron), rather than waiting for the 2-minute cron.
+    async transcribeMessage(message) {
+        const waId = message.whatsapp_message_id && message.whatsapp_message_id[0];
+        if (!waId || this.state.transcribingId) {
+            return;
+        }
+        this.state.transcribingId = message.id;
+        try {
+            await this.orm.call("whatsapp.message", "action_transcribe", [[waId]]);
+            await this.loadMessages(this.state.selectedContactId);
+        } finally {
+            this.state.transcribingId = false;
+        }
     }
 
     async toggleCallPicker() {

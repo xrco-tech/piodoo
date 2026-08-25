@@ -33,6 +33,7 @@ export class CxInbox extends Component {
             composerChannel: "whatsapp",
             showLeftPane: true,
             showSide: false,
+            transcribingId: false,
             dispositions: [],
             dispositionId: false,
             dispositionNote: "",
@@ -219,7 +220,7 @@ export class CxInbox extends Component {
             this.state.messages = await this.orm.searchRead(
                 "comm.interaction",
                 [["conversation_id", "=", id]],
-                ["channel_code", "direction", "raw_body", "rendered_body", "status", "at", "recording_url", "recording_duration", "transcript"],
+                ["channel_code", "direction", "raw_body", "rendered_body", "status", "at", "recording_url", "recording_duration", "transcript", "source_model", "source_id"],
                 { order: "at asc", limit: 500 }
             );
         } finally {
@@ -248,6 +249,21 @@ export class CxInbox extends Component {
 
     toggleSide() {
         this.state.showSide = !this.state.showSide;
+    }
+
+    // Manually transcribe a WhatsApp voice note now (rather than waiting for the
+    // 2-minute cron). Runs the same Whisper + Claude pipeline via the mixin.
+    async transcribeMessage(msg) {
+        if (!msg.source_id || this.state.transcribingId) {
+            return;
+        }
+        this.state.transcribingId = msg.id;
+        try {
+            await this.orm.call("whatsapp.message", "action_transcribe", [[msg.source_id]]);
+            await this.loadMessages(this.state.selectedId);
+        } finally {
+            this.state.transcribingId = false;
+        }
     }
 
     _scrollThreadToBottom() {

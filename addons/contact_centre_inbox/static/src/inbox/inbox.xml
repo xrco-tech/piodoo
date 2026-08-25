@@ -158,6 +158,13 @@
                                     <div t-if="message.voice_transcript" class="mt-1 small fst-italic opacity-75" style="white-space:pre-wrap;">
                                         <i class="fa fa-quote-left me-1"/><t t-esc="message.voice_transcript"/>
                                     </div>
+                                    <div class="mt-1" t-if="message.whatsapp_message_id and message.call_recording_url and !message.voice_transcript">
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                t-att-disabled="state.transcribingId === message.id"
+                                                t-on-click="() => this.transcribeMessage(message)">
+                                            <i class="fa fa-magic me-1"/><t t-esc="state.transcribingId === message.id ? 'Transcribing…' : 'Transcribe now'"/>
+                                        </button>
+                                    </div>
                                     <div t-if="message.call_disposition_id" class="mt-1">
                                         <span class="badge text-bg-light border">
                                             <i class="fa fa-clipboard me-1"/><t t-esc="message.call_disposition_id[1]"/>

@@ -127,6 +127,13 @@
                                     <div class="mt-1 small fst-italic opacity-75" t-if="message.transcript" style="white-space:pre-wrap;">
                                         <i class="fa fa-quote-left me-1"/><t t-esc="message.transcript"/>
                                     </div>
+                                    <div class="mt-1" t-if="message.source_model === 'whatsapp.message' and message.recording_url and !message.transcript">
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                t-att-disabled="state.transcribingId === message.id"
+                                                t-on-click="() => this.transcribeMessage(message)">
+                                            <i class="fa fa-magic me-1"/><t t-esc="state.transcribingId === message.id ? 'Transcribing…' : 'Transcribe now'"/>
+                                        </button>
+                                    </div>
                                     <div class="small opacity-75" t-if="message.direction === 'outbound'">
                                         <t t-esc="message.status"/>
                                     </div>
