@@ -50,11 +50,11 @@ class WhatsAppMessage(models.Model):
         return record
 
     @api.model
-    def _cron_transcribe_voice_notes(self, limit=10):
+    def _cron_transcribe_voice_notes(self, limit=3):
         """Transcribe queued (and any not-yet-done) inbound voice notes.
 
-        Small batch on purpose — see _cron_transcribe_pending: the shared
-        transcribe cron holds the ir_cron row lock for its whole run.
+        Small batch on purpose — see _cron_transcribe_pending: keeps Whisper
+        responsive and the ir_cron lock window short.
         """
         pending = self.search([
             ('message_type', '=', 'audio'),

@@ -55,11 +55,12 @@ class CallTranscriptionMixin(models.AbstractModel):
             self._whisper_url() + '/asr',
             params={'task': 'transcribe', 'output': 'txt', 'encode': 'true'},
             files={'audio_file': (att.name or 'audio.webm', audio, att.mimetype or 'audio/webm')},
-            # Keep this bounded: this runs inside the transcribe cron, which holds
-            # a lock on its ir_cron row for the whole run — a hung Whisper request
-            # here would block `-u comm_dialer` deploys. 180s covers any realistic
-            # call/voice-note on the 'small' model (faster than realtime).
-            timeout=180,
+            # Generous per-request timeout: measured ~1.5x realtime on the box's
+            # 'small' model, so a multi-minute call recording legitimately needs
+            # well over 180s. The cron's lock window is bounded by the small batch
+            # limit below (not by this timeout), and deploys use the stop-odoo
+            # rule — so favour completing long transcriptions over a tight cap.
+            timeout=600,
         )
         resp.raise_for_status()
         return (resp.text or '').strip()
@@ -133,12 +134,14 @@ class CallTranscriptionMixin(models.AbstractModel):
         return True
 
     @api.model
-    def _cron_transcribe_pending(self, limit=10):
+    def _cron_transcribe_pending(self, limit=3):
         """Transcribe any recorded call not yet done — voip + whatsapp + …
 
-        Small batches on purpose: the cron runs every 2 min and holds the
-        ir_cron row lock for its whole run, so keeping each run short shrinks
-        the window in which a `-u comm_dialer` deploy can collide with it.
+        Small batches on purpose: the 'small' model runs ~1.5x realtime, so a
+        big batch of (long) call recordings both floods Whisper and holds the
+        ir_cron row lock for the whole run. limit=3 keeps each run short, lets
+        Whisper stay responsive, and still drains a backlog steadily (runs are
+        serialized — the lock stops a new run starting before the last ends).
         """
         pending = self.search([('transcript_state', 'in', ('none', 'pending')),
                                ('recording_ids', '!=', False)], limit=limit)
