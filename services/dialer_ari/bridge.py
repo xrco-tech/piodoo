@@ -125,6 +125,16 @@ class Odoo:
     def set_barge(self, barge_id, vals):
         self._call('comm.dialer.barge', 'write', [[barge_id], vals])
 
+    # ── Call transfer (blind) ─────────────────────────────────────────────
+    def pending_transfers(self, limit=10):
+        return self._call('comm.dialer.transfer', 'search_read', [[
+            ['state', '=', 'requested'], ['mode', '=', 'blind'],
+        ]], {'fields': ['id', 'call_id', 'target_endpoint', 'target_session_id'],
+             'limit': limit})
+
+    def set_transfer(self, transfer_id, vals):
+        self._call('comm.dialer.transfer', 'write', [[transfer_id], vals])
+
 
 # ── ARI (REST + WebSocket) ──────────────────────────────────────────────────
 class Ari:
@@ -185,6 +195,8 @@ class Ari:
 LIVE = {}           # customer channel_id -> {call_id, contact_id, campaign_id, bridge_id, session_id, agent_cid}
 AGENT_PENDING = {}  # agent channel_id -> {bridge_id, customer_cid}  (before it joins)
 AGENT_ACTIVE = {}   # agent channel_id -> customer_cid              (bridged)
+TRANSFER_PENDING = {}  # transfer-target channel_id -> {transfer_id, call_id, customer_cid,
+                       #   bridge_id, orig_agent_cid, orig_session_id, target_session_id}
 
 
 # ── The two loops ───────────────────────────────────────────────────────────
@@ -257,6 +269,45 @@ async def poll_barges(odoo, ari, loop):
                     await loop.run_in_executor(None, odoo.set_barge, b['id'], {'state': 'ended'})
         except Exception:
             _log.exception('barge poll loop error')
+        await asyncio.sleep(POLL_INTERVAL)
+
+
+async def poll_transfers(odoo, ari, loop):
+    """Every tick: start requested BLIND transfers — originate the target agent
+    into Stasis (role 'transfer'); the completion is finished in handle_events
+    once the target answers, so the original agent is only dropped after the
+    target is actually on the call."""
+    while True:
+        try:
+            for t in await loop.run_in_executor(None, odoo.pending_transfers):
+                call_id = t['call_id'][0] if t.get('call_id') else None
+                cust_cid = next((cid for cid, info in LIVE.items()
+                                 if info.get('call_id') == call_id), None)
+                if not cust_cid:
+                    await loop.run_in_executor(None, odoo.set_transfer, t['id'],
+                        {'state': 'failed', 'error': 'call not live on this bridge'})
+                    continue
+                info = LIVE[cust_cid]
+                try:
+                    agent_vars = {'PJSIP_HEADER(add,X-Voip-Call-Id)': str(call_id)}
+                    tach = await ari.originate(t['target_endpoint'], 'transfer',
+                                               CALLER_ID, agent_vars)
+                    TRANSFER_PENDING[tach['id']] = {
+                        'transfer_id': t['id'], 'call_id': call_id, 'customer_cid': cust_cid,
+                        'bridge_id': info.get('bridge_id'),
+                        'orig_agent_cid': info.get('agent_cid'),
+                        'orig_session_id': info.get('session_id'),
+                        'target_session_id': t.get('target_session_id'),
+                    }
+                    await loop.run_in_executor(None, odoo.set_transfer, t['id'], {'state': 'active'})
+                    _log.info('transfer %s: originated %s for call %s',
+                              t['id'], t['target_endpoint'], call_id)
+                except Exception as e:
+                    _log.exception('transfer originate failed for %s', t['id'])
+                    await loop.run_in_executor(None, odoo.set_transfer, t['id'],
+                        {'state': 'failed', 'error': str(e)[:200]})
+        except Exception:
+            _log.exception('transfer poll loop error')
         await asyncio.sleep(POLL_INTERVAL)
 
 
@@ -341,8 +392,63 @@ async def handle_events(odoo, ari, loop):
                                 await ari.hangup(cid)
                                 await ari.hangup(pend['customer_cid'])
 
+                    elif role == 'transfer':
+                        # Blind transfer: the target agent answered. Join it to the
+                        # customer's existing bridge, then drop the original agent
+                        # WITHOUT tearing down the customer.
+                        pend = TRANSFER_PENDING.pop(cid, None)
+                        _log.info('transfer StasisStart %s (pending=%s)', cid, bool(pend))
+                        if not pend:
+                            continue
+                        try:
+                            await ari.add_to_bridge(pend['bridge_id'], cid)
+                            orig = pend.get('orig_agent_cid')
+                            if orig:
+                                # Remove from AGENT_ACTIVE first so its StasisEnd
+                                # won't hang up the (now transferred) customer.
+                                AGENT_ACTIVE.pop(orig, None)
+                                await ari.hangup(orig)
+                            # Re-point the live maps to the new agent.
+                            live = LIVE.get(pend['customer_cid'])
+                            if live:
+                                live['agent_cid'] = cid
+                                live['session_id'] = pend.get('target_session_id')
+                            AGENT_ACTIVE[cid] = pend['customer_cid']
+                            # Odoo bookkeeping: free the old agent, bind the new one.
+                            if pend.get('orig_session_id'):
+                                await loop.run_in_executor(
+                                    None, odoo.set_agent, pend['orig_session_id'],
+                                    {'state': 'ready', 'current_call_id': False})
+                            if pend.get('target_session_id'):
+                                await loop.run_in_executor(
+                                    None, odoo.set_agent, pend['target_session_id'],
+                                    {'state': 'on_call', 'current_call_id': pend['call_id']})
+                            await loop.run_in_executor(
+                                None, odoo.set_call, pend['call_id'],
+                                {'dialer_agent_session_id': pend.get('target_session_id')})
+                            await loop.run_in_executor(
+                                None, odoo.set_transfer, pend['transfer_id'], {'state': 'done'})
+                            _log.info('transfer %s: agent %s took call %s',
+                                      pend['transfer_id'], cid, pend['call_id'])
+                        except Exception:
+                            _log.exception('transfer completion failed')
+                            await ari.hangup(cid)
+                            await loop.run_in_executor(
+                                None, odoo.set_transfer, pend['transfer_id'],
+                                {'state': 'failed', 'error': 'bridge failed'})
+
                 elif kind in ('StasisEnd', 'ChannelDestroyed'):
                     _log.info('%s %s', kind, cid)
+                    # A transfer target that never answered/joined — fail the
+                    # transfer and leave the original call untouched.
+                    tpend = TRANSFER_PENDING.pop(cid, None)
+                    if tpend:
+                        _log.info('transfer %s: target %s gone before joining',
+                                  tpend['transfer_id'], cid)
+                        await loop.run_in_executor(
+                            None, odoo.set_transfer, tpend['transfer_id'],
+                            {'state': 'failed', 'error': 'target did not answer'})
+                        continue
                     # Agent leg gone => hang up the customer (which finalizes below).
                     cust = AGENT_ACTIVE.pop(cid, None)
                     AGENT_PENDING.pop(cid, None)
@@ -386,6 +492,7 @@ async def main():
         await asyncio.gather(
             poll_odoo(odoo, ari, loop),
             poll_barges(odoo, ari, loop),
+            poll_transfers(odoo, ari, loop),
             handle_events(odoo, ari, loop),
         )
 

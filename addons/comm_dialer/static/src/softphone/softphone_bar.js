@@ -15,6 +15,7 @@ export class DialerSoftphoneBar extends Component {
 
     setup() {
         this.sp = useService("dialer_softphone");
+        this.action = useService("action");
         this.state = useState(this.sp.state);
         this.keypad = KEYPAD;
         this.dial = useState({ value: "" });
@@ -76,6 +77,17 @@ export class DialerSoftphoneBar extends Component {
 
     toggleRecord() {
         this.sp.toggleRecord();
+    }
+
+    // Open the transfer wizard for the current call (blind transfer for now).
+    async transfer() {
+        const callId = this.sp.callId;
+        if (!callId) {
+            return;
+        }
+        await this.action.doAction("comm_dialer.action_transfer_wizard", {
+            additionalContext: { default_call_id: callId },
+        });
     }
 }
 

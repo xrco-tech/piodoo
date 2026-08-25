@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Transfer wizard (opened from the softphone's Transfer button) -->
+    <record id="view_comm_dialer_transfer_wizard_form" model="ir.ui.view">
+        <field name="name">comm.dialer.transfer.wizard.form</field>
+        <field name="model">comm.dialer.transfer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Transfer Call">
+                <field name="call_id" invisible="1"/>
+                <field name="source_session_id" invisible="1"/>
+                <group>
+                    <field name="mode"/>
+                    <field name="target_agent_session_id"
+                           domain="[('state', '=', 'ready'), ('sip_ext', '!=', False), ('id', '!=', source_session_id)]"
+                           options="{'no_create': True, 'no_open': True}"/>
+                </group>
+                <footer>
+                    <button name="action_transfer" type="object" string="Transfer"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_transfer_wizard" model="ir.actions.act_window">
+        <field name="name">Transfer Call</field>
+        <field name="res_model">comm.dialer.transfer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Transfer log (audit / debugging) -->
+    <record id="view_comm_dialer_transfer_list" model="ir.ui.view">
+        <field name="name">comm.dialer.transfer.list</field>
+        <field name="model">comm.dialer.transfer</field>
+        <field name="arch" type="xml">
+            <list string="Transfers" create="false" edit="false">
+                <field name="create_date" string="When"/>
+                <field name="requested_by"/>
+                <field name="call_id"/>
+                <field name="mode"/>
+                <field name="target_agent_session_id"/>
+                <field name="state" decoration-success="state == 'done'"
+                       decoration-info="state == 'active'"
+                       decoration-danger="state == 'failed'"/>
+                <field name="error" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_comm_dialer_transfer" model="ir.actions.act_window">
+        <field name="name">Transfers</field>
+        <field name="res_model">comm.dialer.transfer</field>
+        <field name="view_mode">list</field>
+    </record>
+
+</odoo>

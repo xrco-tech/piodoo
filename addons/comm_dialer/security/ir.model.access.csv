@@ -8,3 +8,6 @@ access_comm_dialer_dnc_user,comm.dialer.dnc.user,model_comm_dialer_dnc,base.grou
 access_comm_dialer_dnc_admin,comm.dialer.dnc.admin,model_comm_dialer_dnc,base.group_system,1,1,1,1
 access_comm_dialer_barge_user,comm.dialer.barge.user,model_comm_dialer_barge,base.group_user,1,1,1,0
 access_comm_dialer_barge_admin,comm.dialer.barge.admin,model_comm_dialer_barge,base.group_system,1,1,1,1
+access_comm_dialer_transfer_user,comm.dialer.transfer.user,model_comm_dialer_transfer,base.group_user,1,1,1,0
+access_comm_dialer_transfer_admin,comm.dialer.transfer.admin,model_comm_dialer_transfer,base.group_system,1,1,1,1
+access_comm_dialer_transfer_wizard_user,comm.dialer.transfer.wizard.user,model_comm_dialer_transfer_wizard,base.group_user,1,1,1,1

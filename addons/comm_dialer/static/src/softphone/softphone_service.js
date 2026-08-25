@@ -430,7 +430,11 @@ export const softphoneService = {
         }
 
         init();
-        return { state, toggleMute, hangup, accept, decline, toggleRecord, dial, toggleDialer };
+        return {
+            state, toggleMute, hangup, accept, decline, toggleRecord, dial, toggleDialer,
+            // The comm.voip.call id of the current call (for the Transfer wizard).
+            get callId() { return callId; },
+        };
     },
 };
 

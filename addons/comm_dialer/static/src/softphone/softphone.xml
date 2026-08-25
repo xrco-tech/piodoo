@@ -45,6 +45,11 @@
                         t-att-title="state.recording ? 'Stop recording' : 'Record'">
                     <i class="fa fa-circle"/>
                 </button>
+                <button class="btn btn-light o_dialer_sp_xfer"
+                        t-if="state.status === 'incall'"
+                        t-on-click="() => this.transfer()" title="Transfer call">
+                    <i class="fa fa-share"/>
+                </button>
                 <button class="btn btn-danger o_dialer_sp_end"
                         t-on-click="() => this.hangup()" title="Hang up">
                     <i class="fa fa-phone"/> End
