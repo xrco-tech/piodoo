@@ -15,10 +15,11 @@
  *     and play the incoming audio.
  */
 import { registry } from "@web/core/registry";
+import { user } from "@web/core/user";
 
 export const waCallMonitorService = {
-    dependencies: ["bus_service", "orm", "comm_whatsapp_calling", "user", "notification"],
-    start(env, { bus_service, orm, comm_whatsapp_calling, user, notification }) {
+    dependencies: ["bus_service", "orm", "comm_whatsapp_calling", "notification"],
+    start(env, { bus_service, orm, comm_whatsapp_calling, notification }) {
         const monitors = {}; // monitor_id -> { pc, role, ctx, audioEl, remotePartnerId, pendingIce }
         const log = (...a) => console.debug("[wa-monitor]", ...a);
 
