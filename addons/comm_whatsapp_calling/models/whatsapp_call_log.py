@@ -7,7 +7,7 @@ import time
 import requests
 from markupsafe import Markup
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -69,6 +69,24 @@ class WhatsappCallLog(models.Model):
         help="Outcome / wrap-up code the agent set for this call.",
     )
     disposition_note = fields.Text("Disposition Note")
+
+    def action_supervisor_listen(self):
+        """Supervisor: silently listen to this live call. Creates a monitor
+        request; the browser relay (call_monitor.js) sets up the WebRTC path."""
+        self.ensure_one()
+        if self.call_status != 'answered':
+            raise UserError(_("You can only listen to a call that is in progress."))
+        if not self.env.user.has_group('comm_whatsapp_calling.group_whatsapp_call_supervisor'):
+            raise UserError(_("Call monitoring is restricted to supervisors."))
+        self.env['comm.whatsapp.monitor'].start_listen(self.id)
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'type': 'success', 'title': _('Listening'),
+                'message': _("Connecting you to the call — audio will start shortly."),
+                'sticky': False,
+            },
+        }
 
     def action_set_disposition(self, disposition_id, note=None):
         """Set (or clear) the disposition on this call. Callable from the

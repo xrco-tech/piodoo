@@ -8,3 +8,5 @@ access_whatsapp_call_team_manager,whatsapp.call.team.manager,model_whatsapp_call
 access_comm_disposition_user,comm.disposition.user,model_comm_disposition,base.group_user,1,0,0,0
 access_comm_disposition_manager,comm.disposition.manager,model_comm_disposition,comm_whatsapp_calling.group_whatsapp_call_manager,1,1,1,1
 access_comm_disposition_system,comm.disposition.system,model_comm_disposition,base.group_system,1,1,1,1
+access_comm_whatsapp_monitor_user,comm.whatsapp.monitor.user,model_comm_whatsapp_monitor,base.group_user,1,1,1,0
+access_comm_whatsapp_monitor_system,comm.whatsapp.monitor.system,model_comm_whatsapp_monitor,base.group_system,1,1,1,1

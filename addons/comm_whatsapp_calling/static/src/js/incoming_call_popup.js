@@ -2175,16 +2175,47 @@ const waCallService = {
             numberInput.focus();
         }
 
+        // The comm.voip.call / whatsapp.call.log id of the current active call
+        // (used by the call monitor to know if a Listen request is for us).
+        function getActiveCallId() {
+            return activeCall ? activeCall.id : null;
+        }
+
+        // Build a one-off mixed stream (agent mic + customer) of the active
+        // call for a supervisor to listen to. Returns {stream, ctx} — the caller
+        // closes ctx when the monitor ends. Null if we don't own that call.
+        function buildMonitorMix(callLogId) {
+            if (!activeCall || activeCall.id !== callLogId
+                    || !activeCall.localStream || !activeCall.remoteStream) {
+                return null;
+            }
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioCtx();
+                const dest = ctx.createMediaStreamDestination();
+                ctx.createMediaStreamSource(activeCall.localStream).connect(dest);
+                ctx.createMediaStreamSource(activeCall.remoteStream).connect(dest);
+                return { stream: dest.stream, ctx };
+            } catch (e) {
+                warn("buildMonitorMix failed:", e);
+                return null;
+            }
+        }
+
         // Public API for other components (systray, res.partner button,
-        // Agent Workspace, etc.).
-        env.services.comm_whatsapp_calling = { dialCall, hangupActive, isActive, openDialPad, ensureNotificationPermission };
+        // Agent Workspace, call monitor, etc.).
+        const publicApi = {
+            dialCall, hangupActive, isActive, openDialPad, ensureNotificationPermission,
+            getActiveCallId, buildMonitorMix,
+        };
+        env.services.comm_whatsapp_calling = publicApi;
 
         // ── Bus wiring ────────────────────────────────────────────────
         try {
             log("bus_service keys:", Object.keys(bus_service));
             if (typeof bus_service.subscribe !== "function") {
                 warn("bus_service.subscribe is not a function — API changed?");
-                return { dialCall, hangupActive, isActive, openDialPad, ensureNotificationPermission };
+                return publicApi;
             }
             bus_service.subscribe("whatsapp_incoming_call", (payload) => {
                 log("bus event received:", payload?.type, "id:", payload?.call_log_id);
@@ -2248,7 +2279,7 @@ const waCallService = {
             warn("bus subscribe failed:", e && e.message ? e.message : e);
         }
 
-        return { dialCall, hangupActive, isActive, openDialPad, ensureNotificationPermission };
+        return publicApi;
     },
 };
 

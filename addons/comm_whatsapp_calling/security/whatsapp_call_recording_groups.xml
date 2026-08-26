@@ -22,5 +22,14 @@
             <field name="category_id" ref="base.module_category_tools"/>
             <field name="comment">Can create and edit call dispositions (outcome codes). Agents can set an existing disposition on a call without this group.</field>
         </record>
+
+        <!-- Can silently monitor (Listen) live WhatsApp calls. Covert to the
+             customer, so gated + audited (comm.whatsapp.monitor). -->
+        <record id="group_whatsapp_call_supervisor" model="res.groups">
+            <field name="name">Call Supervisor (Monitor)</field>
+            <field name="category_id" ref="base.module_category_tools"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Can listen in on live WhatsApp calls. Every session is logged; pair with a 'calls may be monitored' disclosure.</field>
+        </record>
     </data>
 </odoo>

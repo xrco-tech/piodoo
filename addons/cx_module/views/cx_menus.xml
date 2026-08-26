@@ -202,6 +202,22 @@
               groups="comm_dialer.group_dialer_supervisor"
               sequence="14"/>
 
+    <!-- WhatsApp call monitoring (Listen) — browser-relay, separate from the
+         VoIP ChanSpy barge. Gated to the WA call supervisor group. -->
+    <menuitem id="menu_cx_voice_wa_live_monitor"
+              name="Live WhatsApp Calls"
+              parent="menu_cx_voice_tab"
+              action="comm_whatsapp_calling.action_wa_live_monitor"
+              groups="comm_whatsapp_calling.group_whatsapp_call_supervisor"
+              sequence="15"/>
+
+    <menuitem id="menu_cx_voice_wa_monitor_sessions"
+              name="WhatsApp Monitor Sessions"
+              parent="menu_cx_voice_tab"
+              action="comm_whatsapp_calling.action_wa_monitor_sessions"
+              groups="comm_whatsapp_calling.group_whatsapp_call_supervisor"
+              sequence="16"/>
+
     <menuitem id="menu_cx_voice_dashboard"
               name="Calls Dashboard"
               parent="menu_cx_voice_tab"

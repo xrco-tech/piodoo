@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Live WhatsApp calls: supervisor Listen board ─────────────────── -->
+    <record id="view_wa_live_monitor_list" model="ir.ui.view">
+        <field name="name">whatsapp.call.log.live.monitor.list</field>
+        <field name="model">whatsapp.call.log</field>
+        <field name="arch" type="xml">
+            <list string="Live WhatsApp Calls" create="false" edit="false"
+                  default_order="call_timestamp desc">
+                <field name="contact_display" string="Contact"/>
+                <field name="call_direction" optional="show"/>
+                <field name="create_uid" string="Agent"/>
+                <field name="call_timestamp" string="Started"/>
+                <field name="call_status"/>
+                <button name="action_supervisor_listen" type="object" string="Listen"
+                        icon="fa-headphones" class="btn-link"
+                        help="Silently listen to this live call"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_wa_live_monitor" model="ir.actions.act_window">
+        <field name="name">Live WhatsApp Calls</field>
+        <field name="res_model">whatsapp.call.log</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_wa_live_monitor_list"/>
+        <field name="domain">[('call_status', '=', 'answered')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No WhatsApp calls in progress</p>
+            <p>Answered WhatsApp calls appear here — pick one to listen in.</p>
+        </field>
+    </record>
+
+    <!-- ── Monitor sessions (audit + stop) ──────────────────────────────── -->
+    <record id="view_wa_monitor_list" model="ir.ui.view">
+        <field name="name">comm.whatsapp.monitor.list</field>
+        <field name="model">comm.whatsapp.monitor</field>
+        <field name="arch" type="xml">
+            <list string="WhatsApp Monitor Sessions" create="false" edit="false">
+                <field name="create_date" string="Started"/>
+                <field name="supervisor_id"/>
+                <field name="call_log_id"/>
+                <field name="agent_user_id"/>
+                <field name="mode"/>
+                <field name="state" decoration-success="state == 'active'"
+                       decoration-muted="state == 'ended'"
+                       decoration-danger="state == 'failed'"/>
+                <button name="action_stop" type="object" string="Stop"
+                        icon="fa-stop" class="btn-link text-danger"
+                        invisible="state not in ('requested', 'active')"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_wa_monitor_sessions" model="ir.actions.act_window">
+        <field name="name">WhatsApp Monitor Sessions</field>
+        <field name="res_model">comm.whatsapp.monitor</field>
+        <field name="view_mode">list</field>
+    </record>
+
+</odoo>

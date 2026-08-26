@@ -2,3 +2,4 @@
 
 from . import whatsapp_webhook
 from . import whatsapp_call_routes
+from . import monitor_routes
