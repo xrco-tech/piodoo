@@ -31,8 +31,11 @@ class CommWhatsappMonitor(models.Model):
         'res.users', 'Supervisor', required=True, index=True,
         default=lambda self: self.env.user)
     agent_user_id = fields.Many2one('res.users', 'Agent')  # call owner, for audit
-    mode = fields.Selection(
-        [('listen', 'Listen')], default='listen', required=True)  # whisper/barge = later phases
+    mode = fields.Selection([
+        ('listen', 'Listen'),    # hear both sides, talk to none
+        ('whisper', 'Whisper'),  # talk to the agent only (customer can't hear)
+        ('barge', 'Barge'),      # talk to both (agent + customer)
+    ], default='listen', required=True)
     state = fields.Selection([
         ('requested', 'Requested'),
         ('active', 'Active'),
@@ -60,17 +63,21 @@ class CommWhatsappMonitor(models.Model):
             Bus._sendone(m.supervisor_id.partner_id, 'wa_monitor_start', payload)
 
     @api.model
-    def start_listen(self, call_log_id):
+    def start(self, call_log_id, mode='listen'):
         call = self.env['whatsapp.call.log'].browse(call_log_id)
         if not call.exists():
             return False
         monitor = self.create({
             'call_log_id': call.id,
             'agent_user_id': call.create_uid.id,
-            'mode': 'listen',
+            'mode': mode if mode in ('listen', 'whisper', 'barge') else 'listen',
         })
         monitor._notify_start()
         return monitor.id
+
+    @api.model
+    def start_listen(self, call_log_id):
+        return self.start(call_log_id, 'listen')
 
     def action_stop(self):
         Bus = self.env['bus.bus']

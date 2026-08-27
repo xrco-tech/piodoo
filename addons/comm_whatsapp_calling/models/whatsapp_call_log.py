@@ -70,23 +70,37 @@ class WhatsappCallLog(models.Model):
     )
     disposition_note = fields.Text("Disposition Note")
 
-    def action_supervisor_listen(self):
-        """Supervisor: silently listen to this live call. Creates a monitor
-        request; the browser relay (call_monitor.js) sets up the WebRTC path."""
+    def _start_monitor(self, mode):
+        """Supervisor: monitor this live call (listen / whisper / barge). Creates
+        a monitor request; the browser relay (call_monitor.js) sets up the
+        WebRTC path — WhatsApp calls can't be spied server-side."""
         self.ensure_one()
         if self.call_status != 'answered':
-            raise UserError(_("You can only listen to a call that is in progress."))
+            raise UserError(_("You can only monitor a call that is in progress."))
         if not self.env.user.has_group('comm_whatsapp_calling.group_whatsapp_call_supervisor'):
             raise UserError(_("Call monitoring is restricted to supervisors."))
-        self.env['comm.whatsapp.monitor'].start_listen(self.id)
+        self.env['comm.whatsapp.monitor'].start(self.id, mode)
+        titles = {
+            'listen': _("Listening — audio will start shortly."),
+            'whisper': _("Whispering to the agent — only they can hear you."),
+            'barge': _("Barging in — you'll be heard by both parties."),
+        }
         return {
             'type': 'ir.actions.client', 'tag': 'display_notification',
             'params': {
-                'type': 'success', 'title': _('Listening'),
-                'message': _("Connecting you to the call — audio will start shortly."),
-                'sticky': False,
+                'type': 'success', 'title': _('Monitoring'),
+                'message': titles.get(mode, titles['listen']), 'sticky': False,
             },
         }
+
+    def action_supervisor_listen(self):
+        return self._start_monitor('listen')
+
+    def action_supervisor_whisper(self):
+        return self._start_monitor('whisper')
+
+    def action_supervisor_barge(self):
+        return self._start_monitor('barge')
 
     def action_set_disposition(self, disposition_id, note=None):
         """Set (or clear) the disposition on this call. Callable from the

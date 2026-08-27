@@ -58,7 +58,12 @@ export const waCallMonitorService = {
             if (!m) return;
             try { m.pc && m.pc.close(); } catch (e) { /* */ }
             try { m.ctx && m.ctx.close(); } catch (e) { /* */ }
-            try { m.audioEl && m.audioEl.remove(); } catch (e) { /* */ }
+            try { m.audioEl && m.audioEl.remove(); } catch (e) { /* */ }        // sup: plays the call mix
+            try { m.supAudioEl && m.supAudioEl.remove(); } catch (e) { /* */ }  // agent: plays supervisor (whisper/barge)
+            try { m.micStream && m.micStream.getTracks().forEach((t) => t.stop()); } catch (e) { /* */ }
+            if (m.injectedUplink && m.callLogId) {
+                try { comm_whatsapp_calling.clearMonitorUplink(m.callLogId); } catch (e) { /* */ }
+            }
             delete monitors[monitorId];
             log("monitor", monitorId, "torn down");
         }
@@ -70,32 +75,64 @@ export const waCallMonitorService = {
             }
             const mix = comm_whatsapp_calling.buildMonitorMix(p.call_log_id);
             if (!mix) return;
+            const mode = p.mode || "listen";
             const pc = new RTCPeerConnection({ iceServers: await iceServers() });
-            monitors[p.monitor_id] = {
-                pc, role: "agent", ctx: mix.ctx, remotePartnerId: p.supervisor_partner_id,
+            const m = {
+                pc, role: "agent", ctx: mix.ctx, mode,
+                remotePartnerId: p.supervisor_partner_id, callLogId: p.call_log_id,
             };
-            mix.stream.getAudioTracks().forEach((t) => pc.addTrack(t, mix.stream)); // send-only
+            monitors[p.monitor_id] = m;
+            const track = mix.stream.getAudioTracks()[0];
+            if (mode === "listen") {
+                pc.addTrack(track, mix.stream); // agent -> supervisor only
+            } else {
+                // whisper/barge: one sendrecv m-line — agent sends the mix and
+                // receives the supervisor's mic on the same transceiver.
+                pc.addTransceiver(track, { direction: "sendrecv", streams: [mix.stream] });
+                pc.ontrack = (e) => onSupervisorVoiceToAgent(
+                    m, (e.streams && e.streams[0]) || new MediaStream([e.track]));
+            }
             pc.onicecandidate = (e) => {
-                if (e.candidate) sendSignal(p.monitor_id, p.supervisor_partner_id, "ice", e.candidate.toJSON());
+                if (e.candidate) sendSignal(p.monitor_id, m.remotePartnerId, "ice", e.candidate.toJSON());
             };
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            await sendSignal(p.monitor_id, p.supervisor_partner_id, "offer",
-                { sdp: pc.localDescription, from_partner_id: user.partnerId });
+            await sendSignal(p.monitor_id, m.remotePartnerId, "offer",
+                { sdp: pc.localDescription, from_partner_id: user.partnerId, mode });
             orm.call("comm.whatsapp.monitor", "mark_active", [p.monitor_id]).catch(() => {});
-            log("agent: offer sent for monitor", p.monitor_id);
+            log("agent: offer sent for monitor", p.monitor_id, "mode", mode);
+        }
+
+        // The supervisor's mic arrived at the agent. Whisper -> play to the
+        // agent's speakers only. Barge -> also mix into the Meta uplink so the
+        // customer hears them too.
+        function onSupervisorVoiceToAgent(m, stream) {
+            const el = document.createElement("audio");
+            el.autoplay = true;
+            el.srcObject = stream;
+            document.body.appendChild(el);
+            el.play().catch(() => {});
+            m.supAudioEl = el;
+            if (m.mode === "barge") {
+                m.injectedUplink = comm_whatsapp_calling.injectMonitorUplink(m.callLogId, stream);
+            }
         }
 
         // ── SUPERVISOR side ───────────────────────────────────────────────
         function onStart(p) {
-            monitors[p.monitor_id] = { pc: null, role: "supervisor", callLogId: p.call_log_id, pendingIce: [] };
-            log("supervisor: awaiting offer for monitor", p.monitor_id);
+            monitors[p.monitor_id] = {
+                pc: null, role: "supervisor", callLogId: p.call_log_id,
+                mode: p.mode || "listen", pendingIce: [],
+            };
+            log("supervisor: awaiting offer for monitor", p.monitor_id, "mode", p.mode);
         }
 
         async function onSignal(p) {
             const m = monitors[p.monitor_id];
             if (!m) return;
             if (p.kind === "offer" && m.role === "supervisor") {
+                const mode = p.data.mode || m.mode || "listen";
+                m.mode = mode;
                 const pc = new RTCPeerConnection({ iceServers: await iceServers() });
                 m.pc = pc;
                 m.remotePartnerId = p.data.from_partner_id;
@@ -110,15 +147,34 @@ export const waCallMonitorService = {
                     document.body.appendChild(el);
                     el.play().catch(() => {});
                     m.audioEl = el;
-                    notification.add("Listening to the call.", { type: "info" });
+                    const label = { listen: "Listening to the call.",
+                        whisper: "Whispering to the agent.", barge: "Barged into the call." }[mode];
+                    notification.add(label || "Monitoring the call.", { type: "info" });
                 };
                 await pc.setRemoteDescription(p.data.sdp);
+                // whisper/barge: send our mic back on the same sendrecv m-line.
+                if (mode === "whisper" || mode === "barge") {
+                    try {
+                        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        m.micStream = micStream;
+                        const micTrack = micStream.getAudioTracks()[0];
+                        const tr = pc.getTransceivers().find(
+                            (t) => t.receiver && t.receiver.track && t.receiver.track.kind === "audio")
+                            || pc.getTransceivers()[0];
+                        if (tr) {
+                            await tr.sender.replaceTrack(micTrack);
+                            try { tr.direction = "sendrecv"; } catch (e) { /* */ }
+                        }
+                    } catch (e) {
+                        notification.add("Microphone access is needed to whisper or barge.", { type: "warning" });
+                    }
+                }
                 for (const c of m.pendingIce) { try { await pc.addIceCandidate(c); } catch (e) { /* */ } }
                 m.pendingIce = [];
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
                 await sendSignal(p.monitor_id, m.remotePartnerId, "answer", { sdp: pc.localDescription });
-                log("supervisor: answered monitor", p.monitor_id);
+                log("supervisor: answered monitor", p.monitor_id, "mode", mode);
             } else if (p.kind === "answer" && m.role === "agent") {
                 await m.pc.setRemoteDescription(p.data.sdp);
             } else if (p.kind === "ice") {

@@ -16,6 +16,12 @@
                 <button name="action_supervisor_listen" type="object" string="Listen"
                         icon="fa-headphones" class="btn-link"
                         help="Silently listen to this live call"/>
+                <button name="action_supervisor_whisper" type="object" string="Whisper"
+                        icon="fa-comment" class="btn-link"
+                        help="Coach the agent — the customer can't hear you"/>
+                <button name="action_supervisor_barge" type="object" string="Barge"
+                        icon="fa-bullhorn" class="btn-link"
+                        help="Join the call — everyone hears you"/>
             </list>
         </field>
     </record>

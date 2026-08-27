@@ -2202,11 +2202,49 @@ const waCallService = {
             }
         }
 
+        // BARGE: mix a supervisor's audio into the agent's uplink to Meta, so
+        // the customer hears the supervisor too. We replaceTrack the mic sender
+        // on the live Meta PC with (agent mic + supervisor) — no renegotiation.
+        function injectMonitorUplink(callLogId, supStream) {
+            if (!activeCall || activeCall.id !== callLogId || !activeCall.pc
+                    || !activeCall.localStream || !supStream) {
+                return null;
+            }
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioCtx();
+                const dest = ctx.createMediaStreamDestination();
+                ctx.createMediaStreamSource(activeCall.localStream).connect(dest);
+                ctx.createMediaStreamSource(supStream).connect(dest);
+                const mixedTrack = dest.stream.getAudioTracks()[0];
+                const sender = activeCall.pc.getSenders()
+                    .find((s) => s.track && s.track.kind === "audio");
+                if (!sender) { ctx.close(); return null; }
+                const origTrack = sender.track;
+                sender.replaceTrack(mixedTrack);
+                activeCall._monitorUplink = { ctx, sender, origTrack };
+                return true;
+            } catch (e) {
+                warn("injectMonitorUplink failed:", e);
+                return null;
+            }
+        }
+
+        function clearMonitorUplink(callLogId) {
+            if (!activeCall || (callLogId && activeCall.id !== callLogId) || !activeCall._monitorUplink) {
+                return;
+            }
+            const u = activeCall._monitorUplink;
+            try { u.sender && u.origTrack && u.sender.replaceTrack(u.origTrack); } catch (e) { /* */ }
+            try { u.ctx && u.ctx.close(); } catch (e) { /* */ }
+            activeCall._monitorUplink = null;
+        }
+
         // Public API for other components (systray, res.partner button,
         // Agent Workspace, call monitor, etc.).
         const publicApi = {
             dialCall, hangupActive, isActive, openDialPad, ensureNotificationPermission,
-            getActiveCallId, buildMonitorMix,
+            getActiveCallId, buildMonitorMix, injectMonitorUplink, clearMonitorUplink,
         };
         env.services.comm_whatsapp_calling = publicApi;
 
