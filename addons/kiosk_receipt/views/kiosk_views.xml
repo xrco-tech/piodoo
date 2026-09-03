@@ -16,6 +16,7 @@
                 <field name="item_count"/>
                 <field name="checkout_id"/>
                 <field name="refund_id"/>
+                <field name="terminal_ref"/>
                 <field name="staff_ref"/>
             </list>
         </field>
@@ -43,6 +44,7 @@
                             <field name="item_count"/>
                             <field name="checkout_id"/>
                             <field name="refund_id"/>
+                            <field name="terminal_ref"/>
                         </group>
                     </group>
                     <field name="lines_json"/>

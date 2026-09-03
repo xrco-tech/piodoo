@@ -104,6 +104,7 @@ class KioskReceiptController(http.Controller):
                 'shift_ref': r.get('shiftId') or '',
                 'checkout_id': r.get('checkoutId') or '',
                 'refund_id': r.get('refundId') or '',
+                'terminal_ref': r.get('terminalRef') or '',
                 'lines_json': json.dumps(r.get('lines') or []),
             }
             existing = model.search([('kiosk_ref', '=', ref)], limit=1)
