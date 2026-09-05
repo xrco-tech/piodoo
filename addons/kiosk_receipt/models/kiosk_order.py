@@ -25,7 +25,7 @@ class KioskOrder(models.Model):
     refund_id = fields.Char(string='Yoco Refund')
     terminal_ref = fields.Char(string='Terminal Ref',
                                help='Operator-entered reference for a card sale taken on an '
-                                    'external Yoco terminal (Khumo) -- receipt/approval no. or card last 4.')
+                                    'external Yoco terminal (Khumo / Neo Touch) -- receipt/approval no. or card last 4.')
     lines_json = fields.Text(string='Line Items (JSON)')
 
     _sql_constraints = [
