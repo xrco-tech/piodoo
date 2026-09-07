@@ -33,6 +33,7 @@ services:
       - "8069:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./landing:/var/www/xrco:ro
     restart: always
 
   mcp-proxy:
