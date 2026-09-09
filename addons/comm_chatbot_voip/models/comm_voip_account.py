@@ -2,9 +2,44 @@
 import base64
 import hashlib
 import hmac
+import logging
 import time
 
+import requests
+
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
+
+
+def cloudflare_ice_servers(env, ttl=86400):
+    """Short-lived ICE servers from Cloudflare Realtime TURN (managed), or None.
+
+    Cloudflare mints the credentials server-side from a secret TURN token, so the
+    long-lived token never reaches the browser. Config params (shared by the
+    softphone and the WhatsApp-monitor relay):
+      comm.turn.cf_key_id     — the TURN key id
+      comm.turn.cf_api_token  — the TURN key's API token (secret)
+    Returns a list of iceServer dicts, or None when unconfigured / on error so
+    the caller can fall back to coturn."""
+    ICP = env['ir.config_parameter'].sudo()
+    key_id = ICP.get_param('comm.turn.cf_key_id')
+    token = ICP.get_param('comm.turn.cf_api_token')
+    if not (key_id and token):
+        return None
+    try:
+        resp = requests.post(
+            'https://rtc.live.cloudflare.com/v1/turn/keys/%s/credentials/generate-ice-servers' % key_id,
+            headers={'Authorization': 'Bearer %s' % token},
+            json={'ttl': int(ttl)}, timeout=8)
+        resp.raise_for_status()
+        ice = resp.json().get('iceServers')
+        if isinstance(ice, dict):   # API returns a single object; consumers want a list
+            ice = [ice]
+        return ice or None
+    except Exception as e:
+        _logger.warning('Cloudflare TURN credential fetch failed: %s', e)
+        return None
 
 
 class CommVoipAccount(models.Model):
@@ -59,10 +94,16 @@ class CommVoipAccount(models.Model):
     def get_ice_servers(self, ttl=3600):
         """ICE server config (STUN/TURN) for an agent's WebRTC softphone.
 
-        Uses coturn's use-auth-secret (REST) scheme: the username is an expiry
-        timestamp and the credential is base64(HMAC-SHA1(secret, username)), so
-        Odoo never ships the long-lived TURN secret to the browser."""
+        Prefers Cloudflare Realtime TURN (managed) when configured; otherwise
+        falls back to a self-hosted coturn via its use-auth-secret (REST) scheme:
+        the username is an expiry timestamp and the credential is
+        base64(HMAC-SHA1(secret, username)), so Odoo never ships the long-lived
+        TURN secret to the browser."""
         self.ensure_one()
+        cf = cloudflare_ice_servers(self.env, ttl=int(
+            self.env['ir.config_parameter'].sudo().get_param('comm.turn.ttl') or 86400))
+        if cf:
+            return cf
         servers = []
         if self.turn_url and self.turn_secret:
             username = '%d:%s' % (int(time.time()) + ttl, self.env.user.login)

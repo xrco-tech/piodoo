@@ -12,10 +12,38 @@ import hmac
 import logging
 import time
 
+import requests
+
 from odoo import http
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
+
+
+def _cloudflare_ice_servers(env, ttl=86400):
+    """Short-lived ICE servers from Cloudflare Realtime TURN (managed), or None.
+
+    Reads the shared TURN config params (comm.turn.cf_key_id / cf_api_token) and
+    mints credentials server-side; returns a list of iceServer dicts or None so
+    the caller can fall back to coturn / public STUN."""
+    ICP = env['ir.config_parameter'].sudo()
+    key_id = ICP.get_param('comm.turn.cf_key_id')
+    token = ICP.get_param('comm.turn.cf_api_token')
+    if not (key_id and token):
+        return None
+    try:
+        resp = requests.post(
+            'https://rtc.live.cloudflare.com/v1/turn/keys/%s/credentials/generate-ice-servers' % key_id,
+            headers={'Authorization': 'Bearer %s' % token},
+            json={'ttl': int(ttl)}, timeout=8)
+        resp.raise_for_status()
+        ice = resp.json().get('iceServers')
+        if isinstance(ice, dict):
+            ice = [ice]
+        return ice or None
+    except Exception as e:
+        _logger.warning('Cloudflare TURN credential fetch failed: %s', e)
+        return None
 
 
 class WhatsappMonitorController(http.Controller):
@@ -42,11 +70,16 @@ class WhatsappMonitorController(http.Controller):
 
     @http.route('/whatsapp/monitor/ice_servers', type='json', auth='user', methods=['POST'])
     def ice_servers(self, **kw):
-        """STUN/TURN for the relay. coturn runs with --use-auth-secret, so we
-        mint short-lived REST credentials (username = <expiry>:<uid>, password =
-        base64(HMAC-SHA1(secret, username))). Falls back to public STUN when no
+        """STUN/TURN for the relay. Prefers Cloudflare Realtime TURN (managed)
+        when configured; otherwise a self-hosted coturn via --use-auth-secret,
+        minting short-lived REST credentials (username = <expiry>:<uid>, password
+        = base64(HMAC-SHA1(secret, username))). Falls back to public STUN when no
         TURN is configured (fine for same-network P2P; TURN needed across NAT)."""
         ICP = request.env['ir.config_parameter'].sudo()
+        cf = _cloudflare_ice_servers(request.env, ttl=int(
+            ICP.get_param('comm.turn.ttl') or 86400))
+        if cf:
+            return {'iceServers': cf}
         servers = []
         turn_url = ICP.get_param('comm_whatsapp_calling.turn_url')       # e.g. turn:host:3478
         turn_secret = ICP.get_param('comm_whatsapp_calling.turn_secret')
