@@ -1,0 +1,42 @@
+# coturn — STUN/TURN relay for WebRTC media across NAT.
+#
+# Consumed by TWO features, both of which mint short-lived REST credentials from
+# COTURN_SECRET (coturn's --use-auth-secret / static-auth-secret scheme):
+#   - the agent VoIP softphone  → comm.voip.account.turn_url / turn_secret
+#   - WhatsApp call monitoring  → ir.config_parameter comm_whatsapp_calling.turn_*
+#
+# Host networking is deliberate: coturn allocates relay ports on the host and
+# advertises them as ICE candidates, so it MUST bind the host's real interface
+# (docker's userland-proxy NAT breaks the relay-port mapping otherwise).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.coturn.yml up -d coturn
+#
+# REQUIRES (external, one-time) — see report:
+#   - router 192.168.10.1 port-forwards to COTURN_LOCAL_IP:
+#       3478/udp, 3478/tcp, and 49160-49200/udp (relay range)
+#   - COTURN_PUBLIC_IP kept current (public IP is dynamic); DHCP-reserve the LAN IP
+services:
+  coturn:
+    image: coturn/coturn:4.6
+    network_mode: host
+    restart: unless-stopped
+    # Args come from .env: COTURN_SECRET, COTURN_PUBLIC_IP, COTURN_LOCAL_IP.
+    command:
+      - -n
+      - --log-file=stdout
+      - --simple-log
+      - --use-auth-secret
+      - --static-auth-secret=${COTURN_SECRET}
+      - --realm=xrco.tech
+      - --listening-port=3478
+      - --relay-ip=${COTURN_LOCAL_IP}
+      - --external-ip=${COTURN_PUBLIC_IP}/${COTURN_LOCAL_IP}
+      - --min-port=49160
+      - --max-port=49200
+      - --fingerprint
+      - --no-cli
+      - --no-tls
+      - --no-dtls
+      - --no-multicast-peers
+      # Block relaying to cloud-metadata / link-local (anti-SSRF on an open relay).
+      - --denied-peer-ip=169.254.0.0-169.254.255.255
