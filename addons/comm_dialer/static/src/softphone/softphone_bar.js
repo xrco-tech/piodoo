@@ -33,6 +33,21 @@ export class DialerSoftphoneBar extends Component {
         }[this.state.status] || "";
     }
 
+    // True only when the softphone has registered to Asterisk and can place a call.
+    get canCall() {
+        return this.state.status === "registered";
+    }
+
+    // Friendly connection status shown in the pad when we can't yet dial.
+    get connLabel() {
+        return {
+            connecting: "Connecting to the phone server…",
+            unregistered: "Not registered with the phone server.",
+            failed: "Can't reach the phone server — check the VoIP connection.",
+            idle: "Softphone not connected yet.",
+        }[this.state.status] || "";
+    }
+
     press(d) {
         this.dial.value += d;
     }
@@ -42,6 +57,9 @@ export class DialerSoftphoneBar extends Component {
     }
 
     callNow() {
+        if (!this.canCall) {
+            return;
+        }
         const number = this.dial.value.trim();
         if (number) {
             this.sp.dial(number);

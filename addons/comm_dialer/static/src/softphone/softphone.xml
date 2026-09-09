@@ -65,6 +65,8 @@
                     <i class="fa fa-times"/>
                 </button>
             </div>
+            <div class="o_dialer_sp_dp_status alert alert-warning py-1 px-2 mb-2"
+                 t-if="!canCall" role="status" t-esc="connLabel"/>
             <div class="o_dialer_sp_dp_input">
                 <input type="text" t-model="dial.value" placeholder="Number or extension"
                        t-on-keydown="(ev) => this.onKeydown(ev)"/>
@@ -76,7 +78,8 @@
                 <button class="btn btn-light o_dp_key" t-foreach="keypad" t-as="k" t-key="k"
                         t-on-click="() => this.press(k)" t-esc="k"/>
             </div>
-            <button class="btn btn-success o_dialer_sp_dp_call" t-on-click="() => this.callNow()">
+            <button class="btn btn-success o_dialer_sp_dp_call" t-on-click="() => this.callNow()"
+                    t-att-disabled="!canCall">
                 <i class="fa fa-phone"/> Call
             </button>
         </div>

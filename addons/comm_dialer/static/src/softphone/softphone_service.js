@@ -176,8 +176,13 @@ export const softphoneService = {
         }
 
         function toggleDialer() {
-            if (state.status === "registered") {
-                state.dialerOpen = !state.dialerOpen;
+            // Always open the pad so a click is never a silent no-op. The pad
+            // itself surfaces the connection status (and disables Call) when the
+            // softphone isn't registered, instead of the icon doing nothing.
+            state.dialerOpen = !state.dialerOpen;
+            if (state.dialerOpen && ["idle", "unregistered", "failed"].includes(state.status)) {
+                // A click is a user gesture — a good moment to (re)try registering.
+                try { connect(state._cfg); } catch { /* no cfg yet */ }
             }
         }
 
@@ -362,6 +367,17 @@ export const softphoneService = {
 
         function connect(cfg) {
             const JsSIP = window.JsSIP;
+            if (!cfg || typeof JsSIP === "undefined") {
+                state.status = "failed";
+                return;
+            }
+            if (["connecting", "registered", "ringing", "calling", "incall"].includes(state.status)) {
+                return; // already connecting or live — don't stack UAs
+            }
+            if (ua) {
+                try { ua.stop(); } catch { /* */ }
+                ua = null;
+            }
             state.status = "connecting";
             try {
                 const socket = new JsSIP.WebSocketInterface(cfg.ws_url);
@@ -394,6 +410,7 @@ export const softphoneService = {
                 return;
             }
             state.enabled = true;
+            state._cfg = cfg; // kept so a systray click can retry connect()
             state._ice = cfg.ice || [];
             state.manual = !!cfg.manual_answer;
             state.autoRecord = !!cfg.auto_record;
