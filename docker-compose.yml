@@ -52,6 +52,11 @@ services:
     image: cloudflare/cloudflared:latest
     restart: always
     command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run --token ${CLOUDFLARE_TOKEN}
+    # Asterisk runs on the host network (WS on :8088). Map host.docker.internal
+    # to the host gateway so the dashboard-managed tunnel can route the WebRTC
+    # signalling public hostname (pbx.xrco.tech) to http://host.docker.internal:8088.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./cloudflared.yml:/etc/cloudflared/config.yml
     depends_on:
