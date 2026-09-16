@@ -26,6 +26,7 @@ export const softphoneService = {
         });
         let ua = null;
         let session = null;
+        let answering = false; // guards against double-answer (INVALID_STATE_ERROR)
         let audioEl = null;
         // Recording (client-side, like comm_whatsapp_calling): mix both tracks
         // and MediaRecorder them, then upload to the call on stop.
@@ -98,6 +99,7 @@ export const softphoneService = {
         function onSession(e) {
             const s = e.session;
             session = s;
+            answering = false; // fresh call — allow one answer
             const outgoing = s.direction === "outgoing";
             const ri = s.remote_identity;
             const peer = (ri && ri.uri && ri.uri.user) || "";
@@ -187,13 +189,26 @@ export const softphoneService = {
         }
 
         function doAnswer() {
-            if (!session) {
+            if (!session || answering) {
+                return; // no session, or already answering (block double-answer)
+            }
+            // Flip status synchronously so a second Accept click / event is
+            // rejected before JsSIP's async 'accepted' event lands. answer() is
+            // only valid once (in WAITING_FOR_ANSWER) — calling it twice throws
+            // INVALID_STATE_ERROR: Invalid status: 5.
+            answering = true;
+            state.status = "connecting";
+            try {
+                session.answer({
+                    mediaConstraints: { audio: true, video: false },
+                    pcConfig: { iceServers: state._ice || [] },
+                });
+            } catch (err) {
+                console.warn("[softphone] answer failed:", err);
+                answering = false;
+                state.status = "ringing"; // let the agent try again
                 return;
             }
-            session.answer({
-                mediaConstraints: { audio: true, video: false },
-                pcConfig: { iceServers: state._ice || [] },
-            });
             if (session.connection) {
                 attachAudio(session.connection);
             }
@@ -220,6 +235,7 @@ export const softphoneService = {
             }
             callId = null;
             session = null;
+            answering = false;
             state.caller = "";
             state.muted = false;
             state.status = ua && ua.isRegistered() ? "registered" : "unregistered";
