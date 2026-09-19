@@ -22,12 +22,13 @@ export class DialerSoftphoneBar extends Component {
     }
 
     get active() {
-        return ["ringing", "calling", "incall"].includes(this.state.status);
+        return ["ringing", "connecting", "calling", "incall"].includes(this.state.status);
     }
 
     get stateLabel() {
         return {
             ringing: "Incoming call",
+            connecting: "Connecting…",
             calling: "Calling…",
             incall: "On call",
         }[this.state.status] || "";
