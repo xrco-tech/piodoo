@@ -36,10 +36,46 @@ def cloudflare_ice_servers(env, ttl=86400):
         ice = resp.json().get('iceServers')
         if isinstance(ice, dict):   # API returns a single object; consumers want a list
             ice = [ice]
-        return ice or None
+        return _trim_ice_servers(ICP, ice) or None
     except Exception as e:
         _logger.warning('Cloudflare TURN credential fetch failed: %s', e)
         return None
+
+
+def _trim_ice_servers(ICP, ice):
+    """Drop ICE servers that stall the browser's ICE gathering on this network.
+
+    JsSIP is non-trickle: it only sends the SIP answer (200 OK) once ICE
+    gathering COMPLETES. Cloudflare's stock list includes stun.cloudflare.com
+    plus four TCP/TLS TURN variants; stun.cloudflare.com is unreachable from
+    this site (Asterisk's own STUN requests to it time out), so the browser sat
+    in 'gathering' forever, the 200 was never sent and every inbound call died
+    on the 30s Dial timeout. Keep only transports that gather fast here.
+
+      comm.turn.drop_stun  — '0' to keep the plain STUN entry (default: drop)
+      comm.turn.url_filter — substrings to keep, comma-separated
+                             (default 'transport=udp,:443')
+    """
+    if not ice:
+        return ice
+    drop_stun = (ICP.get_param('comm.turn.drop_stun') or '1') != '0'
+    raw_filter = ICP.get_param('comm.turn.url_filter')
+    if raw_filter is None:
+        raw_filter = 'transport=udp,:443'
+    wanted = [f.strip() for f in raw_filter.split(',') if f.strip()]
+    out = []
+    for srv in ice:
+        urls = srv.get('urls') or []
+        if isinstance(urls, str):
+            urls = [urls]
+        if not srv.get('username'):
+            if drop_stun:
+                continue  # plain STUN entry — unreachable here, stalls gathering
+        elif wanted:
+            kept = [u for u in urls if any(w in u for w in wanted)]
+            urls = kept or urls  # never filter a TURN entry down to nothing
+        out.append(dict(srv, urls=urls))
+    return out
 
 
 class CommVoipAccount(models.Model):
