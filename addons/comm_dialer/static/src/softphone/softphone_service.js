@@ -144,7 +144,12 @@ export const softphoneService = {
             s.on("accepted", onIncall);
             s.on("confirmed", onIncall);
             s.on("ended", onEnded);
-            s.on("failed", onEnded);
+            s.on("failed", (ev) => {
+                const cause = (ev && ev.cause) || "unknown";
+                console.warn("[softphone] session failed:", cause, ev);
+                notification.add("Call failed: " + cause, { type: "danger", title: "Softphone" });
+                onEnded();
+            });
             s.on("peerconnection", (ev) => attachAudio(ev.peerconnection));
 
             if (outgoing) {
