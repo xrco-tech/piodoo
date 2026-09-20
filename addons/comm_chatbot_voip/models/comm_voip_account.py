@@ -59,9 +59,9 @@ def _trim_ice_servers(ICP, ice):
     if not ice:
         return ice
     drop_stun = (ICP.get_param('comm.turn.drop_stun') or '1') != '0'
-    raw_filter = ICP.get_param('comm.turn.url_filter')
-    if raw_filter is None:
-        raw_filter = 'transport=udp,:443'
+    # NB: Odoo's get_param returns False (not None) for a missing key, so take
+    # the default via get_param's own default and coerce to a string.
+    raw_filter = ICP.get_param('comm.turn.url_filter', 'transport=udp,:443') or ''
     wanted = [f.strip() for f in raw_filter.split(',') if f.strip()]
     out = []
     for srv in ice:
