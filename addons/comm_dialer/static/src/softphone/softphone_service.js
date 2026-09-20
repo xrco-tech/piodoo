@@ -193,44 +193,29 @@ export const softphoneService = {
             }
         }
 
-        async function doAnswer() {
+        function doAnswer() {
+            console.debug("[softphone] doAnswer: entry session=", !!session,
+                          "answering=", answering, "status=", state.status);
             if (!session || answering) {
                 return; // no session, or already answering (block double-answer)
             }
             // Flip status synchronously so a second Accept click / event is
-            // rejected before JsSIP's async 'accepted' event lands. answer() is
-            // only valid once (in WAITING_FOR_ANSWER) — calling it twice throws
-            // INVALID_STATE_ERROR: Invalid status: 5.
+            // rejected before JsSIP's async 'accepted' event lands (answer() is
+            // only valid once — a 2nd call throws INVALID_STATE_ERROR: status 5).
             answering = true;
             state.status = "connecting";
-            // Acquire the mic ourselves (rather than via JsSIP's internal
-            // getUserMedia) so a permission/hardware failure is explicit and
-            // visible, instead of the answer silently never sending 200 OK.
-            let micStream;
             try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            } catch (err) {
-                console.warn("[softphone] microphone access failed:", err);
-                notification.add(
-                    "Microphone access is required to answer. Allow it for this site, then try again.",
-                    { type: "warning", title: "Can't answer" });
-                answering = false;
-                state.status = ua && ua.isRegistered() ? "registered" : "unregistered";
-                try { session.terminate({ status_code: 486 }); } catch { /* */ }
-                return;
-            }
-            if (!session) { // call ended while we were prompting
-                micStream.getTracks().forEach((t) => t.stop());
-                return;
-            }
-            try {
+                // Let JsSIP acquire the mic (mediaConstraints) — the same proven
+                // path outbound uses. It fires the session 'failed' event (caught
+                // above → notification) if getUserMedia is denied.
+                console.debug("[softphone] doAnswer: calling session.answer()");
                 session.answer({
-                    mediaStream: micStream,
+                    mediaConstraints: { audio: true, video: false },
                     pcConfig: { iceServers: state._ice || [] },
                 });
+                console.debug("[softphone] doAnswer: session.answer() returned");
             } catch (err) {
-                console.warn("[softphone] answer failed:", err);
-                micStream.getTracks().forEach((t) => t.stop());
+                console.warn("[softphone] answer failed (sync):", err);
                 notification.add("Couldn't answer the call: " + (err && err.message || err),
                     { type: "danger", title: "Answer failed" });
                 answering = false;
@@ -243,6 +228,7 @@ export const softphoneService = {
         }
 
         function accept() {
+            console.debug("[softphone] accept() clicked, session=", !!session, "status=", state.status);
             if (session && state.status === "ringing") {
                 doAnswer();
             }
