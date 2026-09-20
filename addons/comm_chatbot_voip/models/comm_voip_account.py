@@ -136,8 +136,16 @@ class CommVoipAccount(models.Model):
         base64(HMAC-SHA1(secret, username)), so Odoo never ships the long-lived
         TURN secret to the browser."""
         self.ensure_one()
+        ICP = self.env['ir.config_parameter'].sudo()
+        # comm.turn.disable=1 → hand the browser NO ICE servers. Host candidates
+        # then gather instantly (no STUN/TURN round-trips), which matters when
+        # the agent machine has interfaces that can't reach the TURN server and
+        # stall JsSIP's non-trickle wait for gathering-complete. Only viable when
+        # agent and Asterisk can reach each other directly (same LAN/tailnet).
+        if ICP.get_param('comm.turn.disable') == '1':
+            return []
         cf = cloudflare_ice_servers(self.env, ttl=int(
-            self.env['ir.config_parameter'].sudo().get_param('comm.turn.ttl') or 86400))
+            ICP.get_param('comm.turn.ttl') or 86400))
         if cf:
             return cf
         servers = []
