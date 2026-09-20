@@ -12,8 +12,8 @@ import { registry } from "@web/core/registry";
  * SIP endpoint are provisioned (get_softphone_config returns enabled:false).
  */
 export const softphoneService = {
-    dependencies: ["orm"],
-    start(env, { orm }) {
+    dependencies: ["orm", "notification"],
+    start(env, { orm, notification }) {
         const state = reactive({
             enabled: false,
             status: "idle", // idle | connecting | registered | unregistered | failed | ringing | incall
@@ -188,7 +188,7 @@ export const softphoneService = {
             }
         }
 
-        function doAnswer() {
+        async function doAnswer() {
             if (!session || answering) {
                 return; // no session, or already answering (block double-answer)
             }
@@ -198,13 +198,36 @@ export const softphoneService = {
             // INVALID_STATE_ERROR: Invalid status: 5.
             answering = true;
             state.status = "connecting";
+            // Acquire the mic ourselves (rather than via JsSIP's internal
+            // getUserMedia) so a permission/hardware failure is explicit and
+            // visible, instead of the answer silently never sending 200 OK.
+            let micStream;
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            } catch (err) {
+                console.warn("[softphone] microphone access failed:", err);
+                notification.add(
+                    "Microphone access is required to answer. Allow it for this site, then try again.",
+                    { type: "warning", title: "Can't answer" });
+                answering = false;
+                state.status = ua && ua.isRegistered() ? "registered" : "unregistered";
+                try { session.terminate({ status_code: 486 }); } catch { /* */ }
+                return;
+            }
+            if (!session) { // call ended while we were prompting
+                micStream.getTracks().forEach((t) => t.stop());
+                return;
+            }
             try {
                 session.answer({
-                    mediaConstraints: { audio: true, video: false },
+                    mediaStream: micStream,
                     pcConfig: { iceServers: state._ice || [] },
                 });
             } catch (err) {
                 console.warn("[softphone] answer failed:", err);
+                micStream.getTracks().forEach((t) => t.stop());
+                notification.add("Couldn't answer the call: " + (err && err.message || err),
+                    { type: "danger", title: "Answer failed" });
                 answering = false;
                 state.status = "ringing"; // let the agent try again
                 return;
