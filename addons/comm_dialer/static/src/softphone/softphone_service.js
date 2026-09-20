@@ -150,7 +150,27 @@ export const softphoneService = {
                 notification.add("Call failed: " + cause, { type: "danger", title: "Softphone" });
                 onEnded();
             });
-            s.on("peerconnection", (ev) => attachAudio(ev.peerconnection));
+            // Granular diagnostics: which async answer step stalls/fails.
+            ["getusermediafailed", "peerconnection:createanswerfailed",
+             "peerconnection:setremotedescriptionfailed",
+             "peerconnection:setlocaldescriptionfailed"].forEach((evName) => {
+                s.on(evName, (data) => {
+                    console.warn("[softphone] " + evName, data);
+                    notification.add("Media step failed: " + evName, { type: "danger" });
+                });
+            });
+            s.on("sdp", () => console.debug("[softphone] sdp event (remote/local processed)"));
+            s.on("peerconnection", (ev) => {
+                const pc = ev.peerconnection;
+                console.warn("[softphone] peerconnection created; iceGathering=", pc.iceGatheringState);
+                pc.addEventListener("icegatheringstatechange",
+                    () => console.warn("[softphone] iceGatheringState=", pc.iceGatheringState));
+                pc.addEventListener("iceconnectionstatechange",
+                    () => console.warn("[softphone] iceConnectionState=", pc.iceConnectionState));
+                pc.addEventListener("signalingstatechange",
+                    () => console.warn("[softphone] signalingState=", pc.signalingState));
+                attachAudio(pc);
+            });
 
             if (outgoing) {
                 // ua.call() already set up local media; hook audio when the pc appears.
