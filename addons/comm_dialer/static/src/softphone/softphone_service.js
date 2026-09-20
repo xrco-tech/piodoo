@@ -203,6 +203,7 @@ export const softphoneService = {
                 ua.call("sip:" + number + "@" + myDomain, {
                     mediaConstraints: { audio: true, video: false },
                     pcConfig: { iceServers: state._ice || [] },
+                    iceGatheringTimeout: 2000, // see doAnswer — don't stall on unreachable interfaces
                 });
                 // onSession fires for the outgoing session and wires the rest.
             } catch (err) {
@@ -240,6 +241,12 @@ export const softphoneService = {
                 session.answer({
                     mediaConstraints: { audio: true, video: false },
                     pcConfig: { iceServers: state._ice || [] },
+                    // JsSIP is non-trickle: it holds the 200 OK until ICE
+                    // gathering COMPLETES. This machine has extra interfaces
+                    // (Tailscale v4/v6) that can't reach the TURN server, so
+                    // gathering stalls past the ring timeout and the answer is
+                    // never sent. Cap the wait — host+relay arrive in ~1s.
+                    iceGatheringTimeout: 2000,
                 });
                 console.debug("[softphone] doAnswer: session.answer() returned");
             } catch (err) {
