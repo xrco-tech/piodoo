@@ -23,6 +23,11 @@ E_ARI_PASSWORD=$(esc "$ARI_PASSWORD")
 E_ARI_APP=$(esc "$ARI_APP")
 E_WSS_CERT=$(esc "$WSS_CERT")
 E_WSS_KEY=$(esc "$WSS_KEY")
+E_STUN_ADDR=$(esc "$STUN_ADDR")
+E_TURN_HOST=$(esc "$TURN_HOST")
+E_TURN_PORT=$(esc "$TURN_PORT")
+E_TURN_USER=$(esc "$TURN_USER")
+E_TURN_PASS=$(esc "$TURN_PASS")
 
 render() {
     sed \
@@ -39,6 +44,11 @@ render() {
         -e "s|\${ARI_APP}|${E_ARI_APP}|g" \
         -e "s|\${WSS_CERT}|${E_WSS_CERT}|g" \
         -e "s|\${WSS_KEY}|${E_WSS_KEY}|g" \
+        -e "s|\${STUN_ADDR}|${E_STUN_ADDR}|g" \
+        -e "s|\${TURN_HOST}|${E_TURN_HOST}|g" \
+        -e "s|\${TURN_PORT}|${E_TURN_PORT}|g" \
+        -e "s|\${TURN_USER}|${E_TURN_USER}|g" \
+        -e "s|\${TURN_PASS}|${E_TURN_PASS}|g" \
         "$1"
 }
 
