@@ -169,6 +169,14 @@ export const softphoneService = {
                     () => console.warn("[softphone] iceConnectionState=", pc.iceConnectionState));
                 pc.addEventListener("signalingstatechange",
                     () => console.warn("[softphone] signalingState=", pc.signalingState));
+                pc.addEventListener("icecandidate", (e) => {
+                    if (e.candidate) {
+                        console.warn("[softphone] localCand:", e.candidate.type,
+                                     e.candidate.protocol, e.candidate.address || e.candidate.candidate);
+                    } else {
+                        console.warn("[softphone] localCand: GATHERING COMPLETE");
+                    }
+                });
                 attachAudio(pc);
             });
 
