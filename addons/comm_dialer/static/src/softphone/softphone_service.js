@@ -150,7 +150,8 @@ export const softphoneService = {
                 notification.add("Call failed: " + cause, { type: "danger", title: "Softphone" });
                 onEnded();
             });
-            // Granular diagnostics: which async answer step stalls/fails.
+            // Media-setup failures are worth telling the agent about (mic denied,
+            // SDP/answer problems) — they're actionable and otherwise silent.
             ["getusermediafailed", "peerconnection:createanswerfailed",
              "peerconnection:setremotedescriptionfailed",
              "peerconnection:setlocaldescriptionfailed"].forEach((evName) => {
@@ -159,24 +160,16 @@ export const softphoneService = {
                     notification.add("Media step failed: " + evName, { type: "danger" });
                 });
             });
-            s.on("sdp", () => console.debug("[softphone] sdp event (remote/local processed)"));
             s.on("peerconnection", (ev) => {
                 const pc = ev.peerconnection;
-                console.warn("[softphone] peerconnection created; iceGathering=", pc.iceGatheringState);
-                pc.addEventListener("icegatheringstatechange",
-                    () => console.warn("[softphone] iceGatheringState=", pc.iceGatheringState));
+                // Quiet traces (console.debug is hidden unless Verbose is on).
+                // NB: JsSIP only sends the 200 OK once ICE gathering COMPLETES —
+                // if a call rings then dies at ~30s, check for a "gathering
+                // complete" here first. See comm.turn.disable.
                 pc.addEventListener("iceconnectionstatechange",
-                    () => console.warn("[softphone] iceConnectionState=", pc.iceConnectionState));
-                pc.addEventListener("signalingstatechange",
-                    () => console.warn("[softphone] signalingState=", pc.signalingState));
-                pc.addEventListener("icecandidate", (e) => {
-                    if (e.candidate) {
-                        console.warn("[softphone] localCand:", e.candidate.type,
-                                     e.candidate.protocol, e.candidate.address || e.candidate.candidate);
-                    } else {
-                        console.warn("[softphone] localCand: GATHERING COMPLETE");
-                    }
-                });
+                    () => console.debug("[softphone] iceConnectionState=", pc.iceConnectionState));
+                pc.addEventListener("icegatheringstatechange",
+                    () => console.debug("[softphone] iceGatheringState=", pc.iceGatheringState));
                 attachAudio(pc);
             });
 
@@ -203,7 +196,6 @@ export const softphoneService = {
                 ua.call("sip:" + number + "@" + myDomain, {
                     mediaConstraints: { audio: true, video: false },
                     pcConfig: { iceServers: state._ice || [] },
-                    iceGatheringTimeout: 2000, // see doAnswer — don't stall on unreachable interfaces
                 });
                 // onSession fires for the outgoing session and wires the rest.
             } catch (err) {
@@ -223,8 +215,6 @@ export const softphoneService = {
         }
 
         function doAnswer() {
-            console.debug("[softphone] doAnswer: entry session=", !!session,
-                          "answering=", answering, "status=", state.status);
             if (!session || answering) {
                 return; // no session, or already answering (block double-answer)
             }
@@ -237,18 +227,10 @@ export const softphoneService = {
                 // Let JsSIP acquire the mic (mediaConstraints) — the same proven
                 // path outbound uses. It fires the session 'failed' event (caught
                 // above → notification) if getUserMedia is denied.
-                console.debug("[softphone] doAnswer: calling session.answer()");
                 session.answer({
                     mediaConstraints: { audio: true, video: false },
                     pcConfig: { iceServers: state._ice || [] },
-                    // JsSIP is non-trickle: it holds the 200 OK until ICE
-                    // gathering COMPLETES. This machine has extra interfaces
-                    // (Tailscale v4/v6) that can't reach the TURN server, so
-                    // gathering stalls past the ring timeout and the answer is
-                    // never sent. Cap the wait — host+relay arrive in ~1s.
-                    iceGatheringTimeout: 2000,
                 });
-                console.debug("[softphone] doAnswer: session.answer() returned");
             } catch (err) {
                 console.warn("[softphone] answer failed (sync):", err);
                 notification.add("Couldn't answer the call: " + (err && err.message || err),
@@ -263,7 +245,6 @@ export const softphoneService = {
         }
 
         function accept() {
-            console.debug("[softphone] accept() clicked, session=", !!session, "status=", state.status);
             if (session && state.status === "ringing") {
                 doAnswer();
             }
