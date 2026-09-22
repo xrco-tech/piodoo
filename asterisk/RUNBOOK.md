@@ -1,116 +1,168 @@
-# Dialer bring-up runbook
+# Dialer / telephony runbook
 
-Goes from "code deployed" to "placing progressive + predictive calls over Vox."
+Operating guide for the Asterisk telephony plane: the **live Vox SIP trunk**, the
+agent WebRTC softphone, and the ARI dialer bridge.
 Run on the ubuntu box (`ubuntu@100.88.7.93`, `/home/ubuntu/odoo-stack`).
 
-Prereqs already done: `comm_dialer` + `comm_chatbot_voip` installed; Asterisk
-config + ARI bridge service scaffolded (`asterisk/`, `services/dialer_ari/`,
-`docker-compose.asterisk.yml`).
+> **Status (Sep 2026): the Vox trunk is LIVE.** Registration, outbound PSTN and
+> inbound PSTN → agent softphone are all verified with two-way audio. What
+> follows is the as-built configuration, not a bring-up plan.
 
 ---
 
-## 0. Gather (from Vox + your host)
-- Vox: SIP **host/port**, **auth mode** (registration user/secret, or IP-based),
-  your **DID** (caller-ID), **codecs** (usually alaw/ulaw), **concurrent channels**.
-- Host: a reachable **EXTERNAL_IP** for RTP media (public IP, or a TURN address).
-  ⚠️ The Cloudflare tunnel carries HTTP/WS only — **not** call audio.
-- A **TLS cert** for `wss://` (reuse Let's Encrypt) → `asterisk/keys/fullchain.pem`
-  + `privkey.pem`.
+## 0. Which overlay is actually running
 
-## 1. Fill the environment
+⚠️ **Important:** the live trunk runs on the **`asterisk-test` overlay**, not
+`docker-compose.asterisk.yml`. The trunk + dialplan were bolted onto the
+already-validated WebRTC test box, so that is the one in production use:
+
 ```bash
-cd /home/ubuntu/odoo-stack
-cp asterisk/env.sample .env
-$EDITOR .env          # Vox creds, EXTERNAL_IP, ARI_PASSWORD, WSS cert paths
-mkdir -p asterisk/keys && cp <your fullchain/privkey> asterisk/keys/
+docker compose -f docker-compose.yml -f docker-compose.asterisk-test.yml up -d asterisk-test
 ```
 
-## 2. Open the firewall (host)
+`docker-compose.asterisk.yml` (+ `asterisk/etc/`) is the older "production"
+scaffold. It has **not** been updated with the `transport-ws` fix or the trunk
+block — consolidate before ever switching to it.
+
+## 1. Vox trunk (live)
+
+| Item | Value |
+|---|---|
+| Registrar | `bdl1.vphone.co.za:5060` (PBX; `sf.vphone.co.za` is the standalone-phone one, unused) |
+| Auth | Registration (username/secret) — NOT IP-based |
+| Username | `27871640575` |
+| Secret | `.env` → `VOX_SECRET` (never in git) |
+| DID / CLI / alias | `27108221225` |
+| Codecs | `alaw,ulaw` |
+
+Config lives in `asterisk/webrtc-test/pjsip.conf`:
+`[transport-udp]` (5060) + `[vox]` endpoint / `vox_auth` / `vox_aor` /
+`vox_reg` / `vox_identify`. Dialplan in `asterisk/webrtc-test/extensions.conf`:
+outbound patterns in `from-agents` (sets `CALLERID(num)=${VOX_DID}`), inbound
+catch-all in `[from-vox]` → `Dial(PJSIP/1001)`.
+
+**Trunk media works over the home NAT with NO router port-forward** —
+`rtp_symmetric` + `force_rport` + Vox latching RTP to our source handles it.
+Verified: outbound alaw, 0% packet loss both directions.
+
+`.env` keys: `VOX_SIP_HOST`, `VOX_SIP_PORT`, `VOX_USERNAME`, `VOX_SECRET`,
+`VOX_DID`, `VOX_CODECS`, `EXTERNAL_IP`, `LOCAL_NET`.
+All are rendered into the configs by `asterisk/entrypoint.sh` (sed-based; it
+escapes `\ & |` so secrets with special characters render literally).
+
+## 2. Agent softphone path — signalling vs media
+
+These now take **different routes**, which is the single most important thing to
+understand here:
+
+- **Signalling (SIP over WebSocket): goes THROUGH the Cloudflare tunnel.**
+  `wss://pbx.xrco.tech/ws` → tunnel `pi-odoo19` → HTTP `host.docker.internal:8088`
+  → Asterisk. The edge terminates TLS, so Asterisk receives **plain ws** — which
+  is why `[transport-ws]` (protocol=ws, bind 8088) must exist and endpoints must
+  **not** pin `transport=`. (The older doc claim that Asterisk "cannot run behind
+  the tunnel" is only true of media.)
+  A direct `wss://ubuntu.taild8679b.ts.net:8089/ws` also works for tailnet agents.
+- **Media (RTP/SRTP): never touches the tunnel.** It uses ICE, with relay
+  candidates from **Cloudflare managed TURN**.
+
+## 3. TURN — Cloudflare managed (not coturn)
+
+Browser ICE credentials are minted server-side per call from a Cloudflare TURN
+key; the long-lived token never reaches the browser. This replaced self-hosted
+coturn and removed the router port-forward + dynamic-IP DDNS problem entirely.
+
+Config params: `comm.turn.cf_key_id`, `comm.turn.cf_api_token`,
+`comm.turn.ttl`. Consumed by `comm.voip.account.get_ice_servers()` (softphone)
+and `/whatsapp/monitor/ice_servers` (WhatsApp call monitoring). coturn is still
+deployed (`docker-compose.coturn.yml`) as a fallback but is not the active path.
+
+**Asterisk itself also uses Cloudflare TURN** (`rtp.conf` →
+`turnaddr`/`turnport`/`turnusername`/`turnpassword`, from `.env` `TURN_*`),
+because behind NAT it otherwise advertises only private host candidates that a
+remote browser can never reach. Those creds are **time-limited (48h)** — they
+need a refresh job.
+⚠️ `stunaddr` is deliberately **omitted**: `stun.cloudflare.com` is unreachable
+from this site and its timeouts added ~15s to ICE gathering.
+
+## 4. Provision an agent
+
+Two halves must match:
+1. **Odoo** — `res.users.dialer_sip_ext` (e.g. `1001`) + `dialer_sip_secret`.
+   `get_softphone_config()` returns these verbatim.
+2. **Asterisk** — an endpoint of the same name with the same password in
+   `asterisk/webrtc-test/pjsip.conf` (the test box defines `1001` / `1002`).
+
+The WebSocket URL + SIP domain come from the **VoIP account record**
+(`comm.voip.account.sip_ws_url` / `sip_domain`), not a config param.
+Set `res.users.dialer_manual_answer = True` so inbound calls ring with an
+**Accept/Decline** bar instead of silently auto-answering.
+
+## 5. Verify
+
 ```bash
-# SIP signalling + WebRTC WSS + RTP media range (match rtp.conf: 10000-10200)
-sudo ufw allow 5060/udp
-sudo ufw allow 8089/tcp
-sudo ufw allow 10000:10200/udp
-# TURN (coturn) — only if using it: signalling + TLS + relay range
-sudo ufw allow 3478
-sudo ufw allow 5349/tcp
-sudo ufw allow 20000:20200/udp
+A="docker compose -f docker-compose.yml -f docker-compose.asterisk-test.yml exec -T asterisk-test"
+$A asterisk -rx "pjsip show registrations"   # vox_reg → Registered
+$A asterisk -rx "pjsip show contacts"        # 1001 has a contact
+$A asterisk -rx "pjsip show transports"      # transport-udp:5060, ws:8088, wss:8089
+$A asterisk -rx "pjsip set logger on"        # full SIP trace into docker logs
+$A asterisk -rx "pjsip show channelstats"    # live RTP counts both directions
 ```
-If you're using TURN, also set `TURN_REALM` + `TURN_SECRET` in `.env`, and put the
-same `TURN URL` + `TURN Secret` on the Odoo VoIP account so agent softphones get
-ICE credentials.
 
-## 3. Create the Odoo API user for the bridge service
-In Odoo: Settings ▸ Users → new user `dialer@bot`, give it access to the CX/dialer
-models, generate an **API key**. Put the key in `.env` as `ODOO_PASSWORD` (and set
-`ODOO_USER=dialer@bot`).
-
-## 4. Create the Asterisk VoIP account in Odoo
-UCX ▸ Configuration ▸ **VoIP Accounts** → New:
-- Provider **Asterisk (ARI + SIP/WebRTC)**, Usage **Automation** (or Both)
-- Caller ID = your Vox DID
-- ARI Base URL `http://<EXTERNAL_IP>:8088`, ARI user/pass = `.env` values
-- Stasis App `comm_dialer`, SIP Trunk `vox`
-
-## 5. Provision agent endpoints
-For each agent, two halves must match:
-1. **Odoo** — Voice ▸ My Dialer Console (or Dialer Agents) → set **SIP Endpoint**
-   (e.g. `1001`) — this is `res.users.dialer_sip_ext`.
-2. **Asterisk** — add a matching WebRTC endpoint in `asterisk/etc/pjsip.conf`
-   (copy the `[1001]` template block, set the same name + a secret). The agent's
-   browser softphone (SIP.js) registers with that name/secret over `wss://<host>:8089`.
-
-## 6. Start the media engine + bridge service
+Outbound smoke test straight down the trunk (rings a real phone, bills a real
+call — connects it to the echo/demo extension on answer):
 ```bash
-cd /home/ubuntu/odoo-stack
-# add `coturn` to the list if you're using TURN for agent audio
-docker compose -f docker-compose.yml -f docker-compose.asterisk.yml up -d asterisk dialer_ari
-# with TURN:
-# docker compose -f docker-compose.yml -f docker-compose.asterisk.yml up -d asterisk coturn dialer_ari
+$A asterisk -rx "channel originate PJSIP/0XXXXXXXXX@vox extension 600@from-agents"
 ```
 
-## 7. Verify the trunk + ARI
+## 6. Known gotchas (hard-won)
+
+**Inbound answer stalls — JsSIP non-trickle ICE.** The single worst trap.
+JsSIP withholds the SIP `200 OK` until ICE gathering reports **complete**. If the
+agent machine has interfaces that cannot reach the TURN server (e.g. Tailscale
+v4/v6), Chrome waits on those allocations forever, gathering never completes, the
+answer is never sent, and **Asterisk never receives the browser's candidates at
+all** — so ICE can never connect. Symptom: the call rings, then dies at *exactly*
+30s with `session failed: Canceled`.
+- Tell-tale in the browser console: `GATHERING COMPLETE` never appears.
+- The 30s cancel comes from **Vox/the mobile network**, not our `Dial()` timeout —
+  raising `Dial(PJSIP/1001,30→90)` changes nothing.
+- `iceGatheringTimeout` passed to `session.answer()` is **ignored** by this JsSIP build.
+- **Fix / knob:** `comm.turn.disable=1` → `get_ice_servers()` returns `[]`, the
+  browser gathers host candidates only (instant), the 200 goes out. Valid only
+  when agent and Asterisk can reach each other directly (same LAN/tailnet).
+  Related knobs: `comm.turn.url_filter` (default `transport=udp,:443`),
+  `comm.turn.drop_stun`.
+
+**Deploying `comm_dialer` silently rolls back.** The transcribe cron holds its
+`ir_cron` row lock → `LockNotAvailable` → ParseError. Always:
 ```bash
-# Vox trunk registered / reachable
-docker compose -f docker-compose.yml -f docker-compose.asterisk.yml exec asterisk \
-  asterisk -rx "pjsip show registrations"
-docker compose -f docker-compose.yml -f docker-compose.asterisk.yml exec asterisk \
-  asterisk -rx "pjsip show endpoint vox"
-# Bridge service connected to Odoo + ARI (expect "Odoo connected" + "ARI websocket connected")
-docker compose -f docker-compose.yml -f docker-compose.asterisk.yml logs --tail=30 dialer_ari
+docker compose stop odoo
+docker compose run --rm odoo odoo -d odoo -u comm_dialer --stop-after-init --no-http
+docker compose start odoo
 ```
 
-## 8. Test call (one agent, progressive)
-1. Build a campaign: UCX ▸ Voice ▸ **Dialer Campaigns** → New, mode **Progressive**,
-   pick the Asterisk account, add **one** contact = your own mobile. Start it.
-2. Go **Ready** in My Dialer Console (endpoint set, softphone registered).
-3. Enable the pacer for one run: Settings ▸ Technical ▸ Scheduled Actions →
-   **"Dialer: pace outbound campaigns"** → set Active, or hit **Run Manually** once.
-4. Your phone rings → answer → you're bridged to the agent softphone. Confirm a
-   `comm.voip.call` row goes `queued → ringing → in_progress → completed`, and the
-   contact lands on a disposition.
+**`EXTERNAL_IP` is a dynamic public IP.** If it changes, the SDP external address
+goes stale. Symmetric RTP mostly masks this for the trunk, but a DDNS updater is
+the durable fix.
 
-## 9. Flip to predictive
-Once answer-rate data exists, set a campaign's mode to **Predictive**, tune
-`pacing_ratio` (start 1.0) and `target_abandon_rate` (e.g. 3%). The pacer
-over-dials by live answer-rate and the governor caps drops. Watch **abandon %**
-on the campaign; lower `target_abandon_rate` to be more conservative.
+**Asterisk restarts drop the SIP logger and the softphone registration** — re-arm
+`pjsip set logger on` and hard-refresh the agent browser after any restart.
 
----
+## 7. Troubleshooting
+
+| Symptom | Look at |
+|---|---|
+| Inbound rings then dies at exactly 30s | The JsSIP gathering trap above — check for `GATHERING COMPLETE` in the console; try `comm.turn.disable=1` |
+| Softphone dot never goes green | `pjsip show contacts`; is `sip_ws_url` reachable from that browser? tunnel hostname vs tailnet hostname |
+| Softphone click does nothing | Fixed — the pad now always opens and shows connection status |
+| Outbound sends no INVITE | Browser mic permission — JsSIP needs the mic to build the offer before it will send |
+| Trunk won't register | `pjsip show registrations`; host/port, registration (not IP) auth, `VOX_SECRET` rendered (check length, not value) |
+| Calls connect but no audio | ICE — check candidate types in the SDP (`typ host` only = no reachable candidate), and Cloudflare TURN creds |
+| No calls placed by the dialer | `dialer_ari` logs; pacer cron active? campaign Running + in window? Ready agents with an endpoint? |
 
 ## Rollback / stop
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.asterisk.yml stop dialer_ari asterisk
-# and disable the "Dialer: pace outbound campaigns" scheduled action in Odoo
+docker compose -f docker-compose.yml -f docker-compose.asterisk-test.yml stop asterisk-test dialer_ari
 ```
-Stopping the pacer (disable the cron) halts new originations immediately; live
-calls finish on their own.
-
-## Quick troubleshooting
-| Symptom | Look at |
-|---|---|
-| No calls placed | `dialer_ari` logs; is the pacer cron active? is the campaign Running + in its calling window? are there Ready agents with an endpoint? |
-| Calls ring but no agent audio | RTP/WebRTC media path — EXTERNAL_IP wrong, RTP UDP range closed, or needs TURN |
-| Trunk won't register | `pjsip show registrations`; Vox host/port, auth mode (reg vs IP), credentials |
-| Agent never bridged | agent's `dialer_sip_ext` must equal a pjsip.conf endpoint name; softphone registered? |
-| Too many abandoned calls | lower `pacing_ratio` / `target_abandon_rate`; check AMD is classifying machines |
+Disabling the "Dialer: pace outbound campaigns" cron halts new originations
+immediately; live calls finish on their own.
