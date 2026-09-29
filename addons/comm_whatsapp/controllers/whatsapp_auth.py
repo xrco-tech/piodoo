@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import hashlib
+import hmac
 import logging
 import requests
 from datetime import datetime
@@ -9,9 +11,41 @@ from odoo.http import request
 _logger = logging.getLogger(__name__)
 
 
+def verify_meta_signature(env):
+    """Check Meta's X-Hub-Signature-256 HMAC over the raw request body.
+
+    Accepts a match against the global comm_whatsapp.app_secret or any active
+    account's app_secret. Fails closed when no secret is configured unless
+    comm_whatsapp.webhook_allow_unsigned is explicitly set (emergency escape).
+    """
+    icp = env['ir.config_parameter'].sudo()
+    secrets_ = set(filter(None, [icp.get_param('comm_whatsapp.app_secret')]))
+    try:
+        secrets_.update(filter(None, env['comm.whatsapp.account'].sudo().search(
+            [('active', '=', True), ('app_secret', '!=', False)]).mapped('app_secret')))
+    except KeyError:
+        pass
+    if not secrets_:
+        if icp.get_param('comm_whatsapp.webhook_allow_unsigned'):
+            _logger.warning("WhatsApp webhook accepted WITHOUT signature check (no app secret configured)")
+            return True
+        _logger.error("WhatsApp webhook rejected: no app secret configured to verify X-Hub-Signature-256")
+        return False
+    header = request.httprequest.headers.get('X-Hub-Signature-256') or ''
+    if not header.startswith('sha256='):
+        _logger.warning("WhatsApp webhook rejected: missing X-Hub-Signature-256")
+        return False
+    body = request.httprequest.get_data()
+    received = header[len('sha256='):]
+    return any(
+        hmac.compare_digest(hmac.new(sec.encode(), body, hashlib.sha256).hexdigest(), received)
+        for sec in secrets_
+    )
+
+
 class WhatsAppAuthController(http.Controller):
 
-    @http.route('/whatsapp/auth/callback', type='http', auth='public', methods=['GET'], csrf=False)
+    @http.route('/whatsapp/auth/callback', type='http', auth='user', methods=['GET'], csrf=False)
     def oauth_callback(self, code=None, state=None, error=None, error_description=None):
         """
         OAuth callback endpoint for WhatsApp Meta Cloud API authentication.
@@ -23,6 +57,15 @@ class WhatsAppAuthController(http.Controller):
         :param error_description: Error description if authorization failed
         """
         try:
+            expected_state = request.session.pop('whatsapp_oauth_state', None)
+            if not request.env.user.has_group('base.group_system') or not expected_state \
+                    or not state or not hmac.compare_digest(expected_state, state):
+                _logger.warning("WhatsApp OAuth callback rejected: invalid state or non-admin user")
+                return request.render('comm_whatsapp.oauth_error', {
+                    'error': 'invalid_state',
+                    'error_description': 'OAuth state mismatch. Please start the connection again from Settings.'
+                })
+
             if error:
                 _logger.error(f"WhatsApp OAuth error: {error} - {error_description}")
                 return request.render('comm_whatsapp.oauth_error', {
@@ -161,10 +204,7 @@ class WhatsAppAuthController(http.Controller):
             hub_verify_token = request.httprequest.args.get('hub.verify_token')
             hub_challenge = request.httprequest.args.get('hub.challenge')
 
-            _logger.info(
-                "Webhook verification request: mode=%s, token=%s",
-                hub_mode, hub_verify_token,
-            )
+            _logger.info("Webhook verification request: mode=%s", hub_mode)
 
             if hub_mode != 'subscribe' or not hub_verify_token:
                 return request.make_response(
@@ -212,6 +252,8 @@ class WhatsAppAuthController(http.Controller):
         Handle incoming webhook events from WhatsApp Meta Cloud API.
         Processes messages, status updates, etc.
         """
+        if not verify_meta_signature(request.env):
+            return request.make_response('Invalid signature', [('Content-Type', 'text/plain')], status=403)
         try:
             # Parse JSON from request body
             import json
@@ -226,7 +268,7 @@ class WhatsAppAuthController(http.Controller):
                     _logger.error(f"Failed to parse webhook JSON: {e}")
                     return request.make_response('Invalid JSON', [('Content-Type', 'text/plain')], status=400)
             
-            _logger.info(f"Received webhook event: {data}")
+            _logger.debug("Received webhook event: %s", data)
 
             # Meta sends events in this format:
             # {
@@ -238,29 +280,12 @@ class WhatsAppAuthController(http.Controller):
                 # Collect all (value, entry, message) so we can deduplicate by message id
                 # across the whole request (Meta may send same message in multiple entry/change)
                 collected_messages = []
+                # Account/phone ids are configured by admins, never learned
+                # from webhook payloads.
                 for entry in data.get('entry', []):
-                    # Store business account ID from entry if not already set
-                    business_account_id = entry.get('id')
-                    if business_account_id:
-                        IrConfigParameter = request.env['ir.config_parameter'].sudo()
-                        existing_ba_id = IrConfigParameter.get_param('comm_whatsapp.business_account_id')
-                        if not existing_ba_id:
-                            IrConfigParameter.set_param('comm_whatsapp.business_account_id', business_account_id)
-                            _logger.info(f"Stored business account ID: {business_account_id}")
-                    
                     for change in entry.get('changes', []):
                         value = change.get('value', {})
-                        
-                        # Store phone_number_id from metadata if not already set
-                        metadata = value.get('metadata', {})
-                        phone_number_id = metadata.get('phone_number_id')
-                        if phone_number_id:
-                            IrConfigParameter = request.env['ir.config_parameter'].sudo()
-                            existing_pn_id = IrConfigParameter.get_param('comm_whatsapp.phone_number_id')
-                            if not existing_pn_id:
-                                IrConfigParameter.set_param('comm_whatsapp.phone_number_id', phone_number_id)
-                                _logger.info(f"Stored phone number ID: {phone_number_id}")
-                        
+
                         if 'messages' in value:
                             for msg in value['messages']:
                                 collected_messages.append((value, entry, msg))
@@ -430,6 +455,10 @@ class WhatsAppAuthController(http.Controller):
         Initiate WhatsApp OAuth authentication flow.
         Redirects user to Meta's authorization page.
         """
+        if not request.env.user.has_group('base.group_system'):
+            return request.render('comm_whatsapp.config_error', {
+                'message': 'Only administrators can connect a WhatsApp account.'
+            })
         try:
             IrConfigParameter = request.env['ir.config_parameter'].sudo()
             app_id = IrConfigParameter.get_param('comm_whatsapp.app_id')
@@ -465,7 +494,7 @@ class WhatsAppAuthController(http.Controller):
             import urllib.parse
             auth_url_with_params = f"{auth_url}?{urllib.parse.urlencode(params)}"
             
-            _logger.info(f"Initiating WhatsApp OAuth flow: {auth_url_with_params}")
+            _logger.info("Initiating WhatsApp OAuth flow")
             return request.redirect(auth_url_with_params)
 
         except Exception as e:

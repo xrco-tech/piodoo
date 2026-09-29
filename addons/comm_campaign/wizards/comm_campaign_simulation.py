@@ -18,6 +18,7 @@ import phonenumbers
 from collections import defaultdict
 from odoo import models, fields, api
 from odoo.exceptions import UserError
+from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
@@ -283,8 +284,7 @@ class CommCampaignSimulation(models.TransientModel):
         if campaign.audience_mode == 'static' and campaign.snapshot_ids:
             return campaign.snapshot_ids.mapped('partner_id')
         try:
-            domain = eval(campaign.audience_domain or '[]',
-                          {'__builtins__': {}}, {})
+            domain = safe_eval(campaign.audience_domain or '[]', {'uid': self.env.uid})
         except Exception as e:
             raise UserError(f'Invalid audience_domain: {e}')
         return self.env['res.partner'].search(domain)

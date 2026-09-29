@@ -73,7 +73,7 @@ class CommDialerAgentSession(models.Model):
             'ws_url': account.sip_ws_url,
             'domain': account.sip_domain or '',
             'ext': user.dialer_sip_ext,
-            'secret': user.dialer_sip_secret or '',
+            'secret': user.sudo().dialer_sip_secret or '',
             'ice': account.get_ice_servers(),
             'display': user.name,
             'manual_answer': user.dialer_manual_answer,

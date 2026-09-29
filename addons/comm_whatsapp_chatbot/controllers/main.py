@@ -4,6 +4,7 @@ import logging
 import json
 from odoo import http
 from odoo.http import request
+from odoo.addons.comm_whatsapp.controllers.whatsapp_auth import verify_meta_signature
 from markupsafe import Markup
 from odoo.tools import html_sanitize
 
@@ -22,6 +23,8 @@ class WhatsAppChatbotController(http.Controller):
         Webhook endpoint specifically for chatbot message processing.
         This can be used as an alternative or extension to the main webhook.
         """
+        if not verify_meta_signature(request.env):
+            return request.make_response('Invalid signature', [('Content-Type', 'text/plain')], status=403)
         try:
             import json
             data = request.httprequest.get_json(silent=True)
@@ -30,7 +33,7 @@ class WhatsAppChatbotController(http.Controller):
                 raw_data = request.httprequest.get_data(as_text=True)
                 data = json.loads(raw_data) if raw_data else {}
             
-            _logger.info(f"Chatbot webhook received: {data}")
+            _logger.debug("Chatbot webhook received: %s", data)
             
             # Process messages through chatbot system
             if data.get('object') == 'whatsapp_business_account':

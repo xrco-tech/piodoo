@@ -12,7 +12,7 @@ class ResUsers(models.Model):
         help="PJSIP endpoint name for this agent's WebRTC softphone (e.g. 1001). "
              "The dialer bridges answered calls to PJSIP/<ext>.")
     dialer_sip_secret = fields.Char(
-        'Dialer SIP Secret',
+        'Dialer SIP Secret', groups='base.group_system',
         help="Password the agent's browser softphone registers with (used when "
              "provisioning the matching Asterisk endpoint).")
     dialer_manual_answer = fields.Boolean(

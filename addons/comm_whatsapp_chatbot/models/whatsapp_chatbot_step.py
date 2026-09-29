@@ -7,6 +7,7 @@ from odoo import api, models, fields, _
 from odoo.exceptions import ValidationError
 from lxml import etree
 from markupsafe import Markup
+from odoo.tools.safe_eval import safe_eval, json as safe_json
 
 _logger = logging.getLogger(__name__)
 
@@ -160,7 +161,11 @@ class WhatsAppChatbotStep(models.Model):
     )
 
     # Code execution
-    code = fields.Text(string="Executable Code", help="Write Python code to be executed.")
+    # Runs on inbound webhooks under sudo, so only system admins may author it
+    # (same policy as ir.actions.server code).
+    code = fields.Text(
+        string="Executable Code", groups="base.group_system",
+        help="Python code evaluated with safe_eval. Assign `result` to return a value.")
 
     # Live agent assist (primarily for Voice Call bots, but useful on any
     # script-style flow). Authors add inline coaching micro-tips and
@@ -303,10 +308,10 @@ class WhatsAppChatbotStep(models.Model):
             'record': record, 
             'variables': variables, 
             '_logger': _logger, 
-            'json': json
+            'json': safe_json,
         }
         try:
-            exec(self.code, {}, local_env)
+            safe_eval(self.sudo().code or '', local_env, mode='exec', nocopy=True)
             result = local_env.get("result", "No result returned.")
         except Exception as e:
             result = f"Error: {str(e)}"

@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
@@ -133,8 +134,7 @@ class CommCampaign(models.Model):
                 c.audience_count = len(c.snapshot_ids)
             else:
                 try:
-                    domain = eval(c.audience_domain or '[]',
-                                  {'__builtins__': {}}, {})
+                    domain = safe_eval(c.audience_domain or '[]', {'uid': self.env.uid})
                     c.audience_count = self.env['res.partner'].search_count(domain)
                 except Exception:
                     c.audience_count = 0
@@ -165,8 +165,7 @@ class CommCampaign(models.Model):
         Snapshot = self.env['comm.campaign.audience.snapshot']
         for c in self:
             try:
-                domain = eval(c.audience_domain or '[]',
-                              {'__builtins__': {}}, {})
+                domain = safe_eval(c.audience_domain or '[]', {'uid': self.env.uid})
             except Exception as e:
                 raise ValidationError(f'Invalid audience_domain: {e}')
             partners = self.env['res.partner'].search(domain)
@@ -225,8 +224,7 @@ class CommCampaign(models.Model):
             partners = self.snapshot_ids.mapped('partner_id')
         else:
             try:
-                domain = eval(self.audience_domain or '[]',
-                              {'__builtins__': {}}, {})
+                domain = safe_eval(self.audience_domain or '[]', {'uid': self.env.uid})
             except Exception:
                 return
             partners = self.env['res.partner'].search(domain, limit=batch * 10)

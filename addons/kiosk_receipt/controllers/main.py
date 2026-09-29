@@ -6,6 +6,7 @@ existing comms models to send it. Guarded by a shared token stored in the
 `kiosk_receipt.token` system parameter (Settings → Technical → System
 Parameters) -- it must match the backend's ODOO_RECEIPT_TOKEN.
 """
+import hmac
 import json
 import logging
 from datetime import datetime
@@ -22,7 +23,7 @@ class KioskReceiptController(http.Controller):
         expected = request.env['ir.config_parameter'].sudo().get_param('kiosk_receipt.token')
         auth = request.httprequest.headers.get('Authorization', '')
         presented = auth[7:] if auth.startswith('Bearer ') else ''
-        return bool(expected) and presented == expected
+        return bool(expected) and hmac.compare_digest(presented.encode(), expected.encode())
 
     # -- catalogue export (kiosk pulls this on "Import from Odoo") ------------
 
