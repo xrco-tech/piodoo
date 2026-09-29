@@ -3,6 +3,7 @@ import json
 from collections import defaultdict
 from odoo import models, fields, api
 from odoo.exceptions import UserError
+from odoo.tools.safe_eval import safe_eval
 
 
 WA_CATEGORY_SELECTION = [
@@ -60,7 +61,7 @@ class WhatsappCostSimulation(models.TransientModel):
     def _audience_country_split(self):
         if self.audience_domain and self.audience_domain.strip() not in ('', '[]'):
             try:
-                domain = eval(self.audience_domain, {'__builtins__': {}}, {})
+                domain = safe_eval(self.audience_domain, {'uid': self.env.uid})
             except Exception as e:
                 raise UserError(f'Invalid audience_domain: {e}')
             partners = self.env['res.partner'].search(domain)

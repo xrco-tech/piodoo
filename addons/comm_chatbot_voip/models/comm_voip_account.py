@@ -116,7 +116,7 @@ class CommVoipAccount(models.Model):
     # ARI bridge service authenticates here to originate / AMD / bridge calls.
     ari_base_url = fields.Char('ARI Base URL', help="e.g. http://asterisk:8088")
     ari_username = fields.Char('ARI Username')
-    ari_password = fields.Char('ARI Password')
+    ari_password = fields.Char('ARI Password', groups='base.group_system')
     ari_app = fields.Char('Stasis App', default='comm_dialer',
                           help="Name of the ARI Stasis application the bridge service runs.")
     trunk_name = fields.Char('SIP Trunk', help="PJSIP endpoint/trunk name for outbound PSTN calls (e.g. vox).")
@@ -124,7 +124,7 @@ class CommVoipAccount(models.Model):
     # TURN (coturn) — for agent WebRTC media relay behind NAT.
     turn_url = fields.Char('TURN URL',
                            help="e.g. turn:203.0.113.10:3478 — given to agent softphones for media relay.")
-    turn_secret = fields.Char('TURN Secret',
+    turn_secret = fields.Char('TURN Secret', groups='base.group_system',
                               help="coturn static-auth-secret; Odoo mints short-lived ICE credentials from it.")
 
     def get_ice_servers(self, ttl=3600):
@@ -149,9 +149,10 @@ class CommVoipAccount(models.Model):
         if cf:
             return cf
         servers = []
-        if self.turn_url and self.turn_secret:
+        turn_secret = self.sudo().turn_secret
+        if self.turn_url and turn_secret:
             username = '%d:%s' % (int(time.time()) + ttl, self.env.user.login)
-            digest = hmac.new(self.turn_secret.encode(), username.encode(),
+            digest = hmac.new(turn_secret.encode(), username.encode(),
                               hashlib.sha1).digest()
             servers.append({
                 'urls': [self.turn_url],
@@ -165,14 +166,14 @@ class CommVoipAccount(models.Model):
 
     # Cloud-API providers (Infobip / Africa's Talking / Twilio / other HTTP).
     base_url = fields.Char('API Base URL')
-    api_key = fields.Char('API Key / Auth Token')
+    api_key = fields.Char('API Key / Auth Token', groups='base.group_system')
     caller_id = fields.Char('Caller ID / From Number',
                             help="The number/ID shown to the person being called.")
 
     # SIP / WebRTC credentials (provider = sip / axivox / onsip).
     sip_domain = fields.Char('SIP Domain')
     sip_username = fields.Char('SIP Username')
-    sip_password = fields.Char('SIP Password')
+    sip_password = fields.Char('SIP Password', groups='base.group_system')
     sip_ws_url = fields.Char('WebSocket URL (WSS)',
                              help="Secure WebSocket the browser softphone connects to (WebRTC).")
 

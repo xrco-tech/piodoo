@@ -188,7 +188,7 @@ class WhatsappCallRoutes(http.Controller):
         acc = Account.browse(account_id) if account_id else Account
         if not acc.exists():
             acc = Account.get_default()
-        if not acc.exists() or not acc.phone_number_id or not acc.access_token:
+        if not acc.exists() or not acc.phone_number_id or not acc.sudo().access_token:
             return {"success": False,
                     "error": "No WABA account with credentials + phone_number_id."}
 

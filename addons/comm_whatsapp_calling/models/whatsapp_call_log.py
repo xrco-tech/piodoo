@@ -465,13 +465,13 @@ class WhatsappCallLog(models.Model):
         if not acc:
             acc = Account.get_default()
 
-        if acc and acc.access_token:
+        if acc and acc.sudo().access_token:
             phone_number_id = (
                 self.meta_phone_number_id
                 if (self and len(self) == 1 and self.meta_phone_number_id)
                 else acc.phone_number_id
             )
-            return acc.access_token, phone_number_id
+            return acc.sudo().access_token, phone_number_id
 
         # Legacy fallback.
         IrConfig = self.env["ir.config_parameter"].sudo()

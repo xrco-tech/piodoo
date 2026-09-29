@@ -744,7 +744,7 @@ class WhatsAppMessage(models.Model):
             if not account and phone_number_id:
                 account = Account.find_for_phone_number_id(phone_number_id)
             if account:
-                access_token = account.access_token
+                access_token = account.sudo().access_token
                 phone_number_id = account.phone_number_id
 
             if not access_token:
@@ -873,7 +873,7 @@ class WhatsAppMessage(models.Model):
             if not account and phone_number_id:
                 account = Account.find_for_phone_number_id(phone_number_id)
             if account:
-                access_token = account.access_token
+                access_token = account.sudo().access_token
                 phone_number_id = account.phone_number_id
 
             if not access_token:

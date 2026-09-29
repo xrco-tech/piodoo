@@ -54,15 +54,15 @@ class WhatsAppAccount(models.Model):
 
     # Credentials
     access_token = fields.Char(
-        string="Access Token", tracking=False,
+        string="Access Token", tracking=False, groups="base.group_system",
         help="Bearer token sent on every /messages request.",
     )
     app_secret = fields.Char(
-        string="App Secret", tracking=False,
+        string="App Secret", tracking=False, groups="base.group_system",
         help="Used to verify the X-Hub-Signature header on inbound webhooks.",
     )
     webhook_verify_token = fields.Char(
-        string="Webhook Verify Token", tracking=False,
+        string="Webhook Verify Token", tracking=False, groups="base.group_system",
         help="Token that must match the challenge during webhook URL verification.",
     )
 
@@ -304,13 +304,13 @@ class WhatsAppAccount(models.Model):
         calls on this WABA. Returns a sticky notification with one line
         per check so the user knows exactly what to fix."""
         self.ensure_one()
-        if not self.access_token or not self.phone_number_id \
+        if not self.sudo().access_token or not self.phone_number_id \
                 or not self.business_account_id:
             raise UserError(
                 "This account needs access_token, phone_number_id and "
                 "business_account_id populated before diagnostics can run."
             )
-        headers = {'Authorization': f'Bearer {self.access_token}'}
+        headers = {'Authorization': f'Bearer {self.sudo().access_token}'}
         checks = []
 
         # 1. Token validity — sanity ping against the phone_number_id.
@@ -482,7 +482,7 @@ class WhatsAppAccount(models.Model):
         token_last_checked, token_last_error. Returns the new status
         so the cron can decide whether to notify."""
         self.ensure_one()
-        if not self.access_token or not self.phone_number_id:
+        if not self.sudo().access_token or not self.phone_number_id:
             self.write({
                 'token_status':      'unchecked',
                 'token_last_checked': fields.Datetime.now(),
@@ -494,7 +494,7 @@ class WhatsAppAccount(models.Model):
             f"https://graph.facebook.com/v18.0/{self.phone_number_id}"
             "?fields=display_phone_number"
         )
-        headers = {'Authorization': f'Bearer {self.access_token}'}
+        headers = {'Authorization': f'Bearer {self.sudo().access_token}'}
         try:
             r = requests.get(url, headers=headers, timeout=15)
         except requests.exceptions.RequestException as e:
@@ -615,7 +615,7 @@ class WhatsAppAccount(models.Model):
         self.ensure_one()
         if not to_number or not (body or '').strip():
             return None
-        if not self.access_token or not self.phone_number_id:
+        if not self.sudo().access_token or not self.phone_number_id:
             _logger.warning(
                 "send_text_message: account %s has no token or phone_number_id",
                 self.name,
@@ -632,7 +632,7 @@ class WhatsAppAccount(models.Model):
             "text":              {"body": body},
         }
         headers = {
-            "Authorization": f"Bearer {self.access_token}",
+            "Authorization": f"Bearer {self.sudo().access_token}",
             "Content-Type":  "application/json",
         }
         try:
@@ -652,7 +652,7 @@ class WhatsAppAccount(models.Model):
         write back display_phone_number, verified_name, and quality_rating.
         Also usable as a sanity check that the access token still works."""
         self.ensure_one()
-        if not self.access_token or not self.phone_number_id:
+        if not self.sudo().access_token or not self.phone_number_id:
             raise UserError(
                 "This account needs both an access_token and a "
                 "phone_number_id before it can be refreshed from Meta."
@@ -661,7 +661,7 @@ class WhatsAppAccount(models.Model):
             f"https://graph.facebook.com/v18.0/{self.phone_number_id}"
             "?fields=display_phone_number,verified_name,quality_rating"
         )
-        headers = {'Authorization': f'Bearer {self.access_token}'}
+        headers = {'Authorization': f'Bearer {self.sudo().access_token}'}
         try:
             resp = requests.get(url, headers=headers, timeout=30)
         except requests.exceptions.RequestException as e:
@@ -702,7 +702,7 @@ class WhatsAppAccount(models.Model):
 
     def _require_creds(self):
         self.ensure_one()
-        if not self.access_token or not self.business_account_id:
+        if not self.sudo().access_token or not self.business_account_id:
             from odoo.exceptions import UserError
             raise UserError(
                 "This account is missing an Access Token or Business "

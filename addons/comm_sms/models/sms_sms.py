@@ -223,3 +223,7 @@ class SmsSms(models.Model):
                     sms_sudo.write({'state': 'error', 'failure_type': failure_type})
 
             all_sms_sudo.mail_message_id._notify_message_notification_update()
+        else:
+            # Infobip not selected: fall back to the standard provider (IAP/Twilio).
+            return super()._send(unlink_failed=unlink_failed, unlink_sent=unlink_sent,
+                                 raise_exception=raise_exception)
