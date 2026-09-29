@@ -1610,14 +1610,14 @@ class WhatsAppFlow(models.Model):
             acc = self.env['comm.whatsapp.account'].sudo().browse(forced)
             if acc.exists():
                 return (
-                    acc.access_token or '',
+                    acc.sudo().access_token or '',
                     acc.business_account_id or '',
                     f"account '{acc.name}'",
                 )
         if self and self[:1].account_id:
             acc = self[:1].account_id
             return (
-                acc.access_token or '',
+                acc.sudo().access_token or '',
                 acc.business_account_id or '',
                 f"account '{acc.name}'",
             )
