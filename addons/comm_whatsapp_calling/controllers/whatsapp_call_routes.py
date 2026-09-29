@@ -209,6 +209,7 @@ class WhatsappCallRoutes(http.Controller):
             # Direct-set the account so the compute doesn't overwrite it
             # if the phone_number_id fingerprint changes.
             "account_id":           acc.id,
+            "agent_user_id":        request.env.uid,
         }
         # chatbot_id is only present when the glue module
         # comm_whatsapp_calling_chatbot is installed. Set it defensively.
@@ -395,6 +396,7 @@ class WhatsappCallRoutes(http.Controller):
         if not call_log.exists():
             return {"success": False, "error": "Call not found"}
         if call_log.action_accept(sdp_answer=sdp_answer):
+            call_log.agent_user_id = request.env.uid
             return {"success": True}
         return {"success": False, "error": "Accept failed"}
 
@@ -408,6 +410,9 @@ class WhatsappCallRoutes(http.Controller):
         call_log = request.env["whatsapp.call.log"].sudo().browse(call_log_id)
         if not call_log.exists():
             return {"success": False, "error": "Call not found"}
+        # The declining agent owns the wrap-up (disposition) on this call.
+        if not call_log.agent_user_id:
+            call_log.agent_user_id = request.env.uid
         # Route by direction + status:
         #   inbound  + ringing  → reject   (turn down the incoming call)
         #   inbound  + answered → terminate (hang up an active call)

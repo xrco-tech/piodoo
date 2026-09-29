@@ -30,8 +30,8 @@ class MailMessage(models.Model):
         channel = self.env.ref('comm_chatbot_email.channel_email', raise_if_not_found=False)
         if not channel:
             return
-        Conv = self.env['comm.conversation']
-        Interaction = self.env['comm.interaction']
+        Conv = self.env['comm.conversation'].sudo()
+        Interaction = self.env['comm.interaction'].sudo()
         for msg in self:
             if msg.message_type != 'email' or not msg.author_id:
                 continue

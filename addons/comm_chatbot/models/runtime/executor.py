@@ -447,7 +447,7 @@ class ExecutorService(models.AbstractModel):
         })
 
     def _find_open_conversation(self, partner, channel):
-        return self.env['comm.conversation'].search([
+        return self.env['comm.conversation'].sudo().search([
             ('partner_id', '=', partner.id),
             ('lifecycle_state', 'in', ('open', 'waiting')),
         ], limit=1, order='last_activity_at desc')

@@ -12,6 +12,9 @@ class CommVoipCall(models.Model):
     account_id = fields.Many2one('comm.voip.account', 'VoIP Account',
                                  ondelete='set null', index=True)
     partner_id = fields.Many2one('res.partner', 'Contact', ondelete='set null')
+    # Agent on the call. Drives the own-calls-only record rule.
+    agent_user_id = fields.Many2one('res.users', 'Agent', index=True,
+                                    ondelete='set null', readonly=True)
     # Optional link into the omnichannel conversation timeline.
     conversation_id = fields.Many2one('comm.conversation', 'Conversation',
                                       ondelete='set null', index=True)

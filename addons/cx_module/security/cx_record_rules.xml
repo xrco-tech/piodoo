@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Agents: conversations assigned to them plus the unassigned queue.
+         Managers/admins: everything. Background routing uses sudo(). -->
+    <record id="rule_comm_conversation_agent" model="ir.rule">
+        <field name="name">Conversation: own or unassigned</field>
+        <field name="model_id" ref="comm_chatbot.model_comm_conversation"/>
+        <field name="domain_force">['|', ('assigned_agent_id', '=', False), ('assigned_agent_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="rule_comm_conversation_manager" model="ir.rule">
+        <field name="name">Conversation: managers see all</field>
+        <field name="model_id" ref="comm_chatbot.model_comm_conversation"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_cx_manager')), (4, ref('contact_centre.group_contact_centre_manager')), (4, ref('base.group_system'))]"/>
+    </record>
+
+    <record id="rule_comm_interaction_agent" model="ir.rule">
+        <field name="name">Interaction: follows its conversation</field>
+        <field name="model_id" ref="comm_chatbot.model_comm_interaction"/>
+        <field name="domain_force">['|', ('conversation_id.assigned_agent_id', '=', False), ('conversation_id.assigned_agent_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="rule_comm_interaction_manager" model="ir.rule">
+        <field name="name">Interaction: managers see all</field>
+        <field name="model_id" ref="comm_chatbot.model_comm_interaction"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_cx_manager')), (4, ref('contact_centre.group_contact_centre_manager')), (4, ref('base.group_system'))]"/>
+    </record>
+
+    <!-- Call logs: agents see calls they handled; supervisors/managers all.
+         Calls with no agent (e.g. missed, pre-2026-09-29) are manager-only. -->
+    <record id="rule_whatsapp_call_log_agent" model="ir.rule">
+        <field name="name">WhatsApp call: own calls</field>
+        <field name="model_id" ref="comm_whatsapp_calling.model_whatsapp_call_log"/>
+        <field name="domain_force">[('agent_user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="rule_whatsapp_call_log_manager" model="ir.rule">
+        <field name="name">WhatsApp call: managers see all</field>
+        <field name="model_id" ref="comm_whatsapp_calling.model_whatsapp_call_log"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('comm_whatsapp_calling.group_whatsapp_call_manager')), (4, ref('comm_whatsapp_calling.group_whatsapp_call_supervisor')), (4, ref('comm_whatsapp_calling.group_whatsapp_call_recording_manager')), (4, ref('group_cx_manager')), (4, ref('contact_centre.group_contact_centre_manager')), (4, ref('base.group_system'))]"/>
+    </record>
+
+    <record id="rule_comm_voip_call_agent" model="ir.rule">
+        <field name="name">VoIP call: own calls</field>
+        <field name="model_id" ref="comm_chatbot_voip.model_comm_voip_call"/>
+        <field name="domain_force">[('agent_user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="rule_comm_voip_call_manager" model="ir.rule">
+        <field name="name">VoIP call: supervisors, managers and the dialer bridge see all</field>
+        <field name="model_id" ref="comm_chatbot_voip.model_comm_voip_call"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('comm_dialer.group_dialer_supervisor')), (4, ref('comm_dialer.group_dialer_service')), (4, ref('comm_whatsapp_calling.group_whatsapp_call_manager')), (4, ref('group_cx_manager')), (4, ref('contact_centre.group_contact_centre_manager')), (4, ref('base.group_system'))]"/>
+    </record>
+</odoo>

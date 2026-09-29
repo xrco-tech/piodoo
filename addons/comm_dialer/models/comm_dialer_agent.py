@@ -93,7 +93,10 @@ class CommDialerAgentSession(models.Model):
             except (TypeError, ValueError):
                 call = Call.browse()
             if call.exists():
+                call = call.sudo()
                 vals = {}
+                if not call.agent_user_id:
+                    vals['agent_user_id'] = self.env.uid
                 if not call.start_time:
                     vals['start_time'] = fields.Datetime.now()
                 if call.state in ('queued', 'ringing'):
@@ -111,6 +114,7 @@ class CommDialerAgentSession(models.Model):
             'to_number': to_number or '',
             'state': 'in_progress',
             'start_time': fields.Datetime.now(),
+            'agent_user_id': self.env.uid,
         })
         return call.id
 
