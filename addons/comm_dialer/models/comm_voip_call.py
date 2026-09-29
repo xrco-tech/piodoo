@@ -44,7 +44,20 @@ class CommVoipCall(models.Model):
     recording_player_html = fields.Html(
         string='Recording', compute='_compute_recording_player_html', sanitize=False)
 
+    @api.model
+    def _agent_from_session(self, vals):
+        if vals.get('dialer_agent_session_id') and not vals.get('agent_user_id'):
+            session = self.env['comm.dialer.agent.session'].sudo().browse(
+                vals['dialer_agent_session_id'])
+            vals['agent_user_id'] = session.user_id.id or False
+        return vals
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        return super().create([self._agent_from_session(dict(v)) for v in vals_list])
+
     def write(self, vals):
+        vals = self._agent_from_session(dict(vals))
         res = super().write(vals)
         # Whenever a call is closed out (end_time set), fill duration from the
         # span if it wasn't provided, and surface the call in the omnichannel
@@ -159,8 +172,8 @@ class CommVoipCall(models.Model):
         channel = self.env.ref('comm_chatbot_voip.channel_voip', raise_if_not_found=False)
         if not channel:
             return
-        Conv = self.env['comm.conversation']
-        conv = self.conversation_id
+        Conv = self.env['comm.conversation'].sudo()
+        conv = self.sudo().conversation_id
         if not conv:
             conv = Conv.search([
                 ('partner_id', '=', self.partner_id.id),
@@ -183,7 +196,7 @@ class CommVoipCall(models.Model):
         if self.transcript:
             body += '\n\nTranscript:\n' + self.transcript
 
-        Interaction = self.env['comm.interaction']
+        Interaction = self.env['comm.interaction'].sudo()
         existing = Interaction.search([
             ('source_model', '=', 'comm.voip.call'), ('source_id', '=', self.id)], limit=1)
         if existing:

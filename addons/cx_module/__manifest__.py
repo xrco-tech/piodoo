@@ -66,6 +66,7 @@ Odoo so the shell installs clean on its own.
     'data': [
         'security/cx_module_groups.xml',
         'security/ir.model.access.csv',
+        'security/cx_record_rules.xml',
         'data/cx_webhook_cron.xml',
         'views/cx_conversation_views.xml',
         'views/cx_inbox_views.xml',

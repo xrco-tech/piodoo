@@ -48,7 +48,7 @@ class WhatsappMessage(models.Model):
         ], limit=1)
         if not partner:
             return self.env['comm.conversation']
-        return self.env['comm.conversation'].search([
+        return self.env['comm.conversation'].sudo().search([
             ('partner_id', '=', partner.id),
             ('lifecycle_state', 'in', ('open', 'waiting')),
         ], limit=1)

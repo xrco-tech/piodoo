@@ -13,4 +13,12 @@
         <field name="category_id" ref="module_category_dialer"/>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
     </record>
+
+    <!-- For the ARI bridge's API user (dialer@bot): sees every VoIP call so it
+         can drive calls regardless of which agent they belong to. -->
+    <record id="group_dialer_service" model="res.groups">
+        <field name="name">Dialer Bridge Service</field>
+        <field name="category_id" ref="module_category_dialer"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
 </odoo>

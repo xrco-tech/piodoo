@@ -29,7 +29,7 @@ class VoipRecordingController(http.Controller):
             return request.make_json_response({'success': False, 'error': 'Call not found'}, status=404)
         # Only the agent on the call (or a dialer supervisor) may attach audio.
         user = request.env.user
-        agent = call.dialer_agent_session_id.user_id
+        agent = call.agent_user_id or call.dialer_agent_session_id.user_id
         if not user.has_group('comm_dialer.group_dialer_supervisor') and (
                 (agent and agent != user) or call.recording_ids):
             return request.make_json_response({'success': False, 'error': 'Forbidden'}, status=403)

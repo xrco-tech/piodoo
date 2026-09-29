@@ -22,6 +22,10 @@ class WhatsappCallLog(models.Model):
 
     call_id = fields.Char("Call ID", required=True, index=True, readonly=True)
     partner_id = fields.Many2one("res.partner", "Contact", ondelete="set null")
+    # Agent who dialled / answered / declined the call. Drives the
+    # own-calls-only record rule; managers see every call.
+    agent_user_id = fields.Many2one(
+        "res.users", "Agent", index=True, ondelete="set null", readonly=True)
     # Not required: a caller who's adopted a WhatsApp username and gone
     # 30+ days quiet with this business number has their phone omitted
     # from the call webhook entirely — bsuid (below) is what's left.
