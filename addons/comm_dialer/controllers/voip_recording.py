@@ -20,7 +20,7 @@ class VoipRecordingController(http.Controller):
 
     @http.route(
         '/voip/call/upload_recording/<int:call_id>',
-        type='http', auth='user', methods=['POST'], csrf=False,
+        type='http', auth='user', methods=['POST'], csrf=True,
     )
     def upload_recording(self, call_id, **kwargs):
         """Store a browser-recorded VoIP call as an attachment on its call log."""
@@ -28,15 +28,19 @@ class VoipRecordingController(http.Controller):
         if not call.exists():
             return request.make_json_response({'success': False, 'error': 'Call not found'}, status=404)
         # Only the agent on the call (or a dialer supervisor) may attach audio.
+        # Several uploads per call are fine: stop/start recording adds segments.
         user = request.env.user
         agent = call.agent_user_id or call.dialer_agent_session_id.user_id
-        if not user.has_group('comm_dialer.group_dialer_supervisor') and (
-                (agent and agent != user) or call.recording_ids):
+        if agent and agent != user and not user.has_group('comm_dialer.group_dialer_supervisor'):
             return request.make_json_response({'success': False, 'error': 'Forbidden'}, status=403)
+        if not agent:
+            call.agent_user_id = user
 
         audio_file = request.httprequest.files.get('recording')
         if not audio_file:
             return request.make_json_response({'success': False, 'error': 'Missing recording file'}, status=400)
+        if not (audio_file.mimetype or '').startswith('audio/'):
+            return request.make_json_response({'success': False, 'error': 'Not an audio file'}, status=415)
         data = audio_file.read()
         if not data:
             return request.make_json_response({'success': False, 'error': 'Empty recording'}, status=400)

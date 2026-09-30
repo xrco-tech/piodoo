@@ -275,7 +275,7 @@ class WhatsappCallRoutes(http.Controller):
 
     @http.route(
         "/whatsapp/call/upload_recording/<int:call_log_id>",
-        type="http", auth="user", methods=["POST"], csrf=False,
+        type="http", auth="user", methods=["POST"], csrf=True,
     )
     def upload_recording(self, call_log_id, **kwargs):
         """Store a browser-recorded call as an attachment on its call
@@ -287,10 +287,22 @@ class WhatsappCallRoutes(http.Controller):
         call_log = request.env["whatsapp.call.log"].sudo().browse(call_log_id)
         if not call_log.exists():
             return request.make_json_response({"success": False, "error": "Call not found"}, status=404)
+        # Only the agent who handled the call (or a call supervisor/manager)
+        # may attach audio. Repeat uploads are segments, not overwrites.
+        user = request.env.user
+        agent = call_log.agent_user_id
+        is_supervisor = user.has_group("comm_whatsapp_calling.group_whatsapp_call_supervisor") \
+            or user.has_group("comm_whatsapp_calling.group_whatsapp_call_manager")
+        if agent and agent != user and not is_supervisor:
+            return request.make_json_response({"success": False, "error": "Forbidden"}, status=403)
+        if not agent:
+            call_log.agent_user_id = user
 
         audio_file = request.httprequest.files.get("recording")
         if not audio_file:
             return request.make_json_response({"success": False, "error": "Missing recording file"}, status=400)
+        if not (audio_file.mimetype or "").startswith("audio/"):
+            return request.make_json_response({"success": False, "error": "Not an audio file"}, status=415)
 
         data = audio_file.read()
         if not data:

@@ -381,6 +381,7 @@ export const softphoneService = {
             const form = new FormData();
             form.append("recording", new Blob(chunks, { type: "audio/webm" }), "voip_recording.webm");
             form.append("duration", String(durationSeconds));
+            form.append("csrf_token", odoo.csrf_token);
             // Per-speaker mono streams for a speaker-labelled transcript.
             if (chunksAgent && chunksAgent.length) {
                 form.append("recording_agent", new Blob(chunksAgent, { type: "audio/webm" }), "agent.webm");
