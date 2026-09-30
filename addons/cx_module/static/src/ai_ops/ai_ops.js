@@ -22,6 +22,10 @@ export class CxAiOps extends Component {
             suggestions: [],
             input: "",
             busy: false,
+            // Set when the assistant is waiting for the user to confirm a
+            // change; sent back with the next message so the server can
+            // release (or decline) exactly that parked action.
+            pendingId: null,
         });
         this.threadRef = useRef("thread");
         useEffect(
@@ -61,9 +65,12 @@ export class CxAiOps extends Component {
         // Send only role+text history; the backend runs the tool loop.
         const history = this.state.messages.map((m) => ({ role: m.role, content: m.content }));
         try {
-            const res = await this.orm.call("cx.ai.ops", "chat", [history]);
+            const pendingId = this.state.pendingId;
+            this.state.pendingId = null;
+            const res = await this.orm.call("cx.ai.ops", "chat", [history, pendingId]);
             this.state.messages.push({ role: "assistant", content: res.reply || "" });
             this.state.suggestions = res.suggestions || [];
+            this.state.pendingId = res.pending_id || null;
         } catch (e) {
             this.state.messages.push({
                 role: "assistant",
