@@ -633,6 +633,7 @@ const waCallService = {
             const form = new FormData();
             form.append("recording", blob, "call_recording.webm");
             form.append("duration", String(durationSeconds));
+            form.append("csrf_token", odoo.csrf_token);
             // Per-speaker mono streams for a speaker-labelled transcript.
             if (chunksAgent.length) {
                 form.append("recording_agent", new Blob(chunksAgent, { type: "audio/webm" }), "agent.webm");
