@@ -624,8 +624,15 @@ class SfMember(models.Model):
     # CRUD overrides
     # ─────────────────────────────────────────────────────────────────────────
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = self.browse()
+        for vals in vals_list:
+            records |= self._create_single_vals(vals)
+        return records
+
+    def _create_single_vals(self, vals):
+        # Per-record create logic, kept single-dict; create() batches it.
         # Default mobile_2 to mobile if not provided
         if not vals.get("mobile_2"):
             vals["mobile_2"] = vals.get("mobile")
@@ -778,19 +785,18 @@ class SfMember(models.Model):
     # ─────────────────────────────────────────────────────────────────────────
 
     @api.model
-    def name_search(self, name="", args=[], operator="ilike", limit=100):
-        if not args:
-            args = []
-        args.extend(
-            [
-                "|",
-                "|",
-                ("name", operator, name),
-                ("sales_force_code", operator, name),
-                ("known_name", operator, name),
-            ]
-        )
-        records = self.search(args, limit=limit)
+    def name_search(self, name="", args=None, operator="ilike", limit=100, **kwargs):
+        # Odoo 18 passes `args`; Odoo 19+ renames it `domain`. Accept both, and
+        # never mutate the caller's list.
+        domain = list(args if args is not None else kwargs.get("domain") or [])
+        domain += [
+            "|",
+            "|",
+            ("name", operator, name),
+            ("sales_force_code", operator, name),
+            ("known_name", operator, name),
+        ]
+        records = self.search(domain, limit=limit)
         return [(record.id, record.display_name) for record in records.sudo()]
 
     def _compute_display_name(self):

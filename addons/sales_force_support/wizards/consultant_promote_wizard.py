@@ -22,7 +22,7 @@ class PotentialConsultantPromoteWizard(models.TransientModel):
     # action to promote consultant to manager
     def promote_potential_consultant(self):
         for consultant in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             consultant_vals = {
                 "genealogy": "consultant",
@@ -51,7 +51,7 @@ class ConsultantPromoteWizard(models.TransientModel):
         # promotion_effective_date = promotion_date.replace(day=1) + relativedelta(months=+1)
 
         for consultant in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             current_manager_id = consultant.manager_id.id
 
@@ -128,7 +128,7 @@ class ProspectiveManagerPromoteWizard(models.TransientModel):
         # promotion_effective_date = promotion_date.replace(day=1) + relativedelta(months=+1)
 
         for prospective_manager in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             current_manager_id = prospective_manager.manager_id.id
             current_distributor_id = prospective_manager.related_distributor_id
@@ -222,7 +222,7 @@ class ManagerPromoteWizard(models.TransientModel):
         # promotion_date = fields.Datetime.now()
         # promotion_effective_date = promotion_date.replace(day=1) + relativedelta(months=+1)
 
-        for manager in self.env["sf.member"].browse(self._context.get("active_ids")):
+        for manager in self.env["sf.member"].browse(self.env.context.get("active_ids")):
             current_distributor_id = manager.related_distributor_id.id
 
             manager_vals = {
@@ -279,7 +279,7 @@ class ProspectiveDistributorPromoteWizard(models.TransientModel):
         # promotion_effective_date = promotion_date.replace(day=1) + relativedelta(months=+1)
 
         for prospective_distributor in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             current_distributor_id = prospective_distributor.related_distributor_id
             prospective_distributor_vals = {
@@ -345,7 +345,7 @@ class DistributorDemoteWizard(models.TransientModel):
         # demotion_effective_date = demotion_date.replace(day=1) + relativedelta(months=+1)
 
         for distributor in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             current_distributor_id = distributor.id
 
@@ -401,7 +401,7 @@ class MangerDemoteWizard(models.TransientModel):
         # demotion_date = fields.Datetime.now()
         # demotion_effective_date = demotion_date.replace(day=1) + relativedelta(months=+1)
 
-        for manager in self.env["sf.member"].browse(self._context.get("active_ids")):
+        for manager in self.env["sf.member"].browse(self.env.context.get("active_ids")):
             current_manager_id = manager.id
 
             manager_consultant_ids = self.env["sf.member"].search(

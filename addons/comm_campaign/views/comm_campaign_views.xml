@@ -33,8 +33,7 @@
                 <field name="total_cost_local"/>
                 <field name="conversion_count"/>
                 <templates>
-                    <t t-name="kanban-box">
-                        <div class="oe_kanban_card">
+                    <t t-name="card">
                             <div class="o_kanban_record_top">
                                 <strong><field name="name"/></strong>
                             </div>
@@ -43,7 +42,6 @@
                             <div>Sent: <field name="total_sends"/></div>
                             <div>Cost: <field name="total_cost_local"/></div>
                             <div>Conversions: <field name="conversion_count"/></div>
-                        </div>
                     </t>
                 </templates>
             </kanban>

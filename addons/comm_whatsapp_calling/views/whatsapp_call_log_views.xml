@@ -112,9 +112,8 @@
                     <field name="from_number"/>
                     <field name="disposition_id"/>
                     <templates>
-                        <t t-name="kanban-box">
-                            <div t-att-class="'oe_kanban_card oe_kanban_global_click ' +
-                                              (record.is_missed.raw_value ? 'o_wa_missed' : '')">
+                        <t t-name="card" class="o_wa_card">
+                            <div t-att-class="record.is_missed.raw_value ? 'o_wa_missed' : ''">
                                 <div class="o_wa_kanban_head">
                                     <span t-attf-class="o_wa_call_direction #{record.call_direction.raw_value === 'incoming' ? 'o_wa_call_in' : 'o_wa_call_out'}">
                                         <i t-attf-class="fa #{record.call_direction.raw_value === 'incoming' ? 'fa-arrow-down' : 'fa-arrow-up'}"/>

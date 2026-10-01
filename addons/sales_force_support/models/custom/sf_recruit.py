@@ -552,8 +552,15 @@ class SfRecruit(models.Model):
     # CRUD overrides
     # ─────────────────────────────────────────────────────────────────────────
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = self.browse()
+        for vals in vals_list:
+            records |= self._create_single_vals(vals)
+        return records
+
+    def _create_single_vals(self, vals):
+        # Per-record create logic, kept single-dict; create() batches it.
         # Validate recruiter is not Support Office
         if vals.get("recruiter_id"):
             recruiter = self.env["sf.member"].browse([vals["recruiter_id"]])
@@ -608,7 +615,7 @@ class SfRecruit(models.Model):
         vals["partner_name"] = vals.get("name")
 
         # Normalise mobile numbers on import
-        if self._context.get("import_file"):
+        if self.env.context.get("import_file"):
             vals = self._normalise_mobiles_on_import(vals)
 
         res = super(SfRecruit, self).create(vals)
@@ -707,7 +714,7 @@ class SfRecruit(models.Model):
             elif fn:
                 vals["name"] = fn
 
-        if self._context.get("import_file"):
+        if self.env.context.get("import_file"):
             vals = self._normalise_mobiles_on_import(vals)
 
         res = super(SfRecruit, self).write(vals)

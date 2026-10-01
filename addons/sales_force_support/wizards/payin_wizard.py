@@ -27,14 +27,14 @@ class BbPayinSheetChangeStateWizard(models.TransientModel):
     def default_get(self, fields):
         result = super(BbPayinSheetChangeStateWizard, self).default_get(fields)
         result["payin_ids"] = self.env["bb.payin.sheet"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         )
         return result
 
     payin_ids = fields.Many2many("bb.payin.sheet")
 
     def change_state(self):
-        for payin in self.env["bb.payin.sheet"].browse(self._context.get("active_ids")):
+        for payin in self.env["bb.payin.sheet"].browse(self.env.context.get("active_ids")):
             # check if the no. of pages is zero and set is_no_sale to True
             if payin.no_of_pages == 0:
                 payin.is_no_sales = True
@@ -290,7 +290,7 @@ class BbPayinDistributorSheetChangeStateWizard(models.TransientModel):
 
     def change_state(self):
         for payin in self.env["payin.distributor"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
 
             if payin.no_of_pages == 0:
@@ -392,8 +392,8 @@ class BbPayinSheetExportNewPayinsFormsExcelWizard(models.TransientModel):
     _description = "Payin Sheet Export New Pay-Ins Form Wizard"
 
     def print_new_payins_form_xls(self):
-        _logger.info("This is  print Excel %s", self._context)
-        active_records = self._context["active_ids"]
+        _logger.info("This is  print Excel %s", self.env.context)
+        active_records = self.env.context["active_ids"]
         records = self.env["bb.payin.sheet"].browse(active_records)
         _logger.info("This is  print Excel Records %s", records)
         data = {

@@ -23,7 +23,7 @@ class ConsultantSuspendWizard(models.TransientModel):
         suspended_date = fields.Datetime.now()
 
         for consultant in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             consultant_vals = {
                 "active_status": "suspended",
@@ -44,7 +44,7 @@ class ManagerSuspendWizard(models.TransientModel):
     def suspend_manager(self):
         suspended_date = fields.Datetime.now()
 
-        for manager in self.env["sf.member"].browse(self._context.get("active_ids")):
+        for manager in self.env["sf.member"].browse(self.env.context.get("active_ids")):
             manager_vals = {
                 "active_status": "suspended",
                 "suspended_date": suspended_date,
@@ -65,7 +65,7 @@ class DistributorSuspendWizard(models.TransientModel):
         suspended_date = fields.Datetime.now()
 
         for distributor in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             distributor_vals = {
                 "active_status": "suspended",
@@ -87,7 +87,7 @@ class ConsultantBlacklistWizard(models.TransientModel):
         blacklisted_date = fields.Datetime.now()
 
         for consultant in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             consultant_vals = {
                 "active_status": "blacklisted",
@@ -108,7 +108,7 @@ class ManagerBlacklistWizard(models.TransientModel):
     def blacklist_manager(self):
         blacklisted_date = fields.Datetime.now()
 
-        for manager in self.env["sf.member"].browse(self._context.get("active_ids")):
+        for manager in self.env["sf.member"].browse(self.env.context.get("active_ids")):
             manager_vals = {
                 "active_status": "blacklisted",
                 "blacklisted_date": blacklisted_date,
@@ -129,7 +129,7 @@ class DistributorBlacklistWizard(models.TransientModel):
         blacklisted_date = fields.Datetime.now()
 
         for distributor in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             distributor_vals = {
                 "active_status": "blacklisted",

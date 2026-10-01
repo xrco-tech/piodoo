@@ -261,8 +261,15 @@ class WhatsAppChatbot(models.Model):
                 except:
                     raise ValidationError("Please enter a valid URL, e.g. https://www.example.com/about-us")
     
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = self.browse()
+        for vals in vals_list:
+            records |= self._create_single_vals(vals)
+        return records
+
+    def _create_single_vals(self, vals):
+        # Per-record create logic, kept single-dict; create() batches it.
         res = super(WhatsAppChatbot, self).create(vals)
         res.preview_url = f"/chatbot/steps/{res.id}"
         return res
