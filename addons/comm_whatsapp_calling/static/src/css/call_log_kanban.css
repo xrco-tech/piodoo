@@ -1,11 +1,13 @@
-.o_wa_call_kanban .oe_kanban_card {
+.o_wa_call_kanban .o_wa_card {
     padding: 12px 14px;
     border-radius: 10px;
     background: #fff;
     border: 1px solid #e5e7eb;
     box-shadow: 0 2px 6px rgba(0,0,0,0.04);
 }
-.o_wa_call_kanban .o_wa_missed {
+/* Card-template views put the missed flag on an inner wrapper, so style the
+   card that contains it. */
+.o_wa_call_kanban .o_wa_card:has(.o_wa_missed) {
     background: #fef2f2;
     border-color: #fecaca;
 }

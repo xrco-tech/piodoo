@@ -36,7 +36,7 @@ class ConsultantMoveWizard(models.TransientModel):
         # move_date = fields.Datetime.now()
 
         for consultant in self.env["sf.member"].browse(
-            self._context.get("active_ids")
+            self.env.context.get("active_ids")
         ):
             current_manager_id = consultant.manager_id.id
 
@@ -101,7 +101,7 @@ class ManagerMoveWizard(models.TransientModel):
 
     def move_manager(self):
         # move_date = fields.Datetime.now()
-        for manager in self.env["sf.member"].browse(self._context.get("active_ids")):
+        for manager in self.env["sf.member"].browse(self.env.context.get("active_ids")):
             current_distributor_id = manager.related_distributor_id.id
 
             manager_vals = {

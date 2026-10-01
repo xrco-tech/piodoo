@@ -491,8 +491,15 @@ class ResPartner(models.Model):
     # CRUD overrides — merged from botle_buhle_custom + bbb_sales_force_genealogy
     # ─────────────────────────────────────────────────────────────────────────
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = self.browse()
+        for vals in vals_list:
+            records |= self._create_single_vals(vals)
+        return records
+
+    def _create_single_vals(self, vals):
+        # Per-record create logic, kept single-dict; create() batches it.
         # ── SA ID validation ───────────────────────────────────────────────
         if vals.get("sa_id"):
             if not self.validate_rsa_id_number(vals["sa_id"]):

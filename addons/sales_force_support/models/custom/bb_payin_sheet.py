@@ -163,7 +163,7 @@ class BbPayinSheet(models.Model):
         return filtered_records
 
     def _get_captured_by(self):
-        self._cr.execute(
+        self.env.cr.execute(
             """
             SELECT rp.name
             FROM mail_tracking_value mtv
@@ -179,7 +179,7 @@ class BbPayinSheet(models.Model):
         """,
             (self.id,),
         )
-        captured_by_rec = self._cr.fetchone()
+        captured_by_rec = self.env.cr.fetchone()
         self.captured_by = captured_by_rec[0] if captured_by_rec else ""
 
     @api.depends("date")
@@ -527,7 +527,7 @@ class BbPayinSheet(models.Model):
 
     def get_sheets(self):
         return self.env["bb.payin.sheet"].search(
-            [("id", "in", self._context.get("active_ids")), ("state", "=", "new")]
+            [("id", "in", self.env.context.get("active_ids")), ("state", "=", "new")]
         )
 
     def _get_company(self):
@@ -595,8 +595,15 @@ class BbPayinSheet(models.Model):
 
         return page_totals
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = self.browse()
+        for vals in vals_list:
+            records |= self._create_single_vals(vals)
+        return records
+
+    def _create_single_vals(self, vals):
+        # Per-record create logic, kept single-dict; create() batches it.
 
         res = super(BbPayinSheet, self).create(vals)
 
@@ -879,8 +886,15 @@ class BbPayinSheetLine(models.Model):
             self.payin_sheet_id.action_timer_pause()
         return res
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = self.browse()
+        for vals in vals_list:
+            records |= self._create_single_vals(vals)
+        return records
+
+    def _create_single_vals(self, vals):
+        # Per-record create logic, kept single-dict; create() batches it.
         res = super(BbPayinSheetLine, self).create(vals)
         if res.payin_sheet_id.state == "registered":
             res.payin_sheet_id.new_consultants_count += 1
@@ -1068,7 +1082,7 @@ class PayinDistributor(models.Model):
         return filtered_records
 
     def _get_captured_by(self):
-        self._cr.execute(
+        self.env.cr.execute(
             """
             SELECT rp.name
             FROM mail_tracking_value mtv
@@ -1084,7 +1098,7 @@ class PayinDistributor(models.Model):
         """,
             (self.id,),
         )
-        captured_by_rec = self._cr.fetchone()
+        captured_by_rec = self.env.cr.fetchone()
         self.captured_by = captured_by_rec[0] if captured_by_rec else ""
 
     @api.depends("distributor_id", "period")
@@ -1423,8 +1437,15 @@ class PayinDistributor(models.Model):
         for rec in self:
             rec.user_id = self.env.user.id
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = self.browse()
+        for vals in vals_list:
+            records |= self._create_single_vals(vals)
+        return records
+
+    def _create_single_vals(self, vals):
+        # Per-record create logic, kept single-dict; create() batches it.
         res = super(PayinDistributor, self).create(vals)
 
         if not res.name:

@@ -203,12 +203,5 @@ class UserOTP(models.Model):
         expired_otps.write({"status": "expired"})
         return len(expired_otps)
 
-    def name_get(self):
-        """
-        Custom name for the record display
-        """
-        result = []
-        for record in self:
-            name = f"{record.mobile} - {record.pin} ({record.status})"
-            result.append((record.id, name))
-        return result
+    # The old name_get() (dead since Odoo 17) would have put the OTP PIN in
+    # display_name — breadcrumbs, mail tracking, logs. Deliberately not ported.

@@ -16,7 +16,7 @@
                 <field name="name"/>
                 <field name="author"/>
                 <field name="isn"/>
-            </tree>
+            </list>
         </field>
     </record>
 

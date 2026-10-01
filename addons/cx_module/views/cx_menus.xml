@@ -580,4 +580,10 @@
               sequence="30"/>
 
 
+
+    <menuitem id="menu_cx_ai_ops"
+              name="AI Assistant"
+              parent="menu_cx_marketing"
+              action="action_cx_ai_ops"
+              sequence="50"/>
 </odoo>

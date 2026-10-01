@@ -20,14 +20,13 @@
             <field name="name">whatsapp.call.team.kanban</field>
             <field name="model">whatsapp.call.team</field>
             <field name="arch" type="xml">
-                <kanban class="o_kanban_dashboard">
+                <kanban class="o_kanban_dashboard" highlight_color="color">
                     <field name="name"/>
                     <field name="member_count"/>
                     <field name="rule_count"/>
                     <field name="color"/>
                     <templates>
-                        <t t-name="kanban-box">
-                            <div t-attf-class="oe_kanban_card oe_kanban_global_click oe_kanban_color_#{record.color.raw_value}">
+                        <t t-name="card">
                                 <div class="o_kanban_card_content">
                                     <div class="o_kanban_card_upper_content">
                                         <div class="o_kanban_record_title">
@@ -46,7 +45,6 @@
                                         </span>
                                     </div>
                                 </div>
-                            </div>
                         </t>
                     </templates>
                 </kanban>

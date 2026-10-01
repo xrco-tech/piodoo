@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class CommDisposition(models.Model):
@@ -44,8 +44,8 @@ class CommDisposition(models.Model):
         ("code_uniq", "unique(code)", "The disposition code must be unique."),
     ]
 
-    def name_get(self):
-        result = []
+    @api.depends("name", "code")
+    def _compute_display_name(self):
+        # name_get() is ignored since Odoo 17; display_name is the hook.
         for rec in self:
-            result.append((rec.id, rec.code and f"{rec.name} ({rec.code})" or rec.name))
-        return result
+            rec.display_name = rec.code and f"{rec.name} ({rec.code})" or rec.name

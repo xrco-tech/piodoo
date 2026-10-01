@@ -30,7 +30,7 @@ class Base(models.AbstractModel):
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
 
-        ctx = self._context
+        ctx = self.env.context
         model_name = self._name
 
         # Log context keys related to URL defaults

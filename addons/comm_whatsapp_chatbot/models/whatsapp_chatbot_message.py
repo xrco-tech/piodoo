@@ -186,8 +186,15 @@ class WhatsAppChatbotMessage(models.Model):
             plain = Markup(record.message_html or '').striptags()
             record.display_name = plain[:60] + ('...' if len(plain) > 60 else '')
     
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = self.browse()
+        for vals in vals_list:
+            records |= self._create_single_vals(vals)
+        return records
+
+    def _create_single_vals(self, vals):
+        # Per-record create logic, kept single-dict; create() batches it.
         message = super().create(vals)
         # Do not run _handle_incoming_message here: sending is done in
         # process_incoming_webhook_message after create(). That way only the

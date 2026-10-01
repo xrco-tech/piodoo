@@ -54,8 +54,15 @@ class PromotionRules(models.Model):
         for rec in self:
             rec.name = rec.current_genealogy_level or ""
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = self.browse()
+        for vals in vals_list:
+            records |= self._create_single_vals(vals)
+        return records
+
+    def _create_single_vals(self, vals):
+        # Per-record create logic, kept single-dict; create() batches it.
         if vals.get("current_genealogy_level") in ["Consultant", "Prospective Manager"]:
             if vals.get("sales_month") == 0:
                 raise ValidationError("Consultant Sales Months must not be 0")

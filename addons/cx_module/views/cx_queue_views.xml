@@ -22,8 +22,7 @@
                 <field name="ai_sentiment"/>
                 <field name="campaign_id"/>
                 <templates>
-                    <t t-name="kanban-box">
-                        <div class="oe_kanban_card oe_kanban_global_click">
+                    <t t-name="card">
                             <div class="o_kanban_record_top">
                                 <strong class="o_kanban_record_title"><field name="partner_id"/></strong>
                             </div>
@@ -43,7 +42,6 @@
                                     <field name="assigned_agent_id" widget="many2one_avatar_user"/>
                                 </div>
                             </div>
-                        </div>
                     </t>
                 </templates>
             </kanban>

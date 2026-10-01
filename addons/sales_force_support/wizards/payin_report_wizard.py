@@ -40,7 +40,7 @@ class BbPayinSheetReportDistributorWizardPrint(models.TransientModel):
 
     def print(self):
         ids = []
-        self.sheets = self.env["bb.payin.sheet"].browse(self._context.get("active_ids"))
+        self.sheets = self.env["bb.payin.sheet"].browse(self.env.context.get("active_ids"))
         distributors = self.sheets.mapped("distributor_id")
         dis_ids = []
         if self.sheets:
@@ -81,7 +81,7 @@ class BbPayinSheetReportDistributorWizard(models.TransientModel):
     distributor_id = fields.Many2one("sf.member", string="Distributors")
 
     def print(self):
-        sheets = self.env["bb.payin.sheet"].browse(self._context("active_ids"))
+        sheets = self.env["bb.payin.sheet"].browse(self.env.context.get("active_ids"))
         return self.env.ref("sales_force_support.action_report_payin").report_action(sheets)
 
     def view(self):

@@ -303,8 +303,8 @@ class ContactCentreWebhookController(http.Controller):
     @http.route('/contact_centre/webhook/email', type='json', auth='public', methods=['POST'], csrf=False)
     def email_webhook(self):
         """Handle incoming email webhooks (e.g. from mail gateway)."""
-        data = request.jsonrequest
-        _logger.info("Email webhook received: %s", data)
+        data = request.get_json_data()  # request.jsonrequest was removed in Odoo 16
+        _logger.debug("Email webhook received: %s", data)
         return {'status': 'ok'}
 
     # -------------------------------------------------------------------------
