@@ -4,3 +4,6 @@
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Server-only secrets — never commit (see config/odoo.conf.example)
+config/odoo.conf
