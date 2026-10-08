@@ -29,7 +29,7 @@ Two working paths — the Odoo VoIP account record decides which
 | **Tailscale direct** (tailnet agents) | `wss://ubuntu.taild8679b.ts.net:8089/ws` | Real WSS on :8089 using the Tailscale cert (CN `ubuntu.taild8679b.ts.net`). Bypasses the tunnel — steadier, but only for tailnet machines. |
 
 Agent side: `res.users.dialer_sip_ext` = `1001`, `dialer_sip_secret` =
-`test1001secret`, and set `dialer_manual_answer = True` so inbound calls present
+the `AGENT_1001_SECRET` value from `.env`, and set `dialer_manual_answer = True` so inbound calls present
 an **Accept/Decline** bar. Reload Odoo → systray headphones dot goes **green**.
 
 ```bash

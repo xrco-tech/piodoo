@@ -28,6 +28,10 @@ E_TURN_HOST=$(esc "$TURN_HOST")
 E_TURN_PORT=$(esc "$TURN_PORT")
 E_TURN_USER=$(esc "$TURN_USER")
 E_TURN_PASS=$(esc "$TURN_PASS")
+E_AGENT_1001_SECRET=$(esc "$AGENT_1001_SECRET")
+E_AGENT_1002_SECRET=$(esc "$AGENT_1002_SECRET")
+E_AGENT_1003_SECRET=$(esc "$AGENT_1003_SECRET")
+E_AGENT_1004_SECRET=$(esc "$AGENT_1004_SECRET")
 
 render() {
     sed \
@@ -49,6 +53,10 @@ render() {
         -e "s|\${TURN_PORT}|${E_TURN_PORT}|g" \
         -e "s|\${TURN_USER}|${E_TURN_USER}|g" \
         -e "s|\${TURN_PASS}|${E_TURN_PASS}|g" \
+        -e "s|\${AGENT_1001_SECRET}|${E_AGENT_1001_SECRET}|g" \
+        -e "s|\${AGENT_1002_SECRET}|${E_AGENT_1002_SECRET}|g" \
+        -e "s|\${AGENT_1003_SECRET}|${E_AGENT_1003_SECRET}|g" \
+        -e "s|\${AGENT_1004_SECRET}|${E_AGENT_1004_SECRET}|g" \
         "$1"
 }
 
