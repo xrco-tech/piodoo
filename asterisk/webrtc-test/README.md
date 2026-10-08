@@ -5,9 +5,9 @@ box that carries the live Vox trunk too** — the trunk config was bolted on her
 rather than on `docker-compose.asterisk.yml`, because this was the Asterisk whose
 WebRTC path was already proven. Treat it as the running telephony node.
 
-Endpoints: `1001` (the Odoo agent softphone) and `1002` (the standalone
-`dialer.html` test client). **Secrets are hard-coded in `pjsip.conf`** — fine for
-this single-tenant box, not something to copy into a multi-tenant deployment.
+Endpoints: `1001` (the Odoo agent softphone), `1003`/`1004` (Odoo 19/20 on the spare Pi). `dialer.html` is a
+generic browser test client. Agent SIP secrets are **not** in `pjsip.conf`: they
+render from `AGENT_<ext>_SECRET` in the server's gitignored `.env`.
 
 ## Bring up
 ```bash
@@ -58,7 +58,7 @@ $A asterisk -rx "pjsip show channelstats"   # balanced rx/tx counts = two-way au
 ```
 
 **Two-endpoint test (optional):** open `dialer.html` in a second browser (edit the
-WSS URL/domain; pre-filled for `1002` / `test1002secret`), register, then **Call
+WSS URL/domain; enter an agent extension and its `AGENT_<ext>_SECRET` from `.env`), register, then **Call
 1001**. Dial `600` for a standalone echo.
 
 ## Debugging

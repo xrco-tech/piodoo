@@ -1,4 +1,4 @@
-# WebRTC-only TEST overlay — a trunk-less Asterisk with endpoints 1001 + 1002,
+# WebRTC-only TEST overlay — a trunk-less Asterisk with endpoints 1001 + 1003/1004,
 # for validating the agent softphone (registration + auto-answer + audio) BEFORE
 # the Vox trunk exists. Reuses the same entrypoint (envsubst) and TLS keys.
 #
@@ -10,7 +10,7 @@
 #   (a) originate an echo call to it:
 #       docker compose -f docker-compose.yml -f docker-compose.asterisk-test.yml \
 #         exec asterisk-test asterisk -rx "channel originate PJSIP/1001 application Echo"
-#   (b) open asterisk/webrtc-test/dialer.html in a 2nd browser (registers as 1002) and call 1001.
+#   (b) open asterisk/webrtc-test/dialer.html in a 2nd browser (register as e.g. 1003) and call 1001.
 services:
   asterisk-test:
     image: piodoo/asterisk:local
