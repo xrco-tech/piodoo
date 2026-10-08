@@ -90,7 +90,7 @@ Two halves must match:
 1. **Odoo** — `res.users.dialer_sip_ext` (e.g. `1001`) + `dialer_sip_secret`.
    `get_softphone_config()` returns these verbatim.
 2. **Asterisk** — an endpoint of the same name with the same password in
-   `asterisk/webrtc-test/pjsip.conf` (the test box defines `1001` / `1002`).
+   `asterisk/webrtc-test/pjsip.conf` (the test box defines `1001`, `1003`, `1004`).
 
 The WebSocket URL + SIP domain come from the **VoIP account record**
 (`comm.voip.account.sip_ws_url` / `sip_domain`), not a config param.
