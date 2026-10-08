@@ -445,208 +445,222 @@ async def handle_events(odoo, ari, loop):
     """Consume ARI WebSocket events: bridge answered humans to agents; finalize
     on hangup."""
     ws_url = f'{ARI_URL.replace("http", "ws")}/ari/events?app={ARI_APP}&subscribeAll=true'
-    async with aiohttp.ClientSession() as s:
-        async with s.ws_connect(ws_url, auth=aiohttp.BasicAuth(ARI_USER, ARI_PASS)) as ws:
-            _log.info('ARI websocket connected')
-            async for msg in ws:
-                if msg.type != aiohttp.WSMsgType.TEXT:
-                    continue
-                ev = json.loads(msg.data)
-                kind = ev.get('type')
-                ch = ev.get('channel', {})
-                cid = ch.get('id')
-
-                if kind == 'StasisStart':
-                    role = (ev.get('args') or [''])[0]
-                    if role == 'outbound':
-                        # Customer answered. Decide bridge vs abandon.
-                        info = LIVE.get(cid)
-                        if not info:
+    # Reconnect forever: when Asterisk restarts the socket closes and the old
+    # code simply returned, leaving the bridge "up" but deaf (no ARI app).
+    delay = 2
+    while True:
+        try:
+            async with aiohttp.ClientSession() as s:
+                async with s.ws_connect(ws_url, auth=aiohttp.BasicAuth(ARI_USER, ARI_PASS)) as ws:
+                    _log.info('ARI websocket connected')
+                    delay = 2  # healthy again: reset backoff
+                    async for msg in ws:
+                        if msg.type != aiohttp.WSMsgType.TEXT:
                             continue
-                        amd = await ari.get_var(cid, 'AMDSTATUS')  # HUMAN/MACHINE/NOTSURE/None
-                        ext = info.get('pre_ext')          # progressive pre-assignment
-                        session_id = info.get('session_id')
-                        if not ext:                        # predictive: pick on answer
-                            picked = await loop.run_in_executor(
-                                None, odoo.ready_agent, info['campaign_id'])
-                            if picked:
-                                ext, session_id = picked['ext'], picked['session_id']
-                        if amd == 'MACHINE' or not ext:
-                            # Machine, or no agent free (over-dial) => abandoned.
-                            await ari.hangup(cid)
-                            await loop.run_in_executor(None, odoo.set_call, info['call_id'],
-                                                       {'state': 'cancelled'})
+                        ev = json.loads(msg.data)
+                        kind = ev.get('type')
+                        ch = ev.get('channel', {})
+                        cid = ch.get('id')
+
+                        if kind == 'StasisStart':
+                            role = (ev.get('args') or [''])[0]
+                            if role == 'outbound':
+                                # Customer answered. Decide bridge vs abandon.
+                                info = LIVE.get(cid)
+                                if not info:
+                                    continue
+                                amd = await ari.get_var(cid, 'AMDSTATUS')  # HUMAN/MACHINE/NOTSURE/None
+                                ext = info.get('pre_ext')          # progressive pre-assignment
+                                session_id = info.get('session_id')
+                                if not ext:                        # predictive: pick on answer
+                                    picked = await loop.run_in_executor(
+                                        None, odoo.ready_agent, info['campaign_id'])
+                                    if picked:
+                                        ext, session_id = picked['ext'], picked['session_id']
+                                if amd == 'MACHINE' or not ext:
+                                    # Machine, or no agent free (over-dial) => abandoned.
+                                    await ari.hangup(cid)
+                                    await loop.run_in_executor(None, odoo.set_call, info['call_id'],
+                                                               {'state': 'cancelled'})
+                                    if info.get('session_id'):
+                                        await loop.run_in_executor(
+                                            None, odoo.set_agent, info['session_id'],
+                                            {'state': 'ready', 'current_call_id': False})
+                                    continue
+                                # Bridge the customer now; add the agent when IT answers.
+                                bridge = await ari.create_bridge()
+                                await ari.add_to_bridge(bridge['id'], cid)
+                                info['bridge_id'] = bridge['id']
+                                info['session_id'] = session_id
+                                agent_vars = {'PJSIP_HEADER(add,X-Voip-Call-Id)': str(info['call_id'])}
+                                try:
+                                    ach = await ari.originate(f'PJSIP/{ext}', 'agent', CALLER_ID, agent_vars)
+                                except Exception:
+                                    _log.exception('agent originate failed; dropping call')
+                                    await ari.hangup(cid)
+                                    await loop.run_in_executor(None, odoo.set_call, info['call_id'],
+                                                               {'state': 'cancelled'})
+                                    if session_id:
+                                        await loop.run_in_executor(
+                                            None, odoo.set_agent, session_id,
+                                            {'state': 'ready', 'current_call_id': False})
+                                    continue
+                                info['agent_cid'] = ach['id']
+                                AGENT_PENDING[ach['id']] = {'bridge_id': bridge['id'], 'customer_cid': cid}
+                                _log.info('customer %s bridged; agent %s originated (call %s)',
+                                          cid, ach['id'], info['call_id'])
+                                await loop.run_in_executor(None, odoo.set_call, info['call_id'],
+                                                           {'state': 'in_progress'})
+                                await loop.run_in_executor(
+                                    None, odoo.set_agent, session_id,
+                                    {'state': 'on_call', 'current_call_id': info['call_id']})
+                            elif role == 'agent':
+                                # Agent leg answered (entered Stasis) — join it to the bridge.
+                                pend = AGENT_PENDING.pop(cid, None)
+                                _log.info('agent StasisStart %s (pending=%s)', cid, bool(pend))
+                                if pend:
+                                    AGENT_ACTIVE[cid] = pend['customer_cid']
+                                    try:
+                                        await ari.add_to_bridge(pend['bridge_id'], cid)
+                                        _log.info('agent %s joined bridge %s', cid, pend['bridge_id'])
+                                    except Exception:
+                                        _log.exception('add agent to bridge failed')
+                                        await ari.hangup(cid)
+                                        await ari.hangup(pend['customer_cid'])
+
+                            elif role == 'transfer':
+                                # Blind transfer: the target agent answered. Join it to the
+                                # customer's existing bridge, then drop the original agent
+                                # WITHOUT tearing down the customer.
+                                pend = TRANSFER_PENDING.pop(cid, None)
+                                _log.info('transfer StasisStart %s (pending=%s)', cid, bool(pend))
+                                if not pend:
+                                    continue
+                                try:
+                                    await ari.add_to_bridge(pend['bridge_id'], cid)
+                                    orig = pend.get('orig_agent_cid')
+                                    if orig:
+                                        # Remove from AGENT_ACTIVE first so its StasisEnd
+                                        # won't hang up the (now transferred) customer.
+                                        AGENT_ACTIVE.pop(orig, None)
+                                        await ari.hangup(orig)
+                                    # Re-point the live maps to the new agent.
+                                    live = LIVE.get(pend['customer_cid'])
+                                    if live:
+                                        live['agent_cid'] = cid
+                                        live['session_id'] = pend.get('target_session_id')
+                                    AGENT_ACTIVE[cid] = pend['customer_cid']
+                                    # Odoo bookkeeping: free the old agent, bind the new one.
+                                    if pend.get('orig_session_id'):
+                                        await loop.run_in_executor(
+                                            None, odoo.set_agent, pend['orig_session_id'],
+                                            {'state': 'ready', 'current_call_id': False})
+                                    if pend.get('target_session_id'):
+                                        await loop.run_in_executor(
+                                            None, odoo.set_agent, pend['target_session_id'],
+                                            {'state': 'on_call', 'current_call_id': pend['call_id']})
+                                    await loop.run_in_executor(
+                                        None, odoo.set_call, pend['call_id'],
+                                        {'dialer_agent_session_id': pend.get('target_session_id')})
+                                    await loop.run_in_executor(
+                                        None, odoo.set_transfer, pend['transfer_id'], {'state': 'done'})
+                                    _log.info('transfer %s: agent %s took call %s',
+                                              pend['transfer_id'], cid, pend['call_id'])
+                                except Exception:
+                                    _log.exception('transfer completion failed')
+                                    await ari.hangup(cid)
+                                    await loop.run_in_executor(
+                                        None, odoo.set_transfer, pend['transfer_id'],
+                                        {'state': 'failed', 'error': 'bridge failed'})
+
+                            elif role == 'consult':
+                                # Attended transfer: the target answered the consult leg.
+                                pend = TRANSFER_PENDING.pop(cid, None)
+                                _log.info('consult StasisStart %s (pending=%s)', cid, bool(pend))
+                                if not pend:
+                                    continue
+                                try:
+                                    await ari.add_to_bridge(pend['consult_bridge_id'], cid)
+                                    CONSULT[pend['transfer_id']] = dict(pend, target_cid=cid)
+                                    await loop.run_in_executor(
+                                        None, odoo.set_transfer, pend['transfer_id'],
+                                        {'state': 'consulting'})
+                                    _log.info('attended transfer %s: consult up (target %s)',
+                                              pend['transfer_id'], cid)
+                                except Exception:
+                                    _log.exception('consult join failed')
+                                    await ari.hangup(cid)
+                                    await loop.run_in_executor(
+                                        None, odoo.set_transfer, pend['transfer_id'],
+                                        {'state': 'failed', 'error': 'consult bridge failed'})
+
+                        elif kind in ('StasisEnd', 'ChannelDestroyed'):
+                            _log.info('%s %s', kind, cid)
+                            # A transfer target that never answered/joined — fail the
+                            # transfer and leave the original call untouched.
+                            tpend = TRANSFER_PENDING.pop(cid, None)
+                            if tpend:
+                                _log.info('transfer %s: target %s gone before joining',
+                                          tpend['transfer_id'], cid)
+                                if tpend.get('kind') == 'consult':
+                                    # Undo the hold/consult so the original call resumes.
+                                    for coro in (
+                                        lambda: ari.remove_from_bridge(
+                                            tpend['consult_bridge_id'], tpend['orig_agent_cid']),
+                                        lambda: ari.add_to_bridge(
+                                            tpend['bridge_id'], tpend['orig_agent_cid']),
+                                        lambda: ari.moh_stop(tpend['bridge_id']),
+                                        lambda: ari.destroy_bridge(tpend['consult_bridge_id']),
+                                    ):
+                                        try:
+                                            await coro()
+                                        except Exception:
+                                            pass
+                                await loop.run_in_executor(
+                                    None, odoo.set_transfer, tpend['transfer_id'],
+                                    {'state': 'failed', 'error': 'target did not answer'})
+                                continue
+                            # Agent leg gone => hang up the customer (which finalizes below).
+                            cust = AGENT_ACTIVE.pop(cid, None)
+                            AGENT_PENDING.pop(cid, None)
+                            if cust:
+                                await ari.hangup(cust)
+                            info = LIVE.pop(cid, None)
+                            if not info:
+                                continue
+                            # Customer leg gone => tear down the agent leg + finalize.
+                            if info.get('agent_cid'):
+                                await ari.hangup(info['agent_cid'])
                             if info.get('session_id'):
                                 await loop.run_in_executor(
                                     None, odoo.set_agent, info['session_id'],
-                                    {'state': 'ready', 'current_call_id': False})
-                            continue
-                        # Bridge the customer now; add the agent when IT answers.
-                        bridge = await ari.create_bridge()
-                        await ari.add_to_bridge(bridge['id'], cid)
-                        info['bridge_id'] = bridge['id']
-                        info['session_id'] = session_id
-                        agent_vars = {'PJSIP_HEADER(add,X-Voip-Call-Id)': str(info['call_id'])}
-                        try:
-                            ach = await ari.originate(f'PJSIP/{ext}', 'agent', CALLER_ID, agent_vars)
-                        except Exception:
-                            _log.exception('agent originate failed; dropping call')
-                            await ari.hangup(cid)
-                            await loop.run_in_executor(None, odoo.set_call, info['call_id'],
-                                                       {'state': 'cancelled'})
-                            if session_id:
-                                await loop.run_in_executor(
-                                    None, odoo.set_agent, session_id,
-                                    {'state': 'ready', 'current_call_id': False})
-                            continue
-                        info['agent_cid'] = ach['id']
-                        AGENT_PENDING[ach['id']] = {'bridge_id': bridge['id'], 'customer_cid': cid}
-                        _log.info('customer %s bridged; agent %s originated (call %s)',
-                                  cid, ach['id'], info['call_id'])
-                        await loop.run_in_executor(None, odoo.set_call, info['call_id'],
-                                                   {'state': 'in_progress'})
-                        await loop.run_in_executor(
-                            None, odoo.set_agent, session_id,
-                            {'state': 'on_call', 'current_call_id': info['call_id']})
-                    elif role == 'agent':
-                        # Agent leg answered (entered Stasis) — join it to the bridge.
-                        pend = AGENT_PENDING.pop(cid, None)
-                        _log.info('agent StasisStart %s (pending=%s)', cid, bool(pend))
-                        if pend:
-                            AGENT_ACTIVE[cid] = pend['customer_cid']
-                            try:
-                                await ari.add_to_bridge(pend['bridge_id'], cid)
-                                _log.info('agent %s joined bridge %s', cid, pend['bridge_id'])
-                            except Exception:
-                                _log.exception('add agent to bridge failed')
-                                await ari.hangup(cid)
-                                await ari.hangup(pend['customer_cid'])
+                                    {'state': 'wrap', 'current_call_id': False})
+                            if info.get('bridge_id'):
+                                # Reached an agent — a real contact. The agent sets the
+                                # actual disposition during wrap-up.
+                                state, outcome = 'completed', 'completed'
+                            else:
+                                # Never connected — classify from the hangup cause.
+                                cause = (ev.get('cause_txt') or '').lower()
+                                if 'busy' in cause:
+                                    state, outcome = 'busy', 'busy'
+                                elif 'no answer' in cause or 'no user' in cause or 'unavailable' in cause:
+                                    state, outcome = 'no_answer', 'no_answer'
+                                else:
+                                    state, outcome = 'failed', 'failed'
+                            end_ts = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+                            await loop.run_in_executor(
+                                None, odoo.set_call, info['call_id'],
+                                {'state': state, 'end_time': end_ts})  # duration auto-fills
+                            await loop.run_in_executor(None, odoo.register_result, info['contact_id'], outcome)
 
-                    elif role == 'transfer':
-                        # Blind transfer: the target agent answered. Join it to the
-                        # customer's existing bridge, then drop the original agent
-                        # WITHOUT tearing down the customer.
-                        pend = TRANSFER_PENDING.pop(cid, None)
-                        _log.info('transfer StasisStart %s (pending=%s)', cid, bool(pend))
-                        if not pend:
-                            continue
-                        try:
-                            await ari.add_to_bridge(pend['bridge_id'], cid)
-                            orig = pend.get('orig_agent_cid')
-                            if orig:
-                                # Remove from AGENT_ACTIVE first so its StasisEnd
-                                # won't hang up the (now transferred) customer.
-                                AGENT_ACTIVE.pop(orig, None)
-                                await ari.hangup(orig)
-                            # Re-point the live maps to the new agent.
-                            live = LIVE.get(pend['customer_cid'])
-                            if live:
-                                live['agent_cid'] = cid
-                                live['session_id'] = pend.get('target_session_id')
-                            AGENT_ACTIVE[cid] = pend['customer_cid']
-                            # Odoo bookkeeping: free the old agent, bind the new one.
-                            if pend.get('orig_session_id'):
-                                await loop.run_in_executor(
-                                    None, odoo.set_agent, pend['orig_session_id'],
-                                    {'state': 'ready', 'current_call_id': False})
-                            if pend.get('target_session_id'):
-                                await loop.run_in_executor(
-                                    None, odoo.set_agent, pend['target_session_id'],
-                                    {'state': 'on_call', 'current_call_id': pend['call_id']})
-                            await loop.run_in_executor(
-                                None, odoo.set_call, pend['call_id'],
-                                {'dialer_agent_session_id': pend.get('target_session_id')})
-                            await loop.run_in_executor(
-                                None, odoo.set_transfer, pend['transfer_id'], {'state': 'done'})
-                            _log.info('transfer %s: agent %s took call %s',
-                                      pend['transfer_id'], cid, pend['call_id'])
-                        except Exception:
-                            _log.exception('transfer completion failed')
-                            await ari.hangup(cid)
-                            await loop.run_in_executor(
-                                None, odoo.set_transfer, pend['transfer_id'],
-                                {'state': 'failed', 'error': 'bridge failed'})
-
-                    elif role == 'consult':
-                        # Attended transfer: the target answered the consult leg.
-                        pend = TRANSFER_PENDING.pop(cid, None)
-                        _log.info('consult StasisStart %s (pending=%s)', cid, bool(pend))
-                        if not pend:
-                            continue
-                        try:
-                            await ari.add_to_bridge(pend['consult_bridge_id'], cid)
-                            CONSULT[pend['transfer_id']] = dict(pend, target_cid=cid)
-                            await loop.run_in_executor(
-                                None, odoo.set_transfer, pend['transfer_id'],
-                                {'state': 'consulting'})
-                            _log.info('attended transfer %s: consult up (target %s)',
-                                      pend['transfer_id'], cid)
-                        except Exception:
-                            _log.exception('consult join failed')
-                            await ari.hangup(cid)
-                            await loop.run_in_executor(
-                                None, odoo.set_transfer, pend['transfer_id'],
-                                {'state': 'failed', 'error': 'consult bridge failed'})
-
-                elif kind in ('StasisEnd', 'ChannelDestroyed'):
-                    _log.info('%s %s', kind, cid)
-                    # A transfer target that never answered/joined — fail the
-                    # transfer and leave the original call untouched.
-                    tpend = TRANSFER_PENDING.pop(cid, None)
-                    if tpend:
-                        _log.info('transfer %s: target %s gone before joining',
-                                  tpend['transfer_id'], cid)
-                        if tpend.get('kind') == 'consult':
-                            # Undo the hold/consult so the original call resumes.
-                            for coro in (
-                                lambda: ari.remove_from_bridge(
-                                    tpend['consult_bridge_id'], tpend['orig_agent_cid']),
-                                lambda: ari.add_to_bridge(
-                                    tpend['bridge_id'], tpend['orig_agent_cid']),
-                                lambda: ari.moh_stop(tpend['bridge_id']),
-                                lambda: ari.destroy_bridge(tpend['consult_bridge_id']),
-                            ):
-                                try:
-                                    await coro()
-                                except Exception:
-                                    pass
-                        await loop.run_in_executor(
-                            None, odoo.set_transfer, tpend['transfer_id'],
-                            {'state': 'failed', 'error': 'target did not answer'})
-                        continue
-                    # Agent leg gone => hang up the customer (which finalizes below).
-                    cust = AGENT_ACTIVE.pop(cid, None)
-                    AGENT_PENDING.pop(cid, None)
-                    if cust:
-                        await ari.hangup(cust)
-                    info = LIVE.pop(cid, None)
-                    if not info:
-                        continue
-                    # Customer leg gone => tear down the agent leg + finalize.
-                    if info.get('agent_cid'):
-                        await ari.hangup(info['agent_cid'])
-                    if info.get('session_id'):
-                        await loop.run_in_executor(
-                            None, odoo.set_agent, info['session_id'],
-                            {'state': 'wrap', 'current_call_id': False})
-                    if info.get('bridge_id'):
-                        # Reached an agent — a real contact. The agent sets the
-                        # actual disposition during wrap-up.
-                        state, outcome = 'completed', 'completed'
-                    else:
-                        # Never connected — classify from the hangup cause.
-                        cause = (ev.get('cause_txt') or '').lower()
-                        if 'busy' in cause:
-                            state, outcome = 'busy', 'busy'
-                        elif 'no answer' in cause or 'no user' in cause or 'unavailable' in cause:
-                            state, outcome = 'no_answer', 'no_answer'
-                        else:
-                            state, outcome = 'failed', 'failed'
-                    end_ts = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-                    await loop.run_in_executor(
-                        None, odoo.set_call, info['call_id'],
-                        {'state': state, 'end_time': end_ts})  # duration auto-fills
-                    await loop.run_in_executor(None, odoo.register_result, info['contact_id'], outcome)
+            _log.warning('ARI websocket closed; reconnecting in %ss', delay)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            _log.warning('ARI websocket unavailable (%s); retrying in %ss', e, delay)
+        await asyncio.sleep(delay)
+        delay = min(delay * 2, 30)
 
 
 async def main():
