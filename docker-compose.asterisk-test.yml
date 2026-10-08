@@ -32,8 +32,12 @@ services:
   # without the PSTN. Point DIAL_ENDPOINT at PJSIP/{to}@vox for production.
   dialer_ari:
     build: ./services/dialer_ari
+    # Asterisk runs with network_mode: host, so reach ARI through the Docker
+    # host — the public IP needs router hairpin NAT, which isn't reliable.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      ARI_URL: "http://${EXTERNAL_IP}:8088"
+      ARI_URL: "http://host.docker.internal:8088"
       ARI_USERNAME: "${ARI_USERNAME}"
       ARI_PASSWORD: "${ARI_PASSWORD}"
       ARI_APP: "comm_dialer"
