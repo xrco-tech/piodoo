@@ -2,7 +2,7 @@
 
 import logging
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -93,9 +93,9 @@ class Chat2workCandidate(models.Model):
     _order = 'create_date desc'
     _rec_name = 'name'
 
-    name = fields.Char('Full Name', required=True)
+    name = fields.Char('Full Name')
     partner_id = fields.Many2one('res.partner', 'Contact')
-    phone = fields.Char('Phone')
+    phone = fields.Char('Phone', index=True)
     location = fields.Char('Town / Area')
     field = fields.Selection([
         ('call_centre', 'Call Centre'),
@@ -106,6 +106,29 @@ class Chat2workCandidate(models.Model):
     ], string='Field')
     registered_via = fields.Char('Registered Via', default='ussd')
     active = fields.Boolean(default=True)
+    whatsapp_opt_in = fields.Boolean(
+        'Uses WhatsApp', help="Follow-up via WhatsApp and SMS when set, SMS only otherwise.")
+    employment_status = fields.Selection([
+        ('unemployed', 'Unemployed'),
+        ('employed', 'Employed'),
+        ('self_employed', 'Self-employed'),
+        ('student', 'Student'),
+    ], string='Employment Status')
+    job_seeking = fields.Boolean('Looking for a New Job')
+    status_updated_at = fields.Datetime('Status Updated')
+    consent_at = fields.Datetime('POPIA Consent Given', readonly=True)
+    id_number_hash = fields.Char(index=True, readonly=True, copy=False, groups='base.group_system')
+    id_number_encrypted = fields.Char(readonly=True, copy=False, groups='base.group_system')
+    has_id_number = fields.Boolean('ID Number Captured', compute='_compute_has_id_number')
+
+    def _compute_has_id_number(self):
+        for rec in self:
+            rec.has_id_number = bool(rec.sudo().id_number_hash)
+
+    @api.depends('name', 'phone')
+    def _compute_display_name(self):
+        for rec in self:
+            rec.display_name = rec.name or rec.phone or _('Candidate')
 
     @api.model
     def upsert(self, partner=None, phone=None, name=None, location=None, field=None, registered_via='ussd'):

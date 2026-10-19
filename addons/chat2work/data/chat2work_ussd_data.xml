@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Spec §10 open decision: eligibility age range, to be confirmed. -->
+        <record id="param_ussd_age_min" model="ir.config_parameter">
+            <field name="key">chat2work.ussd_age_min</field>
+            <field name="value">18</field>
+        </record>
+        <record id="param_ussd_age_max" model="ir.config_parameter">
+            <field name="key">chat2work.ussd_age_max</field>
+            <field name="value">34</field>
+        </record>
+        <!-- Keep short: S02 must stay under 160 chars with the "Invalid choice" prefix. -->
+        <record id="param_ussd_terms_url" model="ir.config_parameter">
+            <field name="key">chat2work.ussd_terms_url</field>
+            <field name="value">xrco.tech/c2w-terms</field>
+        </record>
+    </data>
+    <record id="ir_cron_chat2work_ussd_gc" model="ir.cron">
+        <field name="name">Chat2Work: purge abandoned USSD sessions</field>
+        <field name="model_id" ref="model_chat2work_ussd_session"/>
+        <field name="state">code</field>
+        <field name="code">model._gc_stale_sessions()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

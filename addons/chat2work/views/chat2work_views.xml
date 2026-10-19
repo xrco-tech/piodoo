@@ -111,8 +111,11 @@
             <list string="Candidates">
                 <field name="name"/>
                 <field name="phone"/>
-                <field name="location"/>
-                <field name="field"/>
+                <field name="employment_status"/>
+                <field name="job_seeking"/>
+                <field name="whatsapp_opt_in"/>
+                <field name="location" optional="hide"/>
+                <field name="field" optional="hide"/>
                 <field name="registered_via"/>
                 <field name="create_date"/>
             </list>
@@ -138,6 +141,16 @@
                             <field name="partner_id"/>
                             <field name="registered_via"/>
                             <field name="active"/>
+                        </group>
+                        <group string="Status">
+                            <field name="employment_status"/>
+                            <field name="job_seeking"/>
+                            <field name="status_updated_at"/>
+                        </group>
+                        <group string="Contact &amp; Consent">
+                            <field name="whatsapp_opt_in"/>
+                            <field name="consent_at"/>
+                            <field name="has_id_number"/>
                         </group>
                     </group>
                 </sheet>
