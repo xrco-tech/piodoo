@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_comm_ussd_account_form_chat2work" model="ir.ui.view">
+        <field name="name">comm.ussd.account.form.chat2work</field>
+        <field name="model">comm.ussd.account</field>
+        <field name="inherit_id" ref="comm_whatsapp_chatbot.view_comm_ussd_account_form"/>
+        <field name="arch" type="xml">
+            <field name="is_default" position="before">
+                <field name="flow_engine"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_chat2work_ussd_session_list" model="ir.ui.view">
+        <field name="name">chat2work.ussd.session.list</field>
+        <field name="model">chat2work.ussd.session</field>
+        <field name="arch" type="xml">
+            <list string="Live USSD Sessions" create="0" edit="0">
+                <field name="create_date" string="Started"/>
+                <field name="msisdn"/>
+                <field name="service_code"/>
+                <field name="screen"/>
+                <field name="candidate_id"/>
+                <field name="invalid_count"/>
+                <field name="id_attempts"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_chat2work_ussd_session" model="ir.actions.act_window">
+        <field name="name">Live USSD Sessions</field>
+        <field name="res_model">chat2work.ussd.session</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p>Sessions in progress. Each row is deleted when its USSD session ends.</p>
+        </field>
+    </record>
+    <menuitem id="menu_chat2work_ussd_sessions" name="Live USSD Sessions"
+              parent="menu_chat2work_root" action="action_chat2work_ussd_session"
+              groups="base.group_system" sequence="90"/>
+</odoo>
