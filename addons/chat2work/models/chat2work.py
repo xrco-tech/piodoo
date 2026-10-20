@@ -248,6 +248,7 @@ class Chat2workCallbackRequest(models.Model):
             'candidate_id': cand.id if cand else False,
             'channel': channel,
         })
-        _send_sms(self.env, phone,
-                  "Chat2Work: thanks for your callback request. A consultant will call you within 1 business day.")
+        if not self.env.context.get('chat2work_ussd_simulation'):
+            _send_sms(self.env, phone,
+                      "Chat2Work: thanks for your callback request. A consultant will call you within 1 business day.")
         return rec
