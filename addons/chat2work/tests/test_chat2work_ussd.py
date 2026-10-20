@@ -180,3 +180,51 @@ class TestChat2workUssd(TransactionCase):
         self.assertIsNone(parse_sa_id('0102305009087'))   # 30 Feb
         self.assertIsNone(parse_sa_id('12345'))
         self.assertIsNone(parse_sa_id(make_id(date(1990, 1, 1))[:10] + '2' + '80'))  # citizenship
+
+
+@tagged('post_install', '-at_install', 'chat2work')
+class TestChat2workUssdSimulator(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env['ir.config_parameter'].sudo().set_param('chat2work.ussd_age_max', '34')
+        cls.account = cls.env['comm.ussd.account'].create({
+            'name': 'C2W Sim', 'service_code': CODE, 'flow_engine': 'chat2work'})
+
+    def sim(self, phone, *inputs):
+        wiz = self.env['chat2work.ussd.simulator'].create({'account_id': self.account.id, 'phone': phone})
+        for inp in inputs:
+            wiz.user_input = inp
+            wiz.action_send()
+        return wiz
+
+    def test_preview_saves_nothing(self):
+        counts = lambda: (self.env['chat2work.candidate'].search_count([]),
+                          self.env['chat2work.callback.request'].search_count([]),
+                          self.env['chat2work.ussd.session'].search_count([]),
+                          self.env['res.partner'].search_count([]),
+                          self.env['sms.sms'].search_count([]))
+        before = counts()
+        wiz = self.sim('+27830000001', '1', '1', '1', make_id(years_ago(24)), '1', '1')
+        self.assertTrue(wiz.ended)
+        self.assertIn('Profile created! We will contact you soon via WhatsApp/SMS.', wiz.screen_html)
+        self.assertIn('Enter your 13-digit SA ID number', wiz.screen_html, 'history kept')
+        wiz2 = self.sim('+27830000002', '2')
+        self.assertIn('Callback requested for 0830000002.', wiz2.screen_html)
+        self.assertEqual(counts(), before)
+
+    def test_preview_recognised_and_restart(self):
+        self.env['chat2work.candidate'].create({'name': 'Sipho', 'phone': '+27830000003'})
+        wiz = self.sim('+27830000003', '9')
+        self.assertIn('Invalid choice. Please try again.', wiz.screen_html)
+        self.assertIn('Hi Sipho.', wiz.screen_html)
+        self.assertFalse(wiz.ended)
+        wiz.action_restart()
+        self.assertFalse(wiz.inputs)
+        self.assertNotIn('Invalid choice', wiz.screen_html)
+
+    def test_account_button(self):
+        action = self.account.action_open_chat2work_simulator()
+        self.assertEqual(action['res_model'], 'chat2work.ussd.simulator')
+        self.assertEqual(action['target'], 'new')

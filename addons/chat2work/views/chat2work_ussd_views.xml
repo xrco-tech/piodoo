@@ -8,6 +8,12 @@
             <field name="is_default" position="before">
                 <field name="flow_engine"/>
             </field>
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_open_chat2work_simulator" string="Simulate" type="object"
+                            class="btn-secondary" invisible="flow_engine != 'chat2work'"/>
+                </header>
+            </xpath>
         </field>
     </record>
 

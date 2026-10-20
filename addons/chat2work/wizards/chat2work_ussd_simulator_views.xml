@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chat2work_ussd_simulator_form" model="ir.ui.view">
+        <field name="name">chat2work.ussd.simulator.form</field>
+        <field name="model">chat2work.ussd.simulator</field>
+        <field name="arch" type="xml">
+            <form string="USSD Simulator">
+                <div class="alert alert-info mb-2" role="alert">
+                    Preview only. Nothing is saved, and no SMS is sent.
+                </div>
+                <group>
+                    <group>
+                        <field name="account_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="service_code"/>
+                    </group>
+                    <group>
+                        <field name="phone"/>
+                    </group>
+                </group>
+                <field name="screen_html" readonly="1" nolabel="1"/>
+                <group invisible="ended">
+                    <field name="user_input" placeholder="Type 1, 0, or an ID number, then Send"/>
+                </group>
+                <div class="alert alert-secondary" role="status" invisible="not ended">
+                    Session ended. Press Restart to dial again.
+                </div>
+                <field name="ended" invisible="1"/>
+                <footer>
+                    <button name="action_send" string="Send" type="object" class="btn-primary"
+                            invisible="ended" data-hotkey="s"/>
+                    <button name="action_restart" string="Restart" type="object"
+                            class="btn-secondary" data-hotkey="r"/>
+                    <button string="Close" special="cancel" class="btn-secondary" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chat2work_ussd_simulator" model="ir.actions.act_window">
+        <field name="name">USSD Simulator</field>
+        <field name="res_model">chat2work.ussd.simulator</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <menuitem id="menu_chat2work_ussd_simulator" name="USSD Simulator"
+              parent="menu_chat2work_root" action="action_chat2work_ussd_simulator" sequence="80"/>
+</odoo>

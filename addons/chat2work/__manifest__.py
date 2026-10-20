@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work',
-    'version': '18.0.1.1.0',
+    'version': '18.0.1.2.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'Job openings, interview slots and bookings for the Chat2Work service',
     'description': """
@@ -25,6 +25,7 @@ callback) runs on any USSD account whose Flow Engine is set to Chat2Work.
         'data/chat2work_ussd_data.xml',
         'views/chat2work_views.xml',
         'views/chat2work_ussd_views.xml',
+        'wizards/chat2work_ussd_simulator_views.xml',
     ],
     'application': True,
     'installable': True,
