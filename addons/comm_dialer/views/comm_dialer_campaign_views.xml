@@ -11,6 +11,7 @@
                 <field name="name"/>
                 <field name="mode"/>
                 <field name="account_id"/>
+                <field name="voice_chatbot_id" optional="show"/>
                 <field name="contact_pending" string="Pending"/>
                 <field name="ready_agents" string="Ready"/>
                 <field name="live_calls" string="Live"/>
@@ -56,6 +57,7 @@
                         <group string="Dialing">
                             <field name="mode"/>
                             <field name="account_id"/>
+                            <field name="voice_chatbot_id"/>
                             <field name="max_lines"/>
                             <field name="simulate"/>
                             <field name="active" invisible="1"/>

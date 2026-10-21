@@ -19,6 +19,8 @@ export class DialerSoftphoneBar extends Component {
         this.state = useState(this.sp.state);
         this.keypad = KEYPAD;
         this.dial = useState({ value: "" });
+        // Script / campaign picker above the bar + the script answer box.
+        this.ui = useState({ picker: null, items: [], loading: false, answer: "" });
     }
 
     get active() {
@@ -96,6 +98,59 @@ export class DialerSoftphoneBar extends Component {
 
     toggleRecord() {
         this.sp.toggleRecord();
+    }
+
+    // ── Call script + campaign (mirrors the WhatsApp call popup) ─────────
+    async openPicker(kind) {
+        if (this.ui.picker === kind) {
+            this.closePicker();
+            return;
+        }
+        this.ui.picker = kind;
+        this.ui.items = [];
+        this.ui.loading = true;
+        try {
+            this.ui.items = kind === "script"
+                ? await this.sp.scriptOptions()
+                : await this.sp.campaignOptions();
+        } catch {
+            this.ui.items = [];
+        } finally {
+            this.ui.loading = false;
+        }
+    }
+
+    closePicker() {
+        this.ui.picker = null;
+        this.ui.items = [];
+    }
+
+    pick(item) {
+        const kind = this.ui.picker;
+        this.closePicker();
+        if (kind === "script") {
+            this.sp.startScript(item.id, item.name);
+        } else if (kind === "campaign" && !item.already) {
+            this.sp.addToCampaign(item.id);
+        }
+    }
+
+    scriptAnswer(text) {
+        text = (text || "").trim();
+        if (text) {
+            this.ui.answer = "";
+            this.sp.scriptTurn(text);
+        }
+    }
+
+    onScriptKeydown(ev) {
+        if (ev.key === "Enter") {
+            this.scriptAnswer(this.ui.answer);
+        }
+    }
+
+    closeScript() {
+        this.sp.closeScript();
     }
 
     // Open the transfer wizard for the current call (blind transfer for now).

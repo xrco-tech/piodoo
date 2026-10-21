@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Comm Dialer — Progressive / Predictive',
-    'version': '18.0.1.1.0',
+    'version': '18.0.1.2.0',
     'category': 'Communications',
     'summary': 'Outbound dialer: campaigns, call lists, agent pacing (preview / progressive / predictive)',
     'description': """
@@ -31,6 +31,7 @@ provider is wired into comm.voip.account.originate/bridge).
     'depends': [
         'comm_chatbot_voip',      # voip channel + account + call log
         'comm_whatsapp_calling',  # comm.disposition (outcome codes)
+        'comm_whatsapp_chatbot',  # voice scripts (whatsapp.chatbot, /voice/*) for call scripts
     ],
     'data': [
         'security/comm_dialer_security.xml',
