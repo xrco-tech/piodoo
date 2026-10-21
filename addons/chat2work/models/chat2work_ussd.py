@@ -118,7 +118,7 @@ class Chat2workUssdSession(models.Model):
     screen = fields.Char(readonly=True)
     candidate_id = fields.Many2one('chat2work.candidate', ondelete='set null', readonly=True)
     # Pending profile answers. The ID number is only ever held encrypted.
-    data = fields.Json(default=dict, readonly=True)
+    data = fields.Json(default=lambda self: {}, readonly=True)
     invalid_count = fields.Integer(readonly=True)
     id_attempts = fields.Integer(readonly=True)
     last_response = fields.Text(readonly=True)

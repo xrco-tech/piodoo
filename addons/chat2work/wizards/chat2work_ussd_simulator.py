@@ -34,7 +34,9 @@ class Chat2workUssdSimulator(models.TransientModel):
         'Caller MSISDN', required=True, default='+27600000000',
         help="Use a number with an existing candidate profile to preview the "
              "returning-caller menu.")
-    inputs = fields.Json(default=list)
+    # Not default=list: Odoo calls defaults with the record, so list(record)
+    # would yield [record] on a new (unsaved) dialog record.
+    inputs = fields.Json(default=lambda self: [])
     user_input = fields.Char('Reply')
     ended = fields.Boolean(readonly=True)
     screen_html = fields.Html(compute='_compute_screen_html', sanitize=False)
