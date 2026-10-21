@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import re
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
@@ -128,6 +130,119 @@ class CommDialerAgentSession(models.Model):
         if call.exists() and call.state not in ('completed', 'failed', 'cancelled'):
             call.write({'end_time': fields.Datetime.now(), 'state': 'completed'})
         return True
+
+    # ── Campaign + call script (softphone) ───────────────────────────────
+    # Mirrors the WhatsApp call popup: a call suggests the script of the
+    # campaign the customer belongs to, the agent can pick/switch scripts, and
+    # can add the customer to a campaign mid-call.
+
+    @api.model
+    def _softphone_call(self, call_id):
+        try:
+            call = self.env['comm.voip.call'].browse(int(call_id))
+        except (TypeError, ValueError):
+            return self.env['comm.voip.call']
+        return call.exists()
+
+    @api.model
+    def _dialer_rows_for(self, partner, number):
+        """Call-list rows (any campaign) for this customer, newest first."""
+        domain = []
+        if partner:
+            domain = [('partner_id', '=', partner.id)]
+        digits = re.sub(r'\D', '', number or '')
+        if len(digits) >= 6:
+            num_domain = [('number', 'like', digits[-9:])]
+            domain = ['|'] + domain + num_domain if domain else num_domain
+        if not domain:
+            return self.env['comm.dialer.contact']
+        return self.env['comm.dialer.contact'].search(domain, order='id desc')
+
+    @api.model
+    def softphone_call_context(self, call_id):
+        """Campaign + suggested call script for a softphone call.
+
+        Script resolution: the dialer campaign that placed the call, else the
+        newest live dialer campaign the customer is on that has a script, else
+        (when contact_centre is installed) their contact-centre campaign's
+        voice script — the same fallback WhatsApp calls use."""
+        call = self._softphone_call(call_id)
+        if not call:
+            return {}
+        number = call._peer_number()
+        partner = call.partner_id or call._match_partner(number)
+        if partner and not call.partner_id:
+            call.sudo().partner_id = partner
+        rows = self._dialer_rows_for(partner, number).filtered(
+            lambda r: r.campaign_id.active and r.campaign_id.state != 'done')
+        campaign = call.dialer_campaign_id
+        if not campaign:
+            scripted = rows.filtered(lambda r: r.campaign_id.voice_chatbot_id)
+            campaign = (scripted or rows)[:1].campaign_id
+        chatbot = campaign.voice_chatbot_id
+        if not chatbot and partner and 'contact.centre.contact' in self.env:
+            cc_contact = self.env['contact.centre.contact'].sudo().search(
+                [('partner_id', '=', partner.id)], limit=1)
+            if cc_contact:
+                chatbot = self.env['contact.centre.campaign'].sudo().search([
+                    ('contact_ids', 'in', cc_contact.ids),
+                    ('voice_chatbot_id', '!=', False),
+                ], order='id desc', limit=1).voice_chatbot_id
+        return {
+            'call_id': call.id,
+            'number': number,
+            'partner_id': partner.id or False,
+            'partner_name': partner.name or '',
+            'partner_mobile': partner.mobile or partner.phone or number,
+            'campaign_id': campaign.id or False,
+            'campaign_name': campaign.name or '',
+            'campaign_ids': rows.campaign_id.ids,
+            'chatbot_id': chatbot.id or False,
+            'chatbot_name': chatbot.name or '',
+        }
+
+    @api.model
+    def softphone_campaign_options(self, call_id):
+        """Open dialer campaigns for the 'Add to campaign' picker, flagging the
+        ones this customer is already on."""
+        call = self._softphone_call(call_id)
+        already = set()
+        if call:
+            number = call._peer_number()
+            partner = call.partner_id or call._match_partner(number)
+            already = set(self._dialer_rows_for(partner, number).campaign_id.ids)
+        campaigns = self.env['comm.dialer.campaign'].search([('state', '!=', 'done')])
+        return [{
+            'id': c.id,
+            'name': c.name,
+            'mode': c.mode,
+            'state': c.state,
+            'has_script': bool(c.voice_chatbot_id),
+            'already': c.id in already,
+        } for c in campaigns]
+
+    @api.model
+    def softphone_add_to_campaign(self, call_id, campaign_id):
+        """Put the customer on this call into a dialer campaign's call list."""
+        call = self._softphone_call(call_id)
+        campaign = self.env['comm.dialer.campaign'].browse(int(campaign_id)).exists()
+        if not call or not campaign:
+            return {'ok': False, 'message': _("Call or campaign not found.")}
+        number = call._peer_number()
+        if not number:
+            return {'ok': False, 'message': _("This call has no customer number.")}
+        partner = call.partner_id or call._match_partner(number)
+        if campaign in self._dialer_rows_for(partner, number).campaign_id:
+            return {'ok': True, 'message': _("Already on %s.", campaign.name)}
+        if self.env['comm.dialer.dnc'].sudo().search_count([('number', '=', number)]):
+            return {'ok': False, 'message': _("%s is on the Do-Not-Call list.", number)}
+        self.env['comm.dialer.contact'].create({
+            'campaign_id': campaign.id,
+            'partner_id': partner.id or False,
+            'number': number,
+            'notes': _("Added from a softphone call by %s.", self.env.user.name),
+        })
+        return {'ok': True, 'message': _("Added to %s.", campaign.name)}
 
     @api.model
     def open_my_session(self):

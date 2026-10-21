@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 import { reactive } from "@odoo/owl";
+import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 
 /**
@@ -23,6 +24,11 @@ export const softphoneService = {
             recording: false,
             autoRecord: false,
             dialerOpen: false, // manual click-to-dial panel visible
+            // Campaign + call script for the live call (softphone_call_context).
+            ctx: null,
+            // Voice script being followed: {sessionId, chatbotId, name, bubbles,
+            // terminated, loading} — same /voice/* engine WhatsApp calls use.
+            script: null,
         });
         let ua = null;
         let session = null;
@@ -138,6 +144,7 @@ export const softphoneService = {
                     } catch {
                         callId = headerId ? parseInt(headerId, 10) || null : null;
                     }
+                    loadCallContext(callId);
                 }
                 maybeAutoRecord(); // starts once remote media is up
             };
@@ -256,6 +263,8 @@ export const softphoneService = {
 
         function onEnded() {
             const endedCall = callId;
+            closeScriptSession();
+            state.ctx = null;
             if (recorder) {
                 stopRecordingAndUpload(); // captures callId synchronously
             }
@@ -269,6 +278,144 @@ export const softphoneService = {
             state.caller = "";
             state.muted = false;
             state.status = ua && ua.isRegistered() ? "registered" : "unregistered";
+        }
+
+        // ── Campaign + call script ──────────────────────────────────────
+        // Mirrors the WhatsApp call popup: the campaign the customer is on
+        // suggests a script, which opens as soon as the call connects; the
+        // agent can switch scripts or add the customer to a campaign.
+        async function loadCallContext(forCall) {
+            if (!forCall) {
+                return;
+            }
+            let ctx;
+            try {
+                ctx = await orm.call("comm.dialer.agent.session", "softphone_call_context", [forCall]);
+            } catch (err) {
+                console.warn("[softphone] call context failed:", err);
+                return;
+            }
+            if (callId !== forCall || !ctx || !ctx.call_id) {
+                return; // call ended (or changed) while loading
+            }
+            state.ctx = ctx;
+            if (ctx.partner_name) {
+                state.caller = ctx.partner_name;
+            }
+            if (ctx.chatbot_id && !state.script) {
+                startScript(ctx.chatbot_id, ctx.chatbot_name);
+            }
+        }
+
+        // Reactive proxies aren't identity-stable, so each script run gets a
+        // token to tell "still the same script" across awaits.
+        let scriptSeq = 0;
+        const isCurrent = (token) => !!state.script && state.script.token === token;
+
+        async function startScript(chatbotId, name) {
+            if (!callId || !chatbotId) {
+                return;
+            }
+            closeScriptSession();
+            const forCall = callId;
+            const ctx = state.ctx || {};
+            const token = ++scriptSeq;
+            state.script = {
+                token, sessionId: null, chatbotId, name: name || "Call script",
+                bubbles: [], terminated: false, loading: true,
+            };
+            try {
+                const result = await rpc("/voice/start", {
+                    chatbot_id: chatbotId,
+                    contact_details: {
+                        name: ctx.partner_name || "",
+                        mobile: ctx.partner_mobile || ctx.number || state.caller,
+                    },
+                });
+                if (callId !== forCall || !isCurrent(token)) {
+                    // Call ended / script switched while starting — close the orphan.
+                    if (result && result.session_id) {
+                        rpc("/voice/end", { session_id: result.session_id }).catch(() => {});
+                    }
+                    return;
+                }
+                if (!result || result.error || !result.session_id) {
+                    throw new Error((result && result.error) || "No session id returned");
+                }
+                state.script.sessionId = result.session_id;
+                await scriptTurn(null);
+            } catch (err) {
+                console.warn("[softphone] script start failed:", err);
+                notification.add("Could not start the call script: " + (err && err.message || err),
+                    { type: "warning", title: "Call script" });
+                if (isCurrent(token)) {
+                    state.script = null;
+                }
+            }
+        }
+
+        async function scriptTurn(userInput) {
+            const script = state.script;
+            if (!script || !script.sessionId) {
+                return;
+            }
+            const token = script.token;
+            script.loading = true;
+            try {
+                const data = await rpc("/voice/turn", {
+                    session_id: script.sessionId,
+                    user_input: userInput,
+                    initial_variables: {},
+                });
+                if (!isCurrent(token)) {
+                    return; // closed / switched mid-turn
+                }
+                if (data && data.error) {
+                    throw new Error(data.error);
+                }
+                script.bubbles = script.bubbles.concat((data && data.bubbles) || []);
+                script.terminated = !!(data && data.terminate);
+            } catch (err) {
+                console.warn("[softphone] script turn failed:", err);
+                notification.add("Script error — the turn failed to advance.", { type: "danger" });
+            } finally {
+                script.loading = false;
+            }
+        }
+
+        // Close the script session server-side (best-effort) and hide the panel.
+        function closeScriptSession() {
+            const script = state.script;
+            state.script = null;
+            if (script && script.sessionId) {
+                rpc("/voice/end", { session_id: script.sessionId }).catch(() => {});
+            }
+        }
+
+        async function campaignOptions() {
+            return orm.call("comm.dialer.agent.session", "softphone_campaign_options", [callId || false]);
+        }
+
+        async function addToCampaign(campaignId) {
+            if (!callId) {
+                return;
+            }
+            try {
+                const res = await orm.call("comm.dialer.agent.session", "softphone_add_to_campaign",
+                    [callId, campaignId]);
+                notification.add(res.message, { type: res.ok ? "success" : "warning", title: "Campaign" });
+                if (res.ok) {
+                    loadCallContext(callId);
+                }
+            } catch (err) {
+                notification.add("Could not add to campaign: " + (err && err.message || err),
+                    { type: "danger" });
+            }
+        }
+
+        async function scriptOptions() {
+            return orm.searchRead("whatsapp.chatbot",
+                [["channel", "=", "voice"], ["status", "=", "published"]], ["name"]);
         }
 
         // ── Recording ────────────────────────────────────────────────────
@@ -496,6 +643,8 @@ export const softphoneService = {
         init();
         return {
             state, toggleMute, hangup, accept, decline, toggleRecord, dial, toggleDialer,
+            startScript, scriptTurn, closeScript: closeScriptSession,
+            campaignOptions, addToCampaign, scriptOptions,
             // The comm.voip.call id of the current call (for the Transfer wizard).
             get callId() { return callId; },
         };

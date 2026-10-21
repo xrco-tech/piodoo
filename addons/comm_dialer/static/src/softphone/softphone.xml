@@ -20,6 +20,10 @@
             <div class="o_dialer_sp_meta">
                 <span class="o_dialer_sp_state" t-esc="stateLabel"/>
                 <span class="o_dialer_sp_num" t-esc="state.caller"/>
+                <span class="o_dialer_sp_camp" t-if="state.ctx and state.ctx.campaign_name"
+                      t-att-title="'Campaign: ' + state.ctx.campaign_name">
+                    <i class="fa fa-bullhorn"/> <t t-esc="state.ctx.campaign_name"/>
+                </span>
             </div>
             <t t-if="state.status === 'ringing' and state.manual">
                 <button class="btn btn-success o_dialer_sp_accept"
@@ -45,6 +49,18 @@
                         t-att-title="state.recording ? 'Stop recording' : 'Record'">
                     <i class="fa fa-circle"/>
                 </button>
+                <button class="btn o_dialer_sp_script"
+                        t-if="state.status === 'incall'"
+                        t-att-class="state.script ? 'btn-primary' : 'btn-light'"
+                        t-on-click="() => this.openPicker('script')"
+                        t-att-title="state.script ? 'Change call script' : 'Start call script'">
+                    <i class="fa fa-list-alt"/>
+                </button>
+                <button class="btn btn-light o_dialer_sp_campaign"
+                        t-if="state.status === 'incall'"
+                        t-on-click="() => this.openPicker('campaign')" title="Add to campaign">
+                    <i class="fa fa-bullhorn"/>
+                </button>
                 <button class="btn btn-light o_dialer_sp_xfer"
                         t-if="state.status === 'incall'"
                         t-on-click="() => this.transfer()" title="Transfer call">
@@ -55,6 +71,70 @@
                     <i class="fa fa-phone"/> End
                 </button>
             </t>
+        </div>
+
+        <!-- Script / campaign picker (sits above the bar) -->
+        <div class="o_dialer_sp_picker" t-if="active and ui.picker">
+            <div class="o_dialer_sp_panel_head">
+                <span>
+                    <i t-att-class="ui.picker === 'script' ? 'fa fa-list-alt' : 'fa fa-bullhorn'"/>
+                    <t t-esc="ui.picker === 'script' ? (state.script ? ' Change call script' : ' Start call script') : ' Add to campaign'"/>
+                </span>
+                <button class="btn btn-sm btn-link" t-on-click="() => this.closePicker()" title="Close">
+                    <i class="fa fa-times"/>
+                </button>
+            </div>
+            <div class="o_dialer_sp_picker_list">
+                <div t-if="ui.loading" class="text-muted small p-2">Loading…</div>
+                <div t-elif="!ui.items.length" class="text-muted small p-2"
+                     t-esc="ui.picker === 'script' ? 'No published voice scripts.' : 'No open dialer campaigns.'"/>
+                <button t-foreach="ui.items" t-as="item" t-key="item.id"
+                        class="o_dialer_sp_picker_item"
+                        t-att-disabled="item.already"
+                        t-on-click="() => this.pick(item)">
+                    <span t-esc="item.name"/>
+                    <small t-if="item.already" class="text-muted"> (on list)</small>
+                    <small t-elif="item.has_script" class="text-muted" title="Has a call script">
+                        <i class="fa fa-list-alt"/>
+                    </small>
+                    <small t-if="state.script and ui.picker === 'script' and state.script.chatbotId === item.id"
+                           class="text-muted"> (current)</small>
+                </button>
+            </div>
+        </div>
+
+        <!-- Call script follower (same /voice/* engine as WhatsApp calls) -->
+        <div class="o_dialer_sp_script_panel" t-if="active and state.script and !ui.picker">
+            <div class="o_dialer_sp_panel_head">
+                <span class="text-truncate"><i class="fa fa-list-alt"/> <t t-esc="state.script.name"/></span>
+                <span class="d-flex">
+                    <button class="btn btn-sm btn-link" t-on-click="() => this.openPicker('script')"
+                            title="Change script"><i class="fa fa-exchange"/></button>
+                    <button class="btn btn-sm btn-link" t-on-click="() => this.closeScript()"
+                            title="Close script"><i class="fa fa-times"/></button>
+                </span>
+            </div>
+            <div class="o_dialer_sp_script_body">
+                <div class="o_dialer_sp_bubble" t-foreach="state.script.bubbles" t-as="b" t-key="b_index">
+                    <div t-if="b.coaching_notes" class="small text-muted fst-italic mb-1" t-esc="b.coaching_notes"/>
+                    <div class="o_dialer_sp_bubble_text" t-esc="b.body or b.text"/>
+                    <div t-if="b.buttons and b.buttons.length and !state.script.terminated" class="d-flex flex-wrap gap-1 mt-2">
+                        <button class="btn btn-sm btn-outline-primary" t-foreach="b.buttons" t-as="opt" t-key="opt"
+                                t-on-click="() => this.scriptAnswer(opt)" t-esc="opt"/>
+                    </div>
+                    <div t-if="b.list_rows and b.list_rows.length and !state.script.terminated" class="mt-2">
+                        <button class="o_dialer_sp_picker_item" t-foreach="b.list_rows" t-as="row" t-key="row"
+                                t-on-click="() => this.scriptAnswer(row)" t-esc="row"/>
+                    </div>
+                </div>
+                <div t-if="state.script.loading" class="text-muted small">Loading next step…</div>
+            </div>
+            <div t-if="state.script.terminated" class="o_dialer_sp_script_done">Script complete.</div>
+            <div t-else="" class="o_dialer_sp_script_input">
+                <input type="text" t-model="ui.answer" placeholder="Customer's answer…"
+                       t-on-keydown="(ev) => this.onScriptKeydown(ev)"/>
+                <button class="btn btn-sm btn-primary" t-on-click="() => this.scriptAnswer(ui.answer)">Send</button>
+            </div>
         </div>
 
         <!-- Click-to-dial keypad (idle only) -->

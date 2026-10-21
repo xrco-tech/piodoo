@@ -132,16 +132,19 @@ class CommVoipCall(models.Model):
         self.env['whatsapp.call.log']._cron_transcribe_pending()
         self.env['whatsapp.message']._cron_transcribe_voice_notes()
 
-    def _find_or_create_partner(self):
-        """Match the call's number to a res.partner (tolerant last-9-digits
-        match), or create one. Creation is gated by comm_dialer.auto_create_partner
-        (default on) so it can be turned off for POPIA-strict setups."""
+    def _peer_number(self):
+        """The customer's side of the call (to for outgoing, from for incoming)."""
         self.ensure_one()
         number = (self.to_number if self.direction == 'outgoing' else self.from_number) or ''
-        number = number.strip()
-        if not number:
-            return self.env['res.partner']
+        return number.strip()
+
+    @api.model
+    def _match_partner(self, number):
+        """Match-only partner lookup by phone/mobile (tolerant last-9-digits)."""
         Partner = self.env['res.partner']
+        number = (number or '').strip()
+        if not number:
+            return Partner
         digits = re.sub(r'\D', '', number)
         partner = Partner.browse()
         if len(digits) >= 6:
@@ -151,6 +154,18 @@ class CommVoipCall(models.Model):
         if not partner:
             partner = Partner.search(
                 ['|', ('phone', '=', number), ('mobile', '=', number)], limit=1)
+        return partner
+
+    def _find_or_create_partner(self):
+        """Match the call's number to a res.partner (tolerant last-9-digits
+        match), or create one. Creation is gated by comm_dialer.auto_create_partner
+        (default on) so it can be turned off for POPIA-strict setups."""
+        self.ensure_one()
+        number = self._peer_number()
+        if not number:
+            return self.env['res.partner']
+        Partner = self.env['res.partner']
+        partner = self._match_partner(number)
         if not partner:
             allow = self.env['ir.config_parameter'].sudo().get_param(
                 'comm_dialer.auto_create_partner', '1')

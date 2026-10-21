@@ -39,6 +39,15 @@ class CommDialerCampaign(models.Model):
         domain="[('usage', 'in', ('automation', 'both'))]",
         help="Provider account used to originate calls (supplies the caller ID).")
 
+    # Call script the agent follows on this campaign's calls — the same voice
+    # chatbots WhatsApp calls use (whatsapp.chatbot, channel=voice), driven via
+    # the /voice/* agent-workspace endpoints from the softphone.
+    voice_chatbot_id = fields.Many2one(
+        'whatsapp.chatbot', 'Call Script', ondelete='set null',
+        domain="[('channel', '=', 'voice'), ('status', '=', 'published')]",
+        help="Voice script that opens in the agent's softphone when one of this "
+             "campaign's calls connects.")
+
     # Calling window (company timezone), 24h floats. Outside it the pacer sleeps.
     window_start = fields.Float('Call From', default=8.0,
                                 help="Earliest hour to dial (24h, company tz).")
