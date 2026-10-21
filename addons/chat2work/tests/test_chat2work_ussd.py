@@ -224,6 +224,19 @@ class TestChat2workUssdSimulator(TransactionCase):
         self.assertFalse(wiz.inputs)
         self.assertNotIn('Invalid choice', wiz.screen_html)
 
+    def test_open_from_menu(self):
+        """The menu opens an unsaved dialog: the web client calls onchange on
+        a new record, which computes screen_html before anything is saved."""
+        spec = {'account_id': {}, 'service_code': {}, 'phone': {}, 'inputs': {},
+                'user_input': {}, 'ended': {}, 'screen_html': {}}
+        res = self.env['chat2work.ussd.simulator'].onchange({}, [], spec)
+        self.assertIn('Welcome to Chat2Work.', res['value']['screen_html'])
+        self.assertFalse(res['value']['inputs'])
+        wiz = self.env['chat2work.ussd.simulator'].create({'phone': '+27830000009'})
+        wiz.user_input = '1'
+        wiz.action_send()
+        self.assertIn('I agree', wiz.screen_html)
+
     def test_account_button(self):
         action = self.account.action_open_chat2work_simulator()
         self.assertEqual(action['res_model'], 'chat2work.ussd.simulator')
