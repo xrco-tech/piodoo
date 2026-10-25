@@ -163,6 +163,17 @@ export const softphoneService = {
              "peerconnection:setremotedescriptionfailed",
              "peerconnection:setlocaldescriptionfailed"].forEach((evName) => {
                 s.on(evName, (data) => {
+                    // Carriers (Vox) send early media as several 18x responses with
+                    // SDP. JsSIP 3.10 applies each one as an answer; after the first
+                    // the connection is already "stable", so the repeat throws. It is
+                    // harmless: JsSIP only ends the call when the 200 OK's SDP fails,
+                    // and then the session is already ended (and "failed" notifies).
+                    // Re-INVITE failures on an established call still notify.
+                    if (evName === "peerconnection:setremotedescriptionfailed"
+                            && !s.isEnded() && !s.isEstablished()) {
+                        console.debug("[softphone] ignored repeated early-media SDP:", data);
+                        return;
+                    }
                     console.warn("[softphone] " + evName, data);
                     notification.add("Media step failed: " + evName, { type: "danger" });
                 });
