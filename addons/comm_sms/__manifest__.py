@@ -1,8 +1,8 @@
 {
-    'name': 'InfoBip SMS Integration',
-    'version': '1.0.2',
+    'name': 'SMS Integration (Infobip, Africa\'s Talking, Connect Mobile)',
+    'version': '1.1.0',
     'category': 'Discuss',
-    'summary': 'Add custom SMS functionality using InfoBip (SMS Service Provider) API',
+    'summary': 'Send and receive SMS through Infobip, Africa\'s Talking or Connect Mobile, per SMS account',
     'description': """
     """,
     'author': 'If I Could Code (Org)',

@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'SMS Billing',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Communications',
-    'summary': 'SMS channel adapter for comm_billing_core (Infobip)',
+    'summary': 'SMS channel adapter for comm_billing_core (Infobip, Africa\'s Talking, Connect Mobile)',
     'description': """
 SMS Billing
 ===========
 
 Hooks the sms.sms model into the shared comm.billing.event ledger.
 Segment-based pricing (160 GSM-7 / 70 UCS-2), country + direction resolution.
-Seeds placeholder ZA rates that you'll refresh from Infobip's monthly bill.
+Seeds ZA rate cards per provider; refresh them from each provider's bill.
     """,
     'author': 'XR Co.',
     'license': 'LGPL-3',

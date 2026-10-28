@@ -58,7 +58,9 @@ class CommBillingEvent(models.Model):
         provider = 'Infobip'
         account_ref = False
         if 'account_id' in sms._fields and sms.account_id:
-            provider = (sms.account_id.provider or 'Infobip').title()
+            # Selection label ("Africa's Talking"), matching rate card provider tags.
+            provider = dict(sms.account_id._fields['provider'].selection).get(
+                sms.account_id.provider, 'Infobip')
             account_ref = sms.account_id.name
 
         return self.create({

@@ -10,6 +10,9 @@ class TestRateResolution(common.TransactionCase):
     def setUp(self):
         super().setUp()
         self.ZA = self.env.ref('base.za')
+        # Cards seeded by channel modules (e.g. comm_sms_billing) would compete
+        # with the test card in active_on().
+        self.env['comm.billing.rate.card'].search([]).active = False
         self.card = self.env['comm.billing.rate.card'].create({
             'name': 'Test card', 'channel': 'sms', 'provider': 'Infobip',
             'effective_from': date(2025, 1, 1),

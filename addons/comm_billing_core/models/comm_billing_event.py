@@ -134,7 +134,7 @@ class CommBillingEvent(models.Model):
         country = self.env['res.country'].browse(vals.get('country_id') or 0)
         wa_id = vals.get('wa_id')
 
-        card = self.env['comm.billing.rate.card'].active_on(channel, event_date)
+        card = self.env['comm.billing.rate.card'].active_on(channel, event_date, provider=provider)
         if not card:
             vals.update(price_usd=0.0, price_local=0.0, fx_rate=1.0)
             return vals

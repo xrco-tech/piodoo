@@ -60,7 +60,9 @@ class CommBillingRateCard(models.Model):
                     'Rate card effective_from must be <= effective_to.')
 
     @api.model
-    def active_on(self, channel, on_date):
+    def active_on(self, channel, on_date, provider=None):
+        """Active card for `channel` on `on_date`. With `provider`, a card
+        tagged with that provider wins over the others."""
         on_date = fields.Date.to_date(on_date) if on_date else fields.Date.today()
         domain = [
             ('channel', '=', channel),
@@ -68,7 +70,10 @@ class CommBillingRateCard(models.Model):
             ('effective_from', '<=', on_date),
             '|', ('effective_to', '=', False), ('effective_to', '>=', on_date),
         ]
-        card = self.search(domain, order='effective_from desc', limit=1)
+        card = self.browse()
+        if provider:
+            card = self.search(domain + [('provider', '=', provider)], order='effective_from desc', limit=1)
+        card = card or self.search(domain, order='effective_from desc', limit=1)
         if not card:
             _logger.warning('No active %s rate card for %s', channel, on_date)
         return card
