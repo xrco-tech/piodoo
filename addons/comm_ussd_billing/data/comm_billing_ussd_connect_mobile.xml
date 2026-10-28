@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Connect Mobile ZA USSD, standard (non-premium) codes, from
+            https://connect-mobile.co.za/ussd: 20c per 20 s on Vodacom,
+            Telkom and Cell C, 22c per 20 s on MTN. Converted at R18/USD.
+        -->
+
+        <record id="rate_card_ussd_connect_mobile" model="comm.billing.rate.card">
+            <field name="name">Connect Mobile USSD — ZA</field>
+            <field name="channel">ussd</field>
+            <field name="provider">Connect Mobile</field>
+            <field name="effective_from">2026-10-01</field>
+            <field name="billing_model">per_session</field>
+            <field name="notes">Billed per started 20 seconds of session time (unit "per 20 s"). Rates converted from ZAR at R18/USD; check against the current Connect Mobile rate card.</field>
+        </record>
+
+        <record id="rate_ussd_cm_za_20s" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_ussd_connect_mobile"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">ussd_session</field>
+            <field name="direction">any</field>
+            <field name="unit">ussd_20s</field>
+            <field name="price_usd">0.011111</field>
+        </record>
+
+        <record id="rate_ussd_cm_za_20s_mtn" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_ussd_connect_mobile"/>
+            <field name="country_id" ref="base.za"/>
+            <field name="category">ussd_session</field>
+            <field name="carrier">mtn</field>
+            <field name="direction">any</field>
+            <field name="unit">ussd_20s</field>
+            <field name="price_usd">0.012222</field>
+        </record>
+
+    </data>
+</odoo>

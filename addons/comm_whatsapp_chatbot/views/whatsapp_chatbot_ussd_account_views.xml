@@ -43,7 +43,15 @@
                             <field name="api_key" password="True"/>
                             <field name="base_url"/>
                         </group>
-                        <div class="alert alert-info" role="alert">
+                        <group string="Callback" invisible="provider != 'connect_mobile'" groups="base.group_system">
+                            <field name="callback_url" widget="CopyClipboardChar"/>
+                            <div colspan="2">
+                                <button name="action_regenerate_webhook_token" type="object"
+                                        string="Regenerate token" class="btn-secondary"
+                                        confirm="The current callback URL will stop working until the provider is given the new one. Continue?"/>
+                            </div>
+                        </group>
+                        <div class="alert alert-info" role="alert" invisible="provider == 'connect_mobile'">
                             Inbound callback: <code>/ussd/inbound</code>.
                             Notifications: <code>/ussd/notifications</code>.
                             Routed by the gateway's <em>serviceCode</em> matched against
