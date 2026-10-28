@@ -860,6 +860,59 @@ class WhatsAppMessage(models.Model):
                 'error': str(e)
             }
 
+    def send_whatsapp_payload(self, recipient_phone, content, account=None,
+                              log_body='', log_type='interactive'):
+        """Send any Cloud API message body and log it like send_whatsapp_message.
+
+        `content` is the type-specific part of the payload, e.g.
+        ``{'type': 'interactive', 'interactive': {...}}``,
+        ``{'type': 'image', 'image': {'link': ..., 'caption': ...}}`` or
+        ``{'type': 'template', 'template': {...}}``. The outgoing
+        whatsapp.message record keeps Meta's message id, so delivery-status
+        webhooks (sent/delivered/read/failed) land on it.
+
+        Returns {'success', 'message_id', 'error'} like send_whatsapp_message.
+        """
+        import requests
+
+        Account = self.env['comm.whatsapp.account'].sudo()
+        account = account or Account.get_default()
+        if not account or not account.access_token or not account.phone_number_id:
+            return {'success': False, 'error': 'WhatsApp account not configured.'}
+        recipient = re.sub(r'[^0-9]', '', recipient_phone or '')
+        if not recipient:
+            return {'success': False, 'error': 'No recipient phone number.'}
+        payload = dict(content, messaging_product='whatsapp',
+                       recipient_type='individual', to=recipient)
+        url = f"https://graph.facebook.com/v18.0/{account.phone_number_id}/messages"
+        headers = {'Authorization': f'Bearer {account.access_token}',
+                   'Content-Type': 'application/json'}
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            data = response.json() if response.text else {}
+        except Exception as e:
+            _logger.error("WhatsApp %s send to %s failed: %s", log_type, recipient, e)
+            return {'success': False, 'error': str(e)}
+        if response.status_code != 200:
+            error = (data.get('error') or {}).get('message') or response.text[:200]
+            _logger.error("WhatsApp %s send to %s failed (%s): %s",
+                          log_type, recipient, response.status_code, error)
+            return {'success': False, 'error': error, 'status_code': response.status_code}
+        message_id = (data.get('messages') or [{}])[0].get('id')
+        self.sudo().create({
+            'message_id': message_id or f'sent_{fields.Datetime.now()}',
+            'wa_id': recipient,
+            'phone_number': recipient,
+            'contact_name': recipient,
+            'message_type': log_type if log_type in dict(self._fields['message_type'].selection) else 'unknown',
+            'message_body': log_body,
+            'message_timestamp': fields.Datetime.now(),
+            'phone_number_id': account.phone_number_id,
+            'status': 'processed',
+            'is_incoming': False,
+        })
+        return {'success': True, 'message_id': message_id}
+
     def send_whatsapp_interactive_flow(self, recipient_phone, step, phone_number_id=None,
                                        context_message_id=None, account=None):
         """Send a WhatsApp interactive flow message for a chatbot step."""

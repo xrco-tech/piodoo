@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="ir_cron_chat2work_cv_links" model="ir.cron">
+        <field name="name">Chat2Work: send CV links (WhatsApp, SMS fallback)</field>
+        <field name="model_id" ref="model_chat2work_candidate"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_send_cv_links()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+    <record id="ir_cron_chat2work_wa_gc" model="ir.cron">
+        <field name="name">Chat2Work: purge abandoned WhatsApp sessions</field>
+        <field name="model_id" ref="model_chat2work_wa_session"/>
+        <field name="state">code</field>
+        <field name="code">model._gc_stale_sessions()</field>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Draft only: an admin submits it to Meta (Submit to Meta on the
+         template) and it's used once Meta approves it. Until then USSD
+         candidates get the CV link by SMS. -->
+    <data noupdate="1">
+        <record id="wa_template_cv_link" model="whatsapp.template">
+            <field name="name">chat2work_cv_link</field>
+            <field name="language">en</field>
+            <field name="category">UTILITY</field>
+            <field name="body">Your Chat2Work profile is ready. Tap the button below to upload your CV, or answer a few questions and we'll create a polished CV for you. The link is personal and works for 30 days.</field>
+            <field name="footer">Chat2Work never asks for money.</field>
+            <field name="description">Sent after a USSD registration when the caller said their number is on WhatsApp. The URL button carries the candidate's CV token.</field>
+        </record>
+        <record id="wa_template_cv_link_button" model="whatsapp.template.button">
+            <field name="template_id" ref="wa_template_cv_link"/>
+            <field name="button_type">URL</field>
+            <field name="text">Add my CV</field>
+            <field name="url">https://piodoo.xrco.tech/cv/{{1}}</field>
+        </record>
+    </data>
+</odoo>

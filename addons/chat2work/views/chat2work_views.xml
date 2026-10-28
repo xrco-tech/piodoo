@@ -117,6 +117,9 @@
                 <field name="location" optional="hide"/>
                 <field name="field" optional="hide"/>
                 <field name="registered_via"/>
+                <field name="cv_state" optional="show"/>
+                <field name="cv_link_state" optional="show"/>
+                <field name="source_tag" optional="hide"/>
                 <field name="create_date"/>
             </list>
         </field>
@@ -151,6 +154,21 @@
                             <field name="whatsapp_opt_in"/>
                             <field name="consent_at"/>
                             <field name="has_id_number"/>
+                            <field name="source_tag"/>
+                        </group>
+                        <group string="CV">
+                            <field name="cv_state"/>
+                            <field name="cv_attachment_id" invisible="not cv_attachment_id"/>
+                            <field name="cv_submitted_at" invisible="not cv_submitted_at"/>
+                        </group>
+                        <group string="CV Link">
+                            <field name="cv_link_state"/>
+                            <field name="cv_url" widget="url" invisible="not cv_url"/>
+                            <field name="cv_link_sent_at" invisible="not cv_link_sent_at"/>
+                            <field name="cv_token_expires" invisible="not cv_token_expires"/>
+                            <field name="cv_link_error" invisible="not cv_link_error"/>
+                            <button name="action_resend_cv_link" type="object" string="Send CV link again"
+                                    class="btn-secondary" colspan="2"/>
                         </group>
                     </group>
                 </sheet>

@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Public CV page (/cv/<token>). Self-contained: inline CSS, system fonts
+         and no JavaScript, so it loads fast on low-end phones and little data. -->
+    <template id="cv_page" name="Chat2Work CV page">&lt;!DOCTYPE html&gt;
+        <t t-set="d" t-value="details or {}"/>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <meta name="robots" content="noindex, nofollow"/>
+            <title>Chat2Work · Your CV</title>
+            <style>
+                :root { --hivis:#ffc414; --navy:#1b2a41; --ink:#16202e; --muted:#586273; --paper:#f7f6f1; --line:#dcdcd4; --ok:#1f8a5b; --bad:#a3261b; }
+                * { box-sizing:border-box; }
+                body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+                header { background:var(--hivis); padding:20px 16px 18px; }
+                header .brand { font-weight:800; font-size:14px; letter-spacing:.08em; text-transform:uppercase; }
+                header h1 { margin:6px 0 0; font-size:26px; line-height:1.15; }
+                main { max-width:640px; margin:0 auto; padding:16px; display:grid; gap:14px; }
+                .card { background:#fff; border:1px solid var(--line); border-radius:8px; }
+                details > summary { list-style:none; cursor:pointer; padding:16px; font-weight:700; font-size:18px; display:flex; justify-content:space-between; gap:12px; }
+                details > summary::-webkit-details-marker { display:none; }
+                details > summary::after { content:"+"; font-size:22px; line-height:1; color:var(--muted); }
+                details[open] > summary::after { content:"–"; }
+                details > summary small { display:block; font-weight:400; font-size:14px; color:var(--muted); }
+                .body { padding:0 16px 16px; display:grid; gap:12px; }
+                label { display:grid; gap:4px; font-weight:700; font-size:14px; }
+                label span { font-weight:400; color:var(--muted); }
+                input, textarea, select { width:100%; font:inherit; font-weight:400; padding:10px 12px; border:1px solid #b9bcc2; border-radius:6px; background:#fff; color:var(--ink); }
+                textarea { min-height:84px; }
+                fieldset { border:1px dashed var(--line); border-radius:6px; padding:10px 12px; display:grid; gap:10px; margin:0; }
+                legend { font-weight:700; font-size:14px; padding:0 4px; }
+                .btn { display:inline-block; width:100%; text-align:center; padding:13px 16px; border:0; border-radius:6px; font:inherit; font-weight:700; background:var(--navy); color:#fff; cursor:pointer; text-decoration:none; }
+                .btn.alt { background:var(--hivis); color:var(--ink); }
+                .msg { padding:12px 14px; border-radius:6px; font-weight:700; }
+                .msg.ok { background:#e3f3ea; color:var(--ok); }
+                .msg.bad { background:#f8e3e1; color:var(--bad); }
+                .status { padding:14px 16px; font-size:15px; }
+                .fine { font-size:13px; color:var(--muted); text-align:center; }
+                :focus-visible { outline:3px solid var(--navy); outline-offset:2px; }
+            </style>
+        </head>
+        <body>
+            <header>
+                <div class="brand">Chat2Work</div>
+                <h1 t-if="candidate">
+                    <t t-if="first_name">Hi <t t-out="first_name"/>, let's</t><t t-else="">Let's</t> get your CV ready
+                </h1>
+                <h1 t-else="">This link has expired</h1>
+            </header>
+            <main>
+                <t t-if="not candidate">
+                    <div class="card status">
+                        CV links work for 30 days. To get a new one, dial <b>*134*433*48#</b> or send
+                        "Hi Chat2Work" on WhatsApp.
+                    </div>
+                </t>
+                <t t-else="">
+                    <div t-if="notice == 'uploaded'" class="msg ok">Thanks! We've received your CV.</div>
+                    <div t-if="notice == 'built'" class="msg ok">Your CV is ready. <a t-attf-href="/cv/#{token}/download">Download it (PDF)</a>.</div>
+                    <div t-if="notice == 'help'" class="msg ok">Got it. A Chat2Work agent will call you to help with your CV.</div>
+                    <div t-if="error" class="msg bad" role="alert" t-out="error"/>
+
+                    <div class="card status" t-if="candidate.cv_state != 'none' and not notice">
+                        <t t-if="candidate.cv_state == 'uploaded'">We have your uploaded CV. You can upload a new one or build one below.</t>
+                        <t t-if="candidate.cv_state == 'built'">Your CV is ready. <a t-attf-href="/cv/#{token}/download">Download it (PDF)</a>, or update it below.</t>
+                        <t t-if="candidate.cv_state == 'help_requested'">An agent will call you<t t-if="masked_phone"> on <t t-out="masked_phone"/></t> to help with your CV.</t>
+                    </div>
+
+                    <details class="card" t-att-open="'open' if error and not d else None">
+                        <summary><div>I have a CV<small>Upload a PDF, Word file or a photo of it</small></div></summary>
+                        <form class="body" method="post" enctype="multipart/form-data" t-attf-action="/cv/#{token}/upload">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <label for="cv_file">Your CV <span>PDF, DOC, DOCX, JPG or PNG, up to 5 MB</span>
+                                <input id="cv_file" type="file" name="cv_file" required="required"
+                                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.heic,image/*"/>
+                            </label>
+                            <button class="btn" type="submit">Upload my CV</button>
+                        </form>
+                    </details>
+
+                    <details class="card" t-att-open="'open' if d else None">
+                        <summary><div>Build my CV<small>Answer a few questions; we'll make a polished PDF</small></div></summary>
+                        <form class="body" method="post" t-attf-action="/cv/#{token}/build">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <label for="full_name">Full name
+                                <input id="full_name" name="full_name" required="required" maxlength="80" autocomplete="name"
+                                       t-att-value="d.get('full_name') or candidate.name or ''"/>
+                            </label>
+                            <label for="town">Town or area <span>e.g. Soweto, Johannesburg</span>
+                                <input id="town" name="town" maxlength="80" t-att-value="d.get('town') or candidate.location or ''"/>
+                            </label>
+                            <label for="email">Email <span>optional</span>
+                                <input id="email" name="email" type="email" maxlength="120" autocomplete="email" t-att-value="d.get('email', '')"/>
+                            </label>
+                            <label for="summary">About you <span>2–3 sentences: your strengths and the work you want</span>
+                                <textarea id="summary" name="summary" maxlength="600"><t t-out="d.get('summary', '')"/></textarea>
+                            </label>
+                            <t t-foreach="rows" t-as="i">
+                                <t t-set="edu" t-value="(d.get('education') or [])[i] if i &lt; len(d.get('education') or []) else {}"/>
+                                <fieldset>
+                                    <legend>Education <t t-out="i + 1"/><t t-if="i"> (optional)</t></legend>
+                                    <label t-attf-for="edu_school_#{i}">School or college
+                                        <input t-attf-id="edu_school_#{i}" t-attf-name="edu_school_#{i}" maxlength="120" t-att-value="edu.get('school', '')"/>
+                                    </label>
+                                    <label t-attf-for="edu_qualification_#{i}">Qualification <span>e.g. Matric, N4 Business Management</span>
+                                        <input t-attf-id="edu_qualification_#{i}" t-attf-name="edu_qualification_#{i}" maxlength="120" t-att-value="edu.get('qualification', '')"/>
+                                    </label>
+                                    <label t-attf-for="edu_year_#{i}">Year completed
+                                        <input t-attf-id="edu_year_#{i}" t-attf-name="edu_year_#{i}" maxlength="20" inputmode="numeric" t-att-value="edu.get('year', '')"/>
+                                    </label>
+                                </fieldset>
+                            </t>
+                            <t t-foreach="rows" t-as="i">
+                                <t t-set="job" t-value="(d.get('experience') or [])[i] if i &lt; len(d.get('experience') or []) else {}"/>
+                                <fieldset>
+                                    <legend>Work experience <t t-out="i + 1"/> (optional)</legend>
+                                    <label t-attf-for="job_role_#{i}">Job title <span>include volunteering or part-time work</span>
+                                        <input t-attf-id="job_role_#{i}" t-attf-name="job_role_#{i}" maxlength="120" t-att-value="job.get('role', '')"/>
+                                    </label>
+                                    <label t-attf-for="job_employer_#{i}">Employer
+                                        <input t-attf-id="job_employer_#{i}" t-attf-name="job_employer_#{i}" maxlength="120" t-att-value="job.get('employer', '')"/>
+                                    </label>
+                                    <label t-attf-for="job_dates_#{i}">Dates <span>e.g. Jan 2024 – Mar 2025</span>
+                                        <input t-attf-id="job_dates_#{i}" t-attf-name="job_dates_#{i}" maxlength="120" t-att-value="job.get('dates', '')"/>
+                                    </label>
+                                    <label t-attf-for="job_duties_#{i}">What you did
+                                        <textarea t-attf-id="job_duties_#{i}" t-attf-name="job_duties_#{i}" maxlength="400"><t t-out="job.get('duties', '')"/></textarea>
+                                    </label>
+                                </fieldset>
+                            </t>
+                            <label for="skills">Skills <span>separate with commas, e.g. customer service, Excel, forklift</span>
+                                <input id="skills" name="skills" maxlength="300" t-att-value="d.get('skills', '')"/>
+                            </label>
+                            <label for="languages">Languages <span>e.g. English, isiZulu, Sesotho</span>
+                                <input id="languages" name="languages" maxlength="150" t-att-value="d.get('languages', '')"/>
+                            </label>
+                            <label for="licence">Driver's licence
+                                <select id="licence" name="licence">
+                                    <t t-foreach="['None', 'Learner\'s', 'Code 8 (B)', 'Code 10 (C1)', 'Code 14 (EC)']" t-as="opt">
+                                        <option t-att-value="opt" t-att-selected="'selected' if d.get('licence') == opt else None" t-out="opt"/>
+                                    </t>
+                                </select>
+                            </label>
+                            <button class="btn" type="submit">Create my CV</button>
+                        </form>
+                    </details>
+
+                    <details class="card">
+                        <summary><div>Help me<small>An agent calls you and helps you write it</small></div></summary>
+                        <form class="body" method="post" t-attf-action="/cv/#{token}/help">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <p style="margin:0">We'll call you<t t-if="masked_phone"> on <b t-out="masked_phone"/></t> within one business day.</p>
+                            <button class="btn alt" type="submit">Ask for help</button>
+                        </form>
+                    </details>
+                    <p class="fine">This link is personal and works until <t t-out="candidate.cv_token_expires.strftime('%d %b %Y')"/>. Chat2Work never asks for money.</p>
+                </t>
+            </main>
+        </body>
+        </html>
+    </template>
+
+    <!-- The standard CV, rendered to PDF from the form answers (cv_data). -->
+    <record id="paperformat_cv" model="report.paperformat">
+        <field name="name">Chat2Work CV (A4, no letterhead)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">15</field>
+        <field name="margin_bottom">15</field>
+        <field name="margin_left">15</field>
+        <field name="margin_right">15</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+    <record id="action_report_cv" model="ir.actions.report">
+        <field name="paperformat_id" ref="paperformat_cv"/>
+        <field name="name">Chat2Work CV</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">chat2work.report_cv</field>
+        <field name="print_report_name">'CV - %s' % (object.name or 'Candidate')</field>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_cv">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc"><t t-call="web.basic_layout">
+                <t t-set="d" t-value="doc.sudo().cv_data or {}"/>
+                <div class="page" style="font-family: Arial, Helvetica, sans-serif; color:#16202e; font-size:11pt; line-height:1.45;">
+                    <div style="border-bottom:3px solid #ffc414; padding-bottom:8px; margin-bottom:14px;">
+                        <div style="font-size:24pt; font-weight:bold;" t-out="d.get('full_name') or doc.name"/>
+                        <div style="color:#586273;">
+                            <t t-out="doc._c2w_display_phone()"/>
+                            <t t-if="d.get('email')"> · <t t-out="d['email']"/></t>
+                            <t t-if="d.get('town')"> · <t t-out="d['town']"/></t>
+                        </div>
+                    </div>
+                    <t t-if="d.get('summary')">
+                        <h3 style="font-size:12pt; text-transform:uppercase; letter-spacing:1px; color:#1b2a41; margin:14px 0 4px;">Profile</h3>
+                        <p style="margin:0" t-out="d['summary']"/>
+                    </t>
+                    <t t-if="d.get('experience')">
+                        <h3 style="font-size:12pt; text-transform:uppercase; letter-spacing:1px; color:#1b2a41; margin:14px 0 4px;">Work experience</h3>
+                        <div t-foreach="d['experience']" t-as="job" style="margin-bottom:8px;">
+                            <b t-out="job.get('role')"/><t t-if="job.get('employer')">, <t t-out="job['employer']"/></t>
+                            <span t-if="job.get('dates')" style="color:#586273;"> · <t t-out="job['dates']"/></span>
+                            <div t-if="job.get('duties')" t-out="job['duties']"/>
+                        </div>
+                    </t>
+                    <t t-if="d.get('education')">
+                        <h3 style="font-size:12pt; text-transform:uppercase; letter-spacing:1px; color:#1b2a41; margin:14px 0 4px;">Education</h3>
+                        <div t-foreach="d['education']" t-as="edu" style="margin-bottom:6px;">
+                            <b t-out="edu.get('qualification')"/><t t-if="edu.get('school')">, <t t-out="edu['school']"/></t>
+                            <span t-if="edu.get('year')" style="color:#586273;"> · <t t-out="edu['year']"/></span>
+                        </div>
+                    </t>
+                    <t t-if="d.get('skills')">
+                        <h3 style="font-size:12pt; text-transform:uppercase; letter-spacing:1px; color:#1b2a41; margin:14px 0 4px;">Skills</h3>
+                        <p style="margin:0" t-out="d['skills']"/>
+                    </t>
+                    <h3 style="font-size:12pt; text-transform:uppercase; letter-spacing:1px; color:#1b2a41; margin:14px 0 4px;">Other</h3>
+                    <div t-if="d.get('languages')"><b>Languages:</b> <t t-out="d['languages']"/></div>
+                    <div><b>Driver's licence:</b> <t t-out="d.get('licence') or 'None'"/></div>
+                    <div><b>References:</b> available on request</div>
+                </div>
+            </t></t>
+        </t>
+    </template>
+</odoo>

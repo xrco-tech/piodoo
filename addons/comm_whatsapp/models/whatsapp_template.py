@@ -383,11 +383,16 @@ class WhatsAppTemplate(models.Model):
                             'text': button.text
                         })
                     elif button.button_type == 'URL':
-                        buttons_list.append({
+                        url_button = {
                             'type': 'URL',
                             'text': button.text,
                             'url': button.url
-                        })
+                        }
+                        # A dynamic URL ("https://x/cv/{{1}}") must carry an
+                        # example full URL, or Meta rejects the template.
+                        if button.url and '{{1}}' in button.url:
+                            url_button['example'] = [button.url.replace('{{1}}', 'EXAMPLE123')]
+                        buttons_list.append(url_button)
                     elif button.button_type == 'PHONE_NUMBER':
                         buttons_list.append({
                             'type': 'PHONE_NUMBER',
