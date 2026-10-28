@@ -61,6 +61,24 @@ class TestChat2workWhatsapp(TransactionCase):
         self.assertEqual(self.chat('27820001001', text('27820001001', 'hello')), [False])
         self.assertFalse(self.sent)
 
+    def test_trigger_matching(self):
+        self.env['ir.config_parameter'].sudo().set_param('chat2work.wa_triggers', 'chat2work,jobs,sebenza,ispani')
+        match = self.Session._match_trigger
+        self.assertEqual(match('Hi Chat2Work FLYER'), 'FLYER')
+        self.assertEqual(match('jobs'), '')
+        self.assertEqual(match('Sebenza car'), 'CAR')
+        self.assertEqual(match('Sawubona, ispani'), '')
+        self.assertEqual(match('Ispani please'), '')         # not a known tag
+        self.assertEqual(match('jobs in Durban'), '')
+        for other in ('do you have any jobs?', 'I am a jobseeker', 'jobsearch', 'hello', 'Hi there', ''):
+            self.assertIsNone(match(other), other)
+
+    def test_jobs_mid_sentence_goes_to_chatbot(self):
+        self.env['ir.config_parameter'].sudo().set_param('chat2work.wa_triggers', 'chat2work,jobs')
+        wa = '27820001009'
+        self.assertEqual(self.chat(wa, text(wa, 'do you have any jobs?')), [False])
+        self.assertFalse(self.sent)
+
     def test_create_profile_sends_cv_button(self):
         wa = '27820001002'
         id_no = make_id(years_ago(24))
