@@ -6,9 +6,10 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="InfoBip" string="InfoBip" name="infobip">
-                    <block title="InfoBip">
-                        <setting title="Use InfoBip API">
+                <app data-string="SMS Providers" string="SMS Providers" name="infobip">
+                    <block title="SMS Providers">
+                        <setting title="Use SMS Accounts" string="Use SMS Accounts"
+                                 help="Send SMS without an account through the default SMS account (Infobip, Africa's Talking or Connect Mobile) instead of Odoo IAP. The fields below are the legacy Infobip settings, used only when no SMS account exists.">
                             <field name="sms_use_infobip_api"/>
                         </setting>
                         <setting title="Base URL">

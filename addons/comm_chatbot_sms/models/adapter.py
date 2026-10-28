@@ -17,11 +17,15 @@ class SmsAdapter:
         Sms = env['sms.sms'].sudo()
         body = payload.get('body', '')
         try:
+            # comm.bot has no SMS account of its own, so pin the default one
+            # (when there is one) for provider routing and billing.
+            account = env['comm.sms.account'].get_default()
             sms = Sms.create({
                 'partner_id': conversation.partner_id.id,
                 'number': number,
                 'body': body,
                 'state': 'outgoing',
+                'account_id': account.id or False,
             })
             sms.send()
         except Exception as e:

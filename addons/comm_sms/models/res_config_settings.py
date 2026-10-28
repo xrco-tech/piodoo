@@ -4,7 +4,7 @@ class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
     sms_use_infobip_api = fields.Boolean(
-        string='Use InfoBip API',
+        string='Use SMS Accounts',
         config_parameter='sms.use_infobip_api'
     )
 

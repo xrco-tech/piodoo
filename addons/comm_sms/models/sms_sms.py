@@ -27,6 +27,9 @@ class SmsSms(models.Model):
     # senders / providers.
     account_id = fields.Many2one('comm.sms.account', string="Account",
                                  ondelete='restrict')
+    # ID the provider assigned to the message, for providers (Africa's Talking)
+    # whose delivery reports can't echo our uuid back.
+    provider_message_id = fields.Char("Provider Message ID", index='btree_not_null', copy=False)
 
     @staticmethod
     def get_mapped_infobip_state(status):
@@ -101,19 +104,19 @@ class SmsSms(models.Model):
         elif error_name:
             return 'server_error'
         
-    def _send_using_infobip_api(self, messages, raise_exception=False):
+    def _send_using_infobip_api(self, messages, raise_exception=False, account=None):
         _logger.info(f'messages: {messages}')
-        # Per-account credentials win over the global ir.config_parameter when
-        # every SMS in this batch points at the same account. (Heterogeneous
-        # batches fall back to the global config — _send groups by body, not
-        # by account, so single-account installs hit the existing path.)
-        account = self.account_id if len(self.account_id) == 1 else False
+        # Per-account credentials win over the global ir.config_parameter.
+        # _send passes the batch's account; older callers get the batch's
+        # single account_id, if any.
+        if account is None:
+            account = self.account_id if len(self.account_id) == 1 else False
         if account and account.base_url and account.api_key:
             infobip_api_base_url = account.base_url
             infobip_api_key = account.api_key
         else:
-            infobip_api_base_url = self.env['ir.config_parameter'].get_param('infobip.base_url', default=False)
-            infobip_api_key = self.env['ir.config_parameter'].get_param('infobip.api_key', default=False)
+            infobip_api_base_url = self.env['ir.config_parameter'].sudo().get_param('infobip.base_url', default=False)
+            infobip_api_key = self.env['ir.config_parameter'].sudo().get_param('infobip.api_key', default=False)
         if not infobip_api_base_url or not infobip_api_key:
             if raise_exception:
                 raise ValidationError("Invalid InfoBip API Credentials Set")
@@ -139,7 +142,8 @@ class SmsSms(models.Model):
         response = requests.post(
             f'https://{infobip_api_base_url}/sms/2/text/advanced',
             json=payload,
-            headers=headers
+            headers=headers,
+            timeout=30,
         )
         _logger.info(f'response: {response}')
 
@@ -167,63 +171,123 @@ class SmsSms(models.Model):
             return result
 
     def _send(self, unlink_failed=False, unlink_sent=True, raise_exception=False):
-        """Send SMS after checking the number (presence and formatting)."""
-        # Override default send method if InfoBip explecitly selected
-        check_use_infobib_api = self.env['ir.config_parameter'].get_param('sms.use_infobip_api', default=False)
-        # If every SMS in the batch points at the same Infobip account, that
-        # account's sender_id wins over the global default_from_number — the
-        # multi-account hook for outbound routing.
-        account = self.account_id if len(self.account_id) == 1 else False
-        if check_use_infobib_api or (account and account.provider == 'infobip'):
-            if account and account.sender_id:
-                default_from_number = account.sender_id
-            else:
-                default_from_number = self.env['ir.config_parameter'].get_param('infobip.default_from_number', default=False)
-            if not default_from_number:
-                if raise_exception:
-                    raise ValidationError("Default From (Sender) Number Not Set For InfoBip API")
+        """Send each SMS through the provider of its account.
 
+        - SMS with an account_id go to that account's provider.
+        - SMS without one go to the default account when 'Use SMS accounts'
+          (sms.use_infobip_api) is on, or to the legacy infobip.* settings
+          when no account exists yet.
+        - Otherwise they fall back to the standard provider (IAP/Twilio).
+        """
+        use_accounts = self.env['ir.config_parameter'].sudo().get_param('sms.use_infobip_api', default=False)
+        Account = self.env['comm.sms.account']
+        default_account = Account.get_default() if use_accounts else Account.browse()
+
+        by_account = {}
+        standard_sms = self.browse()
+        for sms in self:
+            account = sms.account_id or default_account
+            if account or use_accounts:
+                # An empty account means "legacy infobip.* settings".
+                by_account[account] = by_account.get(account, self.browse()) | sms
+            else:
+                standard_sms |= sms
+
+        for account, account_sms in by_account.items():
+            if account:
+                # Pin the resolved account so delivery reports and billing see it.
+                account_sms.filtered(lambda s: not s.account_id).sudo().write({'account_id': account.id})
+            account_sms._send_with_account(account, raise_exception=raise_exception)
+
+        if standard_sms:
+            return super(SmsSms, standard_sms)._send(unlink_failed=unlink_failed, unlink_sent=unlink_sent,
+                                                     raise_exception=raise_exception)
+
+    def _send_with_account(self, account, raise_exception=False):
+        """Send this batch with `account`'s provider and apply the results.
+
+        Each provider implements `_send_<provider>(account, raise_exception)`
+        returning ``[{'uuid', 'state', 'provider_message_id'?}]`` where state
+        is an IAP-style key (success / insufficient_credit / server_error...).
+        """
+        provider = account.provider if account else 'infobip'
+        try:
+            results = getattr(self, f'_send_{provider}')(account, raise_exception=raise_exception)
+        except Exception as e:
+            _logger.info('Sent batch %s SMS: %s: failed with exception %s', len(self.ids), self.ids, e)
+            if raise_exception:
+                raise
+            results = [{'uuid': sms.uuid, 'state': 'server_error'} for sms in self]
+        else:
+            _logger.info('Send batch %s SMS via %s: %s: gave %s', len(self.ids), provider, self.ids, results)
+        self._apply_send_results(results)
+
+    def _send_infobip(self, account, raise_exception=False):
+        if account and account.sender_id:
+            default_from_number = account.sender_id
+        else:
+            default_from_number = self.env['ir.config_parameter'].sudo().get_param('infobip.default_from_number', default=False)
+        if not default_from_number:
+            if raise_exception:
+                raise ValidationError("Default From (Sender) Number Not Set For InfoBip API")
+
+        if account:
+            delivery_reports_url = account._webhook_url('/sms/infobip/status')
+        else:
             local_base_url = self[0].get_base_url()
             # Enforce the use of SSL-protected delivery URLs
             if local_base_url.startswith('http://'):
                 local_base_url = local_base_url.replace('http://', 'https://')
             delivery_reports_url = url_join(local_base_url, '/sms/infobip/status')
-            messages = [{
-                'text': body,
-                'from': default_from_number,
-                'notifyUrl': delivery_reports_url,
-                "destinations": [{"to": sms.number, 'messageId': sms.uuid}  for sms in body_sms_records],
-            } for body, body_sms_records in self.grouped('body').items()]
+        messages = [{
+            'text': body,
+            'from': default_from_number,
+            'notifyUrl': delivery_reports_url,
+            "destinations": [{"to": sms.number, 'messageId': sms.uuid}  for sms in body_sms_records],
+        } for body, body_sms_records in self.grouped('body').items()]
+        return self._send_using_infobip_api(messages, raise_exception=raise_exception, account=account)
 
-            try:
-                results = self._send_using_infobip_api(messages,raise_exception=raise_exception)
-            except Exception as e:
-                _logger.info('Sent batch %s SMS: %s: failed with exception %s', len(self.ids), self.ids, e)
-                if raise_exception:
-                    raise
-                results = [{'uuid': sms.uuid, 'state': 'server_error'} for sms in self]
+    def _apply_send_results(self, results):
+        """Write provider send results (IAP-style states) onto the SMS."""
+        results_uuids = [result['uuid'] for result in results]
+        all_sms_sudo = self.env['sms.sms'].sudo().search([('uuid', 'in', results_uuids)]).with_context(sms_skip_msg_notification=True)
+
+        for result in results:
+            if result.get('provider_message_id'):
+                all_sms_sudo.filtered(lambda s: s.uuid == result['uuid']).provider_message_id = result['provider_message_id']
+
+        for iap_state, results_group in tools.groupby(results, key=lambda result: result['state']):
+            _logger.info(f'iap_state: {iap_state}, results_group: {results_group}')
+            sms_sudo = all_sms_sudo.filtered(lambda s: s.uuid in {result['uuid'] for result in results_group})
+            if success_state := self.IAP_TO_SMS_STATE_SUCCESS.get(iap_state):
+                sms_sudo.sms_tracker_id._action_update_from_sms_state(success_state)
+                sms_sudo.write({'state': success_state, 'failure_type': False})
             else:
-                _logger.info('Send batch %s SMS: %s: gave %s', len(self.ids), self.ids, results)
-
-            results_uuids = [result['uuid'] for result in results]
-            all_sms_sudo = self.env['sms.sms'].sudo().search([('uuid', 'in', results_uuids)]).with_context(sms_skip_msg_notification=True)
-
-            for iap_state, results_group in tools.groupby(results, key=lambda result: result['state']):
-                _logger.info(f'iap_state: {iap_state}, results_group: {results_group}')
-                sms_sudo = all_sms_sudo.filtered(lambda s: s.uuid in {result['uuid'] for result in results_group})
-                if success_state := self.IAP_TO_SMS_STATE_SUCCESS.get(iap_state):
-                    sms_sudo.sms_tracker_id._action_update_from_sms_state(success_state)
-                    sms_sudo.write({'state': success_state, 'failure_type': False})
+                failure_type = self.IAP_TO_SMS_FAILURE_TYPE.get(iap_state, 'unknown')
+                if failure_type != 'unknown':
+                    sms_sudo.sms_tracker_id._action_update_from_sms_state('error', failure_type=failure_type)
                 else:
-                    failure_type = self.IAP_TO_SMS_FAILURE_TYPE.get(iap_state, 'unknown')
-                    if failure_type != 'unknown':
-                        sms_sudo.sms_tracker_id._action_update_from_sms_state('error', failure_type=failure_type)
-                    else:
-                        sms_sudo.sms_tracker_id._action_update_from_provider_error(iap_state)
-                    sms_sudo.write({'state': 'error', 'failure_type': failure_type})
+                    sms_sudo.sms_tracker_id._action_update_from_provider_error(iap_state)
+                sms_sudo.write({'state': 'error', 'failure_type': failure_type})
 
-            all_sms_sudo.mail_message_id._notify_message_notification_update()
-        else:
-            # Infobip not selected: fall back to the standard provider (IAP/Twilio).
-            return super()._send(unlink_failed=unlink_failed, unlink_sent=unlink_sent,
-                                 raise_exception=raise_exception)
+        all_sms_sudo.mail_message_id._notify_message_notification_update()
+
+    def _apply_delivery_report(self, status, failure_type=False):
+        """Apply a provider delivery report to these SMS.
+
+        :param status: 'pending', 'delivered' or 'error'
+        :param failure_type: sms.sms failure_type for errors (default 'unknown')
+        """
+        for sms in self.sudo():
+            if status == 'delivered':
+                sms.sms_tracker_id._action_update_from_sms_state('sent')
+                sms.write({'state': 'sent', 'failure_type': False})
+            elif status == 'pending':
+                # A late "still pending" report must not undo a delivery.
+                if sms.state not in ('sent', 'error'):
+                    sms.sms_tracker_id._action_update_from_sms_state('pending')
+                    sms.write({'state': 'pending', 'failure_type': False})
+            else:
+                failure_type = failure_type or 'unknown'
+                sms.sms_tracker_id._action_update_from_sms_state('error', failure_type=failure_type)
+                sms.write({'state': 'error', 'failure_type': failure_type})

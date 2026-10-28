@@ -11,5 +11,23 @@
             <field name="notes">Placeholder SMS rates. Refresh from Infobip's monthly bill or rate sheet.</field>
         </record>
 
+        <record id="rate_card_sms_africastalking_default" model="comm.billing.rate.card">
+            <field name="name">Africa's Talking SMS — default</field>
+            <field name="channel">sms</field>
+            <field name="provider">Africa's Talking</field>
+            <field name="effective_from">2026-01-01</field>
+            <field name="billing_model">per_segment</field>
+            <field name="notes">Published ZA prices (R0.24 out, R0.70 in) at R18.00/USD. Excludes shortcode / long code / sender ID fees.</field>
+        </record>
+
+        <record id="rate_card_sms_connect_mobile_default" model="comm.billing.rate.card">
+            <field name="name">Connect Mobile SMS — default</field>
+            <field name="channel">sms</field>
+            <field name="provider">Connect Mobile</field>
+            <field name="effective_from">2026-01-01</field>
+            <field name="billing_model">per_segment</field>
+            <field name="notes">2023 rate card bulk SMS R0.18 ex VAT at R18.00/USD. Confirm with Connect Mobile.</field>
+        </record>
+
     </data>
 </odoo>

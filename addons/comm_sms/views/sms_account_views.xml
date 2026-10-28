@@ -46,16 +46,30 @@
                             </group>
                         </group>
                         <notebook>
-                            <page string="Credentials" name="credentials" invisible="provider != 'infobip'">
+                            <page string="Credentials" name="credentials">
                                 <group>
-                                    <field name="base_url" placeholder="https://your-instance.api.infobip.com"/>
-                                    <field name="api_key" password="True" placeholder="API key for outbound"/>
-                                    <field name="retention_period"/>
+                                    <field name="username" invisible="provider != 'africastalking'"
+                                           required="provider == 'africastalking'" placeholder="sandbox"/>
+                                    <field name="use_sandbox" invisible="provider != 'africastalking'"/>
+                                    <field name="base_url" invisible="provider == 'africastalking'"
+                                           placeholder="your-instance.api.infobip.com"/>
+                                    <field name="api_key" password="True" placeholder="API key / token for outbound"/>
+                                    <field name="retention_period" invisible="provider != 'infobip'"/>
                                 </group>
-                                <div class="alert alert-info" role="alert">
-                                    Inbound MO callback: <code>/sms/infobip/inbound</code> —
-                                    the controller routes by the inbound <em>to</em> field
-                                    matched against this <strong>Sender ID</strong>.
+                            </page>
+                            <page string="Webhooks" name="webhooks" groups="base.group_system">
+                                <group>
+                                    <field name="dlr_webhook_url" widget="CopyClipboardChar"/>
+                                    <field name="inbound_webhook_url" widget="CopyClipboardChar"/>
+                                </group>
+                                <button name="action_regenerate_webhook_token" type="object"
+                                        string="Regenerate token" class="btn-secondary"
+                                        confirm="The old callback URLs will stop working until you update them at the provider. Continue?"/>
+                                <div class="alert alert-info mt-3" role="alert">
+                                    Paste these URLs into the provider's dashboard (Connect Mobile:
+                                    send them to their support). Inbound SMS route to the bot whose
+                                    SMS account is this one. Infobip delivery reports get the token
+                                    automatically.
                                 </div>
                             </page>
                         </notebook>

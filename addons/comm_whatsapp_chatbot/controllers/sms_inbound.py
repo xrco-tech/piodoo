@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Inbound SMS (MO) webhook for Infobip.
+"""Inbound SMS (MO) webhooks for Infobip, Africa's Talking and Connect Mobile.
 
 Infobip's mobile-originated subscription POSTs JSON shaped roughly:
 
@@ -27,7 +27,8 @@ import json
 import logging
 
 from odoo import http
-from odoo.http import request
+from odoo.http import request, Response
+from odoo.addons.comm_sms.controllers.main import _forbidden, _webhook_account
 
 _logger = logging.getLogger(__name__)
 
@@ -104,3 +105,56 @@ class InfobipMOController(http.Controller):
             json.dumps({"status": "ok"}),
             headers=[("Content-Type", "application/json")],
         )
+
+
+def _dispatch_inbound(provider, account, from_number, body, message_id):
+    """Hand one inbound SMS to the chatbot. The token-matched account's sender
+    ID is the canonical `to`, so bot routing doesn't depend on how each
+    provider formats the destination address."""
+    _logger.info(
+        f"{provider} MO from={from_number!r} to={account.sender_id!r} body={(body or '')[:120]!r} id={message_id}"
+    )
+    try:
+        request.env["whatsapp.chatbot.message"].sudo().process_incoming_sms_message(
+            from_number=from_number,
+            message_text=body,
+            sms_message_id=message_id,
+            to_number=account.sender_id,
+        )
+    except Exception as e:
+        _logger.error(f"Failed processing inbound {provider} SMS from {from_number}: {e}", exc_info=True)
+
+
+class AfricasTalkingMOController(http.Controller):
+
+    @http.route(
+        ["/sms/africastalking/inbound"],
+        type="http", auth="public", methods=["POST"], csrf=False,
+    )
+    def receive_mo(self, **kwargs):
+        """Form-encoded: from, to, text, date, id, linkId, networkCode."""
+        account = _webhook_account("africastalking")
+        if not account:
+            return _forbidden()
+        if kwargs.get("from"):
+            _dispatch_inbound("Africa's Talking", account, kwargs["from"],
+                              kwargs.get("text") or "", kwargs.get("id"))
+        return Response("OK", status=200)
+
+
+class ConnectMobileMOController(http.Controller):
+
+    @http.route(
+        ["/sms/connectmobile/inbound"],
+        type="http", auth="public", methods=["GET", "POST"], csrf=False,
+    )
+    def receive_mo(self, **kwargs):
+        """Query parameters: oa (sender), da (our number), ud (text), sms_id,
+        userid, timestamp, charset."""
+        account = _webhook_account("connect_mobile")
+        if not account:
+            return _forbidden()
+        if kwargs.get("oa"):
+            _dispatch_inbound("Connect Mobile", account, kwargs["oa"],
+                              kwargs.get("ud") or "", kwargs.get("sms_id"))
+        return Response("OK", status=200)
