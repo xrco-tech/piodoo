@@ -5,12 +5,13 @@ Same screens and rules as USSD (chat2work.flow), shown as reply buttons (up to
 3 options) or a list (more), with a welcome image on the first screen. Typed
 replies work too: the option number or its label.
 
-Routing: a message containing a start keyword (chat2work.wa_triggers, default
-"chat2work", so the flyer QR text "Hi Chat2Work FLYER" works) opens a session;
-while a session is active, every message from that number comes here. Nothing
-else reaches the generic chatbot engine, which would create a contact for the
-sender before consent. Any words after the keyword are kept as the campaign
-source tag (FLYER, CAR, ...).
+Routing: a message starting with a start keyword (chat2work.wa_triggers,
+default "chat2work"; a greeting first is fine, so "Hi Chat2Work FLYER" works)
+opens a session; while a session is active, every message from that number
+comes here. Nothing else reaches the generic chatbot engine, which would create
+a contact for the sender before consent. The word after the keyword is kept as
+the campaign source tag when it's a known code (chat2work.source_tags: FLYER,
+CAR, ...).
 """
 
 import logging
@@ -28,6 +29,10 @@ ID_PREFIX = 'c2w:'  # on button/list ids, so taps on an expired session's button
 BUTTON_TITLE_MAX = 20
 ROW_TITLE_MAX = 24
 BODY_MAX = 1024
+# Words allowed before a start keyword ("Hi Chat2Work", "Sawubona Sebenza").
+GREETINGS = ('hi', 'hello', 'hey', 'hallo', 'howzit', 'heita', 'sawubona', 'molo', 'dumela', 'avuxeni', 'aweh')
+# Campaign codes kept as candidate.source_tag; anything else after the keyword is ignored.
+DEFAULT_SOURCE_TAGS = 'FLYER,POSTER,CAR,TAXI,SOCIAL,QR,RADIO,SMS,WEB,REFERRAL'
 
 # WhatsApp wording where the USSD text doesn't fit a chat.
 WA_PROMPTS = {
@@ -90,15 +95,30 @@ class Chat2workWaSession(models.Model):
         return [t.strip().lower() for t in raw.split(',') if t.strip()]
 
     @api.model
+    def _source_tags(self):
+        raw = self.env['ir.config_parameter'].sudo().get_param('chat2work.source_tags', DEFAULT_SOURCE_TAGS)
+        return {t.strip().upper() for t in raw.split(',') if t.strip()}
+
+    @api.model
     def _match_trigger(self, text):
-        """The source tag ('' if none) when `text` starts a session, else None."""
-        low = (text or '').strip().lower()
-        for trigger in self._triggers():
-            idx = low.find(trigger)
-            if idx != -1:
-                tag = (text or '').strip()[idx + len(trigger):].strip(' -:')
-                return re.sub(r'[^A-Za-z0-9_-]', '', tag)[:30].upper()
-        return None
+        """The source tag ('' if none) when `text` starts a session, else None.
+
+        A keyword only counts as a whole word at the start of the message,
+        optionally after a greeting ("Jobs", "Hi Sebenza CAR"), so everyday
+        words like "jobs" mid-sentence still reach the normal chatbot. The
+        next word is the source tag if it's a known one.
+        """
+        triggers = self._triggers()
+        if not triggers:
+            return None
+        pattern = r'^(?:(?:%s)\b[\s,!.]*)?(?:%s)\b(.*)$' % (
+            '|'.join(GREETINGS), '|'.join(re.escape(t) for t in triggers))
+        m = re.match(pattern, (text or '').strip(), re.IGNORECASE | re.DOTALL)
+        if not m:
+            return None
+        words = re.findall(r'[A-Za-z0-9_-]+', m.group(1))
+        tag = words[0].upper() if words else ''
+        return tag if tag in self._source_tags() else ''
 
     @api.model
     def _account_allowed(self, account):
