@@ -46,7 +46,8 @@ SCREEN_TOPICS = {
     'S02': 'Terms', 'S03': 'WhatsApp', 'S05': 'Status', 'S08': 'Status',
     'S06': 'Looking for work', 'S09': 'Looking for work',
 }
-ID_LIKE = re.compile(r'\d{13}')
+# 13 digits, alone or grouped with spaces/dashes/dots ("930829 0197 084").
+ID_LIKE = re.compile(r'(?<!\d)\d(?:[\s.-]?\d){12}(?!\d)')
 ID_REDACTED = '[ID number]'
 
 
@@ -228,7 +229,7 @@ class Chat2workFlow(models.AbstractModel):
 
     def _note_input(self, inp):
         """Record a reply as what it means ("WhatsApp: Yes"), never an ID number."""
-        if self.screen == 'S04' and inp != '0':
+        if (self.screen == 'S04' and inp != '0') or ID_LIKE.fullmatch(inp or ''):
             text = ID_REDACTED
         else:
             _prompt, options = self._screen(self.screen)
@@ -312,6 +313,9 @@ class Chat2workFlow(models.AbstractModel):
     def _on_S04_ERR1(self, inp):
         if inp == '1':
             return self._goto('S04')
+        if re.fullmatch(r'\d{13}', inp or ''):
+            # They typed the ID again instead of choosing "Try again".
+            return self._on_S04(inp)
         if inp == '0':
             self.data = {}
             return self._goto('S01B')

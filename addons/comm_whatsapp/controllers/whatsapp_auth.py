@@ -324,7 +324,8 @@ class WhatsAppAuthController(http.Controller):
         """
         try:
             WhatsAppMessage = request.env['whatsapp.message'].sudo()
-            _logger.info(f"Processing message: {message}")
+            # Not the payload itself: it holds what people type (ID numbers, names).
+            _logger.info("Processing message %s (%s)", message.get('id'), message.get('type'))
             message_record = WhatsAppMessage.create_from_webhook(message, value_data)
             if message_record:
                 _logger.info(f"Message saved with ID: {message_record.id}")

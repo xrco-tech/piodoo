@@ -20,11 +20,14 @@ from datetime import timedelta
 
 from odoo import api, fields, models
 
-from .chat2work_ussd import normalize_msisdn
+from .chat2work_ussd import ID_LIKE, ID_REDACTED, normalize_msisdn
 
 _logger = logging.getLogger(__name__)
 
-SESSION_MINUTES = 30
+# Long enough to fetch an ID book or come back after a break; WhatsApp's own
+# reply window is 24 hours.
+SESSION_MINUTES = 24 * 60
+RESTART_KEYWORD = 'Ispani'
 ID_PREFIX = 'c2w:'  # on button/list ids, so taps on an expired session's buttons are recognisably ours
 BUTTON_TITLE_MAX = 20
 ROW_TITLE_MAX = 24
@@ -62,7 +65,7 @@ class Chat2workWaSession(models.Model):
     # ── Channel specifics ────────────────────────────────────────────────────
 
     def _restart_phrase(self):
-        return 'send "Hi Chat2Work"'
+        return 'send "%s"' % RESTART_KEYWORD
 
     def _after_consent(self):
         # They're messaging us on WhatsApp, so the USSD "do you use WhatsApp?"
@@ -152,8 +155,10 @@ class Chat2workWaSession(models.Model):
 
     def _normalise_choice(self, inp):
         """Map a typed label ('yes', 'Create profile') to its option key."""
-        if self.screen == 'S04':
-            return re.sub(r'\s+', '', inp)
+        if self.screen in ('S04', 'S04-ERR1'):
+            digits = re.sub(r'[\s.-]', '', inp)
+            if self.screen == 'S04' or re.fullmatch(r'\d{13}', digits):
+                return digits
         _prompt, options = self._screen(self.screen)
         low = inp.strip().lower().rstrip('.')
         for key, label in options:
@@ -182,11 +187,13 @@ class Chat2workWaSession(models.Model):
         ours = inp.startswith(ID_PREFIX)
         inp = inp[len(ID_PREFIX):] if ours else inp
         if not session and tag is None:
-            if not ours:
+            if not ours and not (is_text and ID_LIKE.search(inp)):
                 return False
-            # A tap on a button from a session that has since expired.
+            # A tap on a button, or an ID number, from a session that has since
+            # expired. Taking the ID here also keeps it out of the chatbot engine.
             self.env['whatsapp.message'].send_whatsapp_payload(
-                wa_id, {'type': 'text', 'text': {'body': 'Your session expired. Send "Hi Chat2Work" to start again.'}},
+                wa_id, {'type': 'text', 'text': {
+                    'body': 'Your session expired. Send "%s" to start again.' % RESTART_KEYWORD}},
                 account=account or None, log_body='Chat2Work session expired', log_type='text')
             return True
         try:
@@ -296,6 +303,18 @@ class Chat2workWaSession(models.Model):
         self.sudo().search([('write_date', '<', cutoff)]).unlink()
 
 
+def redact_id_numbers(wa_message):
+    """Blank ID numbers out of a stored inbound message. The flow has already
+    hashed and encrypted the ID; the plain copy must not stay in the WhatsApp log."""
+    vals = {}
+    for fname in ('message_body', 'raw_message_data'):
+        value = wa_message[fname]
+        if value and ID_LIKE.search(value):
+            vals[fname] = ID_LIKE.sub(ID_REDACTED, value)
+    if vals:
+        wa_message.sudo().write(vals)
+
+
 class WhatsAppChatbotMessageChat2work(models.Model):
     _inherit = 'whatsapp.chatbot.message'
 
@@ -303,6 +322,7 @@ class WhatsAppChatbotMessageChat2work(models.Model):
         if wa_message and wa_message.is_incoming:
             try:
                 if self.env['chat2work.wa.session'].sudo().wa_handle(webhook_message, value_data):
+                    redact_id_numbers(wa_message)
                     return
             except Exception:
                 _logger.exception("chat2work WhatsApp routing failed; passing to the chatbot engine")

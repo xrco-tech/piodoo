@@ -2237,7 +2237,7 @@ class WhatsAppChatbotMessage(models.Model):
                 else:
                     # No trigger matched - don't assign a chatbot
                     # Only process messages that match triggers or are already in a conversation
-                    _logger.info(f"No trigger matched for message '{message_text}'. Skipping chatbot processing.")
+                    _logger.info("No trigger matched for message %s. Skipping chatbot processing.", wa_message.id)
                     return
             
             # Only continue if we have a chatbot (either from active conversation or trigger match)
@@ -2402,7 +2402,7 @@ class WhatsAppChatbotMessage(models.Model):
                     })
                     self._mark_contact_entered(chatbot_contact, chatbot)
                 else:
-                    _logger.info(f"No SMS trigger matched '{message_text}'. Skipping.")
+                    _logger.info("No SMS trigger matched. Skipping.")
                     return
 
             if not chatbot:

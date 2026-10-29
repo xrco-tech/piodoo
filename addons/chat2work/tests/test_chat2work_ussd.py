@@ -102,6 +102,12 @@ class TestChat2workUssd(TransactionCase):
         self.assertEqual(out[8], 'END Too many attempts. Please try again later or dial %s '
                                  'and request a callback.' % CODE)
 
+    def test_id_retyped_on_error_screen(self):
+        id_no = make_id(years_ago(26))
+        out = self.dial('+27820000014', '1', '1', '1', '1234567890123', id_no)
+        self.assertTrue(out[4].startswith('CON Invalid ID number.'))
+        self.assertTrue(out[5].startswith('CON What is your current employment status?'))
+
     def test_invalid_id_main_menu(self):
         out = self.dial('+27820000005', '1', '1', '1', '1234567890123', '0')
         self.assertTrue(out[-1].startswith('CON Welcome to Chat2Work.'))

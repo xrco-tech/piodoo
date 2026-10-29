@@ -2,6 +2,7 @@
 """Chat2Work on WhatsApp, the CV link (WhatsApp template / SMS fallback) and
 the public CV page."""
 
+import json
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -112,12 +113,64 @@ class TestChat2workWhatsapp(TransactionCase):
         self.assertIn("didn't get that", self.sent[-1]['interactive']['body']['text'])
         self.chat(wa, text(wa, 'nope'), text(wa, 'still no'))
         self.assertEqual(self.sent[-1]['type'], 'text')
-        self.assertIn('Send "Hi Chat2Work"', self.sent[-1]['text']['body'])
+        self.assertIn('Send "Ispani"', self.sent[-1]['text']['body'])
 
     def test_expired_button_tap_is_answered(self):
         wa = '27820001004'
         self.assertEqual(self.chat(wa, tap(wa, '1')), [True])
         self.assertIn('session expired', self.sent[-1]['text']['body'])
+
+    def _at_id_screen(self, wa):
+        self.chat(wa, text(wa, 'Hi Chat2Work'), tap(wa, '1'), tap(wa, '1'))
+        self.assertIn('13-digit SA ID', self.sent[-1]['interactive']['body']['text'])
+
+    def test_id_with_dashes_and_spaces(self):
+        wa = '27820001006'
+        id_no = make_id(years_ago(27))
+        self._at_id_screen(wa)
+        self.chat(wa, text(wa, '%s-%s-%s %s' % (id_no[:2], id_no[2:6], id_no[6:10], id_no[10:])))
+        self.assertIn('employment status', self.sent[-1]['interactive']['body']['text'])
+
+    def test_id_retyped_on_error_screen(self):
+        wa = '27820001007'
+        self._at_id_screen(wa)
+        self.chat(wa, text(wa, '1234567890123'))
+        self.assertIn('Invalid ID number', self.sent[-1]['interactive']['body']['text'])
+        self.chat(wa, text(wa, make_id(years_ago(28))))
+        self.assertIn('employment status', self.sent[-1]['interactive']['body']['text'])
+
+    def test_session_survives_a_break(self):
+        wa = '27820001008'
+        self._at_id_screen(wa)
+        session = self.Session.search([('wa_id', '=', wa)])
+        self.env.cr.execute("UPDATE chat2work_wa_session SET write_date = now() at time zone 'UTC' - interval '3 hours' "
+                            "WHERE id = %s", [session.id])
+        session.invalidate_recordset()
+        self.chat(wa, text(wa, make_id(years_ago(29))))
+        self.assertIn('employment status', self.sent[-1]['interactive']['body']['text'])
+
+    def test_id_after_expiry_is_answered_not_passed_on(self):
+        wa = '27820001009'
+        self.assertEqual(self.chat(wa, text(wa, make_id(years_ago(30)))), [True])
+        self.assertIn('session expired', self.sent[-1]['text']['body'])
+        self.assertIn('"Ispani"', self.sent[-1]['text']['body'])
+        self.assertEqual(self.chat(wa, text(wa, 'my number is 0821234567')), [False])
+
+    def test_id_number_redacted_from_message_log(self):
+        wa = '27820001010'
+        id_no = make_id(years_ago(31))
+        self._at_id_screen(wa)
+        webhook = text(wa, id_no)
+        msg = self.env['whatsapp.message'].sudo().create({
+            'message_id': 'wamid.idmsg', 'is_incoming': True, 'message_type': 'text',
+            'message_timestamp': fields.Datetime.now(), 'wa_id': wa,
+            'message_body': id_no, 'raw_message_data': json.dumps(webhook, indent=2),
+        })
+        self.env['whatsapp.chatbot.message'].process_incoming_webhook_message(msg, webhook, {}, {})
+        self.assertIn('employment status', self.sent[-1]['interactive']['body']['text'])
+        self.assertEqual(msg.message_body, '[ID number]')
+        self.assertNotIn(id_no, msg.raw_message_data)
+        self.assertIn('[ID number]', msg.raw_message_data)
 
     def test_consent_declined_stores_nothing(self):
         wa = '27820001005'
