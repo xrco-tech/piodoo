@@ -41,6 +41,14 @@ STATUS_OPTIONS = [('1', 'Unemployed'), ('2', 'Employed'), ('3', 'Self-employed')
 INTENT_PROMPT = "Are you looking for a new job?"
 INTENT_OPTIONS = [('1', 'Yes'), ('2', 'No'), ('0', 'Back')]
 
+# Question names for the activity log, so "Yes" reads as "WhatsApp: Yes".
+SCREEN_TOPICS = {
+    'S02': 'Terms', 'S03': 'WhatsApp', 'S05': 'Status', 'S08': 'Status',
+    'S06': 'Looking for work', 'S09': 'Looking for work',
+}
+ID_LIKE = re.compile(r'\d{13}')
+ID_REDACTED = '[ID number]'
+
 
 # ── SA ID + phone helpers ────────────────────────────────────────────────────
 
@@ -126,6 +134,9 @@ class Chat2workFlow(models.AbstractModel):
     data = fields.Json(default=lambda self: {}, readonly=True)
     invalid_count = fields.Integer(readonly=True)
     id_attempts = fields.Integer(readonly=True)
+    # Messages in and out, for the candidate's activity log. ID numbers are
+    # never written here.
+    transcript = fields.Json(default=lambda self: [], readonly=True)
 
     # ── Config ───────────────────────────────────────────────────────────────
 
@@ -205,6 +216,44 @@ class Chat2workFlow(models.AbstractModel):
 
     def _set(self, **vals):
         self.data = dict(self.data or {}, **vals)
+
+    # ── Activity log ─────────────────────────────────────────────────────────
+
+    def _note(self, direction, text, wa_message_id=None):
+        entry = {'at': fields.Datetime.to_string(fields.Datetime.now()), 'dir': direction,
+                 'text': ID_LIKE.sub(ID_REDACTED, text or '')}
+        if wa_message_id:
+            entry['wa'] = wa_message_id
+        self.transcript = list(self.transcript or []) + [entry]
+
+    def _note_input(self, inp):
+        """Record a reply as what it means ("WhatsApp: Yes"), never an ID number."""
+        if self.screen == 'S04' and inp != '0':
+            text = ID_REDACTED
+        else:
+            _prompt, options = self._screen(self.screen)
+            text = dict(options).get(inp, inp)
+            topic = SCREEN_TOPICS.get(self.screen)
+            if topic and inp in dict(options) and inp != '0':
+                text = '%s: %s' % (topic, text)
+        self._note('inbound', text)
+
+    def _log_transcript(self):
+        """Hand the session to the candidate's activity log. Only sessions tied
+        to a profile are logged, so a caller who never consents leaves nothing."""
+        if self.env.context.get('chat2work_ussd_simulation'):
+            return
+        for session in self:
+            if not session.transcript:
+                continue
+            candidate = (self.env['chat2work.candidate'].browse((session.data or {}).get('created_candidate_id')).exists()
+                         or session.candidate_id)
+            if candidate:
+                candidate._c2w_log_session(session._channel, session.transcript)
+
+    def unlink(self):
+        self._log_transcript()
+        return super().unlink()
 
     # Welcome
     def _on_S01A(self, inp):
@@ -392,7 +441,10 @@ class Chat2workUssdSession(models.Model):
                 })
                 body, end = session._start()
             else:
-                body, end = session._advance((latest_input or '').strip())
+                inp = (latest_input or '').strip()
+                session._note_input(inp)
+                body, end = session._advance(inp)
+            session._note('outbound', body)
             if len(body) > SCREEN_MAX:
                 _logger.warning("chat2work USSD screen %s is %d chars (>%d)",
                                 session.screen, len(body), SCREEN_MAX)
