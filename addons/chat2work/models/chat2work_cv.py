@@ -238,6 +238,7 @@ class Chat2workCandidateCv(models.Model):
             'cv_state': state,
             'cv_submitted_at': fields.Datetime.now(),
         })
+        self._c2w_touch()
         self._c2w_log_event('web', 'inbound', 'Built a CV with the CV page form: %s' % filename
                             if state == 'built' else 'Uploaded a CV on the CV page: %s' % filename)
         return attachment
@@ -264,6 +265,7 @@ class Chat2workCandidateCv(models.Model):
             'notes': 'Asked for help creating a CV (from the CV page).',
         })
         self.sudo().write({'cv_state': 'help_requested', 'cv_submitted_at': fields.Datetime.now()})
+        self._c2w_touch()
         self._c2w_log_event('web', 'inbound', 'Asked for help creating a CV (CV page). Callback request logged.')
         return callback
 

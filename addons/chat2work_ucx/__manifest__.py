@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work in UCX',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Human Resources/Recruitment',
     'summary': "Show Chat2Work USSD, WhatsApp, CV-link and CV-page activity in the UCX workspace",
     'description': """
