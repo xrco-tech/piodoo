@@ -155,3 +155,25 @@ class TestChat2workUcx(TransactionCase):
         self.Ussd.with_context(chat2work_ussd_simulation=True).ussd_handle('ATUid_sim', CODE, '+27820100008', '', '')
         self.Ussd.with_context(chat2work_ussd_simulation=True).ussd_session_closed('ATUid_sim')
         self.assertEqual(self.Interaction.search_count([]), before)
+
+    def test_erase_removes_conversation_and_created_contact(self):
+        self.dial('+27820100009', '1', '1', '2', make_id(years_ago(26)), '1', '1')
+        cand, items = self.logged('+27820100009')
+        partner, conversation = cand.partner_id, items.conversation_id
+        self.assertTrue(cand.c2w_created_partner)
+        cand._c2w_erase()
+        self.assertFalse(conversation.exists())
+        self.assertFalse(items.exists())
+        self.assertFalse(partner.with_context(active_test=False).exists())
+
+    def test_erase_keeps_existing_contact_and_shared_thread(self):
+        partner = self.env['res.partner'].create({'name': 'Bongani Zulu', 'mobile': '+27820100010'})
+        shared = self.env['comm.conversation'].create({'partner_id': partner.id})
+        self.dial('+27820100010', '1', '1', '2', make_id(years_ago(27)), '1', '1')
+        cand, items = self.logged('+27820100010')
+        self.assertEqual(items.conversation_id, shared)
+        self.assertFalse(cand.c2w_created_partner)
+        cand._c2w_erase()
+        self.assertTrue(partner.exists())
+        self.assertTrue(partner.active)
+        self.assertTrue(shared.exists())

@@ -249,6 +249,7 @@ class Chat2workFlow(models.AbstractModel):
             candidate = (self.env['chat2work.candidate'].browse((session.data or {}).get('created_candidate_id')).exists()
                          or session.candidate_id)
             if candidate:
+                candidate._c2w_touch()
                 candidate._c2w_log_session(session._channel, session.transcript)
 
     def unlink(self):

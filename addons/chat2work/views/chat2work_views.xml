@@ -129,6 +129,11 @@
         <field name="model">chat2work.candidate</field>
         <field name="arch" type="xml">
             <form string="Candidate">
+                <header>
+                    <button name="action_c2w_erase" type="object" string="Delete candidate data"
+                            groups="base.group_system" class="btn-danger"
+                            confirm="This permanently deletes this candidate's profile, CV, callback requests and Chat2Work conversation history (POPIA deletion request). It can't be undone. Continue?"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <label for="name"/>
@@ -153,6 +158,7 @@
                         <group string="Contact &amp; Consent">
                             <field name="whatsapp_opt_in"/>
                             <field name="consent_at"/>
+                            <field name="last_active_at"/>
                             <field name="has_id_number"/>
                             <field name="source_tag"/>
                         </group>

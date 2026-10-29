@@ -23,6 +23,10 @@ OPEN_STATES = ('open', 'waiting', 'handoff')
 class Chat2workCandidateUcx(models.Model):
     _inherit = 'chat2work.candidate'
 
+    c2w_created_partner = fields.Boolean(
+        'Contact Created by Chat2Work', readonly=True, copy=False,
+        help="The contact was made for this candidate, so deleting the candidate deletes it too.")
+
     def _c2w_ucx_partner(self):
         """The candidate's contact, created now if they don't have one (they've
         consented by the time they're a candidate)."""
@@ -40,6 +44,7 @@ class Chat2workCandidateUcx(models.Model):
                 'name': rec.name or 'Chat2Work %s' % rec._c2w_display_phone(),
                 'mobile': rec.phone or False,
             })
+            rec.c2w_created_partner = True
         rec.partner_id = partner
         return partner
 
@@ -102,6 +107,28 @@ class Chat2workCandidateUcx(models.Model):
         result = next((e['text'] for e in reversed(transcript) if e['dir'] == 'outbound'), '')
         body = 'USSD session: %s\nResult: %s' % (' › '.join(choices) or 'no choices made', result)
         self._c2w_ucx_log('ussd', [{'dir': 'inbound', 'text': body, 'at': transcript[0].get('at')}])
+
+    def _c2w_erase_extra(self):
+        """Remove the Chat2Work conversations, and the contact if Chat2Work made
+        it. A conversation the person also used for other things is left alone."""
+        super()._c2w_erase_extra()
+        for rec in self.sudo():
+            partner = rec.partner_id
+            if not partner:
+                continue
+            self.env['comm.conversation'].sudo().with_context(active_test=False).search([
+                ('partner_id', '=', partner.id), ('campaign_id', '=', 'chat2work'),
+            ]).unlink()
+            if not rec.c2w_created_partner:
+                continue
+            rec.partner_id = False
+            try:
+                with self.env.cr.savepoint():
+                    partner.unlink()
+            except Exception:
+                # Referenced elsewhere: strip the personal details instead.
+                partner.write({'name': 'Deleted Chat2Work candidate', 'mobile': False, 'phone': False,
+                               'email': False, 'active': False})
 
     def _c2w_log_event(self, channel, direction, body, status=None, wa_message_id=None):
         super()._c2w_log_event(channel, direction, body, status, wa_message_id)
