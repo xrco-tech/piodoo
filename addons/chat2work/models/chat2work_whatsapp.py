@@ -199,9 +199,12 @@ class Chat2workWaSession(models.Model):
                     'account_id': account.id or False,
                     'source_tag': tag or False,
                 })
+                session._note('inbound', inp)
                 body, end = session._start()
             else:
-                body, end = session._advance(session._normalise_choice(inp))
+                choice = session._normalise_choice(inp)
+                session._note_input(choice)
+                body, end = session._advance(choice)
             session._send_turn(body, end)
         except Exception:
             _logger.exception("chat2work WhatsApp error for %s", wa_id)
@@ -216,6 +219,7 @@ class Chat2workWaSession(models.Model):
     def _send(self, content, log_body, log_type='interactive'):
         res = self.env['whatsapp.message'].sudo().send_whatsapp_payload(
             self.wa_id, content, account=self.account_id or None, log_body=log_body, log_type=log_type)
+        self._note('outbound', log_body, res.get('message_id'))
         if not res.get('success'):
             _logger.warning("chat2work WhatsApp send to %s failed: %s", self.wa_id, res.get('error'))
         return res
@@ -275,7 +279,7 @@ class Chat2workWaSession(models.Model):
                 'action': {'name': 'cta_url', 'parameters': {'display_text': 'Add my CV', 'url': url}},
             },
         }
-        res = self._send(content, 'CV link: %s' % url)
+        res = self._send(content, 'Add my CV: %s' % url)
         candidate.sudo().write({
             # 'wa_sent' until Meta reports delivery; the cron falls back to SMS otherwise.
             'cv_link_state': 'wa_sent' if res.get('success') else 'queued',
