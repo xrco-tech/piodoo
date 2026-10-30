@@ -48,6 +48,7 @@ LINK_STATES = [
 ]
 CV_STATES = [
     ('none', 'No CV yet'),
+    ('started', 'Started, not finished'),
     ('uploaded', 'Uploaded'),
     ('built', 'Built with the form'),
     ('help_requested', 'Asked for help'),
@@ -66,6 +67,8 @@ class Chat2workCandidateCv(models.Model):
     cv_state = fields.Selection(CV_STATES, 'CV', default='none', copy=False, readonly=True)
     cv_submitted_at = fields.Datetime('CV Submitted', copy=False, readonly=True)
     cv_data = fields.Json('CV Details', copy=False, readonly=True)
+    cv_build_step = fields.Integer('CV Builder Step', copy=False, readonly=True,
+                                   help="The step of the CV builder they last reached (1 to 5).")
     cv_attachment_id = fields.Many2one('ir.attachment', 'CV File', copy=False, readonly=True)
     cv_url = fields.Char('CV Page URL', compute='_compute_cv_url')
     source_tag = fields.Char('Campaign Source', readonly=True,
@@ -243,11 +246,25 @@ class Chat2workCandidateCv(models.Model):
                             if state == 'built' else 'Uploaded a CV on the CV page: %s' % filename)
         return attachment
 
+    def _c2w_save_cv_draft(self, details, step):
+        """Keep unfinished answers. Only someone with no CV yet becomes 'started':
+        drafting a replacement doesn't undo a CV or help request they already have."""
+        self.ensure_one()
+        rec = self.sudo()
+        first = rec.cv_state == 'none'
+        vals = {'cv_data': details, 'cv_build_step': step}
+        if first:
+            vals['cv_state'] = 'started'
+        rec.write(vals)
+        self._c2w_touch()
+        if first:
+            self._c2w_log_event('web', 'inbound', 'Started building a CV on the CV page.')
+
     def _c2w_build_cv(self, details):
         """Save the form answers and render the standard CV as a PDF."""
         self.ensure_one()
         rec = self.sudo()
-        rec.cv_data = details
+        rec.write({'cv_data': details, 'cv_build_step': 0})
         if details.get('full_name') and not rec.name:
             rec.name = details['full_name']
         if details.get('town') and not rec.location:
