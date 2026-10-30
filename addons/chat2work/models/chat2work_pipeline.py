@@ -9,6 +9,8 @@ Activities and the chatter hold outreach (calls to make, call notes).
 
 from odoo import api, fields, models
 
+from .chat2work_ussd import ID_LIKE, ID_REDACTED
+
 STAGES = [
     ('new', 'New'),
     ('help', 'Needs help'),
@@ -24,6 +26,19 @@ AUTO_FROM = {
     'cv_ready': ('new', 'help'),
 }
 CV_DONE = ('uploaded', 'built')
+PROVINCES = [
+    ('gauteng', 'Gauteng'),
+    ('kzn', 'KwaZulu-Natal'),
+    ('western_cape', 'Western Cape'),
+    ('eastern_cape', 'Eastern Cape'),
+    ('limpopo', 'Limpopo'),
+    ('mpumalanga', 'Mpumalanga'),
+    ('north_west', 'North West'),
+    ('free_state', 'Free State'),
+    ('northern_cape', 'Northern Cape'),
+]
+# Shorter "text" is only the file type Odoo stores for a file it can't read.
+CV_TEXT_MIN = 30
 
 
 class Chat2workCandidatePipeline(models.Model):
@@ -34,6 +49,23 @@ class Chat2workCandidatePipeline(models.Model):
                              group_expand='_expand_stages')
     callback_ids = fields.One2many('chat2work.callback.request', 'candidate_id', 'Callback Requests')
     open_callback_count = fields.Integer('Open Callbacks', compute='_compute_open_callback_count')
+    province = fields.Selection(PROVINCES, index=True)
+    cv_text = fields.Text('CV Text', compute='_compute_cv_text', store=True, copy=False,
+                          help="Text read from the CV file, for matching to job listings. ID numbers removed.")
+    cv_text_state = fields.Selection([
+        ('none', 'No CV file'),
+        ('readable', 'Readable'),
+        ('unreadable', 'Not readable (photo or scan)'),
+    ], 'CV Text Status', compute='_compute_cv_text', store=True, copy=False)
+
+    @api.depends('cv_attachment_id')
+    def _compute_cv_text(self):
+        for rec in self:
+            attachment = rec.cv_attachment_id.sudo()
+            text = (attachment.index_content or '').strip() if attachment else ''
+            readable = len(text) >= CV_TEXT_MIN
+            rec.cv_text = ID_LIKE.sub(ID_REDACTED, text) if readable else False
+            rec.cv_text_state = 'readable' if readable else 'unreadable' if attachment else 'none'
 
     @api.model
     def _expand_stages(self, states, domain):

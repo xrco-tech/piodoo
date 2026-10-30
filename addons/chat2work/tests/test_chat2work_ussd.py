@@ -58,20 +58,24 @@ class TestChat2workUssd(TransactionCase):
 
     def test_create_profile_whatsapp(self):
         id_no = make_id(years_ago(25))
-        out = self.dial('+27820000001', '1', '1', '1', id_no, '1', '1')
+        out = self.dial('+27820000001', '1', '1', '1', id_no, '1', '1', '2', '3')
         self.assertTrue(out[0].startswith('CON Welcome to Chat2Work.'))
         self.assertIn('Terms: xrco.tech/c2w-terms', out[1])
         self.assertIn('Do you use 0820000001 on WhatsApp too?', out[2])
         self.assertTrue(out[3].startswith('CON Enter your 13-digit SA ID number'))
         self.assertTrue(out[4].startswith('CON What is your current employment status?'))
         self.assertTrue(out[5].startswith('CON Are you looking for a new job?'))
-        self.assertEqual(out[6], 'END Profile created! We will contact you soon via WhatsApp/SMS.')
+        self.assertTrue(out[6].startswith('CON Your province?'))
+        self.assertTrue(out[7].startswith('CON What work do you want?'))
+        self.assertEqual(out[8], 'END Profile created! We will contact you soon via WhatsApp/SMS.')
 
         cand = self.Candidate.search([('phone', '=', '+27820000001')])
         self.assertEqual(len(cand), 1)
         self.assertTrue(cand.whatsapp_opt_in)
         self.assertEqual(cand.employment_status, 'unemployed')
         self.assertTrue(cand.job_seeking)
+        self.assertEqual(cand.province, 'kzn')
+        self.assertEqual(cand.field, 'warehouse')
         self.assertTrue(cand.consent_at)
         self.assertTrue(cand.has_id_number)
         self.assertNotIn(id_no, cand.sudo().id_number_encrypted)
@@ -101,6 +105,34 @@ class TestChat2workUssd(TransactionCase):
         self.assertTrue(out[6].startswith('CON Invalid ID number.'))
         self.assertEqual(out[8], 'END Too many attempts. Please try again later or dial %s '
                                  'and request a callback.' % CODE)
+
+    def test_preferences_can_be_skipped(self):
+        out = self.dial('+27820000020', '1', '1', '1', make_id(years_ago(25)), '1', '1', '0', '0')
+        self.assertEqual(out[-1], 'END Profile created! We will contact you soon via WhatsApp/SMS.')
+        cand = self.Candidate.search([('phone', '=', '+27820000020')])
+        self.assertFalse(cand.province)
+        self.assertFalse(cand.field)
+
+    def test_not_looking_skips_preferences(self):
+        out = self.dial('+27820000021', '1', '1', '1', make_id(years_ago(25)), '2', '2')
+        self.assertTrue(out[-1].startswith('END Profile created!'))
+
+    def test_leaving_at_preferences_keeps_the_profile(self):
+        self.dial('+27820000022', '1', '1', '1', make_id(years_ago(25)), '1', '1')
+        cand = self.Candidate.search([('phone', '=', '+27820000022')])
+        self.assertTrue(cand.has_id_number)
+        self.Session.search([('msisdn', '=', '+27820000022')]).unlink()
+        self.assertTrue(cand.exists())
+        self.assertEqual(cand.cv_link_state, 'queued')
+
+    def test_returning_caller_asked_only_what_is_missing(self):
+        self.Candidate.create({'name': 'Zanele', 'phone': '+27820000023', 'province': 'gauteng'})
+        out = self.dial('+27820000023', '1', '1', '1', '2')
+        self.assertTrue(out[3].startswith('CON What work do you want?'))
+        self.assertEqual(out[4], 'END Status updated. Thank you! We will be in touch soon.')
+        self.Candidate.create({'name': 'Bongi', 'phone': '+27820000024', 'province': 'gauteng', 'field': 'retail'})
+        out = self.dial('+27820000024', '1', '1', '1')
+        self.assertEqual(out[3], 'END Status updated. Thank you! We will be in touch soon.')
 
     def test_id_retyped_on_error_screen(self):
         id_no = make_id(years_ago(26))
@@ -172,7 +204,7 @@ class TestChat2workUssd(TransactionCase):
     def test_screens_fit_160_with_invalid_prefix(self):
         cand = self.Candidate.create({'name': 'X' * 40, 'phone': '+27820000015'})
         screens = ['S01A', 'S01B', 'S02', 'S03', 'S04', 'S04-ERR1', 'S04-ERR2',
-                   'S05', 'S06', 'S08', 'S09']
+                   'S05', 'S06', 'S08', 'S09', 'S10', 'S11']
         session = self.Session.create({'session_id': 'len', 'msisdn': '+27820000015',
                                        'service_code': CODE, 'candidate_id': cand.id})
         for screen in screens:
@@ -212,7 +244,7 @@ class TestChat2workUssdSimulator(TransactionCase):
                           self.env['res.partner'].search_count([]),
                           self.env['sms.sms'].search_count([]))
         before = counts()
-        wiz = self.sim('+27830000001', '1', '1', '1', make_id(years_ago(24)), '1', '1')
+        wiz = self.sim('+27830000001', '1', '1', '1', make_id(years_ago(24)), '1', '1', '1', '1')
         self.assertTrue(wiz.ended)
         self.assertIn('Profile created! We will contact you soon via WhatsApp/SMS.', wiz.screen_html)
         self.assertIn('Enter your 13-digit SA ID number', wiz.screen_html, 'history kept')

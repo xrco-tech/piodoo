@@ -250,6 +250,8 @@ class Chat2workCandidateCv(models.Model):
         rec.cv_data = details
         if details.get('full_name') and not rec.name:
             rec.name = details['full_name']
+        if details.get('town') and not rec.location:
+            rec.location = details['town']
         pdf, _ = self.env['ir.actions.report'].sudo()._render_qweb_pdf(
             'chat2work.action_report_cv', res_ids=rec.ids)
         safe = ''.join(c for c in (details.get('full_name') or 'Candidate') if c.isalnum() or c == ' ').strip()
