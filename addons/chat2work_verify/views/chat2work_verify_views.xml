@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chat2work_candidate_form_verify" model="ir.ui.view">
+        <field name="name">chat2work.candidate.form.verify</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="inherit_id" ref="chat2work.view_chat2work_candidate_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_c2w_erase']" position="before">
+                <button name="action_c2w_id_check" type="object" string="Check ID" icon="fa-id-card"
+                        groups="chat2work_verify.group_id_check"
+                        invisible="not has_id_number or id_check_state in ('verified', 'not_valid')"
+                        confirm="This sends the candidate's ID number to VerifyNow and may use a credit. Continue?"/>
+            </xpath>
+            <xpath expr="//field[@name='has_id_number']" position="after">
+                <field name="id_check_state" widget="badge" decoration-success="id_check_state == 'verified'"
+                       decoration-danger="id_check_state == 'not_valid'" decoration-warning="id_check_state == 'failed'"/>
+                <field name="id_check_at" invisible="not id_check_at"/>
+            </xpath>
+            <xpath expr="//sheet/group" position="after">
+                <group string="Home Affairs Details" groups="chat2work_verify.group_id_check" invisible="id_check_state != 'verified'">
+                    <group>
+                        <field name="id_first_names"/>
+                        <field name="id_last_name"/>
+                        <field name="id_dob"/>
+                    </group>
+                    <group>
+                        <field name="id_gender"/>
+                        <field name="id_citizenship"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_chat2work_verify_check_list" model="ir.ui.view">
+        <field name="name">chat2work.verify.check.list</field>
+        <field name="model">chat2work.verify.check</field>
+        <field name="arch" type="xml">
+            <list string="ID Checks" create="false" edit="false" delete="false">
+                <field name="create_date" string="When"/>
+                <field name="candidate_id"/>
+                <field name="service_id"/>
+                <field name="mode" widget="badge"/>
+                <field name="state" widget="badge" decoration-success="state == 'verified'"
+                       decoration-danger="state == 'not_valid'" decoration-warning="state == 'failed'"/>
+                <field name="id_status" optional="show"/>
+                <field name="credits_used" sum="Total"/>
+                <field name="credits_remaining"/>
+                <field name="user_id" optional="show"/>
+                <field name="error" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chat2work_verify_check_form" model="ir.ui.view">
+        <field name="name">chat2work.verify.check.form</field>
+        <field name="model">chat2work.verify.check</field>
+        <field name="arch" type="xml">
+            <form string="ID Check" create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="candidate_id"/>
+                            <field name="service_id"/>
+                            <field name="mode"/>
+                            <field name="state"/>
+                            <field name="id_status"/>
+                            <field name="error" invisible="not error"/>
+                        </group>
+                        <group>
+                            <field name="first_names"/>
+                            <field name="last_name"/>
+                            <field name="dob"/>
+                            <field name="age"/>
+                            <field name="gender"/>
+                            <field name="citizenship"/>
+                        </group>
+                        <group>
+                            <field name="credits_used"/>
+                            <field name="credits_remaining"/>
+                            <field name="user_id"/>
+                            <field name="create_date" string="When"/>
+                        </group>
+                        <group>
+                            <field name="request_id"/>
+                            <field name="transaction_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chat2work_verify_check" model="ir.actions.act_window">
+        <field name="name">ID Checks</field>
+        <field name="res_model">chat2work.verify.check</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_chat2work_verify_account_form" model="ir.ui.view">
+        <field name="name">chat2work.verify.account.form</field>
+        <field name="model">chat2work.verify.account</field>
+        <field name="arch" type="xml">
+            <form string="VerifyNow Credits" create="false" delete="false">
+                <header>
+                    <button name="action_refresh_balance" type="object" string="Refresh balance" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="status" invisible="not is_low">Credits are running low.</div>
+                    <div class="alert alert-info" role="status" invisible="has_key">
+                        Add the API key as the system parameter chat2work.verifynow_api_key.
+                    </div>
+                    <field name="is_low" invisible="1"/>
+                    <group>
+                        <group string="Credits">
+                            <field name="available_credits"/>
+                            <field name="balance_at"/>
+                            <field name="credits_used_month"/>
+                            <field name="credits_used_total"/>
+                            <field name="checks_total"/>
+                            <field name="low_credit_level"/>
+                        </group>
+                        <group string="Settings">
+                            <field name="has_key"/>
+                            <field name="mode" widget="radio"/>
+                            <field name="auto_check" invisible="mode != 'production'"/>
+                            <field name="auto_since" invisible="not auto_check"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chat2work_verify_account" model="ir.actions.act_window">
+        <field name="name">VerifyNow Credits</field>
+        <field name="res_model">chat2work.verify.account</field>
+        <field name="view_mode">form</field>
+        <field name="res_id" ref="chat2work_verify.verify_account"/>
+    </record>
+
+    <menuitem id="menu_chat2work_verify_root" name="ID Checks" parent="chat2work.menu_chat2work_root"
+              sequence="45" groups="chat2work_verify.group_id_check"/>
+    <menuitem id="menu_chat2work_verify_checks" name="Checks" parent="menu_chat2work_verify_root"
+              action="action_chat2work_verify_check" sequence="10"/>
+    <menuitem id="menu_chat2work_verify_credits" name="Credits and Settings" parent="menu_chat2work_verify_root"
+              action="action_chat2work_verify_account" sequence="20"/>
+</odoo>
