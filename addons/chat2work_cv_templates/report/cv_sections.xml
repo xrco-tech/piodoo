@@ -11,6 +11,32 @@
         </xpath>
     </template>
 
+    <!-- A design filled with sample answers, as a web page, for the CV Designs screen. -->
+    <template id="cv_design_preview">&lt;!DOCTYPE html&gt;
+        <html lang="en">
+        <head>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <meta name="robots" content="noindex, nofollow"/>
+            <title t-out="template.name"/>
+            <style>
+                * { box-sizing:border-box; }
+                body { margin:0; background:#dfe3e8; padding:16px; }
+                .sheet { background:#fff; max-width:794px; min-height:1123px; margin:0 auto; padding:57px; box-shadow:0 1px 6px rgba(0,0,0,.25); }
+                .note { max-width:794px; margin:0 auto 10px; font:14px/1.4 Arial, sans-serif; color:#323f4b; }
+                @media (max-width:600px) { body { padding:0; } .sheet { padding:20px; min-height:0; } .note { padding:10px 16px 0; } }
+            </style>
+        </head>
+        <body>
+            <p class="note"><b t-out="template.name"/>: sample details. The candidate's PDF can differ slightly.</p>
+            <div class="sheet">
+                <t t-call="chat2work_cv_templates.cv_base_style"/>
+                <t t-call="{{ template.layout }}"/>
+            </div>
+        </body>
+        </html>
+    </template>
+
     <!-- Shared parts. Designs differ by their CSS, order and headers. Text stays
          real text in reading order, with plain section names, so applicant
          tracking systems can read it. wkhtmltopdf has no usable flexbox or grid:

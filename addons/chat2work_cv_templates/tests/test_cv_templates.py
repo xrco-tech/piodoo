@@ -83,6 +83,18 @@ class TestCvTemplates(TransactionCase):
 @tagged('post_install', '-at_install', 'chat2work')
 class TestCvPagePicker(HttpCase):
 
+    def test_every_design_previews_for_staff_only(self):
+        templates = self.env['chat2work.cv.template'].search([])
+        url = '/chat2work/cv_design/%d/preview'
+        res = self.url_open(url % templates[0].id, allow_redirects=False)
+        self.assertIn(res.status_code, (301, 303), 'anonymous visitors must be sent to log in')
+        self.authenticate('admin', 'admin')
+        for template in templates:
+            res = self.url_open(url % template.id)
+            self.assertEqual(res.status_code, 200, template.key)
+            self.assertIn('Nomvula Dlamini', res.text, template.key)
+        self.assertEqual(self.url_open(url % 999999999).status_code, 404)
+
     def test_page_offers_the_designs(self):
         cand = self.env['chat2work.candidate'].create({'name': 'Thabo', 'phone': '+27820004002'})
         token = cand._c2w_ensure_token()
