@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work CV Templates',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'Twelve QWeb CV designs candidates choose from on their CV page',
     'description': """

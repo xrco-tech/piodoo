@@ -18,6 +18,31 @@ def _split_duties(text):
     return [part.strip(' .') for part in re.split(r';|\n|(?<=[.!?])\s+', text or '') if part.strip(' .')]
 
 
+SAMPLE_CV = {
+    'name': 'Nomvula Dlamini',
+    'phone': '082 123 4567',
+    'email': 'nomvula.dlamini@example.com',
+    'town': 'Soweto, Johannesburg',
+    'summary': 'Reliable and friendly customer service worker with four years in busy retail stores. '
+               'I learn systems quickly and want a permanent role in a contact centre.',
+    'experience': [
+        {'title': 'Senior Cashier', 'employer': 'Example Supermarket', 'dates': 'Jan 2023 – Present',
+         'duties': ['Handled daily takings with no shortfalls', 'Trained five new cashiers']},
+        {'title': 'Merchandiser', 'employer': 'Example Foods', 'dates': 'Mar 2021 – Dec 2022',
+         'duties': ['Packed shelves and rotated stock', 'Ran weekly stock counts']},
+        {'title': 'Volunteer', 'employer': 'Community Food Bank', 'dates': '2019 – 2021',
+         'duties': ['Handed out food parcels to 200 families a month']},
+    ],
+    'education': [
+        {'title': 'National Senior Certificate (Matric)', 'school': 'Example High School', 'year': '2019'},
+        {'title': 'N4 Business Management', 'school': 'Example TVET College', 'year': '2021'},
+    ],
+    'skills': ['Customer service', 'Cash handling', 'Stock taking', 'Computer basics'],
+    'languages': ['English', 'isiZulu', 'Sesotho'],
+    'licence': 'Code 10 (C1)',
+}
+
+
 class Chat2workCvTemplate(models.Model):
     _name = 'chat2work.cv.template'
     _description = 'Chat2Work CV Design'
@@ -37,6 +62,18 @@ class Chat2workCvTemplate(models.Model):
     def _compute_preview_url(self):
         for rec in self:
             rec.preview_url = '/chat2work_cv_templates/static/src/img/%s.png' % rec.key
+
+    def _c2w_sample_cv(self):
+        """Made-up answers to show a design with: no candidate's data."""
+        return SAMPLE_CV
+
+    def action_c2w_preview(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/chat2work/cv_design/%d/preview' % self.id,
+            'target': 'new',
+        }
 
 
 class Chat2workCandidate(models.Model):
