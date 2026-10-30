@@ -55,6 +55,25 @@ class TestChat2workListing(TransactionCase):
         self.assertNotIn(out, listing.match_ids.candidate_id)
         self.assertIn('same province', listing.match_ids.filtered(lambda m: m.candidate_id == two).reason)
 
+    def test_next_step_follows_candidates_and_state(self):
+        self.Candidate.search([]).write({'job_seeking': False})
+        listing = self.Listing.create({'title': 'Clerk', 'source_id': self.source.id})
+        self.assertEqual(listing.work_state, 'needs_candidates')
+        cand = self._candidate('+27820005021')
+        listing.action_suggest_candidates()
+        self.assertEqual(listing.work_state, 'to_review')
+        match = listing.match_ids.filtered(lambda m: m.candidate_id == cand)
+        match.action_approve()
+        self.assertEqual(listing.work_state, 'ready')
+        match.action_reject()
+        self.assertEqual(listing.work_state, 'needs_candidates')
+        listing.state = 'closed'
+        self.assertEqual(listing.work_state, 'closed')
+
+    def test_board_shows_every_column(self):
+        groups = self.Listing.read_group([('source_id', '=', self.source.id)], ['work_state'], ['work_state'])
+        self.assertEqual(len(groups), 4)
+
     def test_reimport_updates_instead_of_duplicating(self):
         self.source._import_csv(CSV)
         first = self._listing('A1')

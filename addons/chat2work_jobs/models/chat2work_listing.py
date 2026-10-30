@@ -45,6 +45,13 @@ PROVINCE_ALIASES = {
 ALL_PROVINCES = {'all', 'all provinces', 'national', 'nationwide', 'south africa'}
 FIELD_ALIASES = {'warehouse': 'warehouse', 'driver': 'warehouse', 'admin': 'admin', 'general': 'admin'}
 # What decides that a listing changed, and what a CSV row may set.
+# What a listing needs next: follows the candidates and state, never set by hand.
+WORK_STATES = [
+    ('needs_candidates', 'Needs candidates'),
+    ('to_review', 'To review'),
+    ('ready', 'Ready to share'),
+    ('closed', 'Closed'),
+]
 CONTENT_FIELDS = ('title', 'employer', 'location', 'province_ids', 'field', 'employment_type', 'salary',
                   'description', 'requirements', 'apply_url', 'apply_contact', 'posted_on', 'closing_on')
 
@@ -194,16 +201,37 @@ class Chat2workListing(models.Model):
     last_seen_at = fields.Datetime(readonly=True, copy=False, default=fields.Datetime.now)
     content_updated_at = fields.Datetime('Last Changed', readonly=True, copy=False, default=fields.Datetime.now)
     match_ids = fields.One2many('chat2work.listing.match', 'listing_id', 'Candidates')
-    suggested_count = fields.Integer('To Review', compute='_compute_suggested_count')
+    suggested_count = fields.Integer('To Review', compute='_compute_match_counts')
+    approved_count = fields.Integer('Good Matches', compute='_compute_match_counts')
+    work_state = fields.Selection(WORK_STATES, 'Next Step', compute='_compute_work_state', store=True,
+                                  index=True, group_expand='_expand_work_states')
 
     _sql_constraints = [
         ('source_ref_unique', 'UNIQUE(source_id, external_ref)', 'This source already has a listing with this reference.'),
     ]
 
     @api.depends('match_ids.state')
-    def _compute_suggested_count(self):
+    def _compute_match_counts(self):
         for rec in self:
             rec.suggested_count = len(rec.match_ids.filtered(lambda m: m.state == 'suggested'))
+            rec.approved_count = len(rec.match_ids.filtered(lambda m: m.state == 'approved'))
+
+    @api.depends('state', 'match_ids.state')
+    def _compute_work_state(self):
+        for rec in self:
+            states = rec.match_ids.mapped('state')
+            if rec.state == 'closed':
+                rec.work_state = 'closed'
+            elif 'suggested' in states:
+                rec.work_state = 'to_review'
+            elif 'approved' in states:
+                rec.work_state = 'ready'
+            else:
+                rec.work_state = 'needs_candidates'
+
+    @api.model
+    def _expand_work_states(self, states, domain):
+        return [key for key, _label in WORK_STATES]
 
     # ── Import ───────────────────────────────────────────────────────────────
 
