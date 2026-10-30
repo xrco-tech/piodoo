@@ -104,7 +104,10 @@ class Chat2workCvController(http.Controller):
 
     @http.route('/cv/<string:token>', type='http', auth='public', methods=['GET'], sitemap=False)
     def cv_page(self, token, **kw):
-        return self._page(self._candidate(token), token, notice=kw.get('done', ''))
+        candidate = self._candidate(token)
+        # "Check my CV": open the form on what was read from their upload.
+        checking = bool(candidate) and bool(kw.get('check')) and candidate.cv_rebuild_state in ('to_confirm', 'needs_agent')
+        return self._page(candidate, token, notice=kw.get('done', ''), open_build=checking)
 
     @http.route('/cv/<string:token>/upload', type='http', auth='public', methods=['POST'], sitemap=False)
     def cv_upload(self, token, cv_file=None, **kw):

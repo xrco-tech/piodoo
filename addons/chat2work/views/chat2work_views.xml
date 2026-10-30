@@ -175,6 +175,11 @@
                             <field name="cv_state"/>
                             <field name="cv_text_state" invisible="cv_text_state == 'none'"/>
                             <field name="cv_build_step" invisible="cv_state != 'started'"/>
+                            <field name="cv_rebuild_state" invisible="cv_rebuild_state == 'none'"/>
+                            <field name="cv_rebuild_error" invisible="not cv_rebuild_error"/>
+                            <field name="cv_original_attachment_id" invisible="not cv_original_attachment_id"/>
+                            <button name="action_c2w_rebuild_cv" type="object" string="Read the upload again"
+                                    class="btn-secondary" colspan="2" invisible="cv_rebuild_state not in ('needs_agent', 'to_confirm') or not cv_original_attachment_id"/>
                             <field name="cv_attachment_id" invisible="not cv_attachment_id"/>
                             <field name="cv_submitted_at" invisible="not cv_submitted_at"/>
                         </group>
@@ -225,6 +230,8 @@
                                    decoration-warning="cv_state == 'help_requested'"
                                    decoration-info="cv_state == 'started'"
                                    decoration-muted="cv_state == 'none'"/>
+                            <field name="cv_rebuild_state" widget="badge" decoration-warning="cv_rebuild_state == 'needs_agent'"
+                                   decoration-info="cv_rebuild_state in ('queued', 'to_confirm')" invisible="cv_rebuild_state in ('none', 'confirmed')"/>
                             <span t-if="record.cv_link_state.raw_value == 'failed'" class="badge text-bg-danger">CV link failed</span>
                             <field name="source_tag" widget="badge" invisible="not source_tag"/>
                         </div>
@@ -259,6 +266,7 @@
                 <filter name="cv_started" string="CV started, not finished" domain="[('cv_state', '=', 'started')]"/>
                 <filter name="whatsapp" string="Uses WhatsApp" domain="[('whatsapp_opt_in', '=', True)]"/>
                 <filter name="job_seeking" string="Looking for work" domain="[('job_seeking', '=', True)]"/>
+                <filter name="cv_agent" string="Standard CV: needs an agent" domain="['|', ('cv_rebuild_state', '=', 'needs_agent'), '&amp;', ('cv_rebuild_state', '=', 'to_confirm'), ('cv_rebuild_at', '&lt;', (context_today() - relativedelta(days=2)).strftime('%Y-%m-%d'))]"/>
                 <filter name="cv_unreadable" string="CV not readable" domain="[('cv_text_state', '=', 'unreadable')]"/>
                 <separator/>
                 <filter name="group_stage" string="Stage" context="{'group_by': 'stage'}"/>
