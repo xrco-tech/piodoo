@@ -67,7 +67,7 @@ class Chat2workCandidateCv(models.Model):
     cv_submitted_at = fields.Datetime('CV Submitted', copy=False, readonly=True)
     cv_data = fields.Json('CV Details', copy=False, readonly=True)
     cv_attachment_id = fields.Many2one('ir.attachment', 'CV File', copy=False, readonly=True)
-    cv_url = fields.Char('CV Link', compute='_compute_cv_url')
+    cv_url = fields.Char('CV Page URL', compute='_compute_cv_url')
     source_tag = fields.Char('Campaign Source', readonly=True,
                              help="Tag from the WhatsApp start message, e.g. FLYER in 'Hi Chat2Work FLYER'.")
 

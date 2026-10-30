@@ -111,6 +111,7 @@
             <list string="Candidates">
                 <field name="name"/>
                 <field name="phone"/>
+                <field name="stage" widget="badge"/>
                 <field name="employment_status"/>
                 <field name="job_seeking"/>
                 <field name="whatsapp_opt_in"/>
@@ -133,8 +134,14 @@
                     <button name="action_c2w_erase" type="object" string="Delete candidate data"
                             groups="base.group_system" class="btn-danger"
                             confirm="This permanently deletes this candidate's profile, CV, callback requests and Chat2Work conversation history (POPIA deletion request). It can't be undone. Continue?"/>
+                    <field name="stage" widget="statusbar" options="{'clickable': '1'}"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_callbacks" type="object" class="oe_stat_button" icon="fa-phone">
+                            <field name="open_callback_count" widget="statinfo" string="Open callbacks"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1><field name="name"/></h1>
@@ -178,13 +185,87 @@
                         </group>
                     </group>
                 </sheet>
+                <chatter/>
             </form>
+        </field>
+    </record>
+    <record id="view_chat2work_candidate_kanban" model="ir.ui.view">
+        <field name="name">chat2work.candidate.kanban</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="stage" group_create="false" group_delete="false" group_edit="false"
+                    quick_create="false" sample="1">
+                <field name="whatsapp_opt_in"/>
+                <field name="open_callback_count"/>
+                <field name="cv_link_state"/>
+                <progressbar field="activity_state"
+                             colors='{"planned": "success", "today": "warning", "overdue": "danger"}'/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex align-items-start">
+                            <field name="name" class="fw-bold fs-5 flex-grow-1"/>
+                            <span t-if="record.whatsapp_opt_in.raw_value" class="fa fa-whatsapp text-success fs-5" title="Uses WhatsApp"/>
+                        </div>
+                        <field name="phone" widget="phone"/>
+                        <div class="text-muted">
+                            <field name="location"/>
+                            <span t-if="record.location.raw_value and record.employment_status.raw_value"> · </span>
+                            <field name="employment_status"/>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            <span t-if="record.open_callback_count.raw_value" class="badge text-bg-danger">
+                                <i class="fa fa-phone"/> Callback requested
+                            </span>
+                            <field name="cv_state" widget="badge"
+                                   decoration-success="cv_state in ('uploaded', 'built')"
+                                   decoration-warning="cv_state == 'help_requested'"
+                                   decoration-muted="cv_state == 'none'"/>
+                            <span t-if="record.cv_link_state.raw_value == 'failed'" class="badge text-bg-danger">CV link failed</span>
+                            <field name="source_tag" widget="badge" invisible="not source_tag"/>
+                        </div>
+                        <footer class="pt-1">
+                            <field name="activity_ids" widget="kanban_activity"/>
+                            <span class="ms-auto text-muted small" title="Last active">
+                                <i class="fa fa-clock-o"/> <field name="last_active_at" options="{'show_time': false}"/>
+                            </span>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+    <record id="view_chat2work_candidate_search" model="ir.ui.view">
+        <field name="name">chat2work.candidate.search</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="arch" type="xml">
+            <search string="Candidates">
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="location"/>
+                <field name="source_tag"/>
+                <filter name="my_activities" string="My follow-ups" domain="[('activity_user_id', '=', uid)]"/>
+                <filter name="late_activities" string="Overdue follow-ups"
+                        domain="[('activity_date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="no_activity" string="No follow-up planned" domain="[('activity_ids', '=', False)]"/>
+                <separator/>
+                <filter name="open_callbacks" string="Callback requested"
+                        domain="[('callback_ids.state', 'in', ('new', 'in_progress'))]"/>
+                <filter name="no_cv" string="No CV yet" domain="[('cv_state', '=', 'none')]"/>
+                <filter name="whatsapp" string="Uses WhatsApp" domain="[('whatsapp_opt_in', '=', True)]"/>
+                <filter name="job_seeking" string="Looking for work" domain="[('job_seeking', '=', True)]"/>
+                <separator/>
+                <filter name="group_stage" string="Stage" context="{'group_by': 'stage'}"/>
+                <filter name="group_source" string="Campaign source" context="{'group_by': 'source_tag'}"/>
+                <filter name="group_via" string="Registered via" context="{'group_by': 'registered_via'}"/>
+                <filter name="group_employment" string="Employment status" context="{'group_by': 'employment_status'}"/>
+            </search>
         </field>
     </record>
     <record id="action_chat2work_candidate" model="ir.actions.act_window">
         <field name="name">Candidates</field>
         <field name="res_model">chat2work.candidate</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_chat2work_candidate_search"/>
     </record>
 
     <!-- ── Callback request ────────────────────────────────────────────── -->
