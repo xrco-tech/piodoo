@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_chat2work_cv_template_user,chat2work.cv.template.user,model_chat2work_cv_template,base.group_user,1,0,0,0
+access_chat2work_cv_template_admin,chat2work.cv.template.admin,model_chat2work_cv_template,base.group_system,1,1,1,1

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The chat2work report now draws whichever design the candidate chose. -->
+    <template id="report_cv_dispatch" inherit_id="chat2work.report_cv">
+        <xpath expr="//div[hasclass('page')]" position="replace">
+            <t t-set="cv" t-value="doc._c2w_cv_view()"/>
+            <div class="page">
+                <t t-call="chat2work_cv_templates.cv_base_style"/>
+                <t t-call="{{ doc._c2w_cv_layout() }}"/>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- Shared parts. Designs differ by their CSS, order and headers. Text stays
+         real text in reading order, with plain section names, so applicant
+         tracking systems can read it. wkhtmltopdf has no usable flexbox or grid:
+         columns must be tables. -->
+    <template id="cv_base_style">
+        <style>
+            .cv { color:#1f2933; font-family:Arial, "Liberation Sans", "DejaVu Sans", sans-serif; font-size:10.5pt; line-height:1.4; }
+            .cv h1 { font-size:24pt; line-height:1.1; font-weight:bold; margin:0; }
+            .cv h2 { font-size:11.5pt; font-weight:bold; margin:14px 0 5px; page-break-after:avoid; }
+            .cv p { margin:0; }
+            .cv ul { margin:2px 0 0; padding-left:15px; }
+            .cv .contact { margin-top:4px; }
+            .cv .item { margin-bottom:8px; page-break-inside:avoid; }
+            .cv .title { font-weight:bold; }
+            .cv .meta { color:#52606d; }
+            .cv ul.tags { list-style:none; margin:0; padding:0; }
+            .cv ul.tags li { display:inline; }
+            .cv ul.tags li:after { content:" · "; color:#7b8794; }
+            .cv ul.tags li:last-child:after { content:""; }
+            .cv table.cols { width:100%; border-collapse:collapse; table-layout:fixed; }
+            .cv table.cols td { vertical-align:top; }
+        </style>
+    </template>
+
+    <template id="cv_contact">
+        <div class="contact">
+            <t t-out="cv['phone']"/>
+            <t t-if="cv['email']"><t t-if="cv['phone']"> · </t><t t-out="cv['email']"/></t>
+            <t t-if="cv['town']"><t t-if="cv['phone'] or cv['email']"> · </t><t t-out="cv['town']"/></t>
+        </div>
+    </template>
+
+    <template id="cv_profile">
+        <t t-if="cv['summary']">
+            <h2>Profile</h2>
+            <p t-out="cv['summary']"/>
+        </t>
+    </template>
+
+    <template id="cv_duties">
+        <ul t-if="len(job['duties']) &gt; 1"><li t-foreach="job['duties']" t-as="duty" t-out="duty"/></ul>
+        <p t-elif="job['duties']" t-out="job['duties'][0]"/>
+    </template>
+
+    <template id="cv_experience">
+        <t t-if="cv['experience']">
+            <h2>Work Experience</h2>
+            <div t-foreach="cv['experience']" t-as="job" class="item">
+                <div><span class="title" t-out="job['title']"/><t t-if="job['employer']">, <t t-out="job['employer']"/></t></div>
+                <div t-if="job['dates']" class="meta" t-out="job['dates']"/>
+                <t t-call="chat2work_cv_templates.cv_duties"/>
+            </div>
+        </t>
+    </template>
+
+    <template id="cv_education">
+        <t t-if="cv['education']">
+            <h2>Education</h2>
+            <div t-foreach="cv['education']" t-as="edu" class="item">
+                <div><span class="title" t-out="edu['title']"/><t t-if="edu['school']">, <t t-out="edu['school']"/></t></div>
+                <div t-if="edu['year']" class="meta" t-out="edu['year']"/>
+            </div>
+        </t>
+    </template>
+
+    <template id="cv_skills">
+        <t t-if="cv['skills']">
+            <h2>Skills</h2>
+            <ul class="tags"><li t-foreach="cv['skills']" t-as="skill" t-out="skill"/></ul>
+        </t>
+    </template>
+
+    <template id="cv_languages">
+        <t t-if="cv['languages']">
+            <h2>Languages</h2>
+            <ul class="tags"><li t-foreach="cv['languages']" t-as="language" t-out="language"/></ul>
+        </t>
+    </template>
+
+    <template id="cv_licence">
+        <t t-if="cv['licence']">
+            <h2>Driver's Licence</h2>
+            <p t-out="cv['licence']"/>
+        </t>
+    </template>
+
+    <template id="cv_references">
+        <h2>References</h2>
+        <p>Available on request</p>
+    </template>
+
+    <template id="cv_extras">
+        <t t-call="chat2work_cv_templates.cv_languages"/>
+        <t t-call="chat2work_cv_templates.cv_licence"/>
+        <t t-call="chat2work_cv_templates.cv_references"/>
+    </template>
+</odoo>

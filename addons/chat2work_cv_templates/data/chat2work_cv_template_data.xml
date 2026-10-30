@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: admins may rename, reorder or retire designs. -->
+    <data noupdate="1">
+        <record id="cv_template_classic" model="chat2work.cv.template">
+            <field name="name">Chat2Work Classic</field>
+            <field name="key">classic</field>
+            <field name="best_for">Any job</field>
+            <field name="layout">chat2work_cv_templates.layout_classic</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="cv_template_plain" model="chat2work.cv.template">
+            <field name="name">Plain</field>
+            <field name="key">plain</field>
+            <field name="best_for">Online job applications</field>
+            <field name="layout">chat2work_cv_templates.layout_plain</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="cv_template_traditional" model="chat2work.cv.template">
+            <field name="name">Traditional</field>
+            <field name="key">traditional</field>
+            <field name="best_for">Office and admin jobs</field>
+            <field name="layout">chat2work_cv_templates.layout_traditional</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="cv_template_banner" model="chat2work.cv.template">
+            <field name="name">Banner</field>
+            <field name="key">banner</field>
+            <field name="best_for">Standing out on paper</field>
+            <field name="layout">chat2work_cv_templates.layout_banner</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="cv_template_sidebar" model="chat2work.cv.template">
+            <field name="name">Sidebar</field>
+            <field name="key">sidebar</field>
+            <field name="best_for">Showing skills at a glance</field>
+            <field name="layout">chat2work_cv_templates.layout_sidebar</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="cv_template_side_light" model="chat2work.cv.template">
+            <field name="name">Light Sidebar</field>
+            <field name="key">side_light</field>
+            <field name="best_for">Printing cheaply with a two-column look</field>
+            <field name="layout">chat2work_cv_templates.layout_side_light</field>
+            <field name="sequence">60</field>
+        </record>
+        <record id="cv_template_first_job" model="chat2work.cv.template">
+            <field name="name">First Job</field>
+            <field name="key">first_job</field>
+            <field name="best_for">Matric leavers and new graduates</field>
+            <field name="layout">chat2work_cv_templates.layout_first_job</field>
+            <field name="sequence">70</field>
+        </record>
+        <record id="cv_template_skills_first" model="chat2work.cv.template">
+            <field name="name">Skills First</field>
+            <field name="key">skills_first</field>
+            <field name="best_for">Little formal work experience</field>
+            <field name="layout">chat2work_cv_templates.layout_skills_first</field>
+            <field name="sequence">80</field>
+        </record>
+        <record id="cv_template_service" model="chat2work.cv.template">
+            <field name="name">Customer Service</field>
+            <field name="key">service</field>
+            <field name="best_for">Call centres, retail and hospitality</field>
+            <field name="layout">chat2work_cv_templates.layout_service</field>
+            <field name="sequence">90</field>
+        </record>
+        <record id="cv_template_trades" model="chat2work.cv.template">
+            <field name="name">Trades and Driving</field>
+            <field name="key">trades</field>
+            <field name="best_for">Drivers, artisans and warehouse jobs</field>
+            <field name="layout">chat2work_cv_templates.layout_trades</field>
+            <field name="sequence">100</field>
+        </record>
+        <record id="cv_template_timeline" model="chat2work.cv.template">
+            <field name="name">Timeline</field>
+            <field name="key">timeline</field>
+            <field name="best_for">Several jobs over the years</field>
+            <field name="layout">chat2work_cv_templates.layout_timeline</field>
+            <field name="sequence">110</field>
+        </record>
+        <record id="cv_template_compact" model="chat2work.cv.template">
+            <field name="name">Compact</field>
+            <field name="key">compact</field>
+            <field name="best_for">Lots to fit on one page</field>
+            <field name="layout">chat2work_cv_templates.layout_compact</field>
+            <field name="sequence">120</field>
+        </record>
+    </data>
+</odoo>

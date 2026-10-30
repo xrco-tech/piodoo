@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Design picker on the guided form. Radios and CSS only, like the rest of
+         the page; previews load lazily so a closed form costs no data. -->
+    <template id="cv_page_design_picker" inherit_id="chat2work.cv_page">
+        <xpath expr="//head/style" position="inside">
+            .designs { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; }
+            .design { display:block; position:relative; font-weight:700; font-size:14px; }
+            .design input { position:absolute; opacity:0; width:auto; }
+            .design .frame { display:block; border:2px solid var(--line); border-radius:6px; padding:6px; background:#fff; height:100%; color:var(--ink); }
+            .design img { display:block; width:100%; aspect-ratio:210 / 297; background:var(--paper); margin-bottom:6px; }
+            .design small { display:block; font-weight:400; font-size:13px; line-height:1.3; color:var(--muted); }
+            .design input:checked + .frame { border-color:var(--navy); box-shadow:0 0 0 2px var(--hivis); }
+            .design input:focus-visible + .frame { outline:3px solid var(--navy); outline-offset:2px; }
+        </xpath>
+        <xpath expr="//form[@t-attf-action='/cv/#{token}/build']/button" position="before">
+            <fieldset t-if="cv_templates">
+                <legend>Choose a design <span style="font-weight:400">you can change it later</span></legend>
+                <div class="designs">
+                    <t t-set="chosen" t-value="candidate.cv_template_id or cv_templates[0]"/>
+                    <label t-foreach="cv_templates" t-as="tpl" class="design">
+                        <input type="radio" name="cv_template" t-att-value="tpl.id" t-att-checked="'checked' if tpl == chosen else None"/>
+                        <span class="frame">
+                            <img t-att-src="tpl.preview_url" alt="" loading="lazy" width="210" height="297"/>
+                            <t t-out="tpl.name"/>
+                            <small t-out="tpl.best_for"/>
+                        </span>
+                    </label>
+                </div>
+            </fieldset>
+        </xpath>
+    </template>
+</odoo>

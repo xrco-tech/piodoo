@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1. The original Chat2Work CV: hi-vis rule, single column. -->
+    <template id="layout_classic">
+        <style>
+            .c-classic header { border-bottom:3px solid #ffc414; padding-bottom:8px; }
+            .c-classic h2 { color:#1b2a41; text-transform:uppercase; letter-spacing:1px; }
+        </style>
+        <div class="cv c-classic">
+            <header><h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/></header>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-call="chat2work_cv_templates.cv_experience"/>
+            <t t-call="chat2work_cv_templates.cv_education"/>
+            <t t-call="chat2work_cv_templates.cv_skills"/>
+            <t t-call="chat2work_cv_templates.cv_extras"/>
+        </div>
+    </template>
+
+    <!-- 2. No colour or decoration: the safest for online application systems. -->
+    <template id="layout_plain">
+        <style>
+            .c-plain, .c-plain .meta { color:#000; }
+            .c-plain h1 { font-size:18pt; }
+            .c-plain h2 { font-size:11pt; text-transform:uppercase; border-bottom:1px solid #000; }
+        </style>
+        <div class="cv c-plain">
+            <h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-call="chat2work_cv_templates.cv_experience"/>
+            <t t-call="chat2work_cv_templates.cv_education"/>
+            <t t-call="chat2work_cv_templates.cv_skills"/>
+            <t t-call="chat2work_cv_templates.cv_extras"/>
+        </div>
+    </template>
+
+    <!-- 3. Centred serif, in the style of a formal letter. -->
+    <template id="layout_traditional">
+        <style>
+            .c-trad { font-family:Georgia, "Liberation Serif", "DejaVu Serif", serif; color:#222; }
+            .c-trad header { text-align:center; border-bottom:1px double #222; padding-bottom:8px; }
+            .c-trad h1 { font-size:21pt; font-weight:normal; letter-spacing:1px; }
+            .c-trad h2 { text-align:center; font-size:10.5pt; letter-spacing:3px; text-transform:uppercase; font-weight:normal; border-bottom:1px solid #bbb; padding-bottom:2px; }
+        </style>
+        <div class="cv c-trad">
+            <header><h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/></header>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-call="chat2work_cv_templates.cv_experience"/>
+            <t t-call="chat2work_cv_templates.cv_education"/>
+            <t t-call="chat2work_cv_templates.cv_skills"/>
+            <t t-call="chat2work_cv_templates.cv_extras"/>
+        </div>
+    </template>
+
+    <!-- 4. Solid navy name banner. -->
+    <template id="layout_banner">
+        <style>
+            .c-banner header { background:#1b2a41; color:#fff; padding:16px 18px; }
+            .c-banner header h1 { color:#fff; }
+            .c-banner h2 { color:#1b2a41; border-bottom:2px solid #1b2a41; padding-bottom:2px; }
+        </style>
+        <div class="cv c-banner">
+            <header><h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/></header>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-call="chat2work_cv_templates.cv_experience"/>
+            <t t-call="chat2work_cv_templates.cv_education"/>
+            <t t-call="chat2work_cv_templates.cv_skills"/>
+            <t t-call="chat2work_cv_templates.cv_extras"/>
+        </div>
+    </template>
+
+    <!-- 5. Dark sidebar holding skills and languages. Contact details stay full
+         width: a long email would break mid-word in the narrow column. -->
+    <template id="layout_sidebar">
+        <style>
+            .c-side td.side { width:31%; background:#1b2a41; color:#fff; padding:14px 12px; }
+            .c-side td.side h2 { color:#ffc414; font-size:10pt; text-transform:uppercase; letter-spacing:1px; }
+            .c-side td.side h2:first-child { margin-top:0; }
+            .c-side td.side ul.tags li { display:block; margin-bottom:3px; }
+            .c-side td.side ul.tags li:after { content:""; }
+            .c-side td.main { padding-left:16px; }
+            .c-side h1 { color:#1b2a41; }
+            .c-side table.cols { margin-top:10px; }
+            .c-side td.main h2:first-child { margin-top:0; }
+            .c-side td.main h2 { color:#1b2a41; border-bottom:1px solid #cbd2d9; padding-bottom:2px; }
+        </style>
+        <div class="cv c-side">
+            <h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/>
+            <table class="cols"><tr>
+                <td class="side">
+                    <t t-call="chat2work_cv_templates.cv_skills"/>
+                    <t t-call="chat2work_cv_templates.cv_extras"/>
+                </td>
+                <td class="main">
+                    <t t-call="chat2work_cv_templates.cv_profile"/>
+                    <t t-call="chat2work_cv_templates.cv_experience"/>
+                    <t t-call="chat2work_cv_templates.cv_education"/>
+                </td>
+            </tr></table>
+        </div>
+    </template>
+
+    <!-- 6. Pale right-hand column: the two-column look with little ink. -->
+    <template id="layout_side_light">
+        <style>
+            .c-light header { border-bottom:2px solid #127475; padding-bottom:8px; margin-bottom:6px; }
+            .c-light h1 { color:#127475; }
+            .c-light td.main { padding-right:16px; }
+            .c-light td.side { width:30%; border-left:1px solid #cbd2d9; padding-left:12px; }
+            .c-light h2 { color:#127475; }
+            .c-light td.side ul.tags li { display:block; margin-bottom:2px; }
+            .c-light td.side ul.tags li:after { content:""; }
+        </style>
+        <div class="cv c-light">
+            <header><h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/></header>
+            <table class="cols"><tr>
+                <td class="main">
+                    <t t-call="chat2work_cv_templates.cv_profile"/>
+                    <t t-call="chat2work_cv_templates.cv_experience"/>
+                    <t t-call="chat2work_cv_templates.cv_education"/>
+                </td>
+                <td class="side">
+                    <t t-call="chat2work_cv_templates.cv_skills"/>
+                    <t t-call="chat2work_cv_templates.cv_extras"/>
+                </td>
+            </tr></table>
+        </div>
+    </template>
+
+    <!-- 7. Education leads, for candidates with little or no work history. -->
+    <template id="layout_first_job">
+        <style>
+            .c-first header { border-left:8px solid #ffc414; padding-left:12px; }
+            .c-first h2 { background:#f2f4f7; color:#1b2a41; padding:3px 8px; }
+            .c-first &gt; .item, .c-first &gt; p, .c-first &gt; ul.tags { margin-left:8px; }
+        </style>
+        <div class="cv c-first">
+            <header><h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/></header>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-call="chat2work_cv_templates.cv_education"/>
+            <t t-call="chat2work_cv_templates.cv_skills"/>
+            <t t-call="chat2work_cv_templates.cv_experience"/>
+            <t t-call="chat2work_cv_templates.cv_extras"/>
+        </div>
+    </template>
+
+    <!-- 8. Skills lead as boxed labels, ahead of the work history. -->
+    <template id="layout_skills_first">
+        <style>
+            .c-skills h1 { color:#3f3d8f; }
+            .c-skills h2 { color:#3f3d8f; text-transform:uppercase; font-size:10.5pt; letter-spacing:1px; }
+            .c-skills .lead ul.tags li { display:inline-block; border:1px solid #3f3d8f; border-radius:3px; padding:1px 7px; margin:0 4px 5px 0; white-space:nowrap; }
+            .c-skills .lead ul.tags li:after { content:""; }
+        </style>
+        <div class="cv c-skills">
+            <h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/>
+            <div class="lead"><t t-call="chat2work_cv_templates.cv_skills"/></div>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-call="chat2work_cv_templates.cv_experience"/>
+            <t t-call="chat2work_cv_templates.cv_education"/>
+            <t t-call="chat2work_cv_templates.cv_extras"/>
+        </div>
+    </template>
+
+    <!-- 9. Languages sit beside the name: employers in service jobs screen on them. -->
+    <template id="layout_service">
+        <style>
+            .c-service header { border-top:6px solid #127475; padding-top:10px; }
+            .c-service h1, .c-service h2 { color:#127475; }
+            .c-service .speaks { margin-top:4px; font-weight:bold; }
+            .c-service .speaks ul.tags, .c-service .speaks h2 { display:inline; font-size:10.5pt; }
+            .c-service .speaks h2:after { content:": "; }
+            .c-service h2 { border-bottom:1px solid #cbd2d9; padding-bottom:2px; }
+        </style>
+        <div class="cv c-service">
+            <header>
+                <h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/>
+                <div class="speaks"><t t-call="chat2work_cv_templates.cv_languages"/></div>
+            </header>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-call="chat2work_cv_templates.cv_skills"/>
+            <t t-call="chat2work_cv_templates.cv_experience"/>
+            <t t-call="chat2work_cv_templates.cv_education"/>
+            <t t-call="chat2work_cv_templates.cv_licence"/>
+            <t t-call="chat2work_cv_templates.cv_references"/>
+        </div>
+    </template>
+
+    <!-- 10. Bold, with the licence up front: the first thing these employers check. -->
+    <template id="layout_trades">
+        <style>
+            .c-trades header { background:#ffc414; color:#16202e; padding:14px 16px; }
+            .c-trades h1 { font-size:26pt; }
+            .c-trades .lic { background:#16202e; color:#fff; padding:5px 16px; font-weight:bold; }
+            .c-trades .lic h2 { display:inline; color:#fff; font-size:10.5pt; margin:0; }
+            .c-trades .lic h2:after { content:": "; }
+            .c-trades .lic p { display:inline; }
+            .c-trades h2 { color:#16202e; font-size:12.5pt; text-transform:uppercase; border-bottom:3px solid #16202e; }
+        </style>
+        <div class="cv c-trades">
+            <header><h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/></header>
+            <div t-if="cv['licence']" class="lic"><t t-call="chat2work_cv_templates.cv_licence"/></div>
+            <t t-call="chat2work_cv_templates.cv_skills"/>
+            <t t-call="chat2work_cv_templates.cv_experience"/>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-call="chat2work_cv_templates.cv_education"/>
+            <t t-call="chat2work_cv_templates.cv_languages"/>
+            <t t-call="chat2work_cv_templates.cv_references"/>
+        </div>
+    </template>
+
+    <!-- 11. Dates in their own column, so the history reads as a timeline. -->
+    <template id="layout_timeline">
+        <style>
+            .c-time h1, .c-time h2 { color:#8a3b12; }
+            .c-time h2 { text-transform:uppercase; font-size:10.5pt; letter-spacing:1px; }
+            .c-time td.when { width:24%; color:#52606d; padding-right:10px; text-align:right; }
+            .c-time td.what { border-left:2px solid #e0b49a; padding-left:12px; padding-bottom:9px; }
+        </style>
+        <div class="cv c-time">
+            <h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-if="cv['experience']">
+                <h2>Work Experience</h2>
+                <table class="cols">
+                    <tr t-foreach="cv['experience']" t-as="job" style="page-break-inside:avoid">
+                        <td class="when" t-out="job['dates']"/>
+                        <td class="what">
+                            <div><span class="title" t-out="job['title']"/><t t-if="job['employer']">, <t t-out="job['employer']"/></t></div>
+                            <t t-call="chat2work_cv_templates.cv_duties"/>
+                        </td>
+                    </tr>
+                </table>
+            </t>
+            <t t-if="cv['education']">
+                <h2>Education</h2>
+                <table class="cols">
+                    <tr t-foreach="cv['education']" t-as="edu" style="page-break-inside:avoid">
+                        <td class="when" t-out="edu['year']"/>
+                        <td class="what"><span class="title" t-out="edu['title']"/><t t-if="edu['school']">, <t t-out="edu['school']"/></t></td>
+                    </tr>
+                </table>
+            </t>
+            <t t-call="chat2work_cv_templates.cv_skills"/>
+            <t t-call="chat2work_cv_templates.cv_extras"/>
+        </div>
+    </template>
+
+    <!-- 12. Smaller type and tighter spacing, to hold a full history on one page. -->
+    <template id="layout_compact">
+        <style>
+            .c-compact { font-size:9.5pt; line-height:1.3; }
+            .c-compact h1 { font-size:17pt; }
+            .c-compact h2 { font-size:9.5pt; margin:8px 0 2px; text-transform:uppercase; color:#1b2a41; border-bottom:1px solid #1b2a41; }
+            .c-compact .item { margin-bottom:4px; }
+            .c-compact .contact { margin-top:1px; }
+        </style>
+        <div class="cv c-compact">
+            <h1 t-out="cv['name']"/><t t-call="chat2work_cv_templates.cv_contact"/>
+            <t t-call="chat2work_cv_templates.cv_profile"/>
+            <t t-call="chat2work_cv_templates.cv_experience"/>
+            <t t-call="chat2work_cv_templates.cv_education"/>
+            <t t-call="chat2work_cv_templates.cv_skills"/>
+            <t t-call="chat2work_cv_templates.cv_extras"/>
+        </div>
+    </template>
+</odoo>
