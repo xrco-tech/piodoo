@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Public CV page (/cv/<token>). Self-contained: inline CSS, system fonts
-         and no JavaScript, so it loads fast on low-end phones and little data. -->
+    <!-- Public CV page (/cv/<token>). Self-contained: inline CSS and system fonts, so it loads fast
+         on low-end phones and little data. A small script splits the CV form into
+         steps (static/src/js/cv_steps.js); without it the form stays one long page. -->
     <template id="cv_page" name="Chat2Work CV page">&lt;!DOCTYPE html&gt;
         <t t-set="d" t-value="details or {}"/>
         <html lang="en">
@@ -39,6 +40,48 @@
                 .status { padding:14px 16px; font-size:15px; }
                 .fine { font-size:13px; color:var(--muted); text-align:center; }
                 :focus-visible { outline:3px solid var(--navy); outline-offset:2px; }
+                [hidden] { display:none !important; }
+                h2 { margin:0; font-size:20px; line-height:1.2; }
+                h2:focus { outline:none; }
+                .step { display:grid; gap:12px; }
+                .step + .step { margin-top:12px; }
+                .js-only { display:none; }
+                .js-on .js-only { display:revert; }
+                .js-on .no-js { display:none !important; }
+                .js-on .row-card { display:flex; }
+                .js-on .steps-nav, .js-on .progress-box, .js-on #job_ask, .js-on #job_none_note, .js-on #cv_review { display:grid; }
+                .js-on .row { border:0; padding:0; }
+                .js-on .row legend { display:none; }
+                .js-on .step + .step { margin-top:0; }
+                .js-on.building > .card:not(.build), .js-on.building > .status, .js-on.building > .fine { display:none; }
+                .js-on.building .build > summary { display:none; }
+                .js-on.building .build > form { padding-top:16px; }
+                .row-fields { display:grid; gap:10px; }
+                .row-card { display:flex; align-items:flex-start; gap:12px; border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:#fff; }
+                .row-card > div { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }
+                .row-card b { display:block; }
+                .row-card small { display:block; font-size:14px; color:var(--muted); }
+                .row-card small.pre { white-space:pre-line; }
+                .link { background:none; border:0; padding:0; min-width:44px; min-height:44px; font:inherit; font-size:14px; color:var(--ink); text-decoration:underline; cursor:pointer; }
+                .link.bad { color:var(--bad); }
+                .btn.line { background:#fff; color:var(--ink); border:1px solid var(--navy); }
+                .btn:disabled { background:#d5d7db; color:#4a5261; cursor:not-allowed; }
+                .js-on .chips-fs { border:0; padding:0; }
+                .chips-fs { display:block; }
+                .chips-fs legend { padding:0 0 8px; }
+                .chips { display:flex; flex-wrap:wrap; gap:8px; }
+                .chip { display:block; font-weight:400; font-size:15px; position:relative; }
+                .chip input { position:absolute; opacity:0; width:100%; height:100%; margin:0; padding:0; cursor:pointer; }
+                .chip span { display:block; min-height:44px; padding:9px 14px; border:1px solid var(--navy); border-radius:22px; background:#fff; color:var(--ink); }
+                .chip input:checked + span { background:var(--navy); color:#fff; }
+                .chip input:focus-visible + span { outline:3px solid var(--navy); outline-offset:2px; }
+                .progress-box { display:grid; gap:6px; }
+                .progress-top { display:flex; justify-content:space-between; font-size:14px; font-weight:700; }
+                .progress-top span:last-child { font-weight:400; color:var(--muted); }
+                .progress { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:4px; }
+                .progress i { height:6px; border-radius:3px; background:#e8e6da; }
+                .progress i.on { background:var(--navy); }
+                .steps-nav { position:sticky; bottom:0; display:grid; grid-template-columns:1fr 2fr; gap:10px; background:#fff; padding:12px 0 4px; border-top:1px solid var(--line); }
             </style>
         </head>
         <body>
@@ -53,22 +96,24 @@
                 <t t-if="not candidate">
                     <div class="card status">
                         CV links work for 30 days. To get a new one, dial <b>*134*433*48#</b> or send
-                        "Hi Chat2Work" on WhatsApp.
+                        "Ispani" on WhatsApp.
                     </div>
                 </t>
                 <t t-else="">
                     <div t-if="notice == 'uploaded'" class="msg ok">Thanks! We've received your CV.</div>
                     <div t-if="notice == 'built'" class="msg ok">Your CV is ready. <a t-attf-href="/cv/#{token}/download">Download it (PDF)</a>.</div>
+                    <div t-if="notice == 'built'" class="card status"><b>What happens next</b><br/>Chat2Work can now consider you for work that fits. We'll contact you on WhatsApp or by SMS. Joining doesn't guarantee a job.</div>
                     <div t-if="notice == 'help'" class="msg ok">Got it. A Chat2Work agent will call you to help with your CV.</div>
                     <div t-if="error" class="msg bad" role="alert" t-out="error"/>
 
                     <div class="card status" t-if="candidate.cv_state != 'none' and not notice">
+                        <t t-if="candidate.cv_state == 'started'">We saved your answers, so you can carry on where you stopped.</t>
                         <t t-if="candidate.cv_state == 'uploaded'">We have your uploaded CV. You can upload a new one or build one below.</t>
                         <t t-if="candidate.cv_state == 'built'">Your CV is ready. <a t-attf-href="/cv/#{token}/download">Download it (PDF)</a>, or update it below.</t>
                         <t t-if="candidate.cv_state == 'help_requested'">An agent will call you<t t-if="masked_phone"> on <t t-out="masked_phone"/></t> to help with your CV.</t>
                     </div>
 
-                    <details class="card" t-att-open="'open' if error and not d else None">
+                    <details class="card" t-att-open="'open' if error and not open_build else None">
                         <summary><div>I have a CV<small>Upload a PDF, Word file or a photo of it</small></div></summary>
                         <form class="body" method="post" enctype="multipart/form-data" t-attf-action="/cv/#{token}/upload">
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
@@ -80,70 +125,157 @@
                         </form>
                     </details>
 
-                    <details class="card" t-att-open="'open' if d else None">
-                        <summary><div>Build my CV<small>Answer a few questions; we'll make a polished PDF</small></div></summary>
-                        <form class="body" method="post" t-attf-action="/cv/#{token}/build">
+                    <details class="card build" t-att-open="'open' if open_build else None">
+                        <summary><div>Build my CV<small>5 short steps, and we'll make a polished PDF.<span class="js-only"> Your answers are saved as you go, so you can stop and come back.</span></small></div></summary>
+                        <form id="cv_build_form" class="body" method="post" t-attf-action="/cv/#{token}/build"
+                              t-attf-data-draft-url="/cv/#{token}/draft" t-att-data-start-step="start_step">
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                            <label for="full_name">Full name
-                                <input id="full_name" name="full_name" required="required" maxlength="80" autocomplete="name"
-                                       t-att-value="d.get('full_name') or candidate.name or ''"/>
-                            </label>
-                            <label for="town">Town or area <span>e.g. Soweto, Johannesburg</span>
-                                <input id="town" name="town" maxlength="80" t-att-value="d.get('town') or candidate.location or ''"/>
-                            </label>
-                            <label for="email">Email <span>optional</span>
-                                <input id="email" name="email" type="email" maxlength="120" autocomplete="email" t-att-value="d.get('email', '')"/>
-                            </label>
-                            <label for="summary">About you <span>2–3 sentences: your strengths and the work you want</span>
-                                <textarea id="summary" name="summary" maxlength="600"><t t-out="d.get('summary', '')"/></textarea>
-                            </label>
-                            <t t-foreach="rows" t-as="i">
-                                <t t-set="edu" t-value="(d.get('education') or [])[i] if i &lt; len(d.get('education') or []) else {}"/>
-                                <fieldset>
-                                    <legend>Education <t t-out="i + 1"/><t t-if="i"> (optional)</t></legend>
-                                    <label t-attf-for="edu_school_#{i}">School or college
-                                        <input t-attf-id="edu_school_#{i}" t-attf-name="edu_school_#{i}" maxlength="120" t-att-value="edu.get('school', '')"/>
-                                    </label>
-                                    <label t-attf-for="edu_qualification_#{i}">Qualification <span>e.g. Matric, N4 Business Management</span>
-                                        <input t-attf-id="edu_qualification_#{i}" t-attf-name="edu_qualification_#{i}" maxlength="120" t-att-value="edu.get('qualification', '')"/>
-                                    </label>
-                                    <label t-attf-for="edu_year_#{i}">Year completed
-                                        <input t-attf-id="edu_year_#{i}" t-attf-name="edu_year_#{i}" maxlength="20" inputmode="numeric" t-att-value="edu.get('year', '')"/>
-                                    </label>
+
+                            <div class="progress-box js-only">
+                                <div class="progress-top"><span id="cv_step_label">Step 1 of 5</span><span id="cv_saved" role="status"/></div>
+                                <div id="cv_progress" class="progress" role="img" aria-label="Step 1 of 5"><i/><i/><i/><i/><i/></div>
+                            </div>
+
+                            <section class="step">
+                                <h2 tabindex="-1">About you</h2>
+                                <div id="name_err" class="msg bad" role="alert" hidden="hidden">Please enter your full name.</div>
+                                <label for="full_name">Full name
+                                    <input id="full_name" name="full_name" required="required" maxlength="80" autocomplete="name"
+                                           t-att-value="d.get('full_name') or candidate.name or ''"/>
+                                </label>
+                                <label for="town">Town or area <span>e.g. Soweto</span>
+                                    <input id="town" name="town" maxlength="80" t-att-value="d.get('town') or candidate.location or ''"/>
+                                </label>
+                                <label for="email">Email <span>optional</span>
+                                    <input id="email" name="email" type="email" maxlength="120" autocomplete="email" t-att-value="d.get('email', '')"/>
+                                </label>
+                            </section>
+
+                            <section class="step">
+                                <h2 tabindex="-1">Work experience</h2>
+                                <div id="job_ask" class="step js-only">
+                                    <p style="margin:0">Have you worked before? Piece jobs, helping in a family business and volunteering all count.</p>
+                                    <button id="job_add_first" type="button" class="btn">Yes, add a job</button>
+                                    <button id="job_none" type="button" class="btn line">I don't have work experience yet</button>
+                                </div>
+                                <div id="job_none_note" class="step js-only" hidden="hidden">
+                                    <div class="msg ok" style="font-weight:400" role="status"><b>No problem.</b> Lots of people start here. Your CV will lead with your education and skills instead.</div>
+                                    <button id="job_none_undo" type="button" class="link">Actually, I have worked before</button>
+                                </div>
+                                <label class="no-js" style="display:flex; gap:8px; align-items:center; font-weight:400">
+                                    <input id="no_experience" type="checkbox" name="no_experience" value="1" style="width:auto"
+                                           t-att-checked="'checked' if d.get('no_experience') else None"/>
+                                    I don't have work experience yet
+                                </label>
+                                <t t-foreach="rows" t-as="i">
+                                    <t t-set="job" t-value="(d.get('experience') or [])[i] if i &lt; len(d.get('experience') or []) else {}"/>
+                                    <fieldset class="row" data-kind="job" t-attf-data-required="job_role_#{i}" t-attf-data-sub="job_employer_#{i},job_dates_#{i}">
+                                        <legend>Job <t t-out="i + 1"/> <small style="font-weight:400">(optional)</small></legend>
+                                        <div class="row-err msg bad" role="alert" hidden="hidden">Please enter what your job was.</div>
+                                        <div class="row-fields">
+                                            <label t-attf-for="job_role_#{i}">What was the job? <span>e.g. Cashier</span>
+                                                <input t-attf-id="job_role_#{i}" t-attf-name="job_role_#{i}" maxlength="120" t-att-value="job.get('role', '')"/>
+                                            </label>
+                                            <label t-attf-for="job_employer_#{i}">Where did you work? <span>business or person's name</span>
+                                                <input t-attf-id="job_employer_#{i}" t-attf-name="job_employer_#{i}" maxlength="120" t-att-value="job.get('employer', '')"/>
+                                            </label>
+                                            <label t-attf-for="job_dates_#{i}">When? <span>e.g. 2023 to 2024</span>
+                                                <input t-attf-id="job_dates_#{i}" t-attf-name="job_dates_#{i}" maxlength="120" t-att-value="job.get('dates', '')"/>
+                                            </label>
+                                            <label t-attf-for="job_duties_#{i}">What did you do there? <span>optional</span>
+                                                <textarea t-attf-id="job_duties_#{i}" t-attf-name="job_duties_#{i}" maxlength="400"><t t-out="job.get('duties', '')"/></textarea>
+                                            </label>
+                                            <button type="button" class="btn row-save js-only">Save this job</button>
+                                            <button type="button" class="link row-cancel js-only">Cancel</button>
+                                        </div>
+                                        <div class="row-card js-only" hidden="hidden">
+                                            <div><b/><small/></div>
+                                            <button type="button" class="link row-edit">Edit</button>
+                                            <button type="button" class="link bad row-remove">Remove</button>
+                                        </div>
+                                    </fieldset>
+                                </t>
+                                <button id="job_add" type="button" class="btn line js-only" hidden="hidden">Add another job</button>
+                            </section>
+
+                            <section class="step">
+                                <h2 tabindex="-1">Education</h2>
+                                <t t-foreach="rows" t-as="i">
+                                    <t t-set="edu" t-value="(d.get('education') or [])[i] if i &lt; len(d.get('education') or []) else {}"/>
+                                    <fieldset class="row" data-kind="edu" t-attf-data-required="edu_school_#{i}" t-attf-data-sub="edu_qualification_#{i},edu_year_#{i}">
+                                        <legend>School or course <t t-out="i + 1"/> <small style="font-weight:400">(optional)</small></legend>
+                                        <div class="row-err msg bad" role="alert" hidden="hidden">Please enter your school or college.</div>
+                                        <div class="row-fields">
+                                            <label t-attf-for="edu_school_#{i}">School or college
+                                                <input t-attf-id="edu_school_#{i}" t-attf-name="edu_school_#{i}" maxlength="120" t-att-value="edu.get('school', '')"/>
+                                            </label>
+                                            <label t-attf-for="edu_qualification_#{i}">What did you finish or study? <span>e.g. Matric, or Grade 11</span>
+                                                <input t-attf-id="edu_qualification_#{i}" t-attf-name="edu_qualification_#{i}" maxlength="120" t-att-value="edu.get('qualification', '')"/>
+                                            </label>
+                                            <label t-attf-for="edu_year_#{i}">Year <span>optional</span>
+                                                <input t-attf-id="edu_year_#{i}" t-attf-name="edu_year_#{i}" maxlength="20" inputmode="numeric" t-att-value="edu.get('year', '')"/>
+                                            </label>
+                                            <button type="button" class="btn row-save js-only">Save this</button>
+                                            <button type="button" class="link row-cancel js-only">Cancel</button>
+                                        </div>
+                                        <div class="row-card js-only" hidden="hidden">
+                                            <div><b/><small/></div>
+                                            <button type="button" class="link row-edit">Edit</button>
+                                            <button type="button" class="link bad row-remove">Remove</button>
+                                        </div>
+                                    </fieldset>
+                                </t>
+                                <button id="edu_add" type="button" class="btn line js-only">Add your school or course</button>
+                            </section>
+
+                            <section class="step">
+                                <h2 tabindex="-1">Your skills</h2>
+                                <fieldset class="chips-fs">
+                                    <legend>What can you do? Tap all that fit.</legend>
+                                    <div class="chips">
+                                        <label t-foreach="skill_options" t-as="opt" class="chip">
+                                            <input type="checkbox" name="skill_opt" t-att-value="opt" t-att-checked="'checked' if opt in skills_ticked else None"/>
+                                            <span t-out="opt"/>
+                                        </label>
+                                    </div>
                                 </fieldset>
-                            </t>
-                            <t t-foreach="rows" t-as="i">
-                                <t t-set="job" t-value="(d.get('experience') or [])[i] if i &lt; len(d.get('experience') or []) else {}"/>
-                                <fieldset>
-                                    <legend>Work experience <t t-out="i + 1"/> (optional)</legend>
-                                    <label t-attf-for="job_role_#{i}">Job title <span>include volunteering or part-time work</span>
-                                        <input t-attf-id="job_role_#{i}" t-attf-name="job_role_#{i}" maxlength="120" t-att-value="job.get('role', '')"/>
-                                    </label>
-                                    <label t-attf-for="job_employer_#{i}">Employer
-                                        <input t-attf-id="job_employer_#{i}" t-attf-name="job_employer_#{i}" maxlength="120" t-att-value="job.get('employer', '')"/>
-                                    </label>
-                                    <label t-attf-for="job_dates_#{i}">Dates <span>e.g. Jan 2024 – Mar 2025</span>
-                                        <input t-attf-id="job_dates_#{i}" t-attf-name="job_dates_#{i}" maxlength="120" t-att-value="job.get('dates', '')"/>
-                                    </label>
-                                    <label t-attf-for="job_duties_#{i}">What you did
-                                        <textarea t-attf-id="job_duties_#{i}" t-attf-name="job_duties_#{i}" maxlength="400"><t t-out="job.get('duties', '')"/></textarea>
-                                    </label>
+                                <label for="skills">Anything else? <span>optional, e.g. hair braiding, forklift</span>
+                                    <input id="skills" name="skills" maxlength="200" t-att-value="skills_other"/>
+                                </label>
+                                <fieldset class="chips-fs">
+                                    <legend>Which languages do you speak?</legend>
+                                    <div class="chips">
+                                        <label t-foreach="language_options" t-as="opt" class="chip">
+                                            <input type="checkbox" name="lang_opt" t-att-value="opt" t-att-checked="'checked' if opt in langs_ticked else None"/>
+                                            <span t-out="opt"/>
+                                        </label>
+                                    </div>
                                 </fieldset>
-                            </t>
-                            <label for="skills">Skills <span>separate with commas, e.g. customer service, Excel, forklift</span>
-                                <input id="skills" name="skills" maxlength="300" t-att-value="d.get('skills', '')"/>
-                            </label>
-                            <label for="languages">Languages <span>e.g. English, isiZulu, Sesotho</span>
-                                <input id="languages" name="languages" maxlength="150" t-att-value="d.get('languages', '')"/>
-                            </label>
-                            <label for="licence">Driver's licence
-                                <select id="licence" name="licence">
-                                    <t t-foreach="['None', 'Learner\'s', 'Code 8 (B)', 'Code 10 (C1)', 'Code 14 (EC)']" t-as="opt">
-                                        <option t-att-value="opt" t-att-selected="'selected' if d.get('licence') == opt else None" t-out="opt"/>
-                                    </t>
-                                </select>
-                            </label>
-                            <button class="btn" type="submit">Create my CV</button>
+                                <label for="languages">Other languages <span>optional</span>
+                                    <input id="languages" name="languages" maxlength="100" t-att-value="langs_other"/>
+                                </label>
+                                <label for="licence">Driver's licence
+                                    <select id="licence" name="licence">
+                                        <t t-foreach="['None', 'Learner\'s', 'Code 8 (B)', 'Code 10 (C1)', 'Code 14 (EC)']" t-as="opt">
+                                            <option t-att-value="opt" t-att-selected="'selected' if d.get('licence') == opt else None" t-out="opt"/>
+                                        </t>
+                                    </select>
+                                </label>
+                            </section>
+
+                            <section class="step">
+                                <h2 tabindex="-1" class="js-only">Check your CV</h2>
+                                <label for="summary">About you <span>optional: 2 or 3 sentences about your strengths and the work you want</span>
+                                    <textarea id="summary" name="summary" maxlength="600"><t t-out="d.get('summary', '')"/></textarea>
+                                </label>
+                                <div id="cv_review" class="step js-only"/>
+                                <button class="btn no-js" type="submit">Create my CV</button>
+                            </section>
+
+                            <div id="cv_nav" class="steps-nav js-only">
+                                <button id="cv_back" type="button" class="btn line">Back</button>
+                                <button id="cv_next" type="button" class="btn alt">Next</button>
+                            </div>
                         </form>
                     </details>
 
@@ -158,6 +290,7 @@
                     <p class="fine">This link is personal and works until <t t-out="candidate.cv_token_expires.strftime('%d %b %Y')"/>. Chat2Work never asks for money.</p>
                 </t>
             </main>
+            <script t-if="candidate" src="/chat2work/static/src/js/cv_steps.js?v=3" defer="defer"/>
         </body>
         </html>
     </template>

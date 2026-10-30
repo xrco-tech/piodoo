@@ -27,10 +27,36 @@ UPLOAD_TYPES = {
 }
 MAX_ROWS = 3
 TEXT_MAX = 600
+SKILLS_MAX = 300
+LANGUAGES_MAX = 150
+SKILL_OPTIONS = ['Customer service', 'Cash handling', 'Sales', 'Computer basics', 'Admin and filing',
+                 'Phone skills', 'Stock taking', 'Packing', 'Cleaning', 'Cooking', 'Security', 'Driving']
+LANGUAGE_OPTIONS = ['English', 'isiZulu', 'isiXhosa', 'Afrikaans', 'Sesotho', 'Setswana', 'Sepedi',
+                    'Xitsonga', 'siSwati', 'Tshivenda', 'isiNdebele']
+BUILD_STEPS = 5
 
 
 def _clean(value, limit=200):
     return ' '.join((value or '').split())[:limit]
+
+
+def _combine(ticked, options, other, limit):
+    """Ticked options plus free text, as the comma-separated text the CV prints."""
+    chosen = [opt for opt in options if opt in ticked]
+    return ', '.join(chosen + ([_clean(other, limit)] if _clean(other, limit) else []))[:limit]
+
+
+def _split_saved(text, options):
+    """Back from the saved text to (ticked options, the rest), case-insensitively."""
+    known = {opt.lower(): opt for opt in options}
+    ticked, other = [], []
+    for part in (text or '').split(','):
+        part = part.strip()
+        if part.lower() in known:
+            ticked.append(known[part.lower()])
+        elif part:
+            other.append(part)
+    return ticked, ', '.join(other)
 
 
 def _mask_phone(phone):
@@ -46,12 +72,28 @@ class Chat2workCvController(http.Controller):
         return request.env['chat2work.candidate'].sudo()._c2w_find_by_token(token)
 
     def _page(self, candidate, token, **extra):
+        details = extra.pop('details', None)
+        if details is None:
+            details = (candidate.cv_data or {}) if candidate else {}
+        started = bool(candidate) and candidate.cv_state == 'started'
+        open_build = extra.pop('open_build', False)
+        skills_ticked, skills_other = _split_saved(details.get('skills'), SKILL_OPTIONS)
+        langs_ticked, langs_other = _split_saved(details.get('languages'), LANGUAGE_OPTIONS)
         values = {
             'candidate': candidate,
             'token': token,
             'first_name': (candidate.name or '').split(' ')[0] if candidate else '',
             'masked_phone': _mask_phone(candidate.phone) if candidate else '',
-            'details': (candidate.cv_data or {}) if candidate else {},
+            'details': details,
+            'open_build': open_build or started,
+            # A failed create goes back to the start, where the missing name is.
+            'start_step': candidate.cv_build_step if started and not open_build else 1,
+            'skill_options': SKILL_OPTIONS,
+            'language_options': LANGUAGE_OPTIONS,
+            'skills_ticked': skills_ticked,
+            'skills_other': skills_other,
+            'langs_ticked': langs_ticked,
+            'langs_other': langs_other,
             'rows': range(MAX_ROWS),
             'notice': extra.pop('notice', ''),
             'error': extra.pop('error', ''),
@@ -83,18 +125,15 @@ class Chat2workCvController(http.Controller):
         candidate._c2w_store_cv_file(name, content, UPLOAD_TYPES[ext], 'uploaded')
         return request.redirect('/cv/%s?done=uploaded' % token, local=True)
 
-    @http.route('/cv/<string:token>/build', type='http', auth='public', methods=['POST'], sitemap=False)
-    def cv_build(self, token, **post):
-        candidate = self._candidate(token)
-        if not candidate:
-            return self._page(candidate, token)
+    def _details_from_post(self, post):
+        form = request.httprequest.form
         details = {
             'full_name': _clean(post.get('full_name'), 80),
             'email': _clean(post.get('email'), 120),
             'town': _clean(post.get('town'), 80),
             'summary': _clean(post.get('summary'), TEXT_MAX),
-            'skills': _clean(post.get('skills'), 300),
-            'languages': _clean(post.get('languages'), 150),
+            'skills': _combine(form.getlist('skill_opt'), SKILL_OPTIONS, post.get('skills'), SKILLS_MAX),
+            'languages': _combine(form.getlist('lang_opt'), LANGUAGE_OPTIONS, post.get('languages'), LANGUAGES_MAX),
             'licence': _clean(post.get('licence'), 40),
             'education': [], 'experience': [],
         }
@@ -106,13 +145,35 @@ class Chat2workCvController(http.Controller):
             job['duties'] = _clean(post.get('job_duties_%d' % i), 400)
             if any(job.values()):
                 details['experience'].append(job)
+        details['no_experience'] = bool(post.get('no_experience')) and not details['experience']
+        return details
+
+    @http.route('/cv/<string:token>/draft', type='http', auth='public', methods=['POST'], sitemap=False)
+    def cv_draft(self, token, **post):
+        """Save the answers so far when moving between steps. Nothing is required yet."""
+        candidate = self._candidate(token)
+        if not candidate:
+            return request.not_found()
+        try:
+            step = int(post.get('step'))
+        except (TypeError, ValueError):
+            step = 1
+        candidate._c2w_save_cv_draft(self._details_from_post(post), min(max(step, 1), BUILD_STEPS))
+        return request.make_json_response({'saved': True})
+
+    @http.route('/cv/<string:token>/build', type='http', auth='public', methods=['POST'], sitemap=False)
+    def cv_build(self, token, **post):
+        candidate = self._candidate(token)
+        if not candidate:
+            return self._page(candidate, token)
+        details = self._details_from_post(post)
         if not details['full_name']:
-            return self._page(candidate, token, error='Please enter your full name.', details=details)
+            return self._page(candidate, token, error='Please enter your full name.', details=details, open_build=True)
         try:
             candidate._c2w_build_cv(details)
         except Exception:
             _logger.exception("chat2work: CV build failed for candidate %s", candidate.id)
-            return self._page(candidate, token, details=details,
+            return self._page(candidate, token, details=details, open_build=True,
                               error="We couldn't create your CV just now. Please try again, or ask us to help.")
         return request.redirect('/cv/%s?done=built' % token, local=True)
 

@@ -343,6 +343,76 @@ class TestChat2workCvPage(HttpCase):
         res = self.url_open('/cv/%s/download' % self.token)
         self.assertEqual(res.status_code, 200)
 
+    def _draft(self, step, **data):
+        res = self.url_open('/cv/%s' % self.token)
+        return self.url_open('/cv/%s/draft' % self.token, data=dict(data, step=step, csrf_token=self._csrf(res.text)))
+
+    def test_draft_saves_and_resumes(self):
+        res = self._draft(3, full_name='Sipho D', job_role_0='Cashier', licence='None')
+        self.assertEqual(res.json(), {'saved': True})
+        self.cand.invalidate_recordset()
+        self.assertEqual(self.cand.cv_state, 'started')
+        self.assertEqual(self.cand.cv_build_step, 3)
+        self.assertEqual(self.cand.cv_data['experience'][0]['role'], 'Cashier')
+        self.assertEqual(self.cand.stage, 'new', 'a draft is not a CV')
+        page = self.url_open('/cv/%s' % self.token).text
+        self.assertIn('data-start-step="3"', page)
+        self.assertIn('We saved your answers', page)
+        self.assertIn('value="Cashier"', page)
+
+    def test_draft_needs_no_name_and_clamps_step(self):
+        self._draft(99)
+        self.cand.invalidate_recordset()
+        self.assertEqual(self.cand.cv_state, 'started')
+        self.assertEqual(self.cand.cv_build_step, 5)
+
+    def test_draft_keeps_an_existing_cv_state(self):
+        self.cand.cv_state = 'uploaded'
+        self._draft(2, full_name='Sipho')
+        self.cand.invalidate_recordset()
+        self.assertEqual(self.cand.cv_state, 'uploaded')
+
+    def test_draft_needs_a_valid_token(self):
+        res = self.url_open('/cv/%s' % self.token)
+        bad = self.url_open('/cv/ABCDEFGHJK/draft', data={'step': 2, 'csrf_token': self._csrf(res.text)})
+        self.assertEqual(bad.status_code, 404)
+
+    def test_build_from_tapped_options(self):
+        res = self.url_open('/cv/%s' % self.token)
+        res = self.url_open('/cv/%s/build' % self.token, data={
+            'csrf_token': self._csrf(res.text), 'full_name': 'Sipho Dlamini', 'no_experience': '1',
+            'skill_opt': ['Sales', 'Cleaning', 'Not an option'], 'skills': 'forklift',
+            'lang_opt': ['English', 'isiZulu'], 'languages': 'French', 'licence': 'None',
+            'edu_school_0': 'Orlando High',
+        })
+        self.assertIn('What happens next', res.text)
+        self.cand.invalidate_recordset()
+        self.assertEqual(self.cand.cv_state, 'built')
+        self.assertEqual(self.cand.cv_build_step, 0)
+        self.assertEqual(self.cand.cv_data['skills'], 'Sales, Cleaning, forklift')
+        self.assertEqual(self.cand.cv_data['languages'], 'English, isiZulu, French')
+        self.assertTrue(self.cand.cv_data['no_experience'])
+
+    def test_saved_text_returns_to_chips(self):
+        self.cand.write({'cv_state': 'started', 'cv_build_step': 4, 'cv_data': {
+            'skills': 'sales, forklift', 'languages': 'isiZulu'}})
+        page = self.url_open('/cv/%s' % self.token).text
+        self.assertRegex(page, r'value="Sales"\s+checked')
+        self.assertIn('value="forklift"', page)
+        self.assertRegex(page, r'value="isiZulu"\s+checked')
+
+    def test_failed_create_goes_back_to_step_one(self):
+        self._draft(5, full_name='')
+        res = self.url_open('/cv/%s' % self.token)
+        res = self.url_open('/cv/%s/build' % self.token, data={
+            'csrf_token': self._csrf(res.text), 'full_name': '', 'job_role_0': 'Cashier'})
+        self.assertIn('Please enter your full name', res.text)
+        self.assertIn('data-start-step="1"', res.text)
+        self.assertIn('value="Cashier"', res.text)
+
+    def test_expired_link_mentions_ispani(self):
+        self.assertIn('Ispani', self.url_open('/cv/ABCDEFGHJK').text)
+
     def test_unknown_token(self):
         res = self.url_open('/cv/ABCDEFGHJK')
         self.assertEqual(res.status_code, 404)
