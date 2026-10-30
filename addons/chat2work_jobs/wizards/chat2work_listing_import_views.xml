@@ -17,7 +17,8 @@
                 <p class="text-muted" invisible="result">
                     Columns: title (required), external_ref, employer, location, province, field,
                     employment_type, salary, description, requirements, apply_url, apply_contact,
-                    posted_on, closing_on (dates as YYYY-MM-DD). Importing the same listing again updates it.
+                    posted_on, closing_on (dates as YYYY-MM-DD). For several provinces, separate them
+                    with a semicolon (Gauteng; Limpopo), or use "National" for all. Importing the same listing again updates it.
                 </p>
                 <footer>
                     <button name="action_import" type="object" string="Import" class="btn-primary" invisible="result"/>

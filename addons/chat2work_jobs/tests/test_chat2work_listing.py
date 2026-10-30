@@ -31,9 +31,29 @@ class TestChat2workListing(TransactionCase):
         summary = self.source._import_csv(CSV)
         self.assertIn('2 new', summary)
         self.assertIn('1 skipped', summary)
-        self.assertEqual(self._listing('A1').province, 'gauteng')
+        self.assertEqual(self._listing('A1').province_ids.mapped('code'), ['gauteng'])
         self.assertEqual(self._listing('A1').field, 'call_centre')
-        self.assertEqual(self._listing('A2').province, 'western_cape')
+        self.assertEqual(self._listing('A2').province_ids.mapped('code'), ['western_cape'])
+
+    def test_import_several_provinces(self):
+        self.source._import_csv(b'title,external_ref,province\nA,M1,"Gauteng; WC, Mars"\nB,M2,National\nC,M3,\n')
+        self.assertEqual(sorted(self._listing('M1').province_ids.mapped('code')), ['gauteng', 'western_cape'])
+        self.assertEqual(len(self._listing('M2').province_ids), 9)
+        self.assertFalse(self._listing('M3').province_ids)
+        self.assertIn('3 unchanged', self.source._import_csv(
+            b'title,external_ref,province\nA,M1,"WC; Gauteng"\nB,M2,National\nC,M3,\n'))
+
+    def test_listing_in_several_provinces_fits_any_of_them(self):
+        self.source._import_csv(b'title,external_ref,province\nDriver,M4,"Gauteng; Limpopo"\n')
+        listing = self._listing('M4')
+        one = self._candidate('+27820005011', province='gauteng')
+        two = self._candidate('+27820005012', province='limpopo')
+        out = self._candidate('+27820005013', province='free_state')
+        listing.action_suggest_candidates()
+        self.assertIn(one, listing.match_ids.candidate_id)
+        self.assertIn(two, listing.match_ids.candidate_id)
+        self.assertNotIn(out, listing.match_ids.candidate_id)
+        self.assertIn('same province', listing.match_ids.filtered(lambda m: m.candidate_id == two).reason)
 
     def test_reimport_updates_instead_of_duplicating(self):
         self.source._import_csv(CSV)

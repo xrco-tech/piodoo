@@ -42,9 +42,10 @@ PROVINCE_ALIASES = {
     'kwazulu natal': 'kzn', 'gp': 'gauteng', 'wc': 'western_cape', 'ec': 'eastern_cape',
     'lp': 'limpopo', 'mp': 'mpumalanga', 'nw': 'north_west', 'fs': 'free_state', 'nc': 'northern_cape',
 }
+ALL_PROVINCES = {'all', 'all provinces', 'national', 'nationwide', 'south africa'}
 FIELD_ALIASES = {'warehouse': 'warehouse', 'driver': 'warehouse', 'admin': 'admin', 'general': 'admin'}
 # What decides that a listing changed, and what a CSV row may set.
-CONTENT_FIELDS = ('title', 'employer', 'location', 'province', 'field', 'employment_type', 'salary',
+CONTENT_FIELDS = ('title', 'employer', 'location', 'province_ids', 'field', 'employment_type', 'salary',
                   'description', 'requirements', 'apply_url', 'apply_contact', 'posted_on', 'closing_on')
 
 
@@ -63,6 +64,17 @@ def _choice(value, choices, aliases):
 
 def _keywords(text):
     return {w for w in re.findall(r'[a-z]{4,}', (text or '').lower())} - STOPWORDS
+
+
+class Chat2workProvince(models.Model):
+    _name = 'chat2work.province'
+    _description = 'South African Province'
+    _order = 'name'
+
+    name = fields.Char(required=True)
+    code = fields.Char(required=True, help="Matches the province on the candidate.")
+
+    _sql_constraints = [('code_unique', 'UNIQUE(code)', 'Province codes must be unique.')]
 
 
 class Chat2workListingSource(models.Model):
@@ -164,7 +176,8 @@ class Chat2workListing(models.Model):
     title = fields.Char(required=True)
     employer = fields.Char()
     location = fields.Char('Town / Area')
-    province = fields.Selection(PROVINCES, index=True)
+    province_ids = fields.Many2many('chat2work.province', string='Provinces',
+                                    help="Where this job is. Leave empty if it isn't known.")
     field = fields.Selection(FIELDS, 'Type of Work', index=True)
     employment_type = fields.Char()
     salary = fields.Char()
@@ -202,6 +215,16 @@ class Chat2workListing(models.Model):
             return False
 
     @api.model
+    def _parse_provinces(self, value):
+        """Province records from text like "Gauteng; WC" or "National". Unknown names are ignored."""
+        Province = self.env['chat2work.province']
+        parts = [p for p in re.split(r'[;,/|]', value or '') if p.strip()]
+        if any(_key(p) in ALL_PROVINCES for p in parts):
+            return Province.search([])
+        codes = {_choice(p, PROVINCES, PROVINCE_ALIASES) for p in parts} - {False}
+        return Province.search([('code', 'in', list(codes))])
+
+    @api.model
     def _vals_from_row(self, row):
         """Listing values from a CSV row with normalised headers; None without a title."""
         title = row.get('title')
@@ -211,7 +234,7 @@ class Chat2workListing(models.Model):
             'title': title[:200],
             'employer': row.get('employer', ''),
             'location': row.get('location', ''),
-            'province': _choice(row.get('province'), PROVINCES, PROVINCE_ALIASES),
+            'province_ids': [(6, 0, sorted(self._parse_provinces(row.get('province')).ids))],
             'field': _choice(row.get('field'), FIELDS, FIELD_ALIASES),
             'employment_type': row.get('employment_type', ''),
             'salary': row.get('salary', ''),
@@ -240,14 +263,17 @@ class Chat2workListing(models.Model):
         """(score, reasons) for a candidate, or None if they can't be suggested.
 
         A province or type of work that's known on both sides and differs rules
-        the candidate out; unknown ones count for nothing either way.
+        the candidate out; unknown ones count for nothing either way. A listing
+        in several provinces fits a candidate in any of them.
         """
         self.ensure_one()
-        for fname in ('province', 'field'):
-            if self[fname] and candidate[fname] and self[fname] != candidate[fname]:
-                return None
+        codes = self.province_ids.mapped('code')
+        if codes and candidate.province and candidate.province not in codes:
+            return None
+        if self.field and candidate.field and self.field != candidate.field:
+            return None
         score, reasons = 0, []
-        if self.province and candidate.province == self.province:
+        if candidate.province in codes:
             score += 2
             reasons.append('same province')
         if self.field and candidate.field == self.field:

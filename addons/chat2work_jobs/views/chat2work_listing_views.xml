@@ -7,7 +7,7 @@
             <list string="Job Listings" decoration-muted="state == 'closed'">
                 <field name="title"/>
                 <field name="employer"/>
-                <field name="province"/>
+                <field name="province_ids" widget="many2many_tags"/>
                 <field name="location" optional="show"/>
                 <field name="field" optional="show"/>
                 <field name="closing_on"/>
@@ -36,7 +36,7 @@
                     <group>
                         <group>
                             <field name="employer"/>
-                            <field name="province"/>
+                            <field name="province_ids" widget="many2many_tags" options="{'no_create': True}"/>
                             <field name="location"/>
                             <field name="field"/>
                             <field name="employment_type"/>
@@ -91,12 +91,13 @@
                 <field name="title"/>
                 <field name="employer"/>
                 <field name="location"/>
+                <field name="province_ids"/>
                 <filter name="open" string="Open" domain="[('state', '=', 'open')]"/>
                 <filter name="closed" string="Closed" domain="[('state', '=', 'closed')]"/>
                 <separator/>
                 <filter name="to_review" string="Candidates to review" domain="[('match_ids.state', '=', 'suggested')]"/>
                 <separator/>
-                <filter name="group_province" string="Province" context="{'group_by': 'province'}"/>
+                <filter name="group_province" string="Province" context="{'group_by': 'province_ids'}"/>
                 <filter name="group_field" string="Type of work" context="{'group_by': 'field'}"/>
                 <filter name="group_source" string="Source" context="{'group_by': 'source_id'}"/>
             </search>
