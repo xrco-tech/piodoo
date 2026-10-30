@@ -25,7 +25,7 @@ UPLOAD_TYPES = {
     '.png': 'image/png',
     '.heic': 'image/heic',
 }
-MAX_ROWS = 3
+MAX_ROWS = 5
 TEXT_MAX = 600
 SKILLS_MAX = 300
 LANGUAGES_MAX = 150

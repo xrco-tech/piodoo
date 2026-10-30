@@ -177,6 +177,8 @@
                             <field name="cv_build_step" invisible="cv_state != 'started'"/>
                             <field name="cv_rebuild_state" invisible="cv_rebuild_state == 'none'"/>
                             <field name="cv_rebuild_error" invisible="not cv_rebuild_error"/>
+                            <field name="cv_nudge_count" invisible="not cv_nudge_count"/>
+                            <field name="cv_nudge_next_at" invisible="not cv_nudge_next_at"/>
                             <field name="cv_original_attachment_id" invisible="not cv_original_attachment_id"/>
                             <button name="action_c2w_rebuild_cv" type="object" string="Read the upload again"
                                     class="btn-secondary" colspan="2" invisible="cv_rebuild_state not in ('needs_agent', 'to_confirm') or not cv_original_attachment_id"/>

@@ -18,6 +18,15 @@
             <field name="interval_type">hours</field>
             <field name="active" eval="True"/>
         </record>
+        <record id="ir_cron_chat2work_cv_nudge" model="ir.cron">
+            <field name="name">Chat2Work: remind candidates to check their standard CV</field>
+            <field name="model_id" ref="chat2work.model_chat2work_candidate"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_cv_nudge()</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
         <record id="ir_cron_chat2work_retention" model="ir.cron">
         <field name="name">Chat2Work: delete candidates inactive for 12 months (POPIA)</field>
         <field name="model_id" ref="model_chat2work_candidate"/>
@@ -53,6 +62,20 @@
             <field name="template_id" ref="wa_template_cv_link"/>
             <field name="button_type">URL</field>
             <field name="text">Add my CV</field>
+            <field name="url">https://piodoo.xrco.tech/cv/{{1}}</field>
+        </record>
+        <record id="wa_template_cv_check" model="whatsapp.template">
+            <field name="name">chat2work_cv_check</field>
+            <field name="language">en</field>
+            <field name="category">UTILITY</field>
+            <field name="body">Hi {{1}}, we've put your CV into our standard format. It lists up to your 5 most recent jobs and 5 most recent schools or courses. Please check it's right so we can consider you for work. Tap below.</field>
+            <field name="footer">Chat2Work never asks for money.</field>
+            <field name="description">Reminder to check an uploaded CV put into the standard format. {{1}} is the first name; the URL button's {{1}} is the CV token.</field>
+        </record>
+        <record id="wa_template_cv_check_button" model="whatsapp.template.button">
+            <field name="template_id" ref="wa_template_cv_check"/>
+            <field name="button_type">URL</field>
+            <field name="text">Check my CV</field>
             <field name="url">https://piodoo.xrco.tech/cv/{{1}}</field>
         </record>
     </data>
