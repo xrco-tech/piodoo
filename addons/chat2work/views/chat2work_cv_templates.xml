@@ -16,7 +16,7 @@
                 * { box-sizing:border-box; }
                 body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
                 header { background:var(--hivis); padding:20px 16px 18px; }
-                header .brand { font-weight:800; font-size:14px; letter-spacing:.08em; text-transform:uppercase; }
+                header .brand { display:block; }
                 header h1 { margin:6px 0 0; font-size:26px; line-height:1.15; }
                 main { max-width:640px; margin:0 auto; padding:16px; display:grid; gap:14px; }
                 .card { background:#fff; border:1px solid var(--line); border-radius:8px; }
@@ -86,7 +86,7 @@
         </head>
         <body>
             <header>
-                <div class="brand">Chat2Work</div>
+                <img class="brand" src="/chat2work/static/src/img/chat2work_logo_navy.svg" alt="Chat2Work" width="124" height="50"/>
                 <h1 t-if="candidate">
                     <t t-if="first_name">Hi <t t-out="first_name"/>, let's</t><t t-else="">Let's</t> get your CV ready
                 </h1>
