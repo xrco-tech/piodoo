@@ -11,6 +11,7 @@
             <meta name="viewport" content="width=device-width, initial-scale=1"/>
             <meta name="robots" content="noindex, nofollow"/>
             <title>Chat2Work · Your CV</title>
+            <meta t-if="candidate and candidate.cv_rebuild_state == 'queued'" http-equiv="refresh" content="15"/>
             <style>
                 :root { --hivis:#ffc414; --navy:#1b2a41; --ink:#16202e; --muted:#586273; --paper:#f7f6f1; --line:#dcdcd4; --ok:#1f8a5b; --bad:#a3261b; }
                 * { box-sizing:border-box; }
@@ -37,7 +38,21 @@
                 .msg { padding:12px 14px; border-radius:6px; font-weight:700; }
                 .msg.ok { background:#e3f3ea; color:var(--ok); }
                 .msg.bad { background:#f8e3e1; color:var(--bad); }
-                .status { padding:14px 16px; font-size:15px; }
+                .status { padding:14px 16px; font-size:15px; display:flex; gap:10px; align-items:flex-start; border-radius:8px; }
+                .status svg { flex:none; }
+                .status.ok { background:#e3f3ea; color:#17643f; font-weight:700; }
+                .status.wait { background:#fff3c4; color:var(--ink); font-weight:700; }
+                .btn.cta { display:block; box-sizing:border-box; }
+                .options { padding:0 16px 16px; display:grid; gap:14px; }
+                .card.build.hl { background:var(--navy); border-color:var(--navy); }
+                .card.build.hl > summary { color:#fff; }
+                .card.build.hl > summary small { color:#e4e7ec; }
+                .card.build.hl > summary::after { color:#fff; }
+                .card.build.hl > form { background:#fff; border-radius:0 0 7px 7px; padding-top:16px; }
+                .js-on.building .change { border:0; background:none; }
+                .js-on.building .change > summary { display:none; }
+                .js-on.building .options { padding:0; }
+                .js-on.building .card.build.hl { background:#fff; border-color:var(--line); }
                 .fine { font-size:13px; color:var(--muted); text-align:center; }
                 :focus-visible { outline:3px solid var(--navy); outline-offset:2px; }
                 [hidden] { display:none !important; }
@@ -53,7 +68,7 @@
                 .js-on .row { border:0; padding:0; }
                 .js-on .row legend { display:none; }
                 .js-on .step + .step { margin-top:0; }
-                .js-on.building > .card:not(.build), .js-on.building > .status, .js-on.building > .fine { display:none; }
+                .js-on.building .card:not(.build):not(.change), .js-on.building > .status, .js-on.building > .cta, .js-on.building > .fine { display:none; }
                 .js-on.building .build > summary { display:none; }
                 .js-on.building .build > form { padding-top:16px; }
                 .row-fields { display:grid; gap:10px; }
@@ -106,13 +121,40 @@
                     <div t-if="notice == 'help'" class="msg ok">Got it. A Chat2Work agent will call you to help with your CV.</div>
                     <div t-if="error" class="msg bad" role="alert" t-out="error"/>
 
-                    <div class="card status" t-if="candidate.cv_state != 'none' and not notice">
-                        <t t-if="candidate.cv_state == 'started'">We saved your answers, so you can carry on where you stopped.</t>
-                        <t t-if="candidate.cv_state == 'uploaded'">We have your uploaded CV. You can upload a new one or build one below.</t>
-                        <t t-if="candidate.cv_state == 'built'">Your CV is ready. <a t-attf-href="/cv/#{token}/download">Download it (PDF)</a>, or update it below.</t>
-                        <t t-if="candidate.cv_state == 'help_requested'">An agent will call you<t t-if="masked_phone"> on <t t-out="masked_phone"/></t> to help with your CV.</t>
+                    <t t-set="rebuild" t-value="candidate.cv_rebuild_state"/>
+                    <t t-set="waiting" t-value="candidate.cv_state in ('started', 'help_requested') or (candidate.cv_state == 'uploaded' and rebuild in ('queued', 'to_confirm'))"/>
+                    <div t-if="candidate.cv_state != 'none' and (not notice or waiting)" t-attf-class="status #{'wait' if waiting else 'ok'}" role="status">
+                        <svg t-if="waiting" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                        <svg t-else="" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4 10-11"/></svg>
+                        <div>
+                            <t t-if="candidate.cv_state == 'started'">We saved your answers, so you can carry on where you stopped.</t>
+                            <t t-if="candidate.cv_state == 'help_requested'">An agent will call you<t t-if="masked_phone"> on <t t-out="masked_phone"/></t> to help with your CV.</t>
+                            <t t-if="candidate.cv_state == 'built'">Your CV is ready.</t>
+                            <t t-if="candidate.cv_state == 'uploaded'">
+                                <t t-if="rebuild == 'queued'">We're putting your CV into our standard format. This usually takes about a minute.</t>
+                                <t t-elif="rebuild == 'to_confirm'">We've put your CV into our standard format. Please check that it's right.</t>
+                                <t t-elif="rebuild == 'needs_agent'">We have your CV. An agent will put it into our standard format.</t>
+                                <t t-else="">We have your CV.</t>
+                            </t>
+                        </div>
                     </div>
+                    <a t-if="candidate.cv_state == 'built' and notice != 'built'" class="btn cta" t-attf-href="/cv/#{token}/download">Download my CV (PDF)</a>
+                    <a t-if="candidate.cv_state == 'uploaded' and rebuild == 'to_confirm' and not open_build" class="btn cta" t-attf-href="/cv/#{token}?check=1">Check my CV</a>
+                    <t t-set="has_cv" t-value="candidate.cv_state in ('uploaded', 'built')"/>
+                    <details t-if="has_cv" class="card change" t-att-open="'open' if open_build or error else None">
+                        <summary><div>Change my CV</div></summary>
+                        <div class="options"><t t-call="chat2work.cv_page_options"/></div>
+                    </details>
+                    <t t-else=""><t t-call="chat2work.cv_page_options"/></t>
+                    <p class="fine">This link is personal and works until <t t-out="candidate.cv_token_expires.strftime('%d %b %Y')"/>. Chat2Work never asks for money.</p>
+                </t>
+            </main>
+            <script t-if="candidate" src="/chat2work/static/src/js/cv_steps.js?v=4" defer="defer"/>
+        </body>
+        </html>
+    </template>
 
+    <template id="cv_page_options" name="Chat2Work CV page options">
                     <details class="card" t-att-open="'open' if error and not open_build else None">
                         <summary><div>I have a CV<small>Upload a PDF, Word file or a photo of it</small></div></summary>
                         <form class="body" method="post" enctype="multipart/form-data" t-attf-action="/cv/#{token}/upload">
@@ -125,7 +167,7 @@
                         </form>
                     </details>
 
-                    <details class="card build" t-att-open="'open' if open_build else None">
+                    <details t-attf-class="card build #{'hl' if not has_cv else ''}" t-att-open="'open' if open_build else None">
                         <summary><div>Build my CV<small>5 short steps, and we'll make a polished PDF.<span class="js-only"> Your answers are saved as you go, so you can stop and come back.</span></small></div></summary>
                         <form id="cv_build_form" class="body" method="post" t-attf-action="/cv/#{token}/build"
                               t-attf-data-draft-url="/cv/#{token}/draft" t-att-data-start-step="start_step">
@@ -287,12 +329,6 @@
                             <button class="btn alt" type="submit">Ask for help</button>
                         </form>
                     </details>
-                    <p class="fine">This link is personal and works until <t t-out="candidate.cv_token_expires.strftime('%d %b %Y')"/>. Chat2Work never asks for money.</p>
-                </t>
-            </main>
-            <script t-if="candidate" src="/chat2work/static/src/js/cv_steps.js?v=3" defer="defer"/>
-        </body>
-        </html>
     </template>
 
     <!-- The standard CV, rendered to PDF from the form answers (cv_data). -->

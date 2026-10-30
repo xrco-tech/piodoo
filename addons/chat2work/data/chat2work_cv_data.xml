@@ -9,7 +9,16 @@
         <field name="interval_type">minutes</field>
         <field name="active" eval="True"/>
     </record>
-    <record id="ir_cron_chat2work_retention" model="ir.cron">
+    <record id="ir_cron_chat2work_cv_rebuild" model="ir.cron">
+            <field name="name">Chat2Work: rebuild uploaded CVs in the standard format</field>
+            <field name="model_id" ref="chat2work.model_chat2work_candidate"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_cv_rebuild()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="ir_cron_chat2work_retention" model="ir.cron">
         <field name="name">Chat2Work: delete candidates inactive for 12 months (POPIA)</field>
         <field name="model_id" ref="model_chat2work_candidate"/>
         <field name="state">code</field>
