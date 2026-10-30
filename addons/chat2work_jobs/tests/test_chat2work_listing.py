@@ -3,6 +3,7 @@ from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 from odoo import fields
+from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
 
 CSV = b"""title,external_ref,employer,province,field,requirements,closing_on
@@ -49,30 +50,62 @@ class TestChat2workListing(TransactionCase):
         one = self._candidate('+27820005011', province='gauteng')
         two = self._candidate('+27820005012', province='limpopo')
         out = self._candidate('+27820005013', province='free_state')
-        listing.action_suggest_candidates()
+        listing.action_mark_verified()
         self.assertIn(one, listing.match_ids.candidate_id)
         self.assertIn(two, listing.match_ids.candidate_id)
         self.assertNotIn(out, listing.match_ids.candidate_id)
         self.assertIn('same province', listing.match_ids.filtered(lambda m: m.candidate_id == two).reason)
 
-    def test_next_step_follows_candidates_and_state(self):
+    def test_next_step_follows_verification_candidates_and_state(self):
         self.Candidate.search([]).write({'job_seeking': False})
         listing = self.Listing.create({'title': 'Clerk', 'source_id': self.source.id})
-        self.assertEqual(listing.work_state, 'needs_candidates')
+        self.assertEqual(listing.work_state, 'to_verify')
         cand = self._candidate('+27820005021')
         listing.action_suggest_candidates()
+        self.assertFalse(listing.match_ids, 'no suggestions before verifying')
+        listing.action_mark_verified()
         self.assertEqual(listing.work_state, 'to_review')
+        self.assertEqual(listing.verified_by_id, self.env.user)
+        self.assertTrue(listing.verified_at)
         match = listing.match_ids.filtered(lambda m: m.candidate_id == cand)
         match.action_approve()
         self.assertEqual(listing.work_state, 'ready')
         match.action_reject()
         self.assertEqual(listing.work_state, 'needs_candidates')
+        listing.action_mark_cancelled()
+        self.assertEqual(listing.work_state, 'rejected')
+        self.assertEqual(listing.state, 'open', 'verification and open/closed are separate')
         listing.state = 'closed'
         self.assertEqual(listing.work_state, 'closed')
+        self.assertEqual(listing.verification_state, 'cancelled')
+        listing.action_mark_unverified()
+        self.assertFalse(listing.verified_by_id)
+
+    def test_good_match_needs_a_verified_listing(self):
+        listing = self.Listing.create({'title': 'Clerk', 'source_id': self.source.id})
+        cand = self._candidate('+27820005022')
+        match = self.env['chat2work.listing.match'].create({'listing_id': listing.id, 'candidate_id': cand.id})
+        with self.assertRaises(ValidationError):
+            match.action_approve()
+        listing.action_mark_invalid()
+        listing.action_suggest_candidates()
+        self.assertEqual(listing.match_ids, match, 'invalid listings get no suggestions')
+
+    def test_changed_listing_needs_checking_again(self):
+        self.source._import_csv(CSV)
+        listing = self._listing('A1')
+        listing.action_mark_verified()
+        self.source._import_csv(CSV)
+        self.assertEqual(listing.verification_state, 'verified', 'unchanged stays verified')
+        self.source._import_csv(CSV.replace(b'Matric and', b'Grade 12 and'))
+        self.assertEqual(listing.verification_state, 'unverified')
+        listing.action_mark_invalid()
+        self.source._import_csv(CSV)
+        self.assertEqual(listing.verification_state, 'invalid', 'a failed check is kept')
 
     def test_board_shows_every_column(self):
         groups = self.Listing.read_group([('source_id', '=', self.source.id)], ['work_state'], ['work_state'])
-        self.assertEqual(len(groups), 4)
+        self.assertEqual(len(groups), 6)
 
     def test_reimport_updates_instead_of_duplicating(self):
         self.source._import_csv(CSV)
@@ -129,7 +162,7 @@ class TestChat2workListing(TransactionCase):
         self._candidate('+27820005004', province='gauteng', job_seeking=False)
         self._candidate('+27820005005', province='gauteng').write({'stage': 'placed'})
         listing = self._listing('A1')
-        listing.action_suggest_candidates()
+        listing.action_mark_verified()
         ours = listing.match_ids.filtered(lambda m: m.candidate_id.phone.startswith('+2782000500'))
         self.assertEqual(ours.candidate_id, best | unknown)
         self.assertEqual(ours.sorted('score', reverse=True)[0].candidate_id, best)
@@ -147,7 +180,7 @@ class TestChat2workListing(TransactionCase):
         with_cv.cv_attachment_id = attachment
         self.assertEqual(with_cv.cv_text_state, 'readable')
         listing = self._listing('A1')
-        listing.action_suggest_candidates()
+        listing.action_mark_verified()
         scores = {m.candidate_id: m for m in listing.match_ids}
         self.assertGreater(scores[with_cv].score, scores[cand].score)
         self.assertIn('customer', scores[with_cv].reason)
@@ -156,10 +189,10 @@ class TestChat2workListing(TransactionCase):
         self.source._import_csv(CSV)
         cand = self._candidate('+27820005008', province='gauteng')
         listing = self._listing('A1')
-        listing.action_suggest_candidates()
+        listing.action_mark_verified()
         match = listing.match_ids.filtered(lambda m: m.candidate_id == cand)
         match.action_reject()
-        listing.action_suggest_candidates()
+        listing.action_mark_verified()
         self.assertEqual(match.state, 'rejected')
         self.assertEqual(len(listing.match_ids.filtered(lambda m: m.candidate_id == cand)), 1)
 
@@ -167,7 +200,7 @@ class TestChat2workListing(TransactionCase):
         self.source._import_csv(CSV)
         cand = self._candidate('+27820005009', province='gauteng')
         listing = self._listing('A1')
-        listing.action_suggest_candidates()
+        listing.action_mark_verified()
         match = listing.match_ids.filtered(lambda m: m.candidate_id == cand)
         self.assertTrue(match)
         cand._c2w_erase()
