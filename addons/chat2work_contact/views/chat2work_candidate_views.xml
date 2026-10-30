@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chat2work_candidate_form_contact" model="ir.ui.view">
+        <field name="name">chat2work.candidate.form.contact</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="inherit_id" ref="chat2work.view_chat2work_candidate_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_c2w_erase']" position="before">
+                <field name="c2w_can_voip" invisible="1"/>
+                <button name="action_c2w_call_whatsapp" type="object" string="WhatsApp call" icon="fa-whatsapp"
+                        class="btn-primary" invisible="not phone or not whatsapp_opt_in or not id"/>
+                <button name="action_c2w_call_voip" type="object" string="VoIP call" icon="fa-phone"
+                        class="btn-primary" invisible="not phone or not c2w_can_voip or not id"/>
+                <button name="action_c2w_open_message" type="object" string="Send message" icon="fa-comment"
+                        class="btn-primary" invisible="not phone or not id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
