@@ -43,6 +43,15 @@ WA_PROMPTS = {
              "Join our workforce database and get help with a polished CV, free.\n\n"
              "What would you like to do?"),
     'S04': "Please type your 13-digit SA ID number.",
+    'S10': "Which province would you most like to work in?",
+    'S11': "What kind of work are you looking for?",
+}
+WA_OPTIONS = {
+    'S10': [('1', 'Gauteng'), ('2', 'KwaZulu-Natal'), ('3', 'Western Cape'), ('4', 'Eastern Cape'),
+            ('5', 'Limpopo'), ('6', 'Mpumalanga'), ('7', 'North West'), ('8', 'Free State'),
+            ('9', 'Northern Cape'), ('0', 'Skip')],
+    'S11': [('1', 'Call centre'), ('2', 'Retail'), ('3', 'Warehouse / Driver'),
+            ('4', 'Admin / General'), ('5', 'Other'), ('0', 'Skip')],
 }
 
 
@@ -88,7 +97,17 @@ class Chat2workWaSession(models.Model):
 
     def _screen(self, screen):
         prompt, options = super()._screen(screen)
-        return WA_PROMPTS.get(screen, prompt), options
+        return WA_PROMPTS.get(screen, prompt), WA_OPTIONS.get(screen, options)
+
+    def unlink(self):
+        # Left during the questions after the profile was saved: the CV link
+        # that ends the conversation was never sent, so send it another way.
+        for session in self:
+            candidate = self.env['chat2work.candidate'].browse(
+                (session.data or {}).get('created_candidate_id')).exists()
+            if candidate and candidate.cv_link_state == 'none':
+                candidate._c2w_queue_cv_link()
+        return super().unlink()
 
     # ── Config ───────────────────────────────────────────────────────────────
 

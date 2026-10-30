@@ -95,7 +95,14 @@ class TestChat2workWhatsapp(TransactionCase):
         status = self.sent[-1]['interactive']
         self.assertEqual(status['type'], 'list')            # 5 options → list
         self.chat(wa, tap(wa, '1'), text(wa, 'yes'))        # Unemployed, typed "yes"
+        self.assertIn('province', self.sent[-1]['interactive']['body']['text'])
+        self.assertEqual(self.sent[-1]['interactive']['type'], 'list')
+        self.chat(wa, text(wa, 'western cape'))             # typed label
+        self.assertIn('kind of work', self.sent[-1]['interactive']['body']['text'])
+        self.chat(wa, tap(wa, '2'))                         # Retail
         cand = self.Candidate.search([('phone', '=', '+' + wa)])
+        self.assertEqual(cand.province, 'western_cape')
+        self.assertEqual(cand.field, 'retail')
         self.assertTrue(cand)
         self.assertEqual(cand.registered_via, 'whatsapp')
         self.assertEqual(cand.source_tag, 'FLYER')
@@ -171,6 +178,17 @@ class TestChat2workWhatsapp(TransactionCase):
         self.assertEqual(msg.message_body, '[ID number]')
         self.assertNotIn(id_no, msg.raw_message_data)
         self.assertIn('[ID number]', msg.raw_message_data)
+
+    def test_leaving_at_preferences_still_sends_cv_link(self):
+        wa = '27820001011'
+        self._at_id_screen(wa)
+        self.chat(wa, text(wa, make_id(years_ago(26))), tap(wa, '1'), tap(wa, '1'))
+        session = self.Session.search([('wa_id', '=', wa)])
+        cand = self.Candidate.search([('phone', '=', '+' + wa)])
+        self.assertTrue(session)
+        self.assertEqual(cand.cv_link_state, 'none')
+        session.unlink()
+        self.assertEqual(cand.cv_link_state, 'queued')
 
     def test_consent_declined_stores_nothing(self):
         wa = '27820001005'
@@ -255,7 +273,7 @@ class TestChat2workCvLink(TransactionCase):
         id_no = make_id(years_ago(22))
         crumbs = []
         Session.ussd_handle(sid, '*1#', phone, '', '')
-        for inp in ('1', '1', '2', id_no, '1', '1'):
+        for inp in ('1', '1', '2', id_no, '1', '1', '0', '0'):
             crumbs.append(inp)
             Session.ussd_handle(sid, '*1#', phone, '*'.join(crumbs), inp)
         cand = self.env['chat2work.candidate'].search([('phone', '=', phone)])

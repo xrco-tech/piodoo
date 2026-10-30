@@ -40,11 +40,22 @@ STATUS_OPTIONS = [('1', 'Unemployed'), ('2', 'Employed'), ('3', 'Self-employed')
                   ('4', 'Student'), ('0', 'Back')]
 INTENT_PROMPT = "Are you looking for a new job?"
 INTENT_OPTIONS = [('1', 'Yes'), ('2', 'No'), ('0', 'Back')]
+# Short labels: with the "Invalid choice" line these screens must fit a USSD page.
+PROVINCE_PROMPT = "Your province?"
+PROVINCE_OPTIONS = [('1', 'Gauteng'), ('2', 'KZN'), ('3', 'W Cape'), ('4', 'E Cape'), ('5', 'Limpopo'),
+                    ('6', 'Mpumalanga'), ('7', 'N West'), ('8', 'Free State'), ('9', 'N Cape'), ('0', 'Skip')]
+PROVINCE_KEYS = {'1': 'gauteng', '2': 'kzn', '3': 'western_cape', '4': 'eastern_cape', '5': 'limpopo',
+                 '6': 'mpumalanga', '7': 'north_west', '8': 'free_state', '9': 'northern_cape'}
+FIELD_PROMPT = "What work do you want?"
+FIELD_OPTIONS = [('1', 'Call centre'), ('2', 'Retail'), ('3', 'Warehouse/Driver'),
+                 ('4', 'Admin'), ('5', 'Other'), ('0', 'Skip')]
+FIELD_KEYS = {'1': 'call_centre', '2': 'retail', '3': 'warehouse', '4': 'admin', '5': 'other'}
 
 # Question names for the activity log, so "Yes" reads as "WhatsApp: Yes".
 SCREEN_TOPICS = {
     'S02': 'Terms', 'S03': 'WhatsApp', 'S05': 'Status', 'S08': 'Status',
     'S06': 'Looking for work', 'S09': 'Looking for work',
+    'S10': 'Province', 'S11': 'Type of work',
 }
 # 13 digits, alone or grouped with spaces/dashes/dots ("930829 0197 084").
 ID_LIKE = re.compile(r'(?<!\d)\d(?:[\s.-]?\d){12}(?!\d)')
@@ -213,6 +224,10 @@ class Chat2workFlow(models.AbstractModel):
             return STATUS_PROMPT, STATUS_OPTIONS
         if screen in ('S06', 'S09'):
             return INTENT_PROMPT, INTENT_OPTIONS
+        if screen == 'S10':
+            return PROVINCE_PROMPT, PROVINCE_OPTIONS
+        if screen == 'S11':
+            return FIELD_PROMPT, FIELD_OPTIONS
         raise ValueError("Unknown Chat2Work screen %s" % screen)
 
     def _set(self, **vals):
@@ -337,11 +352,43 @@ class Chat2workFlow(models.AbstractModel):
         return None
 
     def _on_S06(self, inp):
-        if inp in ('1', '2'):
-            return self._create_profile(job_seeking=inp == '1')
+        if inp == '2':
+            return self._create_profile(job_seeking=False)
+        if inp == '1':
+            # Save the profile now, so leaving at the questions below loses nothing.
+            self._create_profile(job_seeking=True)
+            self.candidate_id = self.data['created_candidate_id']
+            return self._ask_preferences()
         if inp == '0':
             return self._goto('S05')
         return None
+
+    # What they're looking for: used to match them to job listings. Optional.
+    def _ask_preferences(self):
+        if not self.candidate_id.province:
+            return self._goto('S10')
+        if not self.candidate_id.field:
+            return self._goto('S11')
+        return self._end_preferences()
+
+    def _on_S10(self, inp):
+        if inp in PROVINCE_KEYS:
+            self.candidate_id.province = PROVINCE_KEYS[inp]
+        elif inp != '0':
+            return None
+        return self._end_preferences() if self.candidate_id.field else self._goto('S11')
+
+    def _on_S11(self, inp):
+        if inp in FIELD_KEYS:
+            self.candidate_id.field = FIELD_KEYS[inp]
+        elif inp != '0':
+            return None
+        return self._end_preferences()
+
+    def _end_preferences(self):
+        if (self.data or {}).get('created_candidate_id'):
+            return self._profile_created_text(self.candidate_id), True
+        return "Status updated. Thank you! We will be in touch soon.", True
 
     def _candidate_extra_vals(self):
         return {}
@@ -395,6 +442,8 @@ class Chat2workFlow(models.AbstractModel):
                 'job_seeking': inp == '1',
                 'status_updated_at': fields.Datetime.now(),
             })
+            if inp == '1':
+                return self._ask_preferences()
             return "Status updated. Thank you! We will be in touch soon.", True
         if inp == '0':
             return self._goto('S08')

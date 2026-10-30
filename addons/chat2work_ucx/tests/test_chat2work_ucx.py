@@ -64,7 +64,7 @@ class TestChat2workUcx(TransactionCase):
 
     def test_ussd_profile_is_one_timeline_entry(self):
         id_no = make_id(years_ago(25))
-        self.dial('+27820100001', '1', '1', '1', id_no, '1', '1')
+        self.dial('+27820100001', '1', '1', '1', id_no, '1', '1', '1', '1')
         cand, items = self.logged('+27820100001')
         self.assertTrue(cand.partner_id, 'contact created for the new candidate')
         self.assertEqual(cand.partner_id.mobile, '+27820100001')
@@ -73,13 +73,13 @@ class TestChat2workUcx(TransactionCase):
         self.assertEqual(items.direction, 'inbound')
         self.assertEqual(items.raw_body,
                          'USSD session: Create Profile › Terms: I agree › WhatsApp: Yes › [ID number] › '
-                         'Status: Unemployed › Looking for work: Yes\n'
+                         'Status: Unemployed › Looking for work: Yes › Province: Gauteng › Type of work: Call centre\n'
                          'Result: Profile created! We will contact you soon via WhatsApp/SMS.')
         self.assertNotIn(id_no, items.raw_body)
         self.assertEqual(items.conversation_id.campaign_id, 'chat2work')
 
     def test_cv_link_sms_is_logged(self):
-        self.dial('+27820100002', '1', '1', '2', make_id(years_ago(22)), '1', '1')
+        self.dial('+27820100002', '1', '1', '2', make_id(years_ago(22)), '1', '1', '0', '0')
         cand, _items = self.logged('+27820100002')
         cand._c2w_send_cv_link_now()                      # no WhatsApp → SMS
         _cand, items = self.logged('+27820100002')
@@ -105,7 +105,7 @@ class TestChat2workUcx(TransactionCase):
         cand, items = self.logged('+27820100004')
         self.assertEqual(cand.partner_id, partner)
         conversation = items.conversation_id
-        self.dial('+27820100004', '1', '1', '1')          # Update Status: Unemployed, looking
+        self.dial('+27820100004', '1', '1', '1', '0', '0')  # Update Status: Unemployed, looking, skip the rest
         _cand, items = self.logged('+27820100004')
         self.assertEqual(len(items), 2)
         self.assertEqual(items.conversation_id, conversation)
@@ -114,14 +114,14 @@ class TestChat2workUcx(TransactionCase):
     def test_whatsapp_chat_logged_message_by_message(self):
         wa = '27820100005'
         id_no = make_id(years_ago(24))
-        for msg in (text(wa, 'Hi Ispani'), tap(wa, '1'), tap(wa, '1'), text(wa, id_no), tap(wa, '1'), tap(wa, '1')):
+        for msg in (text(wa, 'Hi Ispani'), tap(wa, '1'), tap(wa, '1'), text(wa, id_no), tap(wa, '1'), tap(wa, '1'), tap(wa, '0'), tap(wa, '0')):
             self.Wa.wa_handle(msg, {})
         cand, items = self.logged('+' + wa)
         self.assertTrue(items)
         self.assertEqual(set(items.mapped('channel_id.code')), {'whatsapp'})
         inbound = items.filtered(lambda i: i.direction == 'inbound').mapped('raw_body')
         self.assertEqual(inbound, ['Hi Ispani', 'Create Profile', 'Terms: I agree', '[ID number]',
-                                   'Status: Unemployed', 'Looking for work: Yes'])
+                                   'Status: Unemployed', 'Looking for work: Yes', 'Skip', 'Skip'])
         self.assertFalse([b for b in items.mapped('raw_body') if id_no in b])
         self.assertIn('Add my CV: ' + cand._c2w_cv_url(), items.mapped('raw_body'))
 
@@ -157,7 +157,7 @@ class TestChat2workUcx(TransactionCase):
         self.assertEqual(self.Interaction.search_count([]), before)
 
     def test_erase_removes_conversation_and_created_contact(self):
-        self.dial('+27820100009', '1', '1', '2', make_id(years_ago(26)), '1', '1')
+        self.dial('+27820100009', '1', '1', '2', make_id(years_ago(26)), '1', '1', '0', '0')
         cand, items = self.logged('+27820100009')
         partner, conversation = cand.partner_id, items.conversation_id
         self.assertTrue(cand.c2w_created_partner)
@@ -169,7 +169,7 @@ class TestChat2workUcx(TransactionCase):
     def test_erase_keeps_existing_contact_and_shared_thread(self):
         partner = self.env['res.partner'].create({'name': 'Bongani Zulu', 'mobile': '+27820100010'})
         shared = self.env['comm.conversation'].create({'partner_id': partner.id})
-        self.dial('+27820100010', '1', '1', '2', make_id(years_ago(27)), '1', '1')
+        self.dial('+27820100010', '1', '1', '2', make_id(years_ago(27)), '1', '1', '0', '0')
         cand, items = self.logged('+27820100010')
         self.assertEqual(items.conversation_id, shared)
         self.assertFalse(cand.c2w_created_partner)

@@ -115,6 +115,7 @@
                 <field name="employment_status"/>
                 <field name="job_seeking"/>
                 <field name="whatsapp_opt_in"/>
+                <field name="province" optional="show"/>
                 <field name="location" optional="hide"/>
                 <field name="field" optional="hide"/>
                 <field name="registered_via"/>
@@ -149,6 +150,7 @@
                     <group>
                         <group>
                             <field name="phone"/>
+                            <field name="province"/>
                             <field name="location"/>
                             <field name="field"/>
                         </group>
@@ -171,6 +173,7 @@
                         </group>
                         <group string="CV">
                             <field name="cv_state"/>
+                            <field name="cv_text_state" invisible="cv_text_state == 'none'"/>
                             <field name="cv_attachment_id" invisible="not cv_attachment_id"/>
                             <field name="cv_submitted_at" invisible="not cv_submitted_at"/>
                         </group>
@@ -208,8 +211,8 @@
                         </div>
                         <field name="phone" widget="phone"/>
                         <div class="text-muted">
-                            <field name="location"/>
-                            <span t-if="record.location.raw_value and record.employment_status.raw_value"> · </span>
+                            <field name="province"/>
+                            <span t-if="record.province.raw_value and record.employment_status.raw_value"> · </span>
                             <field name="employment_status"/>
                         </div>
                         <div class="d-flex flex-wrap gap-1 mt-1">
@@ -253,8 +256,11 @@
                 <filter name="no_cv" string="No CV yet" domain="[('cv_state', '=', 'none')]"/>
                 <filter name="whatsapp" string="Uses WhatsApp" domain="[('whatsapp_opt_in', '=', True)]"/>
                 <filter name="job_seeking" string="Looking for work" domain="[('job_seeking', '=', True)]"/>
+                <filter name="cv_unreadable" string="CV not readable" domain="[('cv_text_state', '=', 'unreadable')]"/>
                 <separator/>
                 <filter name="group_stage" string="Stage" context="{'group_by': 'stage'}"/>
+                <filter name="group_province" string="Province" context="{'group_by': 'province'}"/>
+                <filter name="group_field" string="Type of work" context="{'group_by': 'field'}"/>
                 <filter name="group_source" string="Campaign source" context="{'group_by': 'source_tag'}"/>
                 <filter name="group_via" string="Registered via" context="{'group_by': 'registered_via'}"/>
                 <filter name="group_employment" string="Employment status" context="{'group_by': 'employment_status'}"/>

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chat2work_listing_list" model="ir.ui.view">
+        <field name="name">chat2work.listing.list</field>
+        <field name="model">chat2work.listing</field>
+        <field name="arch" type="xml">
+            <list string="Job Listings" decoration-muted="state == 'closed'">
+                <field name="title"/>
+                <field name="employer"/>
+                <field name="province"/>
+                <field name="location" optional="show"/>
+                <field name="field" optional="show"/>
+                <field name="closing_on"/>
+                <field name="suggested_count"/>
+                <field name="source_id" optional="hide"/>
+                <field name="content_updated_at" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'open'"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chat2work_listing_form" model="ir.ui.view">
+        <field name="name">chat2work.listing.form</field>
+        <field name="model">chat2work.listing</field>
+        <field name="arch" type="xml">
+            <form string="Job Listing">
+                <header>
+                    <button name="action_suggest_candidates" type="object" string="Suggest candidates"
+                            class="btn-primary" invisible="state != 'open' or not id"/>
+                    <field name="state" widget="statusbar" options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="title"/>
+                        <h1><field name="title"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="employer"/>
+                            <field name="province"/>
+                            <field name="location"/>
+                            <field name="field"/>
+                            <field name="employment_type"/>
+                            <field name="salary"/>
+                        </group>
+                        <group>
+                            <field name="apply_url" widget="url"/>
+                            <field name="apply_contact"/>
+                            <field name="posted_on"/>
+                            <field name="closing_on"/>
+                            <field name="source_id"/>
+                            <field name="first_seen_at"/>
+                            <field name="content_updated_at"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Candidates" name="candidates">
+                            <field name="match_ids">
+                                <list editable="bottom" decoration-muted="state == 'rejected'" decoration-success="state == 'approved'">
+                                    <field name="candidate_id"/>
+                                    <field name="candidate_phone"/>
+                                    <field name="candidate_status"/>
+                                    <field name="candidate_cv_state"/>
+                                    <field name="score"/>
+                                    <field name="reason"/>
+                                    <field name="note" optional="show"/>
+                                    <field name="state" widget="badge" decoration-warning="state == 'suggested'"
+                                           decoration-success="state == 'approved'"/>
+                                    <button name="action_approve" type="object" string="Good match" icon="fa-check"
+                                            invisible="state == 'approved'"/>
+                                    <button name="action_reject" type="object" string="Not a match" icon="fa-times"
+                                            invisible="state == 'rejected'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Description" name="description">
+                            <field name="description"/>
+                        </page>
+                        <page string="Requirements" name="requirements">
+                            <field name="requirements"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_chat2work_listing_search" model="ir.ui.view">
+        <field name="name">chat2work.listing.search</field>
+        <field name="model">chat2work.listing</field>
+        <field name="arch" type="xml">
+            <search string="Job Listings">
+                <field name="title"/>
+                <field name="employer"/>
+                <field name="location"/>
+                <filter name="open" string="Open" domain="[('state', '=', 'open')]"/>
+                <filter name="closed" string="Closed" domain="[('state', '=', 'closed')]"/>
+                <separator/>
+                <filter name="to_review" string="Candidates to review" domain="[('match_ids.state', '=', 'suggested')]"/>
+                <separator/>
+                <filter name="group_province" string="Province" context="{'group_by': 'province'}"/>
+                <filter name="group_field" string="Type of work" context="{'group_by': 'field'}"/>
+                <filter name="group_source" string="Source" context="{'group_by': 'source_id'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_chat2work_listing" model="ir.actions.act_window">
+        <field name="name">Job Listings</field>
+        <field name="res_model">chat2work.listing</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+    </record>
+
+    <record id="view_chat2work_listing_source_list" model="ir.ui.view">
+        <field name="name">chat2work.listing.source.list</field>
+        <field name="model">chat2work.listing.source</field>
+        <field name="arch" type="xml">
+            <list string="Listing Sources">
+                <field name="name"/>
+                <field name="kind"/>
+                <field name="listing_count"/>
+                <field name="last_run_at"/>
+                <field name="last_result"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chat2work_listing_source_form" model="ir.ui.view">
+        <field name="name">chat2work.listing.source.form</field>
+        <field name="model">chat2work.listing.source</field>
+        <field name="arch" type="xml">
+            <form string="Listing Source">
+                <header>
+                    <button name="action_fetch_now" type="object" string="Fetch now" class="btn-primary"
+                            invisible="kind != 'csv_feed' or not id"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="kind"/>
+                            <field name="feed_url" widget="url" invisible="kind != 'csv_feed'" required="kind == 'csv_feed'"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="listing_count"/>
+                            <field name="last_run_at"/>
+                            <field name="last_result"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_chat2work_listing_source" model="ir.actions.act_window">
+        <field name="name">Listing Sources</field>
+        <field name="res_model">chat2work.listing.source</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_chat2work_candidate_form_matches" model="ir.ui.view">
+        <field name="name">chat2work.candidate.form.matches</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="inherit_id" ref="chat2work.view_chat2work_candidate_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <notebook>
+                    <page string="Job Matches" name="job_matches">
+                        <field name="listing_match_ids" readonly="1">
+                            <list decoration-muted="state == 'rejected'" decoration-success="state == 'approved'">
+                                <field name="listing_id"/>
+                                <field name="listing_state"/>
+                                <field name="score"/>
+                                <field name="reason"/>
+                                <field name="note"/>
+                                <field name="state" widget="badge" decoration-warning="state == 'suggested'"
+                                       decoration-success="state == 'approved'"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+            </xpath>
+        </field>
+    </record>
+
+    <menuitem id="menu_chat2work_listings" name="Job Listings" parent="chat2work.menu_chat2work_root"
+              action="action_chat2work_listing" sequence="7"/>
+    <menuitem id="menu_chat2work_listing_import" name="Import Listings" parent="chat2work.menu_chat2work_root"
+              action="action_chat2work_listing_import" sequence="8"/>
+    <menuitem id="menu_chat2work_listing_sources" name="Listing Sources" parent="chat2work.menu_chat2work_root"
+              action="action_chat2work_listing_source" sequence="9"/>
+</odoo>

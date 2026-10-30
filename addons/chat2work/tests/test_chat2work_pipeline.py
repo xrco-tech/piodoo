@@ -62,3 +62,22 @@ class TestChat2workPipeline(TransactionCase):
         msgs = self.cand.message_ids
         self.cand._c2w_erase()
         self.assertFalse(msgs.exists())
+
+    def test_cv_text_removes_id_numbers(self):
+        attachment = self.env['ir.attachment'].create({
+            'name': 'cv.txt', 'raw': b'Lindiwe. ID 9308290197084. Worked in retail for three years.',
+            'mimetype': 'text/plain', 'res_model': 'chat2work.candidate', 'res_id': self.cand.id,
+        })
+        self.cand.cv_attachment_id = attachment
+        self.assertEqual(self.cand.cv_text_state, 'readable')
+        self.assertNotIn('9308290197084', self.cand.cv_text)
+        self.assertIn('[ID number]', self.cand.cv_text)
+
+    def test_unreadable_cv_is_flagged(self):
+        attachment = self.env['ir.attachment'].create({
+            'name': 'cv.png', 'raw': b'\x89PNG\r\n\x1a\n', 'mimetype': 'image/png',
+            'res_model': 'chat2work.candidate', 'res_id': self.cand.id,
+        })
+        self.cand.cv_attachment_id = attachment
+        self.assertEqual(self.cand.cv_text_state, 'unreadable')
+        self.assertFalse(self.cand.cv_text)
