@@ -14,6 +14,13 @@ class Chat2workCvTemplateController(Chat2workCvController):
         return super()._page(candidate, token, **extra)
 
     @http.route()
+    def cv_draft(self, token, **post):
+        candidate = self._candidate(token)
+        if candidate:
+            candidate._c2w_set_cv_template(post.pop('cv_template', None))
+        return super().cv_draft(token, **post)
+
+    @http.route()
     def cv_build(self, token, **post):
         candidate = self._candidate(token)
         if candidate:
