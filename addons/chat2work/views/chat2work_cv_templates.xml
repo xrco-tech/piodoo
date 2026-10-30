@@ -132,7 +132,7 @@
                             <t t-if="candidate.cv_state == 'built'">Your CV is ready.</t>
                             <t t-if="candidate.cv_state == 'uploaded'">
                                 <t t-if="rebuild == 'queued'">We're putting your CV into our standard format. This usually takes about a minute.</t>
-                                <t t-elif="rebuild == 'to_confirm'">We've put your CV into our standard format. Please check that it's right.</t>
+                                <t t-elif="rebuild == 'to_confirm'">We've put your CV into our standard format. It lists up to your 5 most recent jobs and 5 most recent schools or courses. Please check that it's right.</t>
                                 <t t-elif="rebuild == 'needs_agent'">We have your CV. An agent will put it into our standard format.</t>
                                 <t t-else="">We have your CV.</t>
                             </t>

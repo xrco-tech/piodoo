@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 """Uploaded CVs become the standard CV only after a person has checked them."""
 
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
+from odoo import fields
 from odoo.tests import HttpCase, TransactionCase, tagged
 
 READ = 'odoo.addons.chat2work.models.chat2work_cv_rebuild.Chat2workCandidateCvRebuild._c2w_ai_read_cv'
 POST = 'odoo.addons.chat2work.models.chat2work_cv_rebuild.requests.post'
+PAYLOAD = 'odoo.addons.comm_whatsapp.models.whatsapp_message.WhatsAppMessage.send_whatsapp_payload'
+SMS = 'odoo.addons.chat2work.models.chat2work_cv_rebuild._send_sms'
 CV = b'Sipho Dlamini. Soweto. Phone 082 123 4567. ID 9308290197084. Cashier at Spar 2023 to 2024. Matric 2022.'
 AI = {
     'full_name': 'Sipho Dlamini', 'town': 'Soweto', 'email': '', 'summary': '', 'skills': 'Sales, forklift',
@@ -117,6 +121,116 @@ class TestChat2workCvRebuild(Base, TransactionCase):
         cand._c2w_erase()
         self.assertFalse(original.exists())
         self.assertFalse(built.exists())
+
+
+@tagged('post_install', '-at_install', 'chat2work')
+class TestChat2workCvNudge(Base, TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.env['ir.config_parameter'].sudo().set_param('comm_chatbot.anthropic_api_key', 'test-key')
+        self.env['ir.config_parameter'].sudo().set_param('chat2work.public_base_url', 'https://piodoo.xrco.tech')
+        self.env.cr.commit = MagicMock()
+        self.sent = []
+        wa = patch(PAYLOAD, side_effect=self._send)
+        wa.start()
+        self.sms = patch(SMS, return_value=True).start()
+        self.addCleanup(patch.stopall)
+        self.Candidate = self.env['chat2work.candidate']
+        self.wa_ok = True
+
+    def _send(self, recipient, content, **kw):
+        self.sent.append(content)
+        return {'success': self.wa_ok, 'message_id': 'wamid.n%d' % len(self.sent), 'error': 'no'}
+
+    def _ready(self, phone, **vals):
+        cand = self.Candidate.create(dict({'name': 'Sipho Dlamini', 'phone': phone}, **vals))
+        self._upload(cand)
+        with patch(READ, return_value=AI):
+            self.Candidate._cron_cv_rebuild()
+        self.assertEqual(cand.cv_rebuild_state, 'to_confirm')
+        return cand
+
+    def _due(self, cand):
+        cand.cv_nudge_next_at = fields.Datetime.now() - timedelta(minutes=1)
+
+    def _approve(self):
+        self.env.ref('chat2work.wa_template_cv_check').sudo().status = 'APPROVED'
+
+    def test_waits_then_reminds_once_more_then_stops(self):
+        cand = self._ready('+27820009001')
+        self.Candidate._cron_cv_nudge()
+        self.sms.assert_not_called()
+        self._due(cand)
+        self.Candidate._cron_cv_nudge()
+        self.assertEqual(self.sms.call_count, 1)
+        self.assertEqual(cand.cv_nudge_count, 1)
+        self.assertGreater(cand.cv_nudge_next_at, fields.Datetime.now() + timedelta(hours=23))
+        self._due(cand)
+        self.Candidate._cron_cv_nudge()
+        self.assertEqual(self.sms.call_count, 2)
+        self.assertFalse(cand.cv_nudge_next_at)
+
+    def test_sms_fits_one_message_and_mentions_the_limit(self):
+        cand = self._ready('+27820009002')
+        cand._c2w_ensure_token()
+        text = cand._c2w_nudge_sms_text()
+        self.assertLessEqual(len(text), 160)
+        self.assertIn('5 latest jobs', text)
+        self.assertIn(cand.cv_token, text)
+
+    def test_template_outside_the_window(self):
+        self._approve()
+        cand = self._ready('+27820009003', whatsapp_opt_in=True)
+        self._due(cand)
+        self.Candidate._cron_cv_nudge()
+        template = self.sent[-1]['template']
+        self.assertEqual(template['name'], 'chat2work_cv_check')
+        self.assertEqual(template['components'][0]['parameters'][0]['text'], 'Sipho')
+        self.assertEqual(template['components'][1]['parameters'][0]['text'], cand.cv_token)
+        self.sms.assert_not_called()
+        self.assertIn('5 most recent jobs', self.env.ref('chat2work.wa_template_cv_check').body)
+
+    def test_typed_inside_the_window(self):
+        cand = self._ready('+27820009004', whatsapp_opt_in=True)
+        self.env['whatsapp.message'].sudo().create({
+            'message_id': 'wamid.in9004', 'wa_id': '27820009004', 'is_incoming': True, 'message_type': 'text',
+            'message_timestamp': fields.Datetime.now()})
+        self._due(cand)
+        self.Candidate._cron_cv_nudge()
+        inter = self.sent[-1]['interactive']
+        self.assertEqual(inter['action']['parameters']['display_text'], 'Check my CV')
+        self.assertIn('5 most recent jobs', inter['body']['text'])
+
+    def test_sms_when_template_missing_or_whatsapp_fails(self):
+        cand = self._ready('+27820009005', whatsapp_opt_in=True)
+        self._due(cand)
+        self.Candidate._cron_cv_nudge()
+        self.assertEqual(self.sms.call_count, 1, 'template not approved yet')
+        self._approve()
+        self.wa_ok = False
+        self._due(cand)
+        self.Candidate._cron_cv_nudge()
+        self.assertEqual(self.sms.call_count, 2)
+
+    def test_confirming_stops_reminders(self):
+        cand = self._ready('+27820009006')
+        cand._c2w_store_cv_file('CV.pdf', b'%PDF-1.4', 'application/pdf', 'built')
+        self.assertFalse(cand.cv_nudge_next_at)
+        self.Candidate._cron_cv_nudge()
+        self.sms.assert_not_called()
+
+    def test_uploads_from_before_nudges_get_none(self):
+        cand = self.Candidate.create({'name': 'Old', 'phone': '+27820009007', 'cv_state': 'uploaded',
+                                      'cv_rebuild_state': 'to_confirm', 'cv_data': {'full_name': 'Old'}})
+        self.Candidate._cron_cv_nudge()
+        self.sms.assert_not_called()
+        self.assertFalse(cand.cv_nudge_count)
+
+    def test_five_rows_kept(self):
+        rows = [{'role': 'Job %d' % i, 'employer': '', 'dates': '', 'duties': ''} for i in range(7)]
+        details = self.Candidate._c2w_details_from_ai(dict(AI, experience=rows))
+        self.assertEqual([r['role'] for r in details['experience']], ['Job %d' % i for i in range(5)])
 
 
 @tagged('post_install', '-at_install', 'chat2work')
