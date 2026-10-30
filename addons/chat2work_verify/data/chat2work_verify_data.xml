@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="service_said" model="chat2work.verify.service">
+            <field name="name">SA ID Verification (Standard)</field>
+            <field name="report_type">said_verification</field>
+            <field name="credits">1</field>
+        </record>
+        <record id="verify_account" model="chat2work.verify.account">
+            <field name="name">VerifyNow</field>
+        </record>
+        <record id="ir_cron_chat2work_id_checks" model="ir.cron">
+            <field name="name">Chat2Work: ID checks for new candidates</field>
+            <field name="model_id" ref="model_chat2work_verify_account"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_auto_checks()</field>
+            <field name="interval_number">15</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>

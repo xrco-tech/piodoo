@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_chat2work_verify_service_check,chat2work.verify.service.check,model_chat2work_verify_service,group_id_check,1,0,0,0
+access_chat2work_verify_service_admin,chat2work.verify.service.admin,model_chat2work_verify_service,base.group_system,1,1,1,1
+access_chat2work_verify_check_user,chat2work.verify.check.user,model_chat2work_verify_check,group_id_check,1,0,0,0
+access_chat2work_verify_account_user,chat2work.verify.account.user,model_chat2work_verify_account,group_id_check,1,0,0,0
+access_chat2work_verify_account_admin,chat2work.verify.account.admin,model_chat2work_verify_account,base.group_system,1,1,0,0
