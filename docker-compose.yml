@@ -43,7 +43,7 @@ services:
     environment:
       - ODOO_URL=http://nginx:80
       - ODOO_DB=odoo
-      - ODOO_API_KEY=${ODOO_MCP_API_KEY}
+      - ODOO_API_KEY=${MCP_ODOO_API_KEY}
     ports:
       - "8081:8080"
     restart: always
