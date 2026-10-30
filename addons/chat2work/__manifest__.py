@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work',
-    'version': '18.0.1.6.0',
+    'version': '18.0.1.7.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'Job openings, interview slots and bookings for the Chat2Work service',
     'description': """
@@ -23,7 +23,7 @@ receive it by WhatsApp template or SMS, with SMS as the fallback.
     'author': 'XR Co.',
     'website': 'https://github.com/xrco-tech/piodoo',
     'license': 'LGPL-3',
-    'depends': ['base', 'web', 'contacts', 'sms', 'comm_whatsapp', 'comm_whatsapp_chatbot'],
+    'depends': ['base', 'web', 'mail', 'contacts', 'sms', 'comm_whatsapp', 'comm_whatsapp_chatbot'],
     'data': [
         'security/ir.model.access.csv',
         'data/chat2work_data.xml',
