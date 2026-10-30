@@ -13,7 +13,10 @@
             .design input:checked + .frame { border-color:var(--navy); box-shadow:0 0 0 2px var(--hivis); }
             .design input:focus-visible + .frame { outline:3px solid var(--navy); outline-offset:2px; }
         </xpath>
-        <xpath expr="//form[@t-attf-action='/cv/#{token}/build']/button" position="before">
+    </template>
+
+    <template id="cv_page_design_choices" inherit_id="chat2work.cv_page_options">
+        <xpath expr="//form[@id='cv_build_form']//button[hasclass('no-js')]" position="before">
             <fieldset t-if="cv_templates">
                 <legend>Choose a design <span style="font-weight:400">you can change it later</span></legend>
                 <div class="designs">
