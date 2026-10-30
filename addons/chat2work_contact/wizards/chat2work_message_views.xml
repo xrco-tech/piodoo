@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chat2work_message_form" model="ir.ui.view">
+        <field name="name">chat2work.message.form</field>
+        <field name="model">chat2work.message</field>
+        <field name="arch" type="xml">
+            <form string="Send a Message">
+                <field name="candidate_id" invisible="1"/>
+                <field name="uses_whatsapp" invisible="1"/>
+                <field name="window_open" invisible="1"/>
+                <div class="alert alert-warning" role="status" invisible="channel != 'whatsapp' or uses_whatsapp">
+                    This candidate hasn't said they use WhatsApp. Send an SMS instead.
+                </div>
+                <div class="alert alert-info" role="status" invisible="channel != 'whatsapp' or not uses_whatsapp or window_open">
+                    It's more than 24 hours since this candidate messaged you, so WhatsApp only allows a template. Meta charges for template messages.
+                </div>
+                <group>
+                    <field name="phone" readonly="1"/>
+                    <field name="channel" widget="radio" options="{'horizontal': true}"/>
+                    <field name="use_template" invisible="channel != 'whatsapp' or not window_open"/>
+                    <field name="wa_template" invisible="channel != 'whatsapp' or not use_template"
+                           required="channel == 'whatsapp' and use_template"/>
+                    <field name="sms_template" invisible="channel != 'sms'"/>
+                </group>
+                <group string="Template values" invisible="channel != 'whatsapp' or not use_template or not param_ids">
+                    <field name="param_ids" nolabel="1" colspan="2">
+                        <list editable="bottom" create="false" delete="false">
+                            <field name="number" column_invisible="1"/>
+                            <field name="label" readonly="1"/>
+                            <field name="value" required="1"/>
+                        </list>
+                    </field>
+                </group>
+                <group string="Preview" invisible="not preview">
+                    <field name="preview" nolabel="1" colspan="2" readonly="1"/>
+                </group>
+                <group invisible="channel == 'whatsapp' and use_template">
+                    <field name="body" placeholder="Type your message"/>
+                    <field name="sms_length" readonly="1" invisible="channel != 'sms'" string="Length"/>
+                </group>
+                <footer>
+                    <button name="action_send" type="object" string="Send" class="btn-primary"
+                            confirm="Send this message to the candidate now?"/>
+                    <button special="cancel" string="Cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

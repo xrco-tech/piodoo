@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="sms_template_add_cv" model="sms.template">
+            <field name="name">Chat2Work: reminder to add a CV</field>
+            <field name="model_id" ref="chat2work.model_chat2work_candidate"/>
+            <field name="body">Chat2Work: add your CV so we can consider you for work: {{ object.cv_url }} We never ask for money.</field>
+        </record>
+        <record id="sms_template_missed_call" model="sms.template">
+            <field name="name">Chat2Work: we tried to call you</field>
+            <field name="model_id" ref="chat2work.model_chat2work_candidate"/>
+            <field name="body">Chat2Work: we tried to call you. Dial *134*433*48# and choose Request Callback, and we'll call again. We never ask for money.</field>
+        </record>
+    </data>
+</odoo>
