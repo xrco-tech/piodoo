@@ -11,6 +11,8 @@
                 <field name="location" optional="show"/>
                 <field name="field" optional="show"/>
                 <field name="closing_on"/>
+                <field name="verification_state" widget="badge" decoration-success="verification_state == 'verified'"
+                       decoration-danger="verification_state in ('invalid', 'cancelled')" decoration-warning="verification_state == 'unverified'"/>
                 <field name="suggested_count"/>
                 <field name="source_id" optional="hide"/>
                 <field name="content_updated_at" optional="show"/>
@@ -24,8 +26,16 @@
         <field name="arch" type="xml">
             <form string="Job Listing">
                 <header>
+                    <button name="action_mark_verified" type="object" string="Mark verified" class="btn-primary"
+                            invisible="not id or verification_state == 'verified'"/>
+                    <button name="action_mark_invalid" type="object" string="Mark invalid"
+                            invisible="not id or verification_state == 'invalid'"/>
+                    <button name="action_mark_cancelled" type="object" string="Cancelled by employer"
+                            invisible="not id or verification_state == 'cancelled'"/>
+                    <button name="action_mark_unverified" type="object" string="Back to unverified"
+                            invisible="not id or verification_state == 'unverified'"/>
                     <button name="action_suggest_candidates" type="object" string="Suggest candidates"
-                            class="btn-primary" invisible="state != 'open' or not id"/>
+                            invisible="state != 'open' or verification_state != 'verified' or not id"/>
                     <field name="state" widget="statusbar" options="{'clickable': '1'}"/>
                 </header>
                 <sheet>
@@ -43,6 +53,11 @@
                             <field name="salary"/>
                         </group>
                         <group>
+                            <field name="verification_state" widget="badge" decoration-success="verification_state == 'verified'"
+                                   decoration-danger="verification_state in ('invalid', 'cancelled')" decoration-warning="verification_state == 'unverified'"/>
+                            <field name="verified_by_id" invisible="not verified_by_id"/>
+                            <field name="verified_at" invisible="not verified_at"/>
+                            <field name="verification_note"/>
                             <field name="apply_url" widget="url"/>
                             <field name="apply_contact"/>
                             <field name="posted_on"/>
@@ -97,6 +112,8 @@
                         <field name="title" class="fw-bold fs-5"/>
                         <field name="employer" class="text-muted"/>
                         <field name="province_ids" widget="many2many_tags"/>
+                        <field name="verification_state" widget="badge" decoration-success="verification_state == 'verified'"
+                               decoration-danger="verification_state in ('invalid', 'cancelled')" decoration-warning="verification_state == 'unverified'"/>
                         <div class="text-muted">
                             <field name="location"/>
                             <span t-if="record.location.raw_value and record.field.raw_value"> · </span>
@@ -132,9 +149,15 @@
                 <filter name="open" string="Open" domain="[('state', '=', 'open')]"/>
                 <filter name="closed" string="Closed" domain="[('state', '=', 'closed')]"/>
                 <separator/>
+                <filter name="unverified" string="Unverified" domain="[('verification_state', '=', 'unverified')]"/>
+                <filter name="verified" string="Verified" domain="[('verification_state', '=', 'verified')]"/>
+                <filter name="invalid" string="Invalid" domain="[('verification_state', '=', 'invalid')]"/>
+                <filter name="cancelled" string="Cancelled" domain="[('verification_state', '=', 'cancelled')]"/>
+                <separator/>
                 <filter name="to_review" string="Candidates to review" domain="[('match_ids.state', '=', 'suggested')]"/>
                 <separator/>
                 <filter name="group_work_state" string="Next step" context="{'group_by': 'work_state'}"/>
+                <filter name="group_verification" string="Verification" context="{'group_by': 'verification_state'}"/>
                 <filter name="group_province" string="Province" context="{'group_by': 'province_ids'}"/>
                 <filter name="group_field" string="Type of work" context="{'group_by': 'field'}"/>
                 <filter name="group_source" string="Source" context="{'group_by': 'source_id'}"/>

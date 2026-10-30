@@ -15,7 +15,7 @@ import re
 import requests
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 from odoo.addons.chat2work.models.chat2work_pipeline import PROVINCES
 
@@ -45,11 +45,20 @@ PROVINCE_ALIASES = {
 ALL_PROVINCES = {'all', 'all provinces', 'national', 'nationwide', 'south africa'}
 FIELD_ALIASES = {'warehouse': 'warehouse', 'driver': 'warehouse', 'admin': 'admin', 'general': 'admin'}
 # What decides that a listing changed, and what a CSV row may set.
-# What a listing needs next: follows the candidates and state, never set by hand.
+VERIFICATION_STATES = [
+    ('unverified', 'Unverified'),
+    ('verified', 'Verified'),
+    ('invalid', 'Invalid'),
+    ('cancelled', 'Cancelled'),
+]
+# What a listing needs next: follows the verification, candidates and state,
+# never set by hand. Candidates only come after an agent has verified the job.
 WORK_STATES = [
+    ('to_verify', 'To verify'),
     ('needs_candidates', 'Needs candidates'),
     ('to_review', 'To review'),
     ('ready', 'Ready to share'),
+    ('rejected', 'Invalid or cancelled'),
     ('closed', 'Closed'),
 ]
 CONTENT_FIELDS = ('title', 'employer', 'location', 'province_ids', 'field', 'employment_type', 'salary',
@@ -131,8 +140,11 @@ class Chat2workListingSource(models.Model):
                                               last_seen_at=now, content_updated_at=now))
                 created += 1
             elif listing.content_hash != content_hash:
+                # The job changed, so an earlier check no longer vouches for it.
                 listing.write(dict(vals, content_hash=content_hash, last_seen_at=now, content_updated_at=now,
                                    state='open'))
+                if listing.verification_state == 'verified':
+                    listing._set_verification('unverified')
                 updated += 1
             else:
                 listing.write({'last_seen_at': now, 'state': 'open' if listing.state == 'closed' else listing.state})
@@ -195,6 +207,11 @@ class Chat2workListing(models.Model):
     posted_on = fields.Date()
     closing_on = fields.Date(index=True)
     state = fields.Selection([('open', 'Open'), ('closed', 'Closed')], default='open', required=True, index=True)
+    verification_state = fields.Selection(VERIFICATION_STATES, 'Verification', default='unverified',
+                                          required=True, index=True, copy=False)
+    verified_by_id = fields.Many2one('res.users', 'Checked By', readonly=True, copy=False)
+    verified_at = fields.Datetime('Checked On', readonly=True, copy=False)
+    verification_note = fields.Char(help="How it was checked, or why it failed. For example, who you spoke to.")
     active = fields.Boolean(default=True)
     content_hash = fields.Char(readonly=True, copy=False)
     first_seen_at = fields.Datetime(readonly=True, copy=False, default=fields.Datetime.now)
@@ -216,12 +233,16 @@ class Chat2workListing(models.Model):
             rec.suggested_count = len(rec.match_ids.filtered(lambda m: m.state == 'suggested'))
             rec.approved_count = len(rec.match_ids.filtered(lambda m: m.state == 'approved'))
 
-    @api.depends('state', 'match_ids.state')
+    @api.depends('state', 'verification_state', 'match_ids.state')
     def _compute_work_state(self):
         for rec in self:
             states = rec.match_ids.mapped('state')
             if rec.state == 'closed':
                 rec.work_state = 'closed'
+            elif rec.verification_state in ('invalid', 'cancelled'):
+                rec.work_state = 'rejected'
+            elif rec.verification_state == 'unverified':
+                rec.work_state = 'to_verify'
             elif 'suggested' in states:
                 rec.work_state = 'to_review'
             elif 'approved' in states:
@@ -281,6 +302,28 @@ class Chat2workListing(models.Model):
     def _content_hash(self, vals):
         return hashlib.sha256(repr([str(vals.get(f) or '') for f in CONTENT_FIELDS]).encode()).hexdigest()
 
+    # ── Verification ─────────────────────────────────────────────────────────
+
+    def _set_verification(self, state):
+        self.write({
+            'verification_state': state,
+            'verified_by_id': self.env.uid if state != 'unverified' else False,
+            'verified_at': fields.Datetime.now() if state != 'unverified' else False,
+        })
+
+    def action_mark_verified(self):
+        self._set_verification('verified')
+        self.action_suggest_candidates()
+
+    def action_mark_invalid(self):
+        self._set_verification('invalid')
+
+    def action_mark_cancelled(self):
+        self._set_verification('cancelled')
+
+    def action_mark_unverified(self):
+        self._set_verification('unverified')
+
     def _close_expired(self):
         today = fields.Date.context_today(self)
         self.filtered(lambda r: r.state == 'open' and r.closing_on and r.closing_on < today).write({'state': 'closed'})
@@ -323,7 +366,7 @@ class Chat2workListing(models.Model):
             ('job_seeking', '=', True), ('stage', 'not in', UNAVAILABLE_STAGES),
         ])
         Match = self.env['chat2work.listing.match']
-        for listing in self.filtered(lambda r: r.state == 'open'):
+        for listing in self.filtered(lambda r: r.state == 'open' and r.verification_state == 'verified'):
             considered = listing.match_ids.candidate_id
             scored = []
             for candidate in candidates - considered:
@@ -347,7 +390,7 @@ class Chat2workListing(models.Model):
                 _logger.warning("chat2work_jobs: feed %s failed: %s", source.name, e)
                 source.write({'last_run_at': fields.Datetime.now(), 'last_result': 'Failed: %s' % str(e)[:200]})
         self.search([('state', '=', 'open')])._close_expired()
-        self.search([('state', '=', 'open')]).action_suggest_candidates()
+        self.search([('state', '=', 'open'), ('verification_state', '=', 'verified')]).action_suggest_candidates()
 
 
 class Chat2workListingMatch(models.Model):
@@ -374,6 +417,12 @@ class Chat2workListingMatch(models.Model):
     _sql_constraints = [
         ('listing_candidate_unique', 'UNIQUE(listing_id, candidate_id)', 'This candidate is already on this listing.'),
     ]
+
+    @api.constrains('state')
+    def _check_listing_verified(self):
+        for rec in self:
+            if rec.state == 'approved' and rec.listing_id.verification_state != 'verified':
+                raise ValidationError("Verify this job listing before marking a candidate as a good match.")
 
     def action_approve(self):
         self.write({'state': 'approved'})
