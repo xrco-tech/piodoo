@@ -1,6 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
+        <record id="province_gauteng" model="chat2work.province">
+            <field name="code">gauteng</field>
+            <field name="name">Gauteng</field>
+        </record>
+        <record id="province_kzn" model="chat2work.province">
+            <field name="code">kzn</field>
+            <field name="name">KwaZulu-Natal</field>
+        </record>
+        <record id="province_western_cape" model="chat2work.province">
+            <field name="code">western_cape</field>
+            <field name="name">Western Cape</field>
+        </record>
+        <record id="province_eastern_cape" model="chat2work.province">
+            <field name="code">eastern_cape</field>
+            <field name="name">Eastern Cape</field>
+        </record>
+        <record id="province_limpopo" model="chat2work.province">
+            <field name="code">limpopo</field>
+            <field name="name">Limpopo</field>
+        </record>
+        <record id="province_mpumalanga" model="chat2work.province">
+            <field name="code">mpumalanga</field>
+            <field name="name">Mpumalanga</field>
+        </record>
+        <record id="province_north_west" model="chat2work.province">
+            <field name="code">north_west</field>
+            <field name="name">North West</field>
+        </record>
+        <record id="province_free_state" model="chat2work.province">
+            <field name="code">free_state</field>
+            <field name="name">Free State</field>
+        </record>
+        <record id="province_northern_cape" model="chat2work.province">
+            <field name="code">northern_cape</field>
+            <field name="name">Northern Cape</field>
+        </record>
         <record id="listing_source_manual" model="chat2work.listing.source">
             <field name="name">Manual import</field>
             <field name="kind">manual</field>

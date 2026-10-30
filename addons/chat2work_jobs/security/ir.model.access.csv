@@ -3,3 +3,5 @@ access_chat2work_listing_source_user,chat2work.listing.source.user,model_chat2wo
 access_chat2work_listing_user,chat2work.listing.user,model_chat2work_listing,base.group_user,1,1,1,1
 access_chat2work_listing_match_user,chat2work.listing.match.user,model_chat2work_listing_match,base.group_user,1,1,1,1
 access_chat2work_listing_import_user,chat2work.listing.import.user,model_chat2work_listing_import,base.group_user,1,1,1,1
+access_chat2work_province_user,chat2work.province.user,model_chat2work_province,base.group_user,1,0,0,0
+access_chat2work_province_admin,chat2work.province.admin,model_chat2work_province,base.group_system,1,1,1,1
