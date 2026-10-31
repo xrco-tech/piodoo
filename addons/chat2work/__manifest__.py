@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work',
-    'version': '18.0.1.11.0',
+    'version': '18.0.1.12.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'Job openings, interview slots and bookings for the Chat2Work service',
     'description': """
@@ -25,6 +25,7 @@ receive it by WhatsApp template or SMS, with SMS as the fallback.
     'license': 'LGPL-3',
     'depends': ['base', 'web', 'mail', 'contacts', 'sms', 'comm_whatsapp', 'comm_whatsapp_chatbot'],
     'data': [
+        'security/chat2work_security.xml',
         'security/ir.model.access.csv',
         'data/chat2work_data.xml',
         'data/chat2work_ussd_data.xml',

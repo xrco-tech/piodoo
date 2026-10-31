@@ -331,7 +331,7 @@
     </record>
 
     <!-- ── Menus ───────────────────────────────────────────────────────── -->
-    <menuitem id="menu_chat2work_root" name="Chat2Work" sequence="45"/>
+    <menuitem id="menu_chat2work_root" name="Chat2Work" sequence="45" groups="group_agent"/>
     <menuitem id="menu_chat2work_candidates" name="Candidates" parent="menu_chat2work_root" action="action_chat2work_candidate" sequence="5"/>
     <menuitem id="menu_chat2work_jobs" name="Jobs" parent="menu_chat2work_root" action="action_chat2work_job" sequence="10"/>
     <menuitem id="menu_chat2work_slots" name="Interview Slots" parent="menu_chat2work_root" action="action_chat2work_slot" sequence="20"/>

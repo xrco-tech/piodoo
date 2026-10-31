@@ -1,9 +1,9 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_chat2work_job_user,chat2work.job.user,model_chat2work_job,base.group_user,1,1,1,1
-access_chat2work_slot_user,chat2work.interview.slot.user,model_chat2work_interview_slot,base.group_user,1,1,1,1
-access_chat2work_booking_user,chat2work.interview.booking.user,model_chat2work_interview_booking,base.group_user,1,1,1,1
-access_chat2work_candidate_user,chat2work.candidate.user,model_chat2work_candidate,base.group_user,1,1,1,1
-access_chat2work_callback_user,chat2work.callback.request.user,model_chat2work_callback_request,base.group_user,1,1,1,1
+access_chat2work_slot_user,chat2work.interview.slot.user,model_chat2work_interview_slot,group_agent,1,1,1,1
+access_chat2work_booking_user,chat2work.interview.booking.user,model_chat2work_interview_booking,group_agent,1,1,1,1
+access_chat2work_candidate_user,chat2work.candidate.user,model_chat2work_candidate,group_agent,1,1,1,1
+access_chat2work_callback_user,chat2work.callback.request.user,model_chat2work_callback_request,group_agent,1,1,1,1
 access_chat2work_ussd_session_admin,chat2work.ussd.session.admin,model_chat2work_ussd_session,base.group_system,1,0,0,1
-access_chat2work_ussd_simulator_user,chat2work.ussd.simulator.user,model_chat2work_ussd_simulator,base.group_user,1,1,1,0
+access_chat2work_ussd_simulator_user,chat2work.ussd.simulator.user,model_chat2work_ussd_simulator,group_agent,1,1,1,0
 access_chat2work_wa_session_admin,chat2work.wa.session.admin,model_chat2work_wa_session,base.group_system,1,0,0,1

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work Contact Actions',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'Call and message candidates from their record',
     'description': """

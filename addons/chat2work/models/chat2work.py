@@ -34,8 +34,8 @@ class Chat2workJob(models.Model):
     description = fields.Text('Description')
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
-    slot_ids = fields.One2many('chat2work.interview.slot', 'job_id', 'Interview Slots')
-    available_slot_count = fields.Integer('Available Slots', compute='_compute_available_slot_count')
+    slot_ids = fields.One2many('chat2work.interview.slot', 'job_id', 'Interview Slots', groups='chat2work.group_agent')
+    available_slot_count = fields.Integer('Available Slots', compute='_compute_available_slot_count', compute_sudo=True)
 
     @api.depends('slot_ids.is_available')
     def _compute_available_slot_count(self):

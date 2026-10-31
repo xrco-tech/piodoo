@@ -17,7 +17,7 @@ class TestChat2workContact(TransactionCase):
     def setUp(self):
         super().setUp()
         self.env['ir.config_parameter'].sudo().set_param('chat2work.wa_phone_number_id', '')
-        self.agent = new_test_user(self.env, login='c2w_contact_agent', groups='base.group_user')
+        self.agent = new_test_user(self.env, login='c2w_contact_agent', groups='chat2work.group_agent')
         self.cand = self.env['chat2work.candidate'].create({
             'name': 'Thandeka Mokoena', 'phone': '+27820007001', 'whatsapp_opt_in': True})
         self.account = self.env['comm.whatsapp.account'].sudo().search([], limit=1) or \
