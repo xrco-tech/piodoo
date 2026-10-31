@@ -34,8 +34,14 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ./landing:/var/www/xrco:ro
+    networks:
+      - default
+      - mcp
     restart: always
 
+  # MCP proxies have no login, so they stay off the internet: reachable only on
+  # the Tailscale IP, and on their own network so the Cloudflare tunnel can't
+  # resolve them even if a public hostname still points here.
   mcp-proxy:
     build: ./mcp-proxy
     depends_on:
@@ -44,8 +50,24 @@ services:
       - ODOO_URL=http://nginx:80
       - ODOO_DB=odoo
       - ODOO_API_KEY=${MCP_ODOO_API_KEY}
+    networks:
+      - mcp
     ports:
-      - "8081:8080"
+      - "100.88.7.93:8081:8080"
+    restart: always
+
+  mcp-proxy-sync:
+    build: ./mcp-proxy
+    depends_on:
+      - nginx
+    environment:
+      - ODOO_URL=http://nginx:80
+      - ODOO_DB=odoo
+      - ODOO_API_KEY=${MCP_SYNC_ODOO_API_KEY}
+    networks:
+      - mcp
+    ports:
+      - "100.88.7.93:8082:8080"
     restart: always
 
   tunnel:
@@ -61,7 +83,6 @@ services:
       - ./cloudflared.yml:/etc/cloudflared/config.yml
     depends_on:
       - nginx
-      - mcp-proxy
 
   prometheus:
     image: prom/prometheus
@@ -88,3 +109,6 @@ volumes:
   odoo-data:
   odoo-db-data:
   grafana-data:
+
+networks:
+  mcp:
