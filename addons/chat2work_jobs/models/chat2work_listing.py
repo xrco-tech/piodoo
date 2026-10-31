@@ -217,9 +217,10 @@ class Chat2workListing(models.Model):
     first_seen_at = fields.Datetime(readonly=True, copy=False, default=fields.Datetime.now)
     last_seen_at = fields.Datetime(readonly=True, copy=False, default=fields.Datetime.now)
     content_updated_at = fields.Datetime('Last Changed', readonly=True, copy=False, default=fields.Datetime.now)
-    match_ids = fields.One2many('chat2work.listing.match', 'listing_id', 'Candidates')
-    suggested_count = fields.Integer('To Review', compute='_compute_match_counts')
-    approved_count = fields.Integer('Good Matches', compute='_compute_match_counts')
+    match_ids = fields.One2many('chat2work.listing.match', 'listing_id', 'Candidates',
+                                groups='chat2work.group_agent')
+    suggested_count = fields.Integer('To Review', compute='_compute_match_counts', compute_sudo=True)
+    approved_count = fields.Integer('Good Matches', compute='_compute_match_counts', compute_sudo=True)
     work_state = fields.Selection(WORK_STATES, 'Next Step', compute='_compute_work_state', store=True,
                                   index=True, group_expand='_expand_work_states')
 

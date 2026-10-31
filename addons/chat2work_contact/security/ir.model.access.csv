@@ -1,3 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_chat2work_message_user,chat2work.message.user,model_chat2work_message,base.group_user,1,1,1,1
-access_chat2work_message_param_user,chat2work.message.param.user,model_chat2work_message_param,base.group_user,1,1,1,1
+access_chat2work_message_user,chat2work.message.user,model_chat2work_message,chat2work.group_agent,1,1,1,1
+access_chat2work_message_param_user,chat2work.message.param.user,model_chat2work_message_param,chat2work.group_agent,1,1,1,1
