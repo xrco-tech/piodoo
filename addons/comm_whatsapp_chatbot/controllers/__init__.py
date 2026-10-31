@@ -3,6 +3,7 @@
 from . import main
 from . import sms_inbound
 from . import ussd_inbound
+from . import ussd_connect_mobile
 from . import simulator
 from . import agent_workspace
 

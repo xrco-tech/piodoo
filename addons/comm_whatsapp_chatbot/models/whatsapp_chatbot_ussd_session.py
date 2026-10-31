@@ -30,6 +30,11 @@ class WhatsAppChatbotUssdSession(models.Model):
     contact_id = fields.Many2one(
         "whatsapp.chatbot.contact", string="Contact", ondelete='set null',
     )
+    ussd_account_id = fields.Many2one(
+        "comm.ussd.account", string="USSD Account", ondelete='set null',
+        help="Account the session came in on, when the callback identified one.",
+    )
+    carrier = fields.Char(string="Carrier", help="Mobile network as reported by the gateway, e.g. 'mtn'.")
     current_step_id = fields.Many2one(
         "whatsapp.chatbot.step", string="Current Step", ondelete='set null',
         help="The step the session is currently waiting on user input for.",
