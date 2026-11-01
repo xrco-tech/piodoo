@@ -127,6 +127,11 @@ class Chat2workCandidate(models.Model):
         for rec in self:
             rec.has_id_number = bool(rec.sudo().id_number_hash)
 
+    def _c2w_contact_partner(self):
+        """The candidate's contact. chat2work_ucx creates one if it's missing."""
+        self.ensure_one()
+        return self.sudo().partner_id
+
     def _compute_id_number_masked(self):
         from cryptography.fernet import InvalidToken
         for rec in self:

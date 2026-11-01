@@ -8,6 +8,8 @@ from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
+from odoo.addons.chat2work_verify.models.chat2work_verify import proper_name
+
 MOD = 'odoo.addons.chat2work_verify.models.chat2work_verify.requests.'
 ID_NO = '9111060123086'
 NEW_ID = '0001015009085'
@@ -192,9 +194,10 @@ class TestChat2workVerify(TransactionCase):
         notes = self._notes(self.cand)
         self.assertIn('ID check on 9111******086 passed', notes)
         self.assertNotIn(ID_NO, notes)
-        self.assertIn('Their contact', notes)
+        self.assertIn('name and date of birth were updated', notes)
         self.assertNotIn('1991', notes)
-        self.assertEqual(partner.name, 'Original Contact')
+        self.assertEqual(partner.name, 'Naledi Lerato Khumalo')
+        self.assertEqual(str(partner.date_of_birth), '1991-11-06')
         self.assertEqual(self.cand.name, 'Naledi Lerato Khumalo')
 
     def test_failed_check_is_logged(self):
@@ -240,4 +243,37 @@ class TestChat2workVerify(TransactionCase):
         second, post = self._run(ok())
         self.assertNotEqual(first, second)
         self.assertEqual(post.call_args.kwargs['json']['idNumber'], NEW_ID)
+
+    def test_proper_name(self):
+        self.assertEqual(proper_name('NOMSA LERATO', "O'NEIL-DLAMINI"), "Nomsa Lerato O'Neil-Dlamini")
+        self.assertEqual(proper_name('THABO', 'VAN DER MERWE'), 'Thabo van der Merwe')
+        self.assertEqual(proper_name('LINDA', 'DE'), 'Linda De')
+
+    def test_sandbox_and_failed_checks_leave_contact_alone(self):
+        partner = self.env['res.partner'].create({'name': 'Original Contact'})
+        self.cand.partner_id = partner
+        self.account.mode = 'sandbox'
+        self._run(ok())
+        self.account.mode = 'production'
+        self._run(reply(status=500))
+        self._run(ok(status='ID Number Invalid'))
+        self.assertEqual(partner.name, 'Original Contact')
+        self.assertFalse(partner.date_of_birth)
+
+    def test_company_or_user_contact_is_not_overwritten(self):
+        partner = self.env['res.partner'].create({'name': 'Acme', 'is_company': True})
+        self.cand.partner_id = partner
+        self._run(ok())
+        self.assertEqual(partner.name, 'Acme')
+        self.assertIn('updated, because it', self._notes(self.cand))
+
+    def test_id_change_and_erase_clear_contact_birth_date(self):
+        partner = self.env['res.partner'].create({'name': 'Original Contact'})
+        self.cand.partner_id = partner
+        self._run(ok())
+        self.cand._c2w_change_id_number(NEW_ID, 'Wrong number given')
+        self.assertFalse(partner.date_of_birth)
+        partner.date_of_birth = '2000-01-01'
+        self.cand._c2w_erase()
+        self.assertFalse(partner.exists() and partner.date_of_birth)
 
