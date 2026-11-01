@@ -205,3 +205,27 @@ class TestChat2workListing(TransactionCase):
         self.assertTrue(match)
         cand._c2w_erase()
         self.assertFalse(match.exists())
+
+    def test_listing_changes_are_logged(self):
+        source = self.env.ref('chat2work_jobs.listing_source_manual')
+        listing = self.env['chat2work.listing'].create({'title': 'Log Test', 'source_id': source.id})
+        self.assertFalse(listing.message_follower_ids)
+        self.env.cr.precommit.run()
+        listing.write({'closing_on': '2030-01-01', 'state': 'closed'})
+        self.env.cr.precommit.run()
+        tracked = listing.message_ids.tracking_value_ids.mapped('field_id.name')
+        self.assertIn('closing_on', tracked)
+        self.assertIn('state', tracked)
+        listing.description = 'Changed text'
+        self.assertIn('Description or requirements updated', ' '.join(listing.message_ids.mapped('preview')))
+
+    def test_match_decision_logged_on_candidate_only(self):
+        source = self.env.ref('chat2work_jobs.listing_source_manual')
+        listing = self.env['chat2work.listing'].create({
+            'title': 'Match Log', 'source_id': source.id, 'verification_state': 'verified'})
+        candidate = self.env['chat2work.candidate'].create({'name': 'Private Person', 'phone': '+27820010999'})
+        match = self.env['chat2work.listing.match'].create({'listing_id': listing.id, 'candidate_id': candidate.id})
+        match.action_approve()
+        self.assertIn('Match Log', ' '.join(candidate.message_ids.mapped('preview')))
+        self.assertNotIn('Private Person', ' '.join(listing.message_ids.mapped('preview')))
+

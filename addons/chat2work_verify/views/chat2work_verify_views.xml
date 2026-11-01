@@ -86,6 +86,7 @@
                         </group>
                     </group>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -126,6 +127,7 @@
                         </group>
                     </group>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

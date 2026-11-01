@@ -7,7 +7,7 @@ only go between the automatic stages, so they never undo an agent's move.
 Activities and the chatter hold outreach (calls to make, call notes).
 """
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 from .chat2work_ussd import ID_LIKE, ID_REDACTED
 
@@ -49,7 +49,7 @@ class Chat2workCandidatePipeline(models.Model):
                              group_expand='_expand_stages')
     callback_ids = fields.One2many('chat2work.callback.request', 'candidate_id', 'Callback Requests')
     open_callback_count = fields.Integer('Open Callbacks', compute='_compute_open_callback_count')
-    province = fields.Selection(PROVINCES, index=True)
+    province = fields.Selection(PROVINCES, index=True, tracking=True)
     cv_text = fields.Text('CV Text', compute='_compute_cv_text', store=True, copy=False,
                           help="Text read from the CV file, for matching to job listings. ID numbers removed.")
     cv_text_state = fields.Selection([
@@ -106,4 +106,14 @@ class Chat2workCallbackPipeline(models.Model):
     def create(self, vals_list):
         records = super().create(vals_list)
         records.candidate_id._c2w_auto_stage('help')
+        for rec in records.filtered('candidate_id'):
+            rec.candidate_id.sudo().message_post(body=_("Callback requested via %s.", rec.channel or _("unknown")))
         return records
+
+    def write(self, vals):
+        before = {rec.id: rec.state for rec in self} if 'state' in vals else {}
+        res = super().write(vals)
+        for rec in self.filtered(lambda r: r.candidate_id and r.id in before and before[r.id] != r.state):
+            label = dict(rec._fields['state']._description_selection(rec.env))[rec.state]
+            rec.candidate_id.sudo().message_post(body=_("Callback request is now: %s.", label))
+        return res

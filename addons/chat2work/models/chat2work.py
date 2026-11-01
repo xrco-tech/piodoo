@@ -93,37 +93,48 @@ class Chat2workCandidate(models.Model):
     _order = 'create_date desc'
     _rec_name = 'name'
 
-    name = fields.Char('Full Name')
-    partner_id = fields.Many2one('res.partner', 'Contact')
-    phone = fields.Char('Phone', index=True)
-    location = fields.Char('Town / Area')
+    name = fields.Char('Full Name', tracking=True)
+    partner_id = fields.Many2one('res.partner', 'Contact', tracking=True)
+    phone = fields.Char('Phone', index=True, tracking=True)
+    location = fields.Char('Town / Area', tracking=True)
     field = fields.Selection([
         ('call_centre', 'Call Centre'),
         ('retail', 'Retail'),
         ('warehouse', 'Warehouse / Driver'),
         ('admin', 'Admin / General'),
         ('other', 'Other'),
-    ], string='Field')
+    ], string='Field', tracking=True)
     registered_via = fields.Char('Registered Via', default='ussd')
-    active = fields.Boolean(default=True)
+    active = fields.Boolean(default=True, tracking=True)
     whatsapp_opt_in = fields.Boolean(
-        'Uses WhatsApp', help="Follow-up via WhatsApp and SMS when set, SMS only otherwise.")
+        'Uses WhatsApp', tracking=True, help="Follow-up via WhatsApp and SMS when set, SMS only otherwise.")
     employment_status = fields.Selection([
         ('unemployed', 'Unemployed'),
         ('employed', 'Employed'),
         ('self_employed', 'Self-employed'),
         ('student', 'Student'),
-    ], string='Employment Status')
-    job_seeking = fields.Boolean('Looking for a New Job')
+    ], string='Employment Status', tracking=True)
+    job_seeking = fields.Boolean('Looking for a New Job', tracking=True)
     status_updated_at = fields.Datetime('Status Updated')
     consent_at = fields.Datetime('POPIA Consent Given', readonly=True)
     id_number_hash = fields.Char(index=True, readonly=True, copy=False, groups='base.group_system')
     id_number_encrypted = fields.Char(readonly=True, copy=False, groups='base.group_system')
     has_id_number = fields.Boolean('ID Number Captured', compute='_compute_has_id_number')
+    id_number_masked = fields.Char('ID Number', compute='_compute_id_number_masked', compute_sudo=True,
+                                   help="First 4 and last 3 digits only. The full number stays encrypted.")
 
     def _compute_has_id_number(self):
         for rec in self:
             rec.has_id_number = bool(rec.sudo().id_number_hash)
+
+    def _compute_id_number_masked(self):
+        from cryptography.fernet import InvalidToken
+        for rec in self:
+            try:
+                number = rec.sudo()._id_number_decrypt()
+            except InvalidToken:
+                number = False
+            rec.id_number_masked = '%s******%s' % (number[:4], number[-3:]) if number else False
 
     @api.depends('name', 'phone')
     def _compute_display_name(self):

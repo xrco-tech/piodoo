@@ -184,6 +184,7 @@ class Chat2workListingSource(models.Model):
 
 class Chat2workListing(models.Model):
     _name = 'chat2work.listing'
+    _inherit = ['mail.thread']
     _description = 'Chat2Work Job Listing'
     _order = 'content_updated_at desc, id desc'
     _rec_name = 'title'
@@ -192,27 +193,28 @@ class Chat2workListing(models.Model):
                                 default=lambda self: self.env.ref('chat2work_jobs.listing_source_manual', False))
     external_ref = fields.Char('Source Reference', index=True, copy=False,
                                help="The source's ID for this listing; used to spot updates.")
-    title = fields.Char(required=True)
-    employer = fields.Char()
-    location = fields.Char('Town / Area')
-    province_ids = fields.Many2many('chat2work.province', string='Provinces',
+    title = fields.Char(required=True, tracking=True)
+    employer = fields.Char(tracking=True)
+    location = fields.Char('Town / Area', tracking=True)
+    province_ids = fields.Many2many('chat2work.province', string='Provinces', tracking=True,
                                     help="Where this job is. Leave empty if it isn't known.")
-    field = fields.Selection(FIELDS, 'Type of Work', index=True)
-    employment_type = fields.Char()
-    salary = fields.Char()
+    field = fields.Selection(FIELDS, 'Type of Work', index=True, tracking=True)
+    employment_type = fields.Char(tracking=True)
+    salary = fields.Char(tracking=True)
     description = fields.Text()
     requirements = fields.Text()
-    apply_url = fields.Char('Apply Link')
-    apply_contact = fields.Char('Apply Contact')
-    posted_on = fields.Date()
-    closing_on = fields.Date(index=True)
-    state = fields.Selection([('open', 'Open'), ('closed', 'Closed')], default='open', required=True, index=True)
+    apply_url = fields.Char('Apply Link', tracking=True)
+    apply_contact = fields.Char('Apply Contact', tracking=True)
+    posted_on = fields.Date(tracking=True)
+    closing_on = fields.Date(index=True, tracking=True)
+    state = fields.Selection([('open', 'Open'), ('closed', 'Closed')], default='open', required=True, index=True,
+                             tracking=True)
     verification_state = fields.Selection(VERIFICATION_STATES, 'Verification', default='unverified',
-                                          required=True, index=True, copy=False)
+                                          required=True, index=True, copy=False, tracking=True)
     verified_by_id = fields.Many2one('res.users', 'Checked By', readonly=True, copy=False)
     verified_at = fields.Datetime('Checked On', readonly=True, copy=False)
-    verification_note = fields.Char(help="How it was checked, or why it failed. For example, who you spoke to.")
-    active = fields.Boolean(default=True)
+    verification_note = fields.Char(tracking=True, help="How it was checked, or why it failed. For example, who you spoke to.")
+    active = fields.Boolean(default=True, tracking=True)
     content_hash = fields.Char(readonly=True, copy=False)
     first_seen_at = fields.Datetime(readonly=True, copy=False, default=fields.Datetime.now)
     last_seen_at = fields.Datetime(readonly=True, copy=False, default=fields.Datetime.now)
@@ -227,6 +229,20 @@ class Chat2workListing(models.Model):
     _sql_constraints = [
         ('source_ref_unique', 'UNIQUE(source_id, external_ref)', 'This source already has a listing with this reference.'),
     ]
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # Whoever or whatever imports a listing shouldn't end up following it.
+        return super(Chat2workListing, self.with_context(mail_create_nosubscribe=True)).create(vals_list)
+
+    def write(self, vals):
+        # Long text is too much for tracking, so just say that it changed.
+        text_fields = [f for f in ('description', 'requirements') if f in vals]
+        changed = self.filtered(lambda r: any((r[f] or '') != (vals[f] or '') for f in text_fields))
+        res = super().write(vals)
+        for rec in changed:
+            rec.message_post(body="Description or requirements updated.")
+        return res
 
     @api.depends('match_ids.state')
     def _compute_match_counts(self):
@@ -424,6 +440,16 @@ class Chat2workListingMatch(models.Model):
         for rec in self:
             if rec.state == 'approved' and rec.listing_id.verification_state != 'verified':
                 raise ValidationError("Verify this job listing before marking a candidate as a good match.")
+
+    def write(self, vals):
+        before = {rec.id: rec.state for rec in self} if 'state' in vals else {}
+        res = super().write(vals)
+        for rec in self.filtered(lambda r: r.id in before and before[r.id] != r.state):
+            # On the candidate only: listing chatter is open to people who can't see candidates.
+            label = dict(rec._fields['state']._description_selection(rec.env))[rec.state]
+            rec.candidate_id.sudo().message_post(body="%s: %s (%s)" % (
+                label, rec.listing_id.title, rec.listing_id.employer or "employer not stated"))
+        return res
 
     def action_approve(self):
         self.write({'state': 'approved'})

@@ -287,3 +287,17 @@ class TestChat2workUssdSimulator(TransactionCase):
         action = self.account.action_open_chat2work_simulator()
         self.assertEqual(action['res_model'], 'chat2work.ussd.simulator')
         self.assertEqual(action['target'], 'new')
+
+    def test_candidate_changes_and_callbacks_are_logged(self):
+        cand = self.env['chat2work.candidate'].create({'name': 'Log Person', 'phone': '+27820010998'})
+        self.env.cr.precommit.run()
+        cand.write({'location': 'Soweto'})
+        self.env.cr.precommit.run()
+        self.assertIn('location', cand.message_ids.tracking_value_ids.mapped('field_id.name'))
+        callback = self.env['chat2work.callback.request'].create(
+            {'candidate_id': cand.id, 'phone': cand.phone, 'channel': 'ussd'})
+        callback.state = 'done'
+        notes = ' '.join(cand.message_ids.mapped('preview'))
+        self.assertIn('Callback requested via ussd', notes)
+        self.assertIn('Callback request is now: Done', notes)
+
