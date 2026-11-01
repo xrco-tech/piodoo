@@ -31,6 +31,7 @@ receive it by WhatsApp template or SMS, with SMS as the fallback.
         'data/chat2work_ussd_data.xml',
         'data/chat2work_cv_data.xml',
         'views/chat2work_cv_templates.xml',
+        'wizards/chat2work_id_update_views.xml',
         'views/chat2work_views.xml',
         'views/chat2work_ussd_views.xml',
         'wizards/chat2work_ussd_simulator_views.xml',

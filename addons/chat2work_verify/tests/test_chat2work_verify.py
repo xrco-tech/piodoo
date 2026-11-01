@@ -10,6 +10,7 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 
 MOD = 'odoo.addons.chat2work_verify.models.chat2work_verify.requests.'
 ID_NO = '9111060123086'
+NEW_ID = '0001015009085'
 
 
 def reply(status=200, body=None):
@@ -223,4 +224,20 @@ class TestChat2workVerify(TransactionCase):
         self.env.cr.precommit.run()
         values = self.account.message_ids.tracking_value_ids.mapped('field_id.name')
         self.assertIn('mode', values)
+
+    def test_id_change_clears_old_result(self):
+        self._run(ok())
+        agent = new_test_user(self.env, login='c2w_id_agent', groups='base.group_user,chat2work.group_agent')
+        self.cand.with_user(agent)._c2w_change_id_number(NEW_ID, 'Wrong number given')
+        self.assertEqual(self.cand.id_check_state, 'none')
+        self.assertFalse(self.cand.sudo().id_first_names)
+        self.assertIn('Previous ID check result', self._notes(self.cand))
+        self.assertEqual(self.cand.name, 'Naledi Lerato Khumalo')
+
+    def test_failed_check_not_retried_with_old_key_after_id_change(self):
+        first, _post = self._run(reply(status=500))
+        self.cand._c2w_change_id_number(NEW_ID, 'Wrong number given')
+        second, post = self._run(ok())
+        self.assertNotEqual(first, second)
+        self.assertEqual(post.call_args.kwargs['json']['idNumber'], NEW_ID)
 

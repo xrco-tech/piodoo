@@ -4,7 +4,8 @@
 from datetime import date
 from unittest.mock import patch
 
-from odoo.tests import TransactionCase, tagged
+from odoo.exceptions import AccessError, UserError
+from odoo.tests import TransactionCase, new_test_user, tagged
 
 from odoo.addons.chat2work.models.chat2work_ussd import parse_sa_id
 
@@ -300,4 +301,72 @@ class TestChat2workUssdSimulator(TransactionCase):
         notes = ' '.join(cand.message_ids.mapped('preview'))
         self.assertIn('Callback requested via ussd', notes)
         self.assertIn('Callback request is now: Done', notes)
+
+
+def _sa_id(prefix):
+    """A valid ID number from its first 12 digits."""
+    total = sum(int(d) if i % 2 == 0 else sum(divmod(int(d) * 2, 10)) for i, d in enumerate(prefix))
+    return prefix + str((10 - total % 10) % 10)
+
+
+@tagged('post_install', '-at_install', 'chat2work')
+class TestChat2workIdUpdate(TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.Candidate = self.env['chat2work.candidate'].sudo()
+        self.old_id = _sa_id('000101500908')
+        self.new_id = _sa_id('990202500908')
+        self.cand = self.Candidate.create({
+            'name': 'Id Person', 'phone': '+27820011001',
+            'id_number_hash': self.Candidate._id_number_hash(self.old_id),
+            'id_number_encrypted': self.Candidate._id_number_encrypt(self.old_id),
+        })
+        self.agent = new_test_user(self.env, login='c2w_id_upd', groups='base.group_user,chat2work.group_agent')
+
+    def _update(self, number, reason='Wrong number given'):
+        wizard = self.env['chat2work.id.update'].with_user(self.agent).create({
+            'candidate_id': self.cand.id, 'id_number': number, 'reason': reason})
+        wizard.action_save()
+        return wizard
+
+    def _notes(self):
+        return ' '.join(str(body) for body in self.cand.message_ids.mapped('body'))
+
+    def test_change_is_logged_masked_and_wizard_removed(self):
+        wizard = self._update(self.new_id)
+        self.assertFalse(wizard.exists())
+        self.assertEqual(self.cand._id_number_decrypt(), self.new_id)
+        self.assertEqual(self.cand.id_number_hash, self.Candidate._id_number_hash(self.new_id))
+        notes = self._notes()
+        self.assertIn('0001******%s' % self.old_id[-3:], notes)
+        self.assertIn('9902******%s' % self.new_id[-3:], notes)
+        self.assertIn('Wrong number given', notes)
+        self.assertNotIn(self.new_id, notes)
+        self.assertNotIn(self.old_id, notes)
+        message = self.cand.message_ids.filtered(lambda m: 'ID number changed' in str(m.body))
+        self.assertEqual(message.author_id, self.agent.partner_id)
+
+    def test_adding_a_missing_number_is_logged(self):
+        self.cand.write({'id_number_hash': False, 'id_number_encrypted': False})
+        self.cand.invalidate_recordset()
+        self._update(self.new_id)
+        self.assertIn('ID number added', self._notes())
+
+    def test_full_number_in_reason_is_removed(self):
+        self._update(self.new_id, 'They said it is %s' % self.new_id)
+        self.assertNotIn(self.new_id, self._notes())
+
+    def test_rejected_numbers(self):
+        other = _sa_id('980303500908')
+        self.Candidate.create({'phone': '+27820011002', 'id_number_hash': self.Candidate._id_number_hash(other)})
+        for number in ('123', self.old_id, other, _sa_id('600101500908')):
+            with self.assertRaises(UserError), self.env.cr.savepoint():
+                self._update(number)
+        self.assertEqual(self.cand._id_number_decrypt(), self.old_id)
+
+    def test_non_agent_is_refused(self):
+        user = new_test_user(self.env, login='c2w_id_plain', groups='base.group_user')
+        with self.assertRaises(AccessError):
+            self.cand.with_user(user)._c2w_change_id_number(self.new_id, 'No')
 

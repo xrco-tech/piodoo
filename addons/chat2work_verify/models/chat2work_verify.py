@@ -205,13 +205,29 @@ class Chat2workCandidateVerify(models.Model):
                        'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}},
         }
 
+    def _c2w_id_number_changed(self):
+        """The old result says nothing about the new number, and retrying a failed
+        check with its old key would be rejected as a mismatch."""
+        super()._c2w_id_number_changed()
+        self.env['chat2work.verify.check'].sudo().search([
+            ('candidate_id', '=', self.id), ('state', '=', 'failed'),
+        ]).write({'idempotency_key': False})
+        rec = self.sudo()
+        if rec.id_check_state == 'none':
+            return
+        rec.write({'id_check_state': 'none', 'id_check_at': False, 'id_first_names': False, 'id_last_name': False,
+                   'id_dob': False, 'id_gender': False, 'id_citizenship': False})
+        rec.message_post(body=_("Previous ID check result and Home Affairs details cleared. The candidate's name "
+                                "wasn't changed. Run a new check for the new number."))
+
     def _c2w_id_check_record(self, service, mode):
         """A failed check within the idempotency window is retried with its own
         key, so a lost response can't be paid for twice."""
         cutoff = fields.Datetime.now() - timedelta(hours=IDEMPOTENCY_HOURS - 1)
         Check = self.env['chat2work.verify.check'].sudo()
         retry = Check.search([('candidate_id', '=', self.id), ('service_id', '=', service.id), ('mode', '=', mode),
-                              ('state', '=', 'failed'), ('create_date', '>=', cutoff)], limit=1)
+                              ('state', '=', 'failed'), ('create_date', '>=', cutoff),
+                              ('idempotency_key', '!=', False)], limit=1)
         return retry or Check.with_context(mail_create_nolog=True, mail_create_nosubscribe=True).create({
             'candidate_id': self.id, 'service_id': service.id, 'mode': mode, 'idempotency_key': str(uuid.uuid4())})
 

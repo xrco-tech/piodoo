@@ -19,7 +19,8 @@ import logging
 import re
 from datetime import date, timedelta
 
-from odoo import api, fields, models, tools
+from odoo import _, api, fields, models, tools
+from odoo.exceptions import AccessError, UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -573,3 +574,42 @@ class Chat2workCandidateIdentity(models.Model):
         if not self.id_number_encrypted:
             return False
         return self._fernet().decrypt(self.id_number_encrypted.encode()).decode()
+
+    def _c2w_change_id_number(self, id_number, reason):
+        """Add or correct the ID number, with the same rules as registration.
+        The chatter gets masked numbers only."""
+        self.ensure_one()
+        if not self.env.user.has_group('chat2work.group_agent'):
+            raise AccessError(_("You don't have access to change ID numbers."))
+        rec = self.sudo()
+        number = re.sub(r'[\s.-]', '', id_number or '')
+        dob = parse_sa_id(number)
+        if not dob:
+            raise UserError(_("That isn't a valid 13-digit SA ID number."))
+        id_hash = rec._id_number_hash(number)
+        if rec.id_number_hash == id_hash:
+            raise UserError(_("This candidate already has that ID number."))
+        if rec.with_context(active_test=False).search_count([('id_number_hash', '=', id_hash)]):
+            raise UserError(_("Another candidate is already registered with that ID number."))
+        ICP = self.env['ir.config_parameter'].sudo()
+        lo = int(ICP.get_param('chat2work.ussd_age_min', 18))
+        hi = int(ICP.get_param('chat2work.ussd_age_max', 34))
+        if not lo <= age_on(dob) <= hi:
+            raise UserError(_("That ID number is for someone outside the Chat2Work age range (%(lo)s-%(hi)s).",
+                              lo=lo, hi=hi))
+        reason = ID_LIKE.sub(ID_REDACTED, reason or '').strip()
+        if not reason:
+            raise UserError(_("Give a reason for the change."))
+        old = rec.id_number_masked
+        rec.write({'id_number_hash': id_hash, 'id_number_encrypted': rec._id_number_encrypt(number)})
+        rec.invalidate_recordset(['has_id_number', 'id_number_masked'])
+        if old:
+            body = _("ID number changed from %(old)s to %(new)s. Reason: %(reason)s",
+                     old=old, new=rec.id_number_masked, reason=reason)
+        else:
+            body = _("ID number added: %(new)s. Reason: %(reason)s", new=rec.id_number_masked, reason=reason)
+        rec.message_post(body=body)
+        rec._c2w_id_number_changed()
+
+    def _c2w_id_number_changed(self):
+        """Hook for modules holding results tied to the old number (chat2work_verify)."""
