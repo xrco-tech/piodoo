@@ -203,13 +203,21 @@ class TestChat2workUssd(TransactionCase):
 
     def test_screens_fit_160_with_invalid_prefix(self):
         cand = self.Candidate.create({'name': 'X' * 40, 'phone': '+27820000015'})
-        screens = ['S01A', 'S01B', 'S02', 'S03', 'S04', 'S04-ERR1', 'S04-ERR2',
+        screens = ['S01A', 'S01B', 'S03', 'S04', 'S04-ERR1', 'S04-ERR2',
                    'S05', 'S06', 'S08', 'S09', 'S10', 'S11']
         session = self.Session.create({'session_id': 'len', 'msisdn': '+27820000015',
                                        'service_code': CODE, 'candidate_id': cand.id})
         for screen in screens:
             body = 'CON Invalid choice. Please try again.\n' + session._render(screen)
             self.assertLessEqual(len(body), 160, screen)
+        session.screen = 'S02'
+        consent = 'CON ' + session._render('S02')
+        self.assertIn('check your ID with Home Affairs', consent)
+        self.assertLessEqual(len(consent), 160)
+        invalid, end = session._advance('9')
+        self.assertFalse(end)
+        self.assertTrue(invalid.startswith('Invalid choice'))
+        self.assertLessEqual(len('CON ' + invalid), 160)
 
     def test_parse_sa_id(self):
         good = make_id(date(2001, 2, 28))

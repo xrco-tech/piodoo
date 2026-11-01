@@ -42,7 +42,7 @@ WA_PROMPTS = {
     'S01B': ("Welcome to Chat2Work! 👋\n\n"
              "Join our workforce database and get help with a polished CV, free.\n\n"
              "What would you like to do?"),
-    'S04': "Please type your 13-digit SA ID number.",
+    'S04': "Please type your 13-digit SA ID number. We'll check it with Home Affairs to confirm it's valid.",
     'S10': "Which province would you most like to work in?",
     'S11': "What kind of work are you looking for?",
 }

@@ -183,6 +183,10 @@ class Chat2workFlow(models.AbstractModel):
             self.invalid_count += 1
             if self.invalid_count >= MAX_INVALID:
                 return self._end_exit()
+            if self.screen == 'S02':
+                # They've just read the consent text; with it this wouldn't fit a USSD page.
+                options = self._screen('S02')[1]
+                return "Invalid choice. Reply 1 or 2." + ''.join('\n%s. %s' % opt for opt in options), False
             return "Invalid choice. Please try again.\n" + self._render(self.screen), False
         self.invalid_count = 0
         return result
@@ -207,7 +211,7 @@ class Chat2workFlow(models.AbstractModel):
             return ("Welcome to Chat2Work. What would you like to do?",
                     [('1', 'Create Profile'), ('2', 'Request Callback'), ('0', 'Exit')])
         if screen == 'S02':
-            return ("Chat2Work will store your details to help you find work. Terms: %s"
+            return ("Chat2Work will store your details to help you find work and check your ID with Home Affairs. Terms: %s"
                     % self._param('ussd_terms_url', ''),
                     [('1', 'I agree'), ('2', 'I do not agree')])
         if screen == 'S03':
