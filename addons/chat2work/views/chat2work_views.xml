@@ -169,6 +169,7 @@
                             <field name="consent_at"/>
                             <field name="last_active_at"/>
                             <field name="has_id_number"/>
+                            <field name="id_number_masked" invisible="not has_id_number"/>
                             <field name="source_tag"/>
                         </group>
                         <group string="CV">

@@ -58,7 +58,7 @@ class TestChat2workContact(TransactionCase):
         with patch(MOD + '._send_sms', return_value=True) as sms:
             self._wizard(channel='sms', body='Hello there').action_send()
         self.assertEqual(sms.call_args.args[1:], ('+27820007001', 'Hello there'))
-        self.assertIn('Hello there', self.cand.message_ids[0].body)
+        self.assertIn('Hello there', ' '.join(self.cand.message_ids.mapped('body')))
 
     def test_sms_failure_is_shown(self):
         with patch(MOD + '._send_sms', return_value=False), self.assertRaises(UserError):
@@ -94,7 +94,7 @@ class TestChat2workContact(TransactionCase):
         with patch(SENDER, return_value=close) as send:
             record.action_send()
         send.assert_called_once()
-        self.assertIn('job_update', self.cand.message_ids[0].body)
+        self.assertIn('job_update', ' '.join(self.cand.message_ids.mapped('body')))
 
     def test_template_failure_is_shown(self):
         record = self._wizard(channel='whatsapp', use_template=True, wa_template=str(self.template.id))

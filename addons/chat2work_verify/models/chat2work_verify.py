@@ -58,6 +58,7 @@ class Chat2workVerifyService(models.Model):
 
 class Chat2workVerifyCheck(models.Model):
     _name = 'chat2work.verify.check'
+    _inherit = ['mail.thread']
     _description = 'Chat2Work ID Check'
     _order = 'id desc'
     _rec_name = 'request_id'
@@ -82,20 +83,28 @@ class Chat2workVerifyCheck(models.Model):
     id_status = fields.Char('ID Status', readonly=True)
     error = fields.Char(readonly=True)
 
+    def _c2w_log_result(self):
+        """Stays after a candidate is deleted, so nothing about the person goes in it."""
+        labels = dict(self._fields['state']._description_selection(self.env))
+        for rec in self:
+            rec.message_post(body=_("%(mode)s check finished: %(state)s. Credits used: %(credits)s.",
+                                    mode=rec.mode.capitalize(), state=labels[rec.state], credits=rec.credits_used))
+
 
 class Chat2workVerifyAccount(models.Model):
     _name = 'chat2work.verify.account'
+    _inherit = ['mail.thread']
     _description = 'VerifyNow Account'
 
     name = fields.Char(required=True, readonly=True)
     mode = fields.Selection([('sandbox', 'Sandbox (mock data, no credits)'), ('production', 'Production (uses credits)')],
-                            default='sandbox', required=True)
-    auto_check = fields.Boolean('Check new candidates automatically',
+                            default='sandbox', required=True, tracking=True)
+    auto_check = fields.Boolean('Check new candidates automatically', tracking=True,
                                 help="Production only. Runs for candidates created after this is turned on.")
     auto_since = fields.Datetime(readonly=True)
     available_credits = fields.Float('Credits Remaining', readonly=True)
     balance_at = fields.Datetime('Balance Updated', readonly=True)
-    low_credit_level = fields.Float('Warn Below', default=20)
+    low_credit_level = fields.Float('Warn Below', default=20, tracking=True)
     is_low = fields.Boolean(compute='_compute_usage')
     has_key = fields.Boolean('API Key Set', compute='_compute_usage')
     credits_used_total = fields.Float('Credits Used (All Time)', compute='_compute_usage')
@@ -203,8 +212,8 @@ class Chat2workCandidateVerify(models.Model):
         Check = self.env['chat2work.verify.check'].sudo()
         retry = Check.search([('candidate_id', '=', self.id), ('service_id', '=', service.id), ('mode', '=', mode),
                               ('state', '=', 'failed'), ('create_date', '>=', cutoff)], limit=1)
-        return retry or Check.create({'candidate_id': self.id, 'service_id': service.id, 'mode': mode,
-                                      'idempotency_key': str(uuid.uuid4())})
+        return retry or Check.with_context(mail_create_nolog=True, mail_create_nosubscribe=True).create({
+            'candidate_id': self.id, 'service_id': service.id, 'mode': mode, 'idempotency_key': str(uuid.uuid4())})
 
     def _c2w_run_id_check(self):
         self.ensure_one()
@@ -239,9 +248,13 @@ class Chat2workCandidateVerify(models.Model):
 
     def _c2w_id_check_failed(self, check, error):
         check.write({'state': 'failed', 'error': error})
+        check._c2w_log_result()
         if check.mode == 'production':
             self.write({'id_check_state': 'failed', 'id_check_at': fields.Datetime.now()})
-            self.message_post(body=_("ID check failed: %s", error))
+            self.message_post(body=_("ID check on %(id)s failed: %(error)s", id=self.id_number_masked, error=error))
+        else:
+            self.message_post(body=_("Sandbox ID check on %(id)s failed: %(error)s Nothing on this candidate changed.",
+                                     id=self.id_number_masked, error=error))
         return check
 
     def _c2w_id_check_done(self, check, service, account, data):
@@ -276,10 +289,15 @@ class Chat2workCandidateVerify(models.Model):
             'id_status': status,
             'error': False,
         })
+        check._c2w_log_result()
         if isinstance(remaining, (int, float)) and check.mode == 'production':
             account._note_balance(remaining)
         if check.mode == 'production':
             self._c2w_apply_id_check(check)
+        else:
+            self.message_post(body=_("Sandbox ID check on %(id)s: %(status)s. This is mock data, so nothing on this "
+                                     "candidate changed. No credits used.",
+                                     id=self.id_number_masked, status=check.id_status or check.state))
         return check
 
     def _c2w_apply_id_check(self, check):
@@ -292,4 +310,12 @@ class Chat2workCandidateVerify(models.Model):
             if full_name and (not self.name or self.name == 'Candidate'):
                 vals['name'] = full_name
         self.write(vals)
-        self.message_post(body=_("ID check: %s.", check.id_status or check.state))
+        if check.state == 'verified':
+            body = _("ID check on %(id)s passed: %(status)s. Saved the Home Affairs names, date of birth, gender and citizenship "
+                     "on this candidate. Their contact wasn't changed. Credits used: %(credits)s.",
+                     id=self.id_number_masked, status=check.id_status, credits=check.credits_used)
+        else:
+            body = _("ID check on %(id)s didn't confirm this ID: %(status)s. Only the ID check status changed. "
+                     "Credits used: %(credits)s.", id=self.id_number_masked,
+                     status=check.id_status or check.state, credits=check.credits_used)
+        self.message_post(body=body)

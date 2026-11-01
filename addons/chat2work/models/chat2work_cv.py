@@ -60,11 +60,11 @@ class Chat2workCandidateCv(models.Model):
 
     cv_token = fields.Char(copy=False, index=True, readonly=True, groups='base.group_user')
     cv_token_expires = fields.Datetime('CV Link Expires', copy=False, readonly=True)
-    cv_link_state = fields.Selection(LINK_STATES, 'CV Link', default='none', copy=False, readonly=True)
+    cv_link_state = fields.Selection(LINK_STATES, 'CV Link', default='none', copy=False, readonly=True, tracking=True)
     cv_link_sent_at = fields.Datetime('CV Link Sent', copy=False, readonly=True)
     cv_link_wa_message_id = fields.Char(copy=False, readonly=True, index=True)
-    cv_link_error = fields.Char('CV Link Error', copy=False, readonly=True)
-    cv_state = fields.Selection(CV_STATES, 'CV', default='none', copy=False, readonly=True)
+    cv_link_error = fields.Char('CV Link Error', copy=False, readonly=True, tracking=True)
+    cv_state = fields.Selection(CV_STATES, 'CV', default='none', copy=False, readonly=True, tracking=True)
     cv_submitted_at = fields.Datetime('CV Submitted', copy=False, readonly=True)
     cv_data = fields.Json('CV Details', copy=False, readonly=True)
     cv_build_step = fields.Integer('CV Builder Step', copy=False, readonly=True,
@@ -242,6 +242,9 @@ class Chat2workCandidateCv(models.Model):
             'cv_submitted_at': fields.Datetime.now(),
         })
         self._c2w_touch()
+        # Replacing a CV doesn't change cv_state, so tracking alone would miss it.
+        self.sudo().message_post(body="CV built on the CV page: %s" % filename
+                                 if state == 'built' else "CV uploaded on the CV page: %s" % filename)
         self._c2w_log_event('web', 'inbound', 'Built a CV with the CV page form: %s' % filename
                             if state == 'built' else 'Uploaded a CV on the CV page: %s' % filename)
         return attachment

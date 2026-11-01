@@ -98,7 +98,7 @@ class Chat2workCandidateCvRebuild(models.Model):
     _inherit = 'chat2work.candidate'
 
     cv_rebuild_state = fields.Selection(REBUILD_STATES, 'Standard CV', default='none', required=True,
-                                        index=True, copy=False, readonly=True)
+                                        index=True, copy=False, readonly=True, tracking=True)
     cv_rebuild_at = fields.Datetime('Standard CV Updated', copy=False, readonly=True)
     cv_rebuild_attempts = fields.Integer(copy=False, readonly=True)
     cv_rebuild_error = fields.Char('Standard CV Problem', copy=False, readonly=True)

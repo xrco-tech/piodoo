@@ -169,3 +169,58 @@ class TestChat2workVerify(TransactionCase):
         with patch(MOD + 'post') as post, self.assertRaises(UserError):
             self.cand.with_user(agent).action_c2w_id_check()
         post.assert_not_called()
+
+    def _notes(self, record):
+        return ' | '.join(str(body) for body in record.message_ids.mapped('body'))
+
+    def test_sandbox_check_is_logged_without_changing_candidate(self):
+        self.account.mode = 'sandbox'
+        check, _post = self._run(ok())
+        notes = self._notes(self.cand)
+        self.assertIn('Sandbox ID check on 9111******086', notes)
+        self.assertNotIn(ID_NO, notes)
+        self.assertIn('nothing on this candidate changed', notes)
+        self.assertNotIn('KHUMALO', notes)
+        self.assertEqual(self.cand.id_check_state, 'none')
+        self.assertIn('Sandbox check finished: Verified', self._notes(check))
+
+    def test_production_check_logs_what_changed(self):
+        partner = self.env['res.partner'].create({'name': 'Original Contact'})
+        self.cand.partner_id = partner
+        check, _post = self._run(ok())
+        notes = self._notes(self.cand)
+        self.assertIn('ID check on 9111******086 passed', notes)
+        self.assertNotIn(ID_NO, notes)
+        self.assertIn('Their contact', notes)
+        self.assertNotIn('1991', notes)
+        self.assertEqual(partner.name, 'Original Contact')
+        self.assertEqual(self.cand.name, 'Naledi Lerato Khumalo')
+
+    def test_failed_check_is_logged(self):
+        check, _post = self._run(reply(status=402))
+        self.assertIn('ID check on 9111******086 failed', self._notes(self.cand))
+        self.assertIn('check finished: Failed', self._notes(check))
+
+    def test_check_log_has_nothing_personal_after_delete(self):
+        check, _post = self._run(ok())
+        self.cand.unlink()
+        self.assertFalse(check.candidate_id)
+        notes = self._notes(check).upper()
+        self.assertNotIn('KHUMALO', notes)
+        self.assertNotIn(ID_NO, notes)
+        self.assertNotIn('9111', notes)
+
+    def test_masked_id_on_form(self):
+        self.assertEqual(self.cand.id_number_masked, '9111******086')
+        agent = new_test_user(self.env, login='c2w_mask_agent', groups='base.group_user,chat2work.group_agent')
+        self.assertEqual(self.cand.with_user(agent).id_number_masked, '9111******086')
+        self.assertFalse(self.env['chat2work.candidate'].create({'phone': '+27820010002'}).id_number_masked)
+
+    def test_switching_to_production_is_tracked(self):
+        self.account.mode = 'sandbox'
+        self.env.cr.precommit.run()
+        self.account.mode = 'production'
+        self.env.cr.precommit.run()
+        values = self.account.message_ids.tracking_value_ids.mapped('field_id.name')
+        self.assertIn('mode', values)
+
