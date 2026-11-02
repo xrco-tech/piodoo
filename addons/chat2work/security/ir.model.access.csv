@@ -7,3 +7,4 @@ access_chat2work_callback_user,chat2work.callback.request.user,model_chat2work_c
 access_chat2work_ussd_session_admin,chat2work.ussd.session.admin,model_chat2work_ussd_session,base.group_system,1,0,0,1
 access_chat2work_ussd_simulator_user,chat2work.ussd.simulator.user,model_chat2work_ussd_simulator,group_agent,1,1,1,0
 access_chat2work_wa_session_admin,chat2work.wa.session.admin,model_chat2work_wa_session,base.group_system,1,0,0,1
+access_chat2work_id_update_user,chat2work.id.update.user,model_chat2work_id_update,group_agent,1,1,1,1

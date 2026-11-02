@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chat2work_id_update_form" model="ir.ui.view">
+        <field name="name">chat2work.id.update.form</field>
+        <field name="model">chat2work.id.update</field>
+        <field name="arch" type="xml">
+            <form string="Update ID Number">
+                <group>
+                    <field name="candidate_id" invisible="1"/>
+                    <field name="current_id" readonly="1" invisible="not current_id"/>
+                    <field name="id_number" placeholder="13 digits" options="{'autocomplete': 'off'}"/>
+                    <field name="reason" placeholder="For example, the candidate gave us the wrong number"/>
+                </group>
+                <footer>
+                    <button name="action_save" type="object" string="Save" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chat2work_id_update" model="ir.actions.act_window">
+        <field name="name">Update ID Number</field>
+        <field name="res_model">chat2work.id.update</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

@@ -27,6 +27,9 @@ class Chat2workCandidateUcx(models.Model):
         'Contact Created by Chat2Work', readonly=True, copy=False,
         help="The contact was made for this candidate, so deleting the candidate deletes it too.")
 
+    def _c2w_contact_partner(self):
+        return self._c2w_ucx_partner()
+
     def _c2w_ucx_partner(self):
         """The candidate's contact, created now if they don't have one (they've
         consented by the time they're a candidate)."""

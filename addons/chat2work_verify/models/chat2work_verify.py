@@ -9,6 +9,7 @@ deleted, with everything personal removed.
 """
 
 import logging
+import re
 import uuid
 from datetime import timedelta
 
@@ -40,7 +41,26 @@ ID_CHECK_STATES = [
     ('not_valid', 'Not valid'),
     ('failed', 'Check failed'),
 ]
+# Lower case inside a surname: Thabo van der Merwe, but a surname of just "De" stays "De".
+SURNAME_PARTICLES = {'van', 'der', 'den', 'von', 'de', 'du', 'la', 'le'}
 PERSONAL_FIELDS = ('first_names', 'last_name', 'dob', 'age', 'gender', 'citizenship', 'id_status', 'error')
+
+
+def proper_case(text):
+    """Home Affairs names are in capitals: NOMSA O'NEIL-DLAMINI to Nomsa O'Neil-Dlamini."""
+    return re.sub(r"[^\s'-]+", lambda m: m.group().capitalize(), (text or '').lower()).strip()
+
+
+def proper_name(first_names, last_name):
+    words = proper_case(last_name).split()
+    surname = [w.lower() if w.lower() in SURNAME_PARTICLES and i < len(words) - 1 else w for i, w in enumerate(words)]
+    return ' '.join(filter(None, [proper_case(first_names), ' '.join(surname)]))
+
+
+class ResPartnerChat2workVerify(models.Model):
+    _inherit = 'res.partner'
+
+    date_of_birth = fields.Date(copy=False, groups='chat2work_verify.group_id_check')
 
 
 class Chat2workVerifyService(models.Model):
@@ -205,13 +225,51 @@ class Chat2workCandidateVerify(models.Model):
                        'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}},
         }
 
+    def _c2w_update_contact(self, check):
+        """Match the contact to Home Affairs. Returns the sentence for the chatter."""
+        partner = self._c2w_contact_partner()
+        if not partner:
+            return _("There's no contact to update.")
+        if partner.is_company or partner.user_ids:
+            return _("The contact wasn't updated, because it's a company or a user login.")
+        vals = {'date_of_birth': check.dob}
+        full_name = proper_name(check.first_names, check.last_name)
+        if full_name:
+            vals['name'] = full_name
+        partner.sudo().write(vals)
+        partner.sudo().message_post(body=_("Name and date of birth updated from a Chat2Work ID check."))
+        return _("Their contact's name and date of birth were updated to match.")
+
+    def _c2w_erase(self):
+        # A contact that was already there outlives the candidate, but this doesn't.
+        self.sudo().with_context(active_test=False).partner_id.write({'date_of_birth': False})
+        return super()._c2w_erase()
+
+    def _c2w_id_number_changed(self):
+        """The old result says nothing about the new number, and retrying a failed
+        check with its old key would be rejected as a mismatch."""
+        super()._c2w_id_number_changed()
+        self.env['chat2work.verify.check'].sudo().search([
+            ('candidate_id', '=', self.id), ('state', '=', 'failed'),
+        ]).write({'idempotency_key': False})
+        rec = self.sudo()
+        if rec.id_check_state == 'none':
+            return
+        rec.write({'id_check_state': 'none', 'id_check_at': False, 'id_first_names': False, 'id_last_name': False,
+                   'id_dob': False, 'id_gender': False, 'id_citizenship': False})
+        rec.partner_id.sudo().write({'date_of_birth': False})
+        rec.message_post(body=_("Previous ID check result and Home Affairs details cleared, including the date of birth "
+                                "on their contact. The candidate's and contact's names weren't changed. "
+                                "Run a new check for the new number."))
+
     def _c2w_id_check_record(self, service, mode):
         """A failed check within the idempotency window is retried with its own
         key, so a lost response can't be paid for twice."""
         cutoff = fields.Datetime.now() - timedelta(hours=IDEMPOTENCY_HOURS - 1)
         Check = self.env['chat2work.verify.check'].sudo()
         retry = Check.search([('candidate_id', '=', self.id), ('service_id', '=', service.id), ('mode', '=', mode),
-                              ('state', '=', 'failed'), ('create_date', '>=', cutoff)], limit=1)
+                              ('state', '=', 'failed'), ('create_date', '>=', cutoff),
+                              ('idempotency_key', '!=', False)], limit=1)
         return retry or Check.with_context(mail_create_nolog=True, mail_create_nosubscribe=True).create({
             'candidate_id': self.id, 'service_id': service.id, 'mode': mode, 'idempotency_key': str(uuid.uuid4())})
 
@@ -305,15 +363,16 @@ class Chat2workCandidateVerify(models.Model):
         if check.state == 'verified':
             vals.update(id_first_names=check.first_names, id_last_name=check.last_name, id_dob=check.dob,
                         id_gender=check.gender, id_citizenship=check.citizenship)
-            full_name = ' '.join(filter(None, (check.first_names, check.last_name))).title()
+            full_name = proper_name(check.first_names, check.last_name)
             # Fill a missing name only; what the candidate gave us is theirs.
             if full_name and (not self.name or self.name == 'Candidate'):
                 vals['name'] = full_name
         self.write(vals)
         if check.state == 'verified':
             body = _("ID check on %(id)s passed: %(status)s. Saved the Home Affairs names, date of birth, gender and citizenship "
-                     "on this candidate. Their contact wasn't changed. Credits used: %(credits)s.",
-                     id=self.id_number_masked, status=check.id_status, credits=check.credits_used)
+                     "on this candidate. %(contact)s Credits used: %(credits)s.",
+                     id=self.id_number_masked, status=check.id_status, credits=check.credits_used,
+                     contact=self._c2w_update_contact(check))
         else:
             body = _("ID check on %(id)s didn't confirm this ID: %(status)s. Only the ID check status changed. "
                      "Credits used: %(credits)s.", id=self.id_number_masked,

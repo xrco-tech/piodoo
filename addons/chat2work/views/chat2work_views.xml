@@ -132,6 +132,9 @@
         <field name="arch" type="xml">
             <form string="Candidate">
                 <header>
+                    <button name="%(chat2work.action_chat2work_id_update)d" type="action" string="Update ID Number"
+                            groups="chat2work.group_agent"
+                            context="{'default_candidate_id': id}"/>
                     <button name="action_c2w_erase" type="object" string="Delete candidate data"
                             groups="base.group_system" class="btn-danger"
                             confirm="This permanently deletes this candidate's profile, CV, callback requests and Chat2Work conversation history (POPIA deletion request). It can't be undone. Continue?"/>

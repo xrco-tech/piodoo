@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="view_partner_form_chat2work_verify" model="ir.ui.view">
+        <field name="name">res.partner.form.chat2work.verify</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='function']" position="before">
+                <field name="date_of_birth" groups="chat2work_verify.group_id_check" invisible="is_company"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="view_chat2work_candidate_form_verify" model="ir.ui.view">
         <field name="name">chat2work.candidate.form.verify</field>
         <field name="model">chat2work.candidate</field>
