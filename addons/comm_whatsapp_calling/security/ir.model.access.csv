@@ -10,3 +10,5 @@ access_comm_disposition_manager,comm.disposition.manager,model_comm_disposition,
 access_comm_disposition_system,comm.disposition.system,model_comm_disposition,base.group_system,1,1,1,1
 access_comm_whatsapp_monitor_user,comm.whatsapp.monitor.user,model_comm_whatsapp_monitor,base.group_user,1,1,1,0
 access_comm_whatsapp_monitor_system,comm.whatsapp.monitor.system,model_comm_whatsapp_monitor,base.group_system,1,1,1,1
+access_whatsapp_call_permission_user,whatsapp.call.permission.user,model_whatsapp_call_permission,base.group_user,1,0,0,0
+access_whatsapp_call_permission_manager,whatsapp.call.permission.manager,model_whatsapp_call_permission,base.group_system,1,1,1,1

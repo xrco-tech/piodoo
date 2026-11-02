@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work Contact Actions',
-    'version': '18.0.1.1.0',
+    'version': '18.0.1.2.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'Call and message candidates from their record',
     'description': """
@@ -13,7 +13,7 @@ candidate.
     'author': 'XR Co.',
     'website': 'https://github.com/xrco-tech/piodoo',
     'license': 'LGPL-3',
-    'depends': ['chat2work', 'comm_dialer', 'sms'],
+    'depends': ['chat2work', 'comm_dialer', 'comm_whatsapp_calling', 'sms'],
     'data': [
         'security/ir.model.access.csv',
         'data/chat2work_contact_data.xml',

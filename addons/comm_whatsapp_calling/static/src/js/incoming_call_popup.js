@@ -1807,7 +1807,7 @@ const waCallService = {
 
         // ── Call permission request (offered after a "no permission"
         // dial failure) ──────────────────────────────────────────────
-        async function offerCallPermissionRequest(toNumber, accountId, partnerName) {
+        async function offerCallPermissionRequest(toNumber, accountId, partnerName, partnerId, status) {
             const existing = document.getElementById("wa_call_permission_prompt");
             if (existing) existing.remove();
             const c = colors();
@@ -1837,10 +1837,12 @@ const waCallService = {
                 </div>
                 <div style="padding:16px;">
                     <div style="font-size:13px;color:${c.text};line-height:1.4;">
-                        ${escapeHtml(partnerName || toNumber)} hasn't granted this number permission to call them on WhatsApp yet.
+                        ${escapeHtml(status?.message || `${partnerName || toNumber} hasn't granted this number permission to call them on WhatsApp yet.`)}
                     </div>
                     <div style="font-size:12px;color:${c.textMuted};margin-top:8px;">
-                        Send a call permission request so they can approve it, then try calling again.
+                        ${status?.declined_by_person
+                            ? "Only ask again if they've told you they now want to be called."
+                            : "Send a call permission request so they can approve it, then try calling again."}
                     </div>
                 </div>
                 <div style="display:flex;gap:8px;padding:0 16px 16px;">
@@ -1857,9 +1859,10 @@ const waCallService = {
                     const result = await callRpc("/whatsapp/call/request_permission", {
                         to_number: toNumber, account_id: accountId || null,
                         partner_name: partnerName || null,
+                        partner_id: partnerId || null,
                     });
                     if (result?.success) {
-                        notify("Call permission request sent. Ask them to accept it in WhatsApp, then try calling again.", "success");
+                        notify("Call permission request sent. You'll be told here when they reply.", "success");
                     } else if (result?.error === "template_missing") {
                         notify("Call permission not granted by user. Ensure that the call permission template is available and try again.", "danger");
                     } else {
@@ -1869,15 +1872,75 @@ const waCallService = {
                     notify("Failed to send permission request: " + (err?.message || err), "danger");
                 }
             });
-            wireThemeToggle(wrap, () => offerCallPermissionRequest(toNumber, accountId, partnerName));
+            wireThemeToggle(wrap, () => offerCallPermissionRequest(toNumber, accountId, partnerName, partnerId, status));
             document.body.appendChild(wrap);
             wireOutsideClickClose(wrap);
+        }
+
+        // Warn before ringing someone we know hasn't allowed calls. Our record
+        // can be out of date and Meta has the final say, so this never blocks.
+        function confirmDialWithoutPermission(status) {
+            return new Promise((resolve) => {
+                const existing = document.getElementById("wa_call_permission_warning");
+                if (existing) existing.remove();
+                const c = colors();
+                const wrap = document.createElement("div");
+                wrap.id = "wa_call_permission_warning";
+                const anchor = anchorTopRight();
+                Object.assign(wrap.style, {
+                    position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
+                    width: "280px", background: c.card, color: c.text,
+                    borderRadius: "10px", boxShadow: c.shadow,
+                    zIndex: "10001", overflow: "hidden",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                });
+                wrap.innerHTML = `
+                    <div style="background:#714B67;color:#fff;padding:10px 14px;font-size:13px;font-weight:600;">
+                        <i class="fa fa-exclamation-triangle me-1"></i>No Call Permission
+                    </div>
+                    <div style="padding:16px;">
+                        <div style="font-size:13px;color:${c.text};line-height:1.4;">${escapeHtml(status.message)}</div>
+                        <div style="font-size:12px;color:${c.textMuted};margin-top:8px;">
+                            WhatsApp will block the call unless they've allowed it since.
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;padding:0 16px 16px;">
+                        <button data-action="cancel" style="flex:1;background:${c.accent};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Don't call</button>
+                        <button data-action="call" style="flex:1;background:${c.cardAlt};color:${c.text};border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Try anyway</button>
+                    </div>
+                `;
+                const finish = (answer) => { wrap.remove(); resolve(answer); };
+                wrap.querySelector("[data-action=cancel]").addEventListener("click", () => finish(false));
+                wrap.querySelector("[data-action=call]").addEventListener("click", () => finish(true));
+                document.body.appendChild(wrap);
+            });
         }
 
         // ── Outbound dial ─────────────────────────────────────────────
         async function dialCall({ toNumber, accountId, partnerName, partnerId, chatbotId, chatbotName }) {
             if (!toNumber) {
                 notify("Enter a phone number to dial.", "warning");
+                return;
+            }
+            if (activeCall) {
+                notify("Another call is in progress.", "warning");
+                return;
+            }
+            let permission = null;
+            try {
+                permission = await callRpc("/whatsapp/call/permission_status", {
+                    to_number: toNumber, account_id: accountId || null,
+                    partner_name: partnerName || null,
+                });
+            } catch (err) {
+                warn("permission check failed, dialling anyway:", err);
+            }
+            if (permission?.state === "expired") {
+                offerCallPermissionRequest(toNumber, accountId, partnerName, partnerId, permission);
+                return;
+            }
+            if (["pending", "declined"].includes(permission?.state)
+                    && !(await confirmDialWithoutPermission(permission))) {
                 return;
             }
             if (activeCall) {
@@ -1963,7 +2026,7 @@ const waCallService = {
                 notify("Dial failed: " + message, "danger");
                 teardownCall(false);
                 if (/no approved call permission/i.test(message)) {
-                    offerCallPermissionRequest(toNumber, accountId, partnerName);
+                    offerCallPermissionRequest(toNumber, accountId, partnerName, partnerId, permission);
                 }
             }
         }
@@ -2261,6 +2324,12 @@ const waCallService = {
                 if (payload?.type === "whatsapp_incoming_call") {
                     showPopup(payload);
                 }
+            });
+            bus_service.subscribe("whatsapp_call_permission", (payload) => {
+                notification.add(payload.message, {
+                    title: "WhatsApp call permission", sticky: true,
+                    type: payload.state === "granted" ? "success" : "warning",
+                });
             });
             bus_service.subscribe("whatsapp_outbound_answered", (payload) => {
                 log("outbound answered:", payload?.call_log_id);

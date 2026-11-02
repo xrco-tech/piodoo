@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <function model="whatsapp.call.permission" name="_backfill_from_messages"/>
+    </data>
+</odoo>

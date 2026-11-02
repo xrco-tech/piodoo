@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+import json
 from datetime import timedelta
 from unittest.mock import patch
 
 from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import Form, TransactionCase, new_test_user, tagged
+
+from odoo.addons.comm_whatsapp_calling.controllers.whatsapp_webhook import WhatsAppWebhookCalling
 
 MOD = 'odoo.addons.chat2work_contact.wizards.chat2work_message'
 SENDER = 'odoo.addons.comm_whatsapp.models.whatsapp_template_send_wizard.WhatsAppTemplateSendWizard.action_send_template'
@@ -123,3 +126,112 @@ class TestChat2workContact(TransactionCase):
         record = self._wizard(channel='whatsapp', body='Hi')
         with self.assertRaises(UserError):
             record.action_send()
+
+
+@tagged('post_install', '-at_install', 'chat2work')
+class TestCallPermission(TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.agent = new_test_user(self.env, login='c2w_perm_agent', groups='chat2work.group_agent')
+        Account = self.env['comm.whatsapp.account'].sudo()
+        self.account = Account.get_default()
+        if not self.account:
+            self.account = Account.create({'name': 'Test', 'phone_number_id': '123', 'phone_number': '27820000000'})
+        self.pnid = self.account.phone_number_id
+        self.cand = self.env['chat2work.candidate'].create({
+            'name': 'Thandeka Mokoena', 'phone': '+27820007002', 'whatsapp_opt_in': True})
+        self.Permission = self.env['whatsapp.call.permission'].sudo()
+        self.count = 0
+
+    def _reply(self, minutes_ago=0, **reply):
+        self.count += 1
+        return self.env['whatsapp.message'].sudo().create({
+            'message_id': 'wamid.perm%s' % self.count, 'wa_id': '27820007002', 'is_incoming': True,
+            'message_type': 'interactive', 'interactive_type': 'call_permission_reply',
+            'phone_number_id': self.pnid,
+            'interactive_data': json.dumps({'type': 'call_permission_reply', 'call_permission_reply': reply}),
+            'message_timestamp': fields.Datetime.now() - timedelta(minutes=minutes_ago),
+        })
+
+    def _requested(self):
+        return self.Permission.create({
+            'phone': '27820007002', 'phone_number_id': self.pnid, 'state': 'pending',
+            'requested_at': fields.Datetime.now() - timedelta(hours=1), 'requested_by_id': self.agent.id})
+
+    def test_accept_tells_agent_and_candidate(self):
+        record = self._requested()
+        with patch('odoo.addons.bus.models.bus.ImBus._sendone') as sendone:
+            self.Permission._process_reply(self._reply(response='accept', is_permanent=True, response_source='user_action'))
+        self.assertEqual(record.current_state, 'granted')
+        self.assertTrue(record.is_permanent)
+        self.assertEqual(sendone.call_args[0][0], self.agent.partner_id)
+        self.assertEqual(sendone.call_args[0][2]['state'], 'granted')
+        self.assertIn('Thandeka Mokoena', sendone.call_args[0][2]['message'])
+        self.assertIn('allowed calls', ' '.join(self.cand.message_ids.mapped('body')))
+        self.assertEqual(self.cand.activity_ids.user_id, self.agent)
+        self.assertEqual(self.cand.c2w_call_permission, 'granted')
+
+    def test_person_declining_warns(self):
+        self._requested()
+        self.Permission._process_reply(self._reply(response='reject', response_source='user_action'))
+        status = self.Permission._status_for('0820007002', name='Thandeka')
+        self.assertEqual(status['state'], 'declined')
+        self.assertTrue(status['declined_by_person'])
+        self.assertIn('declined', status['message'])
+        self.assertFalse(self.cand.activity_ids)
+
+    def test_automatic_reject_is_not_their_choice(self):
+        self.Permission._process_reply(self._reply(response='reject', response_source='automatic'))
+        status = self.Permission._status_for('27820007002')
+        self.assertEqual(status['state'], 'declined')
+        self.assertFalse(status['declined_by_person'])
+        self.assertIn('automatically', status['message'])
+
+    def test_temporary_permission_expires(self):
+        past = int((fields.Datetime.now() - timedelta(days=1)).timestamp())
+        self.Permission._process_reply(self._reply(response='accept', is_permanent=False,
+                                                   expiration_timestamp=past, response_source='user_action'))
+        self.assertEqual(self.Permission._status_for('27820007002')['state'], 'expired')
+
+    def test_repeat_and_late_replies_are_ignored(self):
+        record = self._requested()
+        message = self._reply(response='accept', is_permanent=True, response_source='user_action')
+        self.Permission._process_reply(message)
+        with patch('odoo.addons.bus.models.bus.ImBus._sendone') as sendone:
+            self.Permission._process_reply(message)
+            self.Permission._process_reply(self._reply(minutes_ago=30, response='reject', response_source='user_action'))
+        sendone.assert_not_called()
+        self.assertEqual(record.current_state, 'granted')
+
+    def test_refused_dial_clears_stale_permission(self):
+        record = self._requested()
+        record.state = 'granted'
+        self.Permission._mark_not_approved('+27820007002', self.pnid)
+        self.assertEqual(record.current_state, 'expired')
+
+    def test_reply_skips_chatbots(self):
+        message = self._reply(response='accept', is_permanent=True, response_source='user_action')
+        Bot = type(self.env['whatsapp.chatbot.message'])
+        with patch.object(Bot, 'process_incoming_webhook_message') as bot:
+            WhatsAppWebhookCalling()._process_chatbot_message(message, {}, {}, {})
+        bot.assert_not_called()
+        self.assertEqual(self.Permission._status_for('27820007002')['state'], 'granted')
+
+    def test_request_button_records_pending(self):
+        self.env['whatsapp.template'].sudo().create({
+            'name': 'call_permission_request', 'language': 'en', 'category': 'MARKETING', 'status': 'APPROVED',
+            'account_id': self.account.id, 'body': 'May we call you?'})
+        with patch.object(type(self.env['whatsapp.template']), '_send_simple', return_value={'success': True}):
+            self.env['chat2work.candidate'].browse(self.cand.id).with_user(self.agent).action_c2w_request_call_permission()
+        self.assertEqual(self.cand.c2w_call_permission, 'pending')
+        record = self.Permission._find('+27820007002', self.pnid)
+        self.assertEqual(record.requested_by_id, self.agent)
+        self.assertIn('request sent', ' '.join(self.cand.message_ids.mapped('body')))
+
+    def test_backfill_and_erase(self):
+        self._reply(response='accept', is_permanent=True, response_source='user_action')
+        self.Permission._backfill_from_messages()
+        self.assertEqual(self.cand.c2w_call_permission, 'granted')
+        self.cand._c2w_erase()
+        self.assertFalse(self.Permission._find('27820007002', self.pnid))

@@ -219,6 +219,9 @@ class WhatsappCallRoutes(http.Controller):
         connect_result = call_log.action_connect(sdp_offer, to_number)
         if not connect_result.get("success"):
             call_log.write({"call_status": "ended"})
+            if "no approved call permission" in (connect_result.get("error") or "").lower():
+                request.env["whatsapp.call.permission"]._mark_not_approved(
+                    to_number, acc.phone_number_id)
             return {"success": False,
                     "error": connect_result.get("error") or "Meta rejected the connect."}
         meta_call_id = connect_result.get("meta_call_id")
@@ -244,34 +247,21 @@ class WhatsappCallRoutes(http.Controller):
         of silently failing."""
         if not to_number:
             return {"success": False, "error": "Missing recipient number."}
+        return request.env["whatsapp.call.permission"]._send_request(
+            to_number, account_id=account_id, partner_name=partner_name,
+            partner_id=kwargs.get("partner_id"))
 
-        Template = request.env["whatsapp.template"].sudo()
-        domain = [("name", "=ilike", "call_permission_request"),
-                  ("status", "=", "APPROVED")]
-        template = Template.browse()
-        if account_id:
-            template = Template.search(
-                domain + [("account_id", "=", int(account_id))], limit=1)
-        if not template:
-            template = Template.search(domain, limit=1)
-        if not template:
-            return {"success": False, "error": "template_missing"}
-
-        # Best-effort: if the body has exactly one named placeholder,
-        # assume it's meant for the recipient's name. Multiple named
-        # placeholders have no reliable mapping from just a phone number
-        # and a display name, so they fall back to _send_simple's
-        # generic "there" per-parameter default instead of guessing.
-        # `_default` covers the older numbered {{1}}, {{2}}.. style the
-        # same way, since those slots have no per-placeholder name at all.
-        variables = {}
-        named_params = template._extract_named_params()
-        if len(named_params) == 1 and partner_name:
-            variables[named_params[0]] = partner_name
-        if partner_name:
-            variables['_default'] = partner_name
-
-        return template._send_simple(to_number, variables=variables)
+    @http.route(
+        "/whatsapp/call/permission_status",
+        type="json", auth="user", methods=["POST"],
+    )
+    def call_permission_status(self, to_number=None, account_id=None,
+                                partner_name=None, **kwargs):
+        """What we know about this person's call permission, so the
+        dialler can warn before ringing. {"state": False} when they've
+        never been asked or replied."""
+        return request.env["whatsapp.call.permission"]._status_for(
+            to_number, account_id=account_id, name=partner_name)
 
     @http.route(
         "/whatsapp/call/upload_recording/<int:call_log_id>",
