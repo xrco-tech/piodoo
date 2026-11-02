@@ -68,6 +68,17 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
             )
         return super()._handle_webhook_event()
 
+    def _process_chatbot_message(self, message_record, webhook_message, value_data, entry_data):
+        # A permission reply is an answer to us, not a message for a chatbot
+        # or an open Chat2Work session, which would take it as a wrong answer.
+        if message_record.is_incoming and message_record.interactive_type == "call_permission_reply":
+            try:
+                message_record.env["whatsapp.call.permission"].sudo()._process_reply(message_record)
+            except Exception as e:
+                _logger.error("comm_whatsapp_calling: call permission reply error: %s", e, exc_info=True)
+            return
+        return super()._process_chatbot_message(message_record, webhook_message, value_data, entry_data)
+
     def _process_call_event(self, call_data, value_data):
         """`value_data` is the webhook's `changes[].value` object — the
         same level comm_whatsapp's message handler reads `metadata` and
