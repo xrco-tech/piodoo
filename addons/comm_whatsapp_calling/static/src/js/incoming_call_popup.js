@@ -218,6 +218,8 @@ const waCallService = {
         // this needs real viewport math. `extraRight` shifts further left
         // (e.g. the script panel sitting beside the HUD instead of on
         // top of it).
+        const MOBILE_MAX_WIDTH = 500;
+        const MOBILE_MARGIN = 8;
         function anchorTopRight(extraRight = 0) {
             const icon = document.querySelector(".o_wa_dialer_btn")
                 || document.querySelector(".o_wa_calls_systray");
@@ -225,8 +227,15 @@ const waCallService = {
                 const r = icon.getBoundingClientRect();
                 return {
                     top: Math.round(r.bottom + 8),
-                    right: Math.round(window.innerWidth - r.right) + extraRight,
+                    // On a phone the icon sits mid-screen, so a card lined up
+                    // with it would run off the left edge.
+                    right: window.innerWidth <= MOBILE_MAX_WIDTH
+                        ? MOBILE_MARGIN
+                        : Math.round(window.innerWidth - r.right) + extraRight,
                 };
+            }
+            if (window.innerWidth <= MOBILE_MAX_WIDTH) {
+                return { top: 20, right: MOBILE_MARGIN };
             }
             return { top: 20, right: 20 + extraRight };
         }
@@ -411,7 +420,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(wrap.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", background: c.card, color: c.text,
+                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -673,7 +682,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(hud.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", background: c.card, color: c.text,
+                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -769,7 +778,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(wrap.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", background: c.card, color: c.text,
+                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -865,7 +874,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(modal.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", background: c.card, color: c.text,
+                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -972,7 +981,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(modal.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", background: c.card, color: c.text,
+                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -1077,7 +1086,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(modal.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", background: c.card, color: c.text,
+                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -1239,7 +1248,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(modal.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxHeight: "70vh", display: "flex", flexDirection: "column",
+                width: "280px", maxWidth: "calc(100vw - 16px)", maxHeight: "70vh", display: "flex", flexDirection: "column",
                 background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
@@ -1323,7 +1332,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(modal.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxHeight: "70vh", display: "flex", flexDirection: "column",
+                width: "280px", maxWidth: "calc(100vw - 16px)", maxHeight: "70vh", display: "flex", flexDirection: "column",
                 background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
@@ -1491,7 +1500,7 @@ const waCallService = {
                 // rather than stacked under it, so it doesn't collide with
                 // the HUD's own height changing as call state changes.
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "340px", maxHeight: "80vh", display: "flex", flexDirection: "column",
+                width: "340px", maxWidth: "calc(100vw - 16px)", maxHeight: "80vh", display: "flex", flexDirection: "column",
                 background: c.card, color: c.text, borderRadius: "10px",
                 boxShadow: c.shadow, zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -1727,7 +1736,7 @@ const waCallService = {
             wrap.id = "wa_call_disposition_prompt";
             Object.assign(wrap.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "300px", background: c.card, color: c.text,
+                width: "300px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow, zIndex: "10001",
                 overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -1816,7 +1825,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(wrap.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", background: c.card, color: c.text,
+                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10001", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -1889,7 +1898,7 @@ const waCallService = {
                 const anchor = anchorTopRight();
                 Object.assign(wrap.style, {
                     position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                    width: "280px", background: c.card, color: c.text,
+                    width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                     borderRadius: "10px", boxShadow: c.shadow,
                     zIndex: "10001", overflow: "hidden",
                     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -2129,7 +2138,7 @@ const waCallService = {
             const anchor = anchorTopRight();
             Object.assign(wrap.style, {
                 position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", background: c.card, color: c.text,
+                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
                 borderRadius: "10px", boxShadow: c.shadow,
                 zIndex: "10000", overflow: "hidden",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
