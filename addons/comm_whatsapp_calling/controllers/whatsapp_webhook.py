@@ -251,6 +251,7 @@ class WhatsAppWebhookCalling(WhatsAppAuthController):
                 # build a real RTCPeerConnection the moment the user
                 # clicks Accept — no round-trip needed to fetch it.
                 "sdp_offer": call_log.sdp_offer or "",
+                "auto_record": bool(call_log.account_id.call_auto_record),
                 # Set only when this caller belongs to a campaign with a
                 # linked voice script - see _resolve_suggested_voice_script.
                 "suggested_chatbot_id": suggested_chatbot_id,

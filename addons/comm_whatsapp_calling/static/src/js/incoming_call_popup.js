@@ -557,6 +557,9 @@ const waCallService = {
             try {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 const audioCtx = new AudioCtx();
+                // Created outside a tap, so phones start it paused, and a
+                // paused context records nothing.
+                if (audioCtx.state !== "running") audioCtx.resume().catch(() => {});
                 const dest = audioCtx.createMediaStreamDestination();
                 const localNode = audioCtx.createMediaStreamSource(call.localStream);
                 const remoteNode = audioCtx.createMediaStreamSource(call.remoteStream);
@@ -568,7 +571,9 @@ const waCallService = {
                 recorder.ondataavailable = (ev) => {
                     if (ev.data && ev.data.size) chunks.push(ev.data);
                 };
-                recorder.start();
+                // A chunk each second, so a recording that captures nothing
+                // shows up while the call is still on.
+                recorder.start(1000);
 
                 // Per-speaker mono recorders (agent = local, caller = remote) for
                 // a speaker-labelled transcript. Best-effort — never break the mix.
@@ -580,7 +585,7 @@ const waCallService = {
                     recorderAgent.ondataavailable = (ev) => {
                         if (ev.data && ev.data.size) chunksAgent.push(ev.data);
                     };
-                    recorderAgent.start();
+                    recorderAgent.start(1000);
 
                     const destCaller = audioCtx.createMediaStreamDestination();
                     remoteNode.connect(destCaller);
@@ -589,7 +594,7 @@ const waCallService = {
                     recorderCaller.ondataavailable = (ev) => {
                         if (ev.data && ev.data.size) chunksCaller.push(ev.data);
                     };
-                    recorderCaller.start();
+                    recorderCaller.start(1000);
 
                     call.recorderAgent = recorderAgent;
                     call.chunksAgent = chunksAgent;
@@ -605,11 +610,44 @@ const waCallService = {
                 call.recording = true;
                 call.recordingStartedAt = Date.now();
                 notify("Recording this call.", "info");
+                checkRecordingCaptures(call, recorder, chunks, audioCtx);
                 return true;
             } catch (err) {
                 warn("startRecording failed:", err);
                 notify("Could not start recording: " + (err?.message || err), "danger");
                 return false;
+            }
+        }
+
+        // Phones can pause the audio engine mid-call, leaving a recording
+        // that captures nothing. Try to wake it, and tell the agent if that
+        // fails rather than letting them find out after the call.
+        function checkRecordingCaptures(call, recorder, chunks, audioCtx) {
+            setTimeout(async () => {
+                if (call.mediaRecorder !== recorder || chunks.length) return;
+                try { await audioCtx.resume(); } catch (e) {}
+                setTimeout(() => {
+                    if (call.mediaRecorder !== recorder || chunks.length) return;
+                    notification.add(
+                        "This call is NOT being recorded. Take notes, or try the record button again.",
+                        { type: "danger", sticky: true, title: "Recording failed" });
+                    callRpc("/whatsapp/call/recording_problem", {
+                        kind: "whatsapp", call_id: call.id, detail: `audio ${audioCtx.state}`,
+                    }).catch(() => {});
+                    // Let the agent retry with the record button.
+                    stopRecordingAndUpload(call);
+                    if (activeCall === call && lastHudPayload) showHud(lastHudPayload);
+                }, 4000);
+            }, 6000);
+        }
+
+        // Start recording once both sides are connected, when the number is
+        // set to record every call.
+        function maybeAutoRecord(call) {
+            if (call && call.autoRecord && call.startTime && !call.mediaRecorder
+                    && call.localStream && call.remoteStream && activeCall === call) {
+                startRecording(call);
+                if (lastHudPayload) showHud(lastHudPayload);
             }
         }
 
@@ -670,7 +708,9 @@ const waCallService = {
             }
         }
 
+        let lastHudPayload = null; // to redraw the HUD when recording starts or fails
         function showHud(payload) {
+            lastHudPayload = payload;
             const existing = document.getElementById(HUD_ID);
             if (existing) existing.remove();
             const c = colors();
@@ -1640,6 +1680,7 @@ const waCallService = {
                 partnerName: payload.partner_name || payload.from_number,
                 fromNumber: payload.from_number,
                 partnerId: payload.partner_id || null,
+                autoRecord: !!payload.auto_record,
                 startTime: null, muted: false,
                 recording: false, mediaRecorder: null, recordedChunks: [], audioContext: null,
                 recordingStartedAt: null,
@@ -1670,6 +1711,7 @@ const waCallService = {
                     if (ev.streams?.[0]) {
                         audio.srcObject = ev.streams[0];
                         call.remoteStream = ev.streams[0];
+                        maybeAutoRecord(call);
                     }
                 };
 
@@ -1690,6 +1732,7 @@ const waCallService = {
                 notify("Call connected.", "success");
                 call.startTime = Date.now();
                 showHud(payload);
+                maybeAutoRecord(call);
                 if (payload.suggested_chatbot_id) {
                     startVoiceScript(payload);
                 }
@@ -1999,6 +2042,7 @@ const waCallService = {
                     if (ev.streams?.[0]) {
                         audio.srcObject = ev.streams[0];
                         call.remoteStream = ev.streams[0];
+                        maybeAutoRecord(call);
                     }
                 };
 
@@ -2020,6 +2064,7 @@ const waCallService = {
                     throw new Error(result?.error || "Dial failed");
                 }
                 call.id = result.call_log_id;
+                call.autoRecord = !!result.auto_record;
                 showHud({
                     call_log_id:  call.id,
                     partner_name: call.partnerName,
@@ -2062,6 +2107,7 @@ const waCallService = {
                     from_number:  activeCall.fromNumber,
                     partner_id:   activeCall.partnerId,
                 });
+                maybeAutoRecord(activeCall);
                 if (activeCall.chatbotId) {
                     startVoiceScript({
                         suggested_chatbot_id:   activeCall.chatbotId,

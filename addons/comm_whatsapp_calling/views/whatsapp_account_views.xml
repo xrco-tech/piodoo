@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_whatsapp_account_form_calling" model="ir.ui.view">
+        <field name="name">comm.whatsapp.account.form.calling</field>
+        <field name="model">comm.whatsapp.account</field>
+        <field name="inherit_id" ref="comm_whatsapp.view_comm_whatsapp_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='voicemail']" position="before">
+                <page string="Call Recording" name="call_recording">
+                    <group>
+                        <field name="call_auto_record" widget="boolean_toggle"/>
+                    </group>
+                    <div class="text-muted">Agents must tell the person the call is being recorded.</div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

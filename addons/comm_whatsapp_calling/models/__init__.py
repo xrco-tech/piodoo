@@ -2,6 +2,7 @@
 
 from . import comm_disposition
 from . import whatsapp_call_log
+from . import whatsapp_account
 from . import ir_attachment
 from . import res_partner
 from . import res_users
