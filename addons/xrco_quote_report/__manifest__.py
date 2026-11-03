@@ -7,7 +7,7 @@
     'description': """
 Replaces the standard quotation PDF with the layout our invoices use: blue
 title and total, client and provider blocks, the same line table and margins.
-The invoice design itself was edited in the database (account.report_invoice_document);
+The invoice design lives in xrco_invoice_report;
 this module copies its styling rather than depending on it.
     """,
     'author': 'XR Co.',

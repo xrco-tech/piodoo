@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_invoice" model="report.paperformat">
+        <field name="name">A4 (Invoice Margin)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">16</field>
+        <field name="margin_bottom">32</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">52</field>
+        <field name="dpi">90</field>
+    </record>
+    <record id="account.account_invoices" model="ir.actions.report">
+        <field name="paperformat_id" ref="paperformat_invoice"/>
+    </record>
+    <record id="account.account_invoices_without_payment" model="ir.actions.report">
+        <field name="paperformat_id" ref="paperformat_invoice"/>
+    </record>
+
+    <!-- Applied last, so it replaces the document after every other module's changes. -->
+    <template id="report_invoice_document" inherit_id="account.report_invoice_document" priority="1000">
+        <xpath expr="//t[@t-call='web.external_layout']" position="replace">
+            <t t-call="web.basic_layout">
+                <t t-set="o" t-value="o.with_context(lang=lang)"/>
+
+                <div class="page" style="font-family: 'Helvetica', 'Arial', sans-serif; color: #334155; font-size: 14px;">
+
+                    <div class="row mb-5">
+                        <div class="col-6">
+                            <h2 style="color: #1e40af; font-weight: bold; font-size: 28px;">
+                                <span t-if="o.move_type == 'out_invoice' and o.state == 'posted'">Invoice</span>
+                                <span t-if="o.move_type == 'out_invoice' and o.state == 'draft'">Draft Invoice</span>
+                                <span t-if="o.move_type == 'out_refund'">Credit Note</span>
+                                <span t-field="o.name" style="color: #64748b; font-weight: bold;">INV/2024/0001</span>
+                            </h2>
+                        </div>
+                        <div class="col-6 text-end">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 130px;" alt="Logo"/>
+                        </div>
+                    </div>
+
+                    <div class="row mb-5">
+                        <div class="col-6">
+                            <strong style="color: #1e40af; text-transform: uppercase;">Client:</strong>
+                            <div class="mt-0">
+                                <strong t-field="o.partner_id.name"/><br/>
+                                <strong t-field="o.partner_id.parent_id.display_name"/><br/>
+                                <div t-field="o.partner_id.parent_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;], &quot;no_marker&quot;: True}"/>
+                                <span t-if="o.partner_id.vat">VAT: <span t-field="o.partner_id.vat"/></span>
+                            </div>
+                        </div>
+                        <div class="col-6 text-end">
+                            <strong style="color: #1e40af; text-transform: uppercase;">Provider:</strong>
+                            <div class="mt-0">
+                                <strong t-field="o.company_id.name"/><br/>
+                                <div t-field="o.company_id.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;], &quot;no_marker&quot;: True}"/>
+                                <span t-if="o.company_id.phone">Tel: <span t-field="o.company_id.phone"/></span><br/>
+                                <span t-if="o.company_id.email"><span t-field="o.company_id.email"/></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4 align-items-end">
+                        <div class="col-6">
+                            <p class="mb-1 text-muted">Invoice Period: <span t-field="o.invoice_date" t-options="{&quot;format&quot;: &quot;MMMM YYYY&quot;}"/></p>
+                            <p class="mb-1 text-muted">Invoice Issued: <span t-field="o.invoice_date"/></p>
+                            <p class="mb-1 text-muted" t-if="o.invoice_date_due">Due Date: <span t-field="o.invoice_date_due"/></p>
+                        </div>
+                        <div class="col-6 text-end">
+                                <small class="text-muted fw-bold">INVOICE TOTAL</small>
+                                <h1 style="color: #1e40af; font-weight: bold; margin: 0;" t-field="o.amount_total">R10,000.00</h1>
+                        </div>
+                    </div>
+
+                    <table class="table table-sm mt-4" style="border-top: 0px solid transparent;">
+                        <thead style="border: 0px solid transparent; border-bottom: 2px solid #f1f5f9; color: #64748b; text-transform: uppercase; font-size: 11px; font-weight: strong;">
+                            <tr>
+                                <th class="text-start pb-2">Item Description</th>
+                                <th class="text-end pb-2">Unit Price</th>
+                                <th class="text-center pb-2">Qty</th>
+                                <th class="text-end pb-2">Total Price</th>
+                            </tr>
+                        </thead>
+                        <tbody class="invoice_tbody">
+                            <t t-foreach="o.invoice_line_ids" t-as="line">
+                                <tr style="border-bottom: 2px solid #f1f5f9; border-right: 0px solid transparent; border-left: 0px solid transparent;">
+                                    <td class="py-3">
+                                        <span class="text-muted" t-field="line.name" t-options="{&quot;widget&quot;: &quot;text&quot;}"/>
+                                    </td>
+                                    <td class="text-end py-3 align-middle"><span t-field="line.price_unit"/></td>
+                                    <td class="text-center py-3 align-middle"><span t-field="line.quantity"/></td>
+                                    <td class="text-end py-3 align-middle"><span t-field="line.price_subtotal"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <div class="row mt-2">
+                        <div class="col-7">
+                        </div>
+                        <div class="col-5">
+                            <table class="table table-sm table-borderless">
+                                <tr class="border-bottom" style="border-bottom: 2px solid #f1f5f9; ">
+                                    <td class="py-2">Subtotal (excl. VAT)</td>
+                                    <td class="text-end py-2">
+                                        <span t-field="o.amount_untaxed"/>
+                                    </td>
+                                </tr>
+                                <tr class="fw-bold" style="font-size: 16px;">
+                                    <td class="py-3">Total</td>
+                                    <td class="text-end py-3" style="color: #1e40af;">
+                                        <span t-field="o.amount_total"/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row mt-5">
+                        <div class="col-7">
+                            <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <strong style="color: #1e40af; font-size: 11px; text-transform: uppercase;">Bank Payment Instructions</strong>
+                                <div class="mt-2" style="line-height: 1.6;">
+                                    <span>Payment Reference: <strong><span t-field="o.payment_reference"/></strong></span><br/>
+                                    <t t-if="o.partner_bank_id">
+                                        <span>Bank Name: <span t-field="o.partner_bank_id.bank_id.name"/></span><br/>
+                                        <span>Account Holder: <span t-field="o.company_id.name"/></span><br/>
+                                        <span>Account Number: <span t-field="o.partner_bank_id.acc_number"/></span><br/>
+                                        <span>Account Type: Current Account</span>
+                                    </t>
+                                    <t t-else="">
+                                        <span class="text-danger small mt-2">Please configure a Recipient Bank on the invoice.</span>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 text-muted" t-if="o.narration">
+                        <p t-field="o.narration"/>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+</odoo>
