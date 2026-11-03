@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Same margins as the invoice's "A4 (Invoice Margin)" paper format. -->
+    <record id="paperformat_quote" model="report.paperformat">
+        <field name="name">A4 (Quote, invoice margins)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">16</field>
+        <field name="margin_bottom">32</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">52</field>
+        <field name="dpi">90</field>
+    </record>
+    <record id="sale.action_report_saleorder" model="ir.actions.report">
+        <field name="paperformat_id" ref="paperformat_quote"/>
+    </record>
+    <record id="sale.action_report_pro_forma_invoice" model="ir.actions.report">
+        <field name="paperformat_id" ref="paperformat_quote"/>
+    </record>
+
+    <!-- Applied last, so it replaces the document after every other module's changes. -->
+    <template id="report_saleorder_document" inherit_id="sale.report_saleorder_document" priority="1000">
+        <xpath expr="//t[@t-call='web.external_layout']" position="replace">
+            <t t-call="web.basic_layout">
+                <t t-set="doc" t-value="doc.with_context(lang=doc.partner_id.lang)"/>
+                <t t-set="is_proforma" t-value="env.context.get('proforma', False) or is_pro_forma"/>
+                <t t-set="is_quote" t-value="not is_proforma and doc.state in ('draft', 'sent')"/>
+                <t t-set="client" t-value="doc.partner_id.commercial_partner_id"/>
+
+                <div class="page" style="font-family: 'Helvetica', 'Arial', sans-serif; color: #334155; font-size: 14px;">
+
+                    <div class="row mb-5">
+                        <div class="col-6">
+                            <h2 style="color: #1e40af; font-weight: bold; font-size: 28px;">
+                                <span t-if="is_proforma">Pro-Forma Invoice</span>
+                                <span t-elif="is_quote">Quote</span>
+                                <span t-else="">Order</span>
+                                <span t-field="doc.name" style="color: #64748b; font-weight: bold;">S00001</span>
+                            </h2>
+                        </div>
+                        <div class="col-6 text-end">
+                            <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" style="max-height: 130px;" alt="Logo"/>
+                        </div>
+                    </div>
+
+                    <div class="row mb-5">
+                        <div class="col-6">
+                            <strong style="color: #1e40af; text-transform: uppercase;">Client:</strong>
+                            <div class="mt-0">
+                                <strong t-field="doc.partner_id.name"/><br/>
+                                <t t-if="client != doc.partner_id">
+                                    <strong t-field="client.name"/><br/>
+                                </t>
+                                <div t-field="client.self" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;], &quot;no_marker&quot;: True}"/>
+                                <span t-if="client.vat">VAT: <span t-field="client.vat"/></span>
+                            </div>
+                        </div>
+                        <div class="col-6 text-end">
+                            <strong style="color: #1e40af; text-transform: uppercase;">Provider:</strong>
+                            <div class="mt-0">
+                                <strong t-field="doc.company_id.name"/><br/>
+                                <div t-field="doc.company_id.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;], &quot;no_marker&quot;: True}"/>
+                                <span t-if="doc.company_id.phone">Tel: <span t-field="doc.company_id.phone"/></span><br/>
+                                <span t-if="doc.company_id.email"><span t-field="doc.company_id.email"/></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4 align-items-end">
+                        <div class="col-6">
+                            <p class="mb-1 text-muted"><t t-if="is_quote">Quote Date</t><t t-else="">Order Date</t>: <span t-field="doc.date_order" t-options="{&quot;widget&quot;: &quot;date&quot;}"/></p>
+                            <p class="mb-1 text-muted" t-if="is_quote and doc.validity_date">Valid Until: <span t-field="doc.validity_date"/></p>
+                            <p class="mb-1 text-muted" t-if="doc.client_order_ref">Your Reference: <span t-field="doc.client_order_ref"/></p>
+                            <p class="mb-1 text-muted" t-if="doc.user_id">Prepared By: <span t-field="doc.user_id"/></p>
+                        </div>
+                        <div class="col-6 text-end">
+                            <small class="text-muted fw-bold">
+                                <t t-if="is_proforma">INVOICE TOTAL</t>
+                                <t t-elif="is_quote">QUOTE TOTAL</t>
+                                <t t-else="">ORDER TOTAL</t>
+                            </small>
+                            <h1 style="color: #1e40af; font-weight: bold; margin: 0;" t-field="doc.amount_total">R10,000.00</h1>
+                        </div>
+                    </div>
+
+                    <table class="table table-sm mt-4" style="border-top: 0px solid transparent;">
+                        <thead style="border: 0px solid transparent; border-bottom: 2px solid #f1f5f9; color: #64748b; text-transform: uppercase; font-size: 11px;">
+                            <tr>
+                                <th class="text-start pb-2">Item Description</th>
+                                <th class="text-end pb-2">Unit Price</th>
+                                <th class="text-center pb-2">Qty</th>
+                                <th class="text-end pb-2">Total Price</th>
+                            </tr>
+                        </thead>
+                        <tbody class="sale_tbody">
+                            <t t-foreach="doc._get_order_lines_to_report()" t-as="line">
+                                <tr t-if="line.display_type == 'line_section'">
+                                    <td colspan="4" class="pt-3 pb-1" style="color: #1e40af; font-weight: bold;">
+                                        <span t-field="line.name"/>
+                                    </td>
+                                </tr>
+                                <tr t-elif="line.display_type == 'line_note'">
+                                    <td colspan="4" class="py-2 text-muted fst-italic">
+                                        <span t-field="line.name" t-options="{&quot;widget&quot;: &quot;text&quot;}"/>
+                                    </td>
+                                </tr>
+                                <tr t-else="" style="border-bottom: 2px solid #f1f5f9; border-right: 0px solid transparent; border-left: 0px solid transparent;">
+                                    <td class="py-3">
+                                        <span class="text-muted" t-field="line.name" t-options="{&quot;widget&quot;: &quot;text&quot;}"/>
+                                    </td>
+                                    <td class="text-end py-3 align-middle"><span t-field="line.price_unit"/></td>
+                                    <td class="text-center py-3 align-middle"><span t-field="line.product_uom_qty"/></td>
+                                    <td class="text-end py-3 align-middle"><span t-field="line.price_subtotal"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <div class="row mt-2">
+                        <div class="col-7">
+                        </div>
+                        <div class="col-5">
+                            <table class="table table-sm table-borderless">
+                                <tr class="border-bottom" style="border-bottom: 2px solid #f1f5f9;">
+                                    <td class="py-2">Subtotal (excl. VAT)</td>
+                                    <td class="text-end py-2"><span t-field="doc.amount_untaxed"/></td>
+                                </tr>
+                                <tr t-if="doc.amount_tax" class="border-bottom" style="border-bottom: 2px solid #f1f5f9;">
+                                    <td class="py-2">VAT</td>
+                                    <td class="text-end py-2"><span t-field="doc.amount_tax"/></td>
+                                </tr>
+                                <tr class="fw-bold" style="font-size: 16px;">
+                                    <td class="py-3">Total</td>
+                                    <td class="text-end py-3" style="color: #1e40af;"><span t-field="doc.amount_total"/></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row mt-5" t-if="doc.payment_term_id or is_quote">
+                        <div class="col-7">
+                            <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <strong style="color: #1e40af; font-size: 11px; text-transform: uppercase;">
+                                    <t t-if="is_quote">Accepting This Quote</t><t t-else="">Payment</t>
+                                </strong>
+                                <div class="mt-2" style="line-height: 1.6;">
+                                    <span t-if="is_quote">Please quote <strong><span t-field="doc.name"/></strong> when you accept.</span><br t-if="is_quote"/>
+                                    <span t-if="is_quote and doc.validity_date">This quote is valid until <span t-field="doc.validity_date"/>.</span><br t-if="is_quote and doc.validity_date"/>
+                                    <span t-if="doc.payment_term_id">Payment Terms: <span t-field="doc.payment_term_id.name"/></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 text-muted" t-if="not is_html_empty(doc.note)">
+                        <p t-field="doc.note"/>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+</odoo>
