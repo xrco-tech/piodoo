@@ -235,3 +235,17 @@ class TestCallPermission(TransactionCase):
         self.assertEqual(self.cand.c2w_call_permission, 'granted')
         self.cand._c2w_erase()
         self.assertFalse(self.Permission._find('27820007002', self.pnid))
+
+
+@tagged('post_install', '-at_install', 'chat2work')
+class TestCallAutoRecord(TransactionCase):
+
+    def test_account_setting_reaches_the_call(self):
+        account = self.env['comm.whatsapp.account'].sudo().create(
+            {'name': 'Rec', 'phone_number_id': '987', 'phone_number': '27820000009', 'call_auto_record': True})
+        log = self.env['whatsapp.call.log'].sudo().create({
+            'call_id': 'rec1', 'call_direction': 'incoming', 'from_number': '27820007003', 'to_number': '27820000009',
+            'call_status': 'ringing', 'account_id': account.id})
+        self.assertTrue(log.account_id.call_auto_record)
+        self.assertFalse(self.env['comm.whatsapp.account'].sudo().create(
+            {'name': 'NoRec', 'phone_number_id': '988', 'phone_number': '27820000010'}).call_auto_record)

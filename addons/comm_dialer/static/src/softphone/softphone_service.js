@@ -61,7 +61,9 @@ export const softphoneService = {
                     const AudioCtx = window.AudioContext || window.webkitAudioContext;
                     sharedCtx = new AudioCtx();
                 }
-                if (sharedCtx.state === "suspended" && sharedCtx.resume) {
+                // Not just "suspended": Safari on iPhone uses "interrupted"
+                // after a call, and an unresumed context records nothing.
+                if (sharedCtx.state !== "running" && sharedCtx.resume) {
                     sharedCtx.resume().catch(() => {});
                 }
             } catch {
@@ -465,6 +467,7 @@ export const softphoneService = {
                 recStartedAt = Date.now();
                 state.recording = true;
                 console.debug("[softphone] recording started");
+                checkRecordingCaptures(recorder, ctx);
 
                 // Per-speaker mono recorders (best-effort — never break the mix).
                 try {
@@ -496,6 +499,34 @@ export const softphoneService = {
                 recorder = null;
                 state.recording = false;
             }
+        }
+
+        // A recording that captures nothing must not go unnoticed until the
+        // call is over: wake the audio engine, and tell the agent if that fails.
+        function checkRecordingCaptures(rec, ctx) {
+            setTimeout(async () => {
+                if (recorder !== rec || recChunks.length) {
+                    return;
+                }
+                try {
+                    await ctx.resume();
+                } catch {
+                    // reported below
+                }
+                setTimeout(() => {
+                    if (recorder !== rec || recChunks.length) {
+                        return;
+                    }
+                    notification.add(
+                        "This call is NOT being recorded. Take notes, or try the record button again.",
+                        { type: "danger", sticky: true, title: "Recording failed" });
+                    rpc("/whatsapp/call/recording_problem", {
+                        kind: "voip", call_id: callId, detail: `audio ${ctx.state}`,
+                    }).catch(() => {});
+                    // Let the agent retry with the record button.
+                    stopRecordingAndUpload();
+                }, 4000);
+            }, 6000);
         }
 
         async function stopRecordingAndUpload() {

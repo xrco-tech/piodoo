@@ -229,6 +229,7 @@ class WhatsappCallRoutes(http.Controller):
             "success":       True,
             "call_log_id":   call_log.id,
             "meta_call_id":  meta_call_id if isinstance(meta_call_id, str) else call_log.call_id,
+            "auto_record":   bool(acc.call_auto_record),
         }
 
     @http.route(
@@ -250,6 +251,19 @@ class WhatsappCallRoutes(http.Controller):
         return request.env["whatsapp.call.permission"]._send_request(
             to_number, account_id=account_id, partner_name=partner_name,
             partner_id=kwargs.get("partner_id"))
+
+    @http.route(
+        "/whatsapp/call/recording_problem",
+        type="json", auth="user", methods=["POST"],
+    )
+    def recording_problem(self, kind=None, call_id=None, detail=None, **kwargs):
+        """The browser saw a recording capture no audio. Logged so a failure
+        on someone's phone leaves a trace we can read afterwards."""
+        _logger.warning(
+            "call recording captured no audio: %s call %s, user %s, %s, browser %s",
+            str(kind)[:20], call_id, request.env.uid, str(detail)[:200],
+            request.httprequest.user_agent.string[:200])
+        return True
 
     @http.route(
         "/whatsapp/call/permission_status",
