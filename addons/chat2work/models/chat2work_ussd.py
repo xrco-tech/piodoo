@@ -103,6 +103,23 @@ def age_on(dob, today=None):
     return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
 
+def age_range(env):
+    """(min, max) eligible age; max is None when there's no upper limit (empty or 0)."""
+    ICP = env['ir.config_parameter'].sudo()
+    lo = int(ICP.get_param('chat2work.ussd_age_min', 18))
+    hi = int(ICP.get_param('chat2work.ussd_age_max') or 0) or None
+    return lo, hi
+
+
+def age_allowed(dob, lo, hi):
+    age = age_on(dob)
+    return age >= lo and (hi is None or age <= hi)
+
+
+def age_rule(lo, hi):
+    return "ages %s-%s" % (lo, hi) if hi else "ages %s and over" % lo
+
+
 def normalize_msisdn(raw):
     """'+27 82 123 4567' / '27821234567' / '0821234567' → '+27821234567'."""
     digits = re.sub(r'\D', '', raw or '')
@@ -155,9 +172,6 @@ class Chat2workFlow(models.AbstractModel):
 
     def _param(self, key, default):
         return self.env['ir.config_parameter'].sudo().get_param('chat2work.' + key, default)
-
-    def _age_range(self):
-        return int(self._param('ussd_age_min', 18)), int(self._param('ussd_age_max', 34))
 
     def _restart_phrase(self):
         """How this channel starts a new session, e.g. 'dial *134*433*48#'."""
@@ -324,9 +338,9 @@ class Chat2workFlow(models.AbstractModel):
         id_hash = Candidate._id_number_hash(inp)
         if Candidate.with_context(active_test=False).search_count([('id_number_hash', '=', id_hash)]):
             return self._goto('S04-ERR2')
-        lo, hi = self._age_range()
-        if not lo <= age_on(dob) <= hi:
-            return "Sorry, Chat2Work is for ages %s-%s. Thank you for your interest." % (lo, hi), True
+        lo, hi = age_range(self.env)
+        if not age_allowed(dob, lo, hi):
+            return "Sorry, Chat2Work is for %s. Thank you for your interest." % age_rule(lo, hi), True
         self._set(id_hash=id_hash, id_enc=Candidate._id_number_encrypt(inp))
         return self._goto('S05')
 
@@ -591,12 +605,10 @@ class Chat2workCandidateIdentity(models.Model):
             raise UserError(_("This candidate already has that ID number."))
         if rec.with_context(active_test=False).search_count([('id_number_hash', '=', id_hash)]):
             raise UserError(_("Another candidate is already registered with that ID number."))
-        ICP = self.env['ir.config_parameter'].sudo()
-        lo = int(ICP.get_param('chat2work.ussd_age_min', 18))
-        hi = int(ICP.get_param('chat2work.ussd_age_max', 34))
-        if not lo <= age_on(dob) <= hi:
-            raise UserError(_("That ID number is for someone outside the Chat2Work age range (%(lo)s-%(hi)s).",
-                              lo=lo, hi=hi))
+        lo, hi = age_range(self.env)
+        if not age_allowed(dob, lo, hi):
+            raise UserError(_("That ID number is for someone outside the Chat2Work age range (%s).",
+                              age_rule(lo, hi)))
         reason = ID_LIKE.sub(ID_REDACTED, reason or '').strip()
         if not reason:
             raise UserError(_("Give a reason for the change."))
