@@ -50,5 +50,32 @@
             <field name="interval_type">days</field>
             <field name="active" eval="True"/>
         </record>
+        <record id="ir_cron_chat2work_job_alerts" model="ir.cron">
+            <field name="name">Chat2Work: tell candidates about their job matches</field>
+            <field name="model_id" ref="model_chat2work_listing_match"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_job_alerts()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="wa_template_job_match" model="whatsapp.template">
+            <field name="name">chat2work_job_match</field>
+            <field name="language">en</field>
+            <field name="category">UTILITY</field>
+            <field name="body">Hi {{1}}, good news: our team matched you to work that may suit you on Chat2Work. Tap below to see it and tell us if you're interested.</field>
+            <field name="footer">Chat2Work never asks for money.</field>
+            <field name="description">Job match alert, sent once an agent marks a candidate as a good match. {{1}} is the first name; the buttons' payloads are set when sending.</field>
+        </record>
+        <record id="wa_template_job_match_see" model="whatsapp.template.button">
+            <field name="template_id" ref="wa_template_job_match"/>
+            <field name="button_type">QUICK_REPLY</field>
+            <field name="text">See my job matches</field>
+        </record>
+        <record id="wa_template_job_match_later" model="whatsapp.template.button">
+            <field name="template_id" ref="wa_template_job_match"/>
+            <field name="button_type">QUICK_REPLY</field>
+            <field name="text">Not now</field>
+        </record>
     </data>
 </odoo>
