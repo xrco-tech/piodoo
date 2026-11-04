@@ -229,6 +229,18 @@ class TestCallPermission(TransactionCase):
         self.assertEqual(record.requested_by_id, self.agent)
         self.assertIn('request sent', ' '.join(self.cand.message_ids.mapped('body')))
 
+    def test_chat2work_template_used_once_approved(self):
+        Template = self.env['whatsapp.template'].sudo()
+        generic = Template.create({
+            'name': 'call_permission_request', 'language': 'en', 'category': 'UTILITY', 'status': 'APPROVED',
+            'account_id': self.account.id, 'body': 'May we call you?'})
+        ours = Template.create({
+            'name': 'chat2work_call_permission', 'language': 'en', 'category': 'UTILITY', 'status': 'PENDING',
+            'account_id': self.account.id, 'body': 'This is Chat2Work. May we call you?'})
+        self.assertEqual(self.Permission._permission_template(self.account), generic)
+        ours.status = 'APPROVED'
+        self.assertEqual(self.Permission._permission_template(self.account), ours)
+
     def test_backfill_and_erase(self):
         self._reply(response='accept', is_permanent=True, response_source='user_action')
         self.Permission._backfill_from_messages()
