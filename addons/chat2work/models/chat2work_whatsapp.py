@@ -326,7 +326,9 @@ class Chat2workWaSession(models.Model):
                 'type': 'cta_url',
                 'body': {'text': ("Next step: add your CV. Upload one you already have, or answer a few "
                                   "questions and we'll create a polished CV for you. You can also ask "
-                                  "us to help.\n\nThe link is personal and works for 30 days.")},
+                                  "us to help.\n\nOr send your CV here in this chat, as a PDF or Word "
+                                  "document or a photo of each page.\n\nThe link is personal and works for "
+                                  "30 days.")},
                 'footer': {'text': 'Chat2Work never asks for money.'},
                 'action': {'name': 'cta_url', 'parameters': {'display_text': 'Add my CV', 'url': url}},
             },
@@ -366,7 +368,10 @@ class WhatsAppChatbotMessageChat2work(models.Model):
     def process_incoming_webhook_message(self, wa_message, webhook_message, value_data, entry_data):
         if wa_message and wa_message.is_incoming:
             try:
-                if self.env['chat2work.wa.session'].sudo().wa_handle(webhook_message, value_data):
+                Session = self.env['chat2work.wa.session'].sudo()
+                if wa_message.message_type in ('document', 'image') and Session.wa_take_cv(wa_message, value_data):
+                    return
+                if Session.wa_handle(webhook_message, value_data):
                     redact_id_numbers(wa_message)
                     return
             except Exception:

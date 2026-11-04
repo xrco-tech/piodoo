@@ -78,5 +78,13 @@
             <field name="text">Check my CV</field>
             <field name="url">https://piodoo.xrco.tech/cv/{{1}}</field>
         </record>
+        <record id="wa_template_cv_received" model="whatsapp.template">
+            <field name="name">chat2work_cv_received</field>
+            <field name="language">en</field>
+            <field name="category">UTILITY</field>
+            <field name="body">Thanks {{1}}, your CV is in ✅ Our team is reviewing it to match you with suitable opportunities. We'll contact you here or by SMS when something fits. This can take a while, so keep your phone on.</field>
+            <field name="footer">Chat2Work never asks for money.</field>
+            <field name="description">"What happens next" once a candidate's CV is in. {{1}} is the first name.</field>
+        </record>
     </data>
 </odoo>
