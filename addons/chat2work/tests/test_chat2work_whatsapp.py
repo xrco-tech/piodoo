@@ -59,7 +59,26 @@ class TestChat2workWhatsapp(TransactionCase):
         return handled
 
     def test_ignores_unrelated_messages(self):
-        self.assertEqual(self.chat('27820001001', text('27820001001', 'hello')), [False])
+        self.assertEqual(self.chat('27820001001', text('27820001001', 'what time do you close?')), [False])
+        self.assertFalse(self.sent)
+
+    def test_greeting_starts_a_session(self):
+        is_greeting = self.Session._is_greeting
+        for greeting in ('Hii', 'Hello', 'Heyyy!', 'Good morning', 'hello there 👋', 'Sawubona', 'Hi I want a job'):
+            self.assertTrue(is_greeting(greeting), greeting)
+        for other in ("Hi it's me please send the poster in digital", 'help', 'ok', '', 'Hiking boots'):
+            self.assertFalse(is_greeting(other), other)
+        wa = '27820001010'
+        self.assertEqual(self.chat(wa, text(wa, 'Hii')), [True])
+        self.assertTrue(self.Session.search([('wa_id', '=', wa)]))
+        self.assertIn('Welcome to Chat2Work', json.dumps(self.sent[-1]))
+
+    def test_greeting_in_an_open_conversation_is_left_alone(self):
+        wa = '27820001011'
+        self.env['whatsapp.message'].sudo().create({
+            'wa_id': wa, 'is_incoming': False, 'message_id': 'wamid.agent1',
+            'message_timestamp': fields.Datetime.now()})
+        self.assertEqual(self.chat(wa, text(wa, 'Hello')), [False])
         self.assertFalse(self.sent)
 
     def test_trigger_matching(self):

@@ -7,7 +7,8 @@ replies work too: the option number or its label.
 
 Routing: a message starting with a start keyword (chat2work.wa_triggers,
 default "chat2work"; a greeting first is fine, so "Hi Chat2Work FLYER" works)
-opens a session; while a session is active, every message from that number
+opens a session, and so does a short greeting on its own ("Hii", "Hello",
+"Good morning") from someone we haven't messaged in the last day; while a session is active, every message from that number
 comes here. Nothing else reaches the generic chatbot engine, which would create
 a contact for the sender before consent. The word after the keyword is kept as
 the campaign source tag when it's a known code (chat2work.source_tags: FLYER,
@@ -34,6 +35,11 @@ ROW_TITLE_MAX = 24
 BODY_MAX = 1024
 # Words allowed before a start keyword ("Hi Chat2Work", "Sawubona Sebenza").
 GREETINGS = ('hi', 'hello', 'hey', 'hallo', 'howzit', 'heita', 'sawubona', 'molo', 'dumela', 'avuxeni', 'aweh')
+# A message that opens with one of these and is at most GREETING_MAX_WORDS long starts a session.
+GREETING_STARTS = GREETINGS + (
+    'hola', 'yo', 'sho', 'greetings', 'morning', 'afternoon', 'evening', 'good', 'goeie', 'goeiemore',
+    'sanibonani', 'molweni', 'dumelang', 'lumela', 'thobela', 'lotjhani', 'ndaa', 'abuxeni', 'kunjani', 'unjani')
+GREETING_MAX_WORDS = 5
 # Campaign codes kept as candidate.source_tag; anything else after the keyword is ignored.
 DEFAULT_SOURCE_TAGS = 'FLYER,POSTER,CAR,TAXI,SOCIAL,QR,RADIO,SMS,WEB,REFERRAL'
 
@@ -143,6 +149,23 @@ class Chat2workWaSession(models.Model):
         return tag if tag in self._source_tags() else ''
 
     @api.model
+    def _is_greeting(self, text):
+        """A short message that opens with a greeting, stretched or not ("Hii", "Helloo")."""
+        words = re.findall(r"[^\W\d_]+", (text or '').lower())
+        if not words or len(words) > GREETING_MAX_WORDS:
+            return False
+        squash = lambda w: re.sub(r'(.)\1+', r'\1', w)
+        return squash(words[0]) in {squash(g) for g in GREETING_STARTS}
+
+    @api.model
+    def _recently_messaged(self, wa_id):
+        """True when we've sent this number anything in the last day, e.g. an agent's
+        conversation, so a "Hello" there is a reply and not a new visitor."""
+        since = fields.Datetime.now() - timedelta(minutes=SESSION_MINUTES)
+        return bool(self.env['whatsapp.message'].sudo().search_count([
+            ('wa_id', '=', wa_id), ('is_incoming', '=', False), ('create_date', '>=', since)], limit=1))
+
+    @api.model
     def _account_allowed(self, account):
         only = self.env['ir.config_parameter'].sudo().get_param('chat2work.wa_phone_number_id')
         return not only or (account and account.phone_number_id == only)
@@ -203,6 +226,9 @@ class Chat2workWaSession(models.Model):
             session.unlink()
             session = self.browse()
         tag = self._match_trigger(inp) if is_text else None
+        if tag is None and not session and is_text and self._is_greeting(inp) \
+                and not self._recently_messaged(wa_id):
+            tag = ''
         ours = inp.startswith(ID_PREFIX)
         inp = inp[len(ID_PREFIX):] if ours else inp
         if not session and tag is None:
