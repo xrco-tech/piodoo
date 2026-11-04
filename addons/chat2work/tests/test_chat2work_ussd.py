@@ -7,7 +7,7 @@ from unittest.mock import patch
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
-from odoo.addons.chat2work.models.chat2work_ussd import parse_sa_id
+from odoo.addons.chat2work.models.chat2work_ussd import first_name, parse_sa_id
 
 CODE = '*384*9999#'
 TODAY = date.today()
@@ -177,7 +177,7 @@ class TestChat2workUssd(TransactionCase):
         cand = self.Candidate.create({'name': 'Nomvula Thandeka Mahlangu', 'phone': '+27820000010',
                                       'employment_status': 'unemployed', 'job_seeking': True})
         out = self.dial('0820000010', '1', '2', '2')
-        self.assertTrue(out[0].startswith('CON Hi Nomvula Thandek. What would you like to do?'))
+        self.assertTrue(out[0].startswith('CON Hi Nomvula. What would you like to do?'))
         self.assertEqual(out[-1], 'END Status updated. Thank you! We will be in touch soon.')
         self.assertEqual(cand.employment_status, 'employed')
         self.assertFalse(cand.job_seeking)
@@ -208,6 +208,14 @@ class TestChat2workUssd(TransactionCase):
     def test_unknown_session_times_out(self):
         res = self.Session.ussd_handle('ATUid_gone', CODE, '+27820000014', '1*2', '2')
         self.assertEqual(res, 'END Session expired. Dial %s to start again.' % CODE)
+
+    def test_stand_in_name_is_not_used(self):
+        self.Candidate.create({'name': 'WhatsApp 27820000016', 'phone': '+27820000016'})
+        out = self.dial('0820000016', '0')
+        self.assertTrue(out[0].startswith('CON Welcome back to Chat2Work.'), out[0])
+        self.assertEqual(first_name('WhatsApp 27820000016'), '')
+        self.assertEqual(first_name('Candidate'), '')
+        self.assertEqual(first_name(' Thabo  Mokoena'), 'Thabo')
 
     def test_screens_fit_160_with_invalid_prefix(self):
         cand = self.Candidate.create({'name': 'X' * 40, 'phone': '+27820000015'})

@@ -13,6 +13,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 from odoo.addons.chat2work.models.chat2work import _send_sms
+from odoo.addons.chat2work.models.chat2work_ussd import first_name
 
 SERVICE_WINDOW_HOURS = 24
 PLACEHOLDER = re.compile(r'\{\{(\d+)\}\}')
@@ -92,10 +93,10 @@ class Chat2workMessage(models.TransientModel):
     @api.onchange('wa_template')
     def _onchange_wa_template(self):
         template = self._wa_template_record()
-        first_name = (self.candidate_id.name or '').split(' ')[0]
+        name = first_name(self.candidate_id.name)
         lines = [(5, 0, 0)]
         for number in sorted({int(n) for n in PLACEHOLDER.findall(template.body or '')}):
-            lines.append((0, 0, {'number': number, 'value': first_name if number == 1 else ''}))
+            lines.append((0, 0, {'number': number, 'value': name if number == 1 else ''}))
         self.param_ids = lines
 
     @api.onchange('sms_template')
