@@ -21,6 +21,7 @@ import requests
 from odoo import api, fields, models
 
 from .chat2work import _send_sms
+from .chat2work_ussd import first_name
 
 _logger = logging.getLogger(__name__)
 
@@ -215,8 +216,7 @@ class Chat2workCandidateCvRebuild(models.Model):
 
     def _c2w_first_name(self):
         self.ensure_one()
-        name = (self.cv_data or {}).get('full_name') or self.name or ''
-        return name.split(' ')[0] or 'there'
+        return first_name((self.cv_data or {}).get('full_name') or self.name) or 'there'
 
     def _c2w_wa_window_open(self):
         self.ensure_one()

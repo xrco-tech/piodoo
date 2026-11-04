@@ -103,6 +103,20 @@ def age_on(dob, today=None):
     return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
 
+# Contacts made by an incoming WhatsApp message or call are named "WhatsApp <number>".
+PLACEHOLDER_NAME = re.compile(r'^(Candidate|WhatsApp \S+)$')
+
+
+def real_name(name):
+    """The name, or '' when it's empty or only a stand-in."""
+    name = (name or '').strip()
+    return '' if PLACEHOLDER_NAME.match(name) else name
+
+
+def first_name(name):
+    return real_name(name).split(' ')[0]
+
+
 def age_range(env):
     """(min, max) eligible age; max is None when there's no upper limit (empty or 0)."""
     ICP = env['ir.config_parameter'].sudo()
@@ -218,7 +232,7 @@ class Chat2workFlow(models.AbstractModel):
     def _screen(self, screen):
         """(prompt, [(key, label), ...]) for a screen."""
         if screen == 'S01A':
-            name = (self.candidate_id.name or '').strip()[:NAME_MAX].strip()
+            name = first_name(self.candidate_id.name)[:NAME_MAX]
             greeting = ("Hi %s." % name) if name else "Welcome back to Chat2Work."
             return (greeting + " What would you like to do?",
                     [('1', 'Update Status'), ('2', 'Request Callback'), ('0', 'Exit')])
@@ -418,7 +432,7 @@ class Chat2workFlow(models.AbstractModel):
             ['|', ('mobile', 'in', msisdn_variants(self.msisdn)),
              ('phone', 'in', msisdn_variants(self.msisdn))], limit=1)
         candidate = self.env['chat2work.candidate'].create(dict({
-            'name': partner.name if partner else False,
+            'name': real_name(partner.name) or False,
             'partner_id': partner.id or False,
             'phone': self.msisdn,
             'registered_via': self._channel,

@@ -72,6 +72,11 @@ class TestChat2workVerify(TransactionCase):
         self._run(ok())
         self.assertEqual(self.cand.name, 'Lerato K')
 
+    def test_whatsapp_stand_in_name_is_replaced(self):
+        self.cand.name = 'WhatsApp 27820010001'
+        self._run(ok())
+        self.assertEqual(self.cand.name, 'Naledi Lerato Khumalo')
+
     def test_sandbox_never_touches_candidate_or_balance(self):
         self.account.mode = 'sandbox'
         check, post = self._run(ok(remaining=999))

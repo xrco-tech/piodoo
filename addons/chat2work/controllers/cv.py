@@ -13,6 +13,8 @@ import os
 from odoo import http
 from odoo.http import request
 
+from ..models.chat2work_ussd import first_name
+
 _logger = logging.getLogger(__name__)
 
 MAX_UPLOAD = 5 * 1024 * 1024
@@ -82,7 +84,7 @@ class Chat2workCvController(http.Controller):
         values = {
             'candidate': candidate,
             'token': token,
-            'first_name': (candidate.name or '').split(' ')[0] if candidate else '',
+            'first_name': first_name(candidate.name) if candidate else '',
             'masked_phone': _mask_phone(candidate.phone) if candidate else '',
             'details': details,
             'open_build': open_build or started,

@@ -18,7 +18,7 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-from odoo.addons.chat2work.models.chat2work_ussd import ID_LIKE, ID_REDACTED
+from odoo.addons.chat2work.models.chat2work_ussd import ID_LIKE, ID_REDACTED, real_name
 
 _logger = logging.getLogger(__name__)
 
@@ -364,8 +364,8 @@ class Chat2workCandidateVerify(models.Model):
             vals.update(id_first_names=check.first_names, id_last_name=check.last_name, id_dob=check.dob,
                         id_gender=check.gender, id_citizenship=check.citizenship)
             full_name = proper_name(check.first_names, check.last_name)
-            # Fill a missing name only; what the candidate gave us is theirs.
-            if full_name and (not self.name or self.name == 'Candidate'):
+            # Fill a missing or stand-in name only; what the candidate gave us is theirs.
+            if full_name and not real_name(self.name):
                 vals['name'] = full_name
         self.write(vals)
         if check.state == 'verified':
