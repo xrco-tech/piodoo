@@ -80,6 +80,8 @@
                                     <field name="note" optional="show"/>
                                     <field name="state" widget="badge" decoration-warning="state == 'suggested'"
                                            decoration-success="state == 'approved'"/>
+                                    <field name="notify_state" optional="show" readonly="1"/>
+                                    <field name="response" optional="show" readonly="1"/>
                                     <button name="action_approve" type="object" string="Good match" icon="fa-check"
                                             invisible="state == 'approved'"/>
                                     <button name="action_reject" type="object" string="Not a match" icon="fa-times"
@@ -234,6 +236,8 @@
                                 <field name="note"/>
                                 <field name="state" widget="badge" decoration-warning="state == 'suggested'"
                                        decoration-success="state == 'approved'"/>
+                                <field name="notify_state"/>
+                                <field name="response"/>
                             </list>
                         </field>
                     </page>
