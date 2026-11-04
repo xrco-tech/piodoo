@@ -117,7 +117,7 @@
                 <t t-else="">
                     <div t-if="notice == 'uploaded'" class="msg ok">Thanks! We've received your CV.</div>
                     <div t-if="notice == 'built'" class="msg ok">Your CV is ready. <a t-attf-href="/cv/#{token}/download">Download it (PDF)</a>.</div>
-                    <div t-if="notice == 'built'" class="card status"><b>What happens next</b><br/>Chat2Work can now consider you for work that fits. We'll contact you on WhatsApp or by SMS. Joining doesn't guarantee a job.</div>
+                    <div t-if="notice == 'built' or (not notice and candidate.cv_state == 'built') or candidate.cv_rebuild_state == 'needs_agent'" class="card status"><b>What happens next</b><br/>Our team is reviewing your CV to match you with suitable opportunities. We'll contact you on WhatsApp or by SMS when something fits. This can take a while. Joining doesn't guarantee a job.</div>
                     <div t-if="notice == 'help'" class="msg ok">Got it. A Chat2Work agent will call you to help with your CV.</div>
                     <div t-if="error" class="msg bad" role="alert" t-out="error"/>
 

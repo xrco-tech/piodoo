@@ -436,3 +436,87 @@ class TestChat2workCvPage(HttpCase):
         res = self.url_open('/cv/ABCDEFGHJK')
         self.assertEqual(res.status_code, 404)
         self.assertIn('This link has expired', res.text)
+
+
+@tagged('post_install', '-at_install', 'chat2work')
+class TestChat2workCvOnWhatsapp(TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.env['ir.config_parameter'].sudo().set_param('chat2work.wa_phone_number_id', '')
+        self.env['ir.config_parameter'].sudo().set_param('chat2work.public_base_url', 'https://c2w.example')
+        self.sent = []
+        patch(WA, autospec=True, side_effect=self._fake_send).start()
+        self.sms = patch('odoo.addons.chat2work.models.chat2work_cv_followup._send_sms', return_value=True).start()
+        self.addCleanup(patch.stopall)
+        self.cand = self.env['chat2work.candidate'].create({
+            'name': 'Lindiwe Dube', 'phone': '+27820003001', 'whatsapp_opt_in': True})
+        self.count = 0
+
+    def _fake_send(self, _self, recipient, content, account=None, log_body='', log_type='interactive'):
+        self.sent.append(content)
+        return {'success': True, 'message_id': 'wamid.cvout%d' % len(self.sent)}
+
+    def _incoming(self, wa_id, mtype, mimetype, raw=b'%PDF-1.4 cv', name='My CV.pdf'):
+        self.count += 1
+        msg = self.env['whatsapp.message'].sudo().create({
+            'message_id': 'wamid.cvin%d' % self.count, 'is_incoming': True, 'message_type': mtype,
+            'message_timestamp': fields.Datetime.now(), 'wa_id': wa_id})
+        att = self.env['ir.attachment'].sudo().create({
+            'name': name, 'raw': raw, 'mimetype': mimetype, 'res_model': 'whatsapp.message', 'res_id': msg.id})
+        msg.media_attachment_id = att
+        webhook = {'from': wa_id, 'id': msg.message_id, 'type': mtype}
+        self.env['whatsapp.chatbot.message'].process_incoming_webhook_message(msg, webhook, {}, {})
+        return msg
+
+    def _texts(self):
+        return [c.get('text', {}).get('body', '') for c in self.sent]
+
+    def test_pdf_sent_on_whatsapp_becomes_the_cv(self):
+        self._incoming('27820003001', 'document', 'application/pdf')
+        self.assertEqual(self.cand.cv_state, 'uploaded')
+        self.assertEqual(self.cand.cv_attachment_id.name, 'My CV.pdf')
+        self.assertEqual(self.cand.cv_rebuild_state, 'queued')
+        self.assertIn("we've got your CV", self._texts()[-1])
+        self.assertIn('CV received on WhatsApp', ' '.join(self.cand.message_ids.mapped('body')))
+        self.assertFalse(self.cand.cv_next_steps_sent_at)
+
+    def test_photos_are_kept_as_pages(self):
+        self._incoming('27820003001', 'image', 'image/jpeg', raw=b'\xff\xd8page1', name='p1.jpg')
+        first = self.cand.cv_attachment_id
+        self._incoming('27820003001', 'image', 'image/jpeg', raw=b'\xff\xd8page2', name='p2.jpg')
+        self.assertEqual(self.cand.cv_attachment_id, first)
+        pages = self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', 'chat2work.candidate'), ('res_id', '=', self.cand.id)])
+        self.assertEqual(len(pages), 2)
+        self.assertEqual(len(self.sent), 1)
+        self.assertIn('send a photo of each one', self._texts()[0])
+        self.assertTrue(self.cand.cv_next_steps_sent_at)
+
+    def test_document_from_someone_without_a_profile(self):
+        self._incoming('27820003999', 'document', 'application/pdf')
+        self.assertIn('send "Ispani"', self._texts()[-1])
+        msg = self.env['whatsapp.message'].sudo().create({
+            'message_id': 'wamid.photo', 'is_incoming': True, 'message_type': 'image',
+            'message_timestamp': fields.Datetime.now(), 'wa_id': '27820003998'})
+        self.assertFalse(self.env['chat2work.wa.session'].wa_take_cv(msg, {}))
+
+    def test_other_files_are_left_alone(self):
+        self._incoming('27820003001', 'document', 'application/zip', name='x.zip')
+        self.assertEqual(self.cand.cv_state, 'none')
+
+    def test_next_steps_by_sms_once(self):
+        self.cand.whatsapp_opt_in = False
+        self.cand.write({'cv_state': 'built'})
+        self.cand.write({'cv_state': 'built'})
+        self.assertEqual(self.sms.call_count, 1)
+        self.assertIn('reviewing it', self.sms.call_args.args[2])
+        self.assertTrue(self.cand.cv_next_steps_sent_at)
+
+    def test_next_steps_on_whatsapp_in_the_window(self):
+        self.env['whatsapp.message'].sudo().create({
+            'message_id': 'wamid.recent', 'is_incoming': True, 'message_type': 'text',
+            'message_timestamp': fields.Datetime.now(), 'wa_id': '27820003001'})
+        self.cand.write({'cv_rebuild_state': 'needs_agent'})
+        self.assertIn('Thanks Lindiwe, your CV is in', self._texts()[-1])
+        self.sms.assert_not_called()

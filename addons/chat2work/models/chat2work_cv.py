@@ -243,10 +243,14 @@ class Chat2workCandidateCv(models.Model):
         })
         self._c2w_touch()
         # Replacing a CV doesn't change cv_state, so tracking alone would miss it.
-        self.sudo().message_post(body="CV built on the CV page: %s" % filename
-                                 if state == 'built' else "CV uploaded on the CV page: %s" % filename)
-        self._c2w_log_event('web', 'inbound', 'Built a CV with the CV page form: %s' % filename
-                            if state == 'built' else 'Uploaded a CV on the CV page: %s' % filename)
+        if self.env.context.get('c2w_cv_source') == 'whatsapp':
+            self.sudo().message_post(body="CV received on WhatsApp: %s" % filename)
+            self._c2w_log_event('whatsapp', 'inbound', 'Sent a CV on WhatsApp: %s' % filename)
+        else:
+            self.sudo().message_post(body="CV built on the CV page: %s" % filename
+                                     if state == 'built' else "CV uploaded on the CV page: %s" % filename)
+            self._c2w_log_event('web', 'inbound', 'Built a CV with the CV page form: %s' % filename
+                                if state == 'built' else 'Uploaded a CV on the CV page: %s' % filename)
         return attachment
 
     def _c2w_save_cv_draft(self, details, step):
