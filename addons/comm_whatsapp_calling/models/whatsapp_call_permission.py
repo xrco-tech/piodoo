@@ -16,6 +16,7 @@ from odoo import _, api, fields, models
 _logger = logging.getLogger(__name__)
 
 REPLY_TYPE = 'call_permission_reply'
+DEFAULT_PERMISSION_TEMPLATE = 'call_permission_request'
 STATES = [
     ('pending', 'Waiting for reply'),
     ('granted', 'Allowed'),
@@ -120,16 +121,27 @@ class WhatsAppCallPermission(models.Model):
     # ── Requesting ───────────────────────────────────────────────────────────
 
     @api.model
+    def _permission_template(self, account):
+        """The approved template to ask with: the one named in
+        comm_whatsapp_calling.permission_template if it's approved, else
+        call_permission_request. The account's own copy wins over another's."""
+        Template = self.env['whatsapp.template'].sudo()
+        preferred = self.env['ir.config_parameter'].sudo().get_param('comm_whatsapp_calling.permission_template')
+        for name in filter(None, (preferred, DEFAULT_PERMISSION_TEMPLATE)):
+            domain = [('name', '=ilike', name), ('status', '=', 'APPROVED')]
+            template = (Template.search(domain + [('account_id', '=', account.id)], limit=1) if account
+                        else Template) or Template.search(domain, limit=1)
+            if template:
+                return template
+        return Template
+
+    @api.model
     def _send_request(self, to_number, account_id=None, partner_name=None, partner_id=None):
         """Send the permission template. {"success": False, "error":
         "template_missing"} when no approved one exists, so the UI can show an
         actionable message instead of silently failing."""
-        Template = self.env['whatsapp.template'].sudo()
-        domain = [('name', '=ilike', 'call_permission_request'), ('status', '=', 'APPROVED')]
         account = self._resolve_account(account_id)
-        template = Template.search(domain + [('account_id', '=', account.id)], limit=1) if account else Template
-        if not template:
-            template = Template.search(domain, limit=1)
+        template = self._permission_template(account)
         if not template:
             return {'success': False, 'error': 'template_missing'}
 

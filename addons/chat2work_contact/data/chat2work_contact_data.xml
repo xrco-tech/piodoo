@@ -11,5 +11,10 @@
             <field name="model_id" ref="chat2work.model_chat2work_candidate"/>
             <field name="body">Chat2Work: we tried to call you. Dial *134*433*48# and choose Request Callback, and we'll call again. We never ask for money.</field>
         </record>
+        <!-- WhatsApp call permission asked as Chat2Work; until Meta approves it the generic template is used. -->
+        <record id="param_call_permission_template" model="ir.config_parameter">
+            <field name="key">comm_whatsapp_calling.permission_template</field>
+            <field name="value">chat2work_call_permission</field>
+        </record>
     </data>
 </odoo>
