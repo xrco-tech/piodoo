@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-        <!-- Spec §10 open decision: eligibility age range, to be confirmed. -->
+        <!-- Eligibility age: minimum, and maximum (0 = no upper limit). -->
         <record id="param_ussd_age_min" model="ir.config_parameter">
             <field name="key">chat2work.ussd_age_min</field>
             <field name="value">18</field>
         </record>
         <record id="param_ussd_age_max" model="ir.config_parameter">
             <field name="key">chat2work.ussd_age_max</field>
-            <field name="value">34</field>
+            <field name="value">0</field>
         </record>
         <!-- Keep short: S02 must stay under 160 chars with the "Invalid choice" prefix. -->
         <record id="param_ussd_terms_url" model="ir.config_parameter">

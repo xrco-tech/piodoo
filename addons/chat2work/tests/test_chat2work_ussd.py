@@ -158,6 +158,13 @@ class TestChat2workUssd(TransactionCase):
         self.assertEqual(out[-1], 'END Sorry, Chat2Work is for ages 18-34. Thank you for your interest.')
         self.assertFalse(self.Candidate.search([('phone', '=', '+27820000008')]))
 
+    def test_no_upper_age_limit(self):
+        self.env['ir.config_parameter'].sudo().set_param('chat2work.ussd_age_max', '0')
+        out = self.dial('+27820000018', '1', '1', '1', make_id(years_ago(52)))
+        self.assertTrue(out[-1].startswith('CON'), out[-1])
+        out = self.dial('+27820000019', '1', '1', '1', make_id(years_ago(17)))
+        self.assertEqual(out[-1], 'END Sorry, Chat2Work is for ages 18 and over. Thank you for your interest.')
+
     def test_back_navigation(self):
         out = self.dial('+27820000009', '1', '1', '0', '1', '1', '0', '0')
         self.assertTrue(out[3].startswith('CON Chat2Work will store your details'))  # S03 → S02
@@ -360,7 +367,7 @@ class TestChat2workIdUpdate(TransactionCase):
     def test_rejected_numbers(self):
         other = _sa_id('980303500908')
         self.Candidate.create({'phone': '+27820011002', 'id_number_hash': self.Candidate._id_number_hash(other)})
-        for number in ('123', self.old_id, other, _sa_id('600101500908')):
+        for number in ('123', self.old_id, other, _sa_id('150101500908')):  # under 18
             with self.assertRaises(UserError), self.env.cr.savepoint():
                 self._update(number)
         self.assertEqual(self.cand._id_number_decrypt(), self.old_id)
