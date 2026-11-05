@@ -322,15 +322,17 @@ class Chat2workListing(models.Model):
     # ── Verification ─────────────────────────────────────────────────────────
 
     def _set_verification(self, state):
-        self.write({
+        """Works on many listings at once; ones already in that state keep who checked them and when."""
+        changed = self.filtered(lambda r: r.verification_state != state)
+        changed.write({
             'verification_state': state,
             'verified_by_id': self.env.uid if state != 'unverified' else False,
             'verified_at': fields.Datetime.now() if state != 'unverified' else False,
         })
+        return changed
 
     def action_mark_verified(self):
-        self._set_verification('verified')
-        self.action_suggest_candidates()
+        self._set_verification('verified').action_suggest_candidates()
 
     def action_mark_invalid(self):
         self._set_verification('invalid')

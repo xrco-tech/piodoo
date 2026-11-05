@@ -5,6 +5,11 @@
         <field name="model">chat2work.listing</field>
         <field name="arch" type="xml">
             <list string="Job Listings" decoration-muted="state == 'closed'">
+                <header>
+                    <button name="action_mark_verified" type="object" string="Mark verified" class="btn-primary"/>
+                    <button name="action_mark_invalid" type="object" string="Mark invalid"/>
+                    <button name="action_mark_unverified" type="object" string="Back to unverified"/>
+                </header>
                 <field name="title"/>
                 <field name="employer"/>
                 <field name="province_ids" widget="many2many_tags"/>
