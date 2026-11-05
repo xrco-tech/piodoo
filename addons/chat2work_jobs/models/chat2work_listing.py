@@ -145,6 +145,7 @@ class Chat2workListingSource(models.Model):
                                    state='open'))
                 if listing.verification_state == 'verified':
                     listing._set_verification('unverified')
+                listing._c2w_fill_field()
                 updated += 1
             else:
                 listing.write({'last_seen_at': now, 'state': 'open' if listing.state == 'closed' else listing.state})
@@ -360,15 +361,13 @@ class Chat2workListing(models.Model):
         codes = self.province_ids.mapped('code')
         if codes and candidate.province and candidate.province not in codes:
             return None
-        if self.field and candidate.field and self.field != candidate.field:
+        fit = self._c2w_work_fit(candidate)
+        if fit is None:
             return None
-        score, reasons = 0, []
+        score, reasons = fit
         if candidate.province in codes:
             score += 2
             reasons.append('same province')
-        if self.field and candidate.field == self.field:
-            score += 2
-            reasons.append('same type of work')
         if candidate.employment_status == 'unemployed':
             score += 1
             reasons.append('unemployed')
@@ -377,6 +376,45 @@ class Chat2workListing(models.Model):
             if overlap:
                 score += min(len(overlap), KEYWORD_POINTS_MAX)
                 reasons.append('CV mentions: %s' % ', '.join(sorted(overlap)[:5]))
+        return score, reasons
+
+    def _c2w_work_fit(self, candidate):
+        """(score, reasons) for the kind of work and education, or None to leave them out.
+
+        With an occupation on the listing: the same unit group as the work the
+        candidate wants scores 3, a related one (same minor group) 1, and no
+        shared sub-major group leaves them out. Without one, the broad type of
+        work has to match. Education below a required minimum leaves them
+        out; below an optional one costs a point. Anything unknown counts for
+        nothing either way.
+        """
+        score, reasons = 0, []
+        groups = candidate._c2w_unit_groups()
+        occupation = self.occupation_id
+        if occupation and groups:
+            if occupation.code in groups:
+                score += 3
+                reasons.append('same occupation: %s' % occupation.name)
+            elif occupation.code[:3] in {g[:3] for g in groups}:
+                score += 1
+                reasons.append('related work: %s' % occupation.parent_id.name)
+            elif occupation.code[:2] not in {g[:2] for g in groups}:
+                return None
+        elif not occupation and self.field and candidate.field:
+            if self.field != candidate.field:
+                return None
+            score += 2
+            reasons.append('same type of work')
+        if self.nqf_min and candidate.nqf_level:
+            label = dict(self._fields['nqf_min'].selection)[self.nqf_min]
+            if int(candidate.nqf_level) >= int(self.nqf_min):
+                score += 1
+                reasons.append('meets education: %s' % label)
+            elif self.nqf_required:
+                return None
+            else:
+                score -= 1
+                reasons.append('below the education asked for: %s' % label)
         return score, reasons
 
     def action_suggest_candidates(self):

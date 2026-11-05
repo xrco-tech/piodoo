@@ -15,6 +15,8 @@
                 <field name="province_ids" widget="many2many_tags"/>
                 <field name="location" optional="show"/>
                 <field name="field" optional="show"/>
+                <field name="occupation_id" optional="show"/>
+                <field name="nqf_min" optional="hide"/>
                 <field name="closing_on"/>
                 <field name="verification_state" widget="badge" decoration-success="verification_state == 'verified'"
                        decoration-danger="verification_state in ('invalid', 'cancelled')" decoration-warning="verification_state == 'unverified'"/>
@@ -54,6 +56,15 @@
                             <field name="province_ids" widget="many2many_tags" options="{'no_create': True}"/>
                             <field name="location"/>
                             <field name="field"/>
+                            <label for="occupation_id"/>
+                            <div class="o_row">
+                                <field name="occupation_id" options="{'no_create': True}"/>
+                                <button name="action_suggest_occupation" type="object" string="Suggest" icon="fa-magic"
+                                        class="btn-link" invisible="not id" help="From the title, then the AI"/>
+                            </div>
+                            <field name="occupation_source" invisible="not occupation_id"/>
+                            <field name="nqf_min"/>
+                            <field name="nqf_required" invisible="not nqf_min"/>
                             <field name="employment_type"/>
                             <field name="salary"/>
                         </group>
@@ -162,12 +173,14 @@
                 <filter name="invalid" string="Invalid" domain="[('verification_state', '=', 'invalid')]"/>
                 <filter name="cancelled" string="Cancelled" domain="[('verification_state', '=', 'cancelled')]"/>
                 <separator/>
+                <filter name="no_occupation" string="No occupation" domain="[('occupation_id', '=', False)]"/>
                 <filter name="to_review" string="Candidates to review" domain="[('match_ids.state', '=', 'suggested')]"/>
                 <separator/>
                 <filter name="group_work_state" string="Next step" context="{'group_by': 'work_state'}"/>
                 <filter name="group_verification" string="Verification" context="{'group_by': 'verification_state'}"/>
                 <filter name="group_province" string="Province" context="{'group_by': 'province_ids'}"/>
                 <filter name="group_field" string="Type of work" context="{'group_by': 'field'}"/>
+                <filter name="group_occupation" string="Occupation" context="{'group_by': 'occupation_id'}"/>
                 <filter name="group_source" string="Source" context="{'group_by': 'source_id'}"/>
             </search>
         </field>
@@ -284,10 +297,71 @@
         </field>
     </record>
 
+    <record id="view_chat2work_candidate_form_education" model="ir.ui.view">
+        <field name="name">chat2work.candidate.form.education</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="inherit_id" ref="chat2work.view_chat2work_candidate_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='field']" position="after">
+                <field name="nqf_level"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_chat2work_occupation_list" model="ir.ui.view">
+        <field name="name">chat2work.occupation.list</field>
+        <field name="model">chat2work.occupation</field>
+        <field name="arch" type="xml">
+            <list string="Occupations">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="level" optional="hide"/>
+                <field name="parent_id" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chat2work_occupation_form" model="ir.ui.view">
+        <field name="name">chat2work.occupation.form</field>
+        <field name="model">chat2work.occupation</field>
+        <field name="arch" type="xml">
+            <form string="Occupation">
+                <sheet>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                        <field name="level"/>
+                        <field name="parent_id"/>
+                        <field name="examples"/>
+                    </group>
+                    <p class="text-muted">ISCO-08 (International Labour Organization). South Africa's OFO 2021
+                        codes start with these four digits, e.g. 2021-4222xx.</p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_chat2work_occupation_search" model="ir.ui.view">
+        <field name="name">chat2work.occupation.search</field>
+        <field name="model">chat2work.occupation</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', '|', ('name', 'ilike', self), ('code', '=like', self + '%'), ('examples', 'ilike', self)]"/>
+                <filter name="unit_groups" string="Unit groups" domain="[('level', '=', 4)]"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_chat2work_occupation" model="ir.actions.act_window">
+        <field name="name">Occupations</field>
+        <field name="res_model">chat2work.occupation</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_unit_groups': 1}</field>
+    </record>
+
     <menuitem id="menu_chat2work_listings" name="Job Listings" parent="chat2work.menu_chat2work_root"
               action="action_chat2work_listing" sequence="7"/>
     <menuitem id="menu_chat2work_listing_import" name="Import Listings" parent="chat2work.menu_chat2work_root"
               action="action_chat2work_listing_import" sequence="8"/>
     <menuitem id="menu_chat2work_listing_sources" name="Listing Sources" parent="chat2work.menu_chat2work_root"
               action="action_chat2work_listing_source" sequence="9"/>
+    <menuitem id="menu_chat2work_occupations" name="Occupations" parent="chat2work.menu_chat2work_root"
+              action="action_chat2work_occupation" sequence="9"/>
 </odoo>

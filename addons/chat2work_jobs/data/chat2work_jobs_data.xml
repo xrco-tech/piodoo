@@ -50,6 +50,15 @@
             <field name="interval_type">days</field>
             <field name="active" eval="True"/>
         </record>
+        <record id="ir_cron_chat2work_occupations" model="ir.cron">
+            <field name="name">Chat2Work: find occupations for job listings (AI)</field>
+            <field name="model_id" ref="model_chat2work_listing"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_code_occupations()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="active" eval="True"/>
+        </record>
         <record id="ir_cron_chat2work_job_alerts" model="ir.cron">
             <field name="name">Chat2Work: tell candidates about their job matches</field>
             <field name="model_id" ref="model_chat2work_listing_match"/>
