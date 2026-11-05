@@ -17,7 +17,7 @@
                 <p class="text-muted" invisible="result">
                     Columns: title (required), external_ref, employer, location, province, field,
                     employment_type, salary, description, requirements, apply_url, apply_contact,
-                    posted_on, closing_on (dates as YYYY-MM-DD). For several provinces, separate them
+                    posted_on, closing_on (dates as YYYY-MM-DD), ofo_code (OFO like 2021-422201, or ISCO like 4222), nqf_min (e.g. Matric, NQF 6), education_required (yes/no). For several provinces, separate them
                     with a semicolon (Gauteng; Limpopo), or use "National" for all. Importing the same listing again updates it.
                 </p>
                 <footer>
