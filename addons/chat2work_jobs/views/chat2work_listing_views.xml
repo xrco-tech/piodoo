@@ -229,24 +229,57 @@
         <field name="model">chat2work.candidate</field>
         <field name="inherit_id" ref="chat2work.view_chat2work_candidate_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='stage']" position="before">
+                <field name="job_match_ready_count" invisible="1"/>
+                <button name="action_c2w_send_jobs" type="object" string="Send jobs" class="btn-primary"
+                        groups="chat2work.group_agent" invisible="not job_match_ready_count"/>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <notebook>
                     <page string="Job Matches" name="job_matches">
-                        <field name="listing_match_ids" readonly="1">
-                            <list decoration-muted="state == 'rejected'" decoration-success="state == 'approved'">
-                                <field name="listing_id"/>
-                                <field name="listing_state"/>
-                                <field name="score"/>
-                                <field name="reason"/>
-                                <field name="note"/>
-                                <field name="state" widget="badge" decoration-warning="state == 'suggested'"
+                        <field name="job_match_review_count" invisible="1"/>
+                        <div class="alert alert-warning" role="status" invisible="not job_match_review_count">
+                            <field name="job_match_review_count" nolabel="1" class="d-inline"/> job match(es) to review.
+                            Mark each one a <strong>Good match</strong> or <strong>Not a match</strong>.
+                            Good matches go out in the next job alert, or click <strong>Send jobs</strong> to send them now.
+                        </div>
+                        <field name="listing_match_ids">
+                            <list create="0" delete="0" decoration-muted="state == 'rejected'" decoration-success="state == 'approved'">
+                                <field name="listing_id" readonly="1"/>
+                                <field name="listing_state" optional="show"/>
+                                <field name="listing_verification" widget="badge" decoration-success="listing_verification == 'verified'"
+                                       decoration-warning="listing_verification == 'unverified'"
+                                       decoration-danger="listing_verification in ('invalid', 'cancelled')"/>
+                                <field name="score" readonly="1"/>
+                                <field name="reason" readonly="1"/>
+                                <field name="note" optional="show"/>
+                                <field name="state" readonly="1" widget="badge" decoration-warning="state == 'suggested'"
                                        decoration-success="state == 'approved'"/>
-                                <field name="notify_state"/>
-                                <field name="response"/>
+                                <field name="notify_state" readonly="1"/>
+                                <field name="response" readonly="1"/>
+                                <button name="action_approve" type="object" string="Good match" icon="fa-check"
+                                        invisible="state == 'approved' or listing_verification != 'verified'"/>
+                                <button name="action_reject" type="object" string="Not a match" icon="fa-times"
+                                        invisible="state == 'rejected'"/>
                             </list>
                         </field>
                     </page>
                 </notebook>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_chat2work_candidate_search_matches" model="ir.ui.view">
+        <field name="name">chat2work.candidate.search.matches</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="inherit_id" ref="chat2work.view_chat2work_candidate_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="job_matches_to_review" string="Job matches to review"
+                        domain="[('listing_match_ids', 'any', [('state', '=', 'suggested'), ('listing_id.state', '=', 'open')])]"/>
+                <filter name="job_matches_to_send" string="Jobs to send"
+                        domain="[('listing_match_ids', 'any', [('state', '=', 'approved'), ('notify_state', '!=', 'sent'), ('listing_id.state', '=', 'open')])]"/>
             </xpath>
         </field>
     </record>

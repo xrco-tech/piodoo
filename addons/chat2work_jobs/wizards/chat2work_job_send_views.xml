@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chat2work_job_send_form" model="ir.ui.view">
+        <field name="name">chat2work.job.send.form</field>
+        <field name="model">chat2work.job.send</field>
+        <field name="arch" type="xml">
+            <form string="Send Jobs">
+                <field name="candidate_id" invisible="1"/>
+                <field name="whatsapp_available" invisible="1"/>
+                <field name="recommended_channel" invisible="1"/>
+                <group>
+                    <field name="channel" widget="radio" options="{'horizontal': true}"/>
+                </group>
+                <div class="alert alert-info" role="status">
+                    Recommended: <strong><field name="recommended_channel" readonly="1" nolabel="1" class="d-inline"/></strong>
+                    (<field name="recommendation" nolabel="1" class="d-inline"/>)
+                </div>
+                <div class="alert alert-warning" role="alert" invisible="channel != 'whatsapp' or whatsapp_available">
+                    This candidate doesn't use WhatsApp with us, so send it by SMS.
+                </div>
+                <div class="alert alert-warning" role="alert" invisible="not channel or channel == recommended_channel">
+                    You've picked a channel other than the recommended one.
+                </div>
+                <field name="match_ids" options="{'no_create': True}">
+                    <list>
+                        <field name="listing_id"/>
+                        <field name="score"/>
+                        <field name="reason"/>
+                        <field name="notify_state"/>
+                    </list>
+                </field>
+                <p class="text-muted">
+                    WhatsApp: a message with "See my job matches" so they can tap the one they're interested in.
+                    SMS: the first two jobs, and that an agent will call. Chat2Work never asks for money.
+                </p>
+                <footer>
+                    <button name="action_send" type="object" string="Send" class="btn-primary"/>
+                    <button special="cancel" string="Cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
