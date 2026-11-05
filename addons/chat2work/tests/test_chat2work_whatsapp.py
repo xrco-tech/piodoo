@@ -75,11 +75,22 @@ class TestChat2workWhatsapp(TransactionCase):
 
     def test_greeting_in_an_open_conversation_is_left_alone(self):
         wa = '27820001011'
-        self.env['whatsapp.message'].sudo().create({
+        agent = self.env['res.users'].create({'name': 'Agent', 'login': 'c2w_greet_agent'})
+        self.env['whatsapp.message'].with_user(agent).sudo().create({
             'wa_id': wa, 'is_incoming': False, 'message_id': 'wamid.agent1',
             'message_timestamp': fields.Datetime.now()})
         self.assertEqual(self.chat(wa, text(wa, 'Hello')), [False])
         self.assertFalse(self.sent)
+
+    def test_greeting_after_an_automatic_message_gets_the_bot(self):
+        wa = '27820001012'
+        public = self.env.ref('base.public_user')
+        for i, user in enumerate((public, self.env.ref('base.user_root'))):
+            self.env['whatsapp.message'].with_user(user).sudo().create({
+                'wa_id': wa, 'is_incoming': False, 'message_id': 'wamid.auto%d' % i,
+                'message_timestamp': fields.Datetime.now()})
+        self.assertEqual(self.chat(wa, text(wa, 'Hello')), [True])
+        self.assertTrue(self.sent)
 
     def test_trigger_matching(self):
         self.env['ir.config_parameter'].sudo().set_param('chat2work.wa_triggers', 'chat2work,jobs,sebenza,ispani')

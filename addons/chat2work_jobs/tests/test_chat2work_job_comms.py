@@ -15,8 +15,8 @@ def tap(wa_id, key):
             'interactive': {'type': 'list_reply', 'list_reply': {'id': key, 'title': key}}}
 
 
-@tagged('post_install', '-at_install', 'chat2work')
-class TestChat2workJobComms(TransactionCase):
+class JobCommsCase(TransactionCase):
+    """A candidate with two suggested matches on verified listings; sends are faked."""
 
     def setUp(self):
         super().setUp()
@@ -47,6 +47,10 @@ class TestChat2workJobComms(TransactionCase):
         self.env['whatsapp.message'].sudo().create({
             'message_id': 'wamid.recent%s' % self.cand.id, 'is_incoming': True, 'message_type': 'text',
             'message_timestamp': fields.Datetime.now(), 'wa_id': '27820006001'})
+
+
+@tagged('post_install', '-at_install', 'chat2work')
+class TestChat2workJobComms(JobCommsCase):
 
     def test_good_match_queues_and_undo_unqueues(self):
         self.match.action_approve()

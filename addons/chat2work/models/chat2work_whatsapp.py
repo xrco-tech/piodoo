@@ -19,7 +19,7 @@ import logging
 import re
 from datetime import timedelta
 
-from odoo import api, fields, models
+from odoo import SUPERUSER_ID, api, fields, models
 
 from .chat2work_ussd import ID_LIKE, ID_REDACTED, normalize_msisdn
 
@@ -159,11 +159,13 @@ class Chat2workWaSession(models.Model):
 
     @api.model
     def _recently_messaged(self, wa_id):
-        """True when we've sent this number anything in the last day, e.g. an agent's
-        conversation, so a "Hello" there is a reply and not a new visitor."""
+        """True when an agent has messaged this number in the last day, so a "Hello"
+        there is a reply to them and not a new visitor. Automatic messages (the bot,
+        CV links, reminders) don't count: a "Hello" to those should get the bot."""
         since = fields.Datetime.now() - timedelta(minutes=SESSION_MINUTES)
         return bool(self.env['whatsapp.message'].sudo().search_count([
-            ('wa_id', '=', wa_id), ('is_incoming', '=', False), ('create_date', '>=', since)], limit=1))
+            ('wa_id', '=', wa_id), ('is_incoming', '=', False), ('create_date', '>=', since),
+            ('create_uid.share', '=', False), ('create_uid', '!=', SUPERUSER_ID)], limit=1))
 
     @api.model
     def _account_allowed(self, account):

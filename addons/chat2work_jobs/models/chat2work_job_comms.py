@@ -134,11 +134,14 @@ class Chat2workCandidateJobComms(models.Model):
         return ("Hi%s, good news: we found %s that may suit you. Tap below to see %s and tell us if you're "
                 "interested." % (' ' + name if name else '', what, 'it' if count == 1 else 'them'))
 
-    def _c2w_send_job_alert(self, matches):
-        """Tell the candidate about `matches`. Returns True when it went out."""
+    def _c2w_send_job_alert(self, matches, channel=None):
+        """Tell the candidate about `matches`. Returns True when it went out.
+
+        `channel` is 'whatsapp' or 'sms' when an agent picked one; otherwise
+        WhatsApp if they use it, falling back to SMS."""
         self.ensure_one()
         text = self._c2w_job_alert_text(len(matches))
-        if self.whatsapp_opt_in:
+        if self.whatsapp_opt_in and channel != 'sms':
             Message = self.env['whatsapp.message'].sudo()
             res = None
             if self._c2w_wa_window_open():
@@ -178,6 +181,8 @@ class Chat2workCandidateJobComms(models.Model):
                                     res.get('message_id'))
                 if res.get('success'):
                     return True
+            if channel == 'whatsapp':
+                return False
         jobs = ', '.join(m._c2w_label() for m in matches[:2])
         sms = ("Chat2Work: we found work that may suit you: %s. An agent will call you about it. "
                "We never ask for money." % jobs)
