@@ -56,6 +56,20 @@ class TestChat2workListing(TransactionCase):
         self.assertNotIn(out, listing.match_ids.candidate_id)
         self.assertIn('same province', listing.match_ids.filtered(lambda m: m.candidate_id == two).reason)
 
+    def test_verify_many_from_the_list(self):
+        self.source._import_csv(b'title,external_ref,province\nA,B1,Gauteng\nB,B2,Gauteng\nC,B3,Gauteng\n')
+        cand = self._candidate('+27820005021', province='gauteng')
+        one, two, three = self._listing('B1'), self._listing('B2'), self._listing('B3')
+        one.action_mark_verified()
+        checked_at = one.verified_at
+        (one | two | three).action_mark_verified()
+        self.assertEqual(set((one | two | three).mapped('verification_state')), {'verified'})
+        self.assertEqual(one.verified_at, checked_at, 'an already-verified listing keeps its check')
+        for listing in (two, three):
+            self.assertIn(cand, listing.match_ids.candidate_id)
+        (two | three).action_mark_invalid()
+        self.assertEqual(set((two | three).mapped('verification_state')), {'invalid'})
+
     def test_next_step_follows_verification_candidates_and_state(self):
         self.Candidate.search([]).write({'job_seeking': False})
         listing = self.Listing.create({'title': 'Clerk', 'source_id': self.source.id})
