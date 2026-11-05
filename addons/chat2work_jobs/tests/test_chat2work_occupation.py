@@ -133,3 +133,72 @@ class TestChat2workOccupation(TransactionCase):
         self.assertIn(call, listing.match_ids.candidate_id)
         self.assertNotIn(retail, listing.match_ids.candidate_id)
         self.assertIn('same occupation', listing.match_ids.reason)
+
+
+@tagged('post_install', '-at_install', 'chat2work')
+class TestChat2workCvOccupation(TransactionCase):
+
+    CV = {
+        'full_name': 'Thandi Secret-Name', 'email': 'thandi@example.com', 'town': 'Soweto',
+        'experience': [{'role': 'Cashier', 'employer': 'Shoprite', 'dates': '2021-2024', 'duties': 'Tills, cash up'},
+                       {'role': 'Call centre agent', 'employer': 'Acme', 'dates': '2019', 'duties': 'Inbound calls'}],
+        'education': [{'school': 'Soweto High', 'qualification': 'National Diploma: Retail', 'year': '2018'},
+                      {'school': 'Soweto High', 'qualification': 'Matric', 'year': '2015'}],
+    }
+
+    def setUp(self):
+        super().setUp()
+        self.Occupation = self.env['chat2work.occupation']
+        self.unit = lambda code: self.Occupation.search([('code', '=', code)])
+        self.Candidate = self.env['chat2work.candidate']
+        self.Candidate.search([]).write({'cv_data': False})
+        self.cand = self.Candidate.create({'name': 'Thandi', 'phone': '+27820008001', 'field': 'retail'})
+        self.cand.sudo().cv_data = self.CV
+
+    def _ai(self, occupations, nqf):
+        response = MagicMock(status_code=200)
+        response.json.return_value = {'stop_reason': 'end_turn', 'content': [
+            {'type': 'text', 'text': json.dumps({'occupations': occupations, 'nqf': nqf})}]}
+        return response
+
+    def test_ai_codes_the_cv_once_and_again_when_it_changes(self):
+        self.env['ir.config_parameter'].sudo().set_param('comm_chatbot.anthropic_api_key', 'test-key')
+        with patch(POST, return_value=self._ai(['5230', '9999', '4222'], '6')) as post:
+            self.Candidate._c2w_cron_code_cvs()
+        content = post.call_args.kwargs['json']['messages'][0]['content']
+        self.assertIn('Cashier', content)
+        self.assertIn('National Diploma', content)
+        for private in ('Secret-Name', 'thandi@example.com', 'Soweto High', 'Shoprite', '+2782'):
+            self.assertNotIn(private, content)
+        self.assertEqual(sorted(self.cand.cv_occupation_ids.mapped('code')), ['4222', '5230'])
+        self.assertEqual((self.cand.nqf_level, self.cand.nqf_source), ('6', 'cv'))
+        with patch(POST) as post:
+            self.Candidate._c2w_cron_code_cvs()
+        post.assert_not_called()
+        self.cand.nqf_level = '7'  # an agent knows better
+        self.assertEqual(self.cand.nqf_source, 'agent')
+        self.cand.sudo().cv_data = dict(self.CV, summary='Updated')
+        with patch(POST, return_value=self._ai(['5223'], '4')):
+            self.Candidate._c2w_cron_code_cvs()
+        self.assertEqual(self.cand.cv_occupation_ids.mapped('code'), ['5223'])
+        self.assertEqual(self.cand.nqf_level, '7', "the agent's education is kept")
+
+    def test_without_ai_uses_titles_and_qualifications(self):
+        self.env['ir.config_parameter'].sudo().set_param('comm_chatbot.anthropic_api_key', '')
+        with patch(POST) as post:
+            self.Candidate._c2w_cron_code_cvs()
+        post.assert_not_called()
+        self.assertIn('5230', self.cand.cv_occupation_ids.mapped('code'))
+        self.assertEqual(self.cand.nqf_level, '6')
+
+    def test_cv_history_scores_highest(self):
+        self.cand.with_context(c2w_from_cv=True).cv_occupation_ids = [(6, 0, self.unit('4222').ids)]
+        source = self.env['chat2work.listing.source'].create({'name': 'CV'})
+        listing = self.env['chat2work.listing'].create({'title': 'Agent', 'source_id': source.id,
+                                                        'occupation_id': self.unit('4222').id})
+        score, reasons = listing._c2w_work_fit(self.cand)
+        self.assertEqual(score, 4)
+        self.assertIn('has worked as: Contact Centre Information Clerks', reasons)
+        self.assertFalse(self.cand.cv_occupations_by_agent)
+        self.cand.cv_occupation_ids = [(6, 0, [])]
+        self.assertTrue(self.cand.cv_occupations_by_agent)

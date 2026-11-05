@@ -381,8 +381,8 @@ class Chat2workListing(models.Model):
     def _c2w_work_fit(self, candidate):
         """(score, reasons) for the kind of work and education, or None to leave them out.
 
-        With an occupation on the listing: the same unit group as the work the
-        candidate wants scores 3, a related one (same minor group) 1, and no
+        With an occupation on the listing: a job of that unit group on their CV
+        scores 4, the same unit group as the work they want 3, a related one (same minor group) 1, and no
         shared sub-major group leaves them out. Without one, the broad type of
         work has to match. Education below a required minimum leaves them
         out; below an optional one costs a point. Anything unknown counts for
@@ -392,7 +392,10 @@ class Chat2workListing(models.Model):
         groups = candidate._c2w_unit_groups()
         occupation = self.occupation_id
         if occupation and groups:
-            if occupation.code in groups:
+            if occupation in candidate.cv_occupation_ids:
+                score += 4
+                reasons.append('has worked as: %s' % occupation.name)
+            elif occupation.code in groups:
                 score += 3
                 reasons.append('same occupation: %s' % occupation.name)
             elif occupation.code[:3] in {g[:3] for g in groups}:

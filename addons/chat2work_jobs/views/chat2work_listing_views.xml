@@ -303,7 +303,9 @@
         <field name="inherit_id" ref="chat2work.view_chat2work_candidate_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='field']" position="after">
+                <field name="cv_occupation_ids" widget="many2many_tags" options="{'no_create': True}"/>
                 <field name="nqf_level"/>
+                <field name="nqf_source" invisible="not nqf_level"/>
             </xpath>
         </field>
     </record>
