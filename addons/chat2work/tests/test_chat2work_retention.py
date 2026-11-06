@@ -73,3 +73,23 @@ class TestChat2workRetention(TransactionCase):
         cand.action_c2w_erase()
         self.assertFalse(cand.exists())
         self.assertFalse(self.Callback.search([('phone', '=', '+27820200006')]))
+
+
+@tagged('post_install', '-at_install', 'chat2work')
+class TestChat2workSendSms(TransactionCase):
+
+    def test_refused_sms_is_not_reported_as_sent(self):
+        from odoo.addons.chat2work.models.chat2work import _send_sms
+        SmsSms = type(self.env['sms.sms'])
+
+        def refuse(records, *args, **kwargs):
+            records.write({'state': 'error', 'failure_type': 'sms_credit'})
+
+        def accept(records, *args, **kwargs):
+            records.write({'state': 'sent'})
+
+        with patch.object(SmsSms, '_send', refuse):
+            self.assertFalse(_send_sms(self.env, '+27820009001', 'Hello'))
+        with patch.object(SmsSms, '_send', accept):
+            self.assertTrue(_send_sms(self.env, '+27820009001', 'Hello'))
+        self.assertFalse(_send_sms(self.env, '', 'Hello'))
