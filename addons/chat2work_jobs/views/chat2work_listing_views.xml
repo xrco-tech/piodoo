@@ -97,7 +97,10 @@
                                     <field name="state" widget="badge" decoration-warning="state == 'suggested'"
                                            decoration-success="state == 'approved'"/>
                                     <field name="notify_state" optional="show" readonly="1"/>
-                                    <field name="response" optional="show" readonly="1"/>
+                                    <field name="notify_channel" optional="hide" readonly="1"/>
+                                    <field name="feedback" optional="show" readonly="1"/>
+                                    <field name="open_count" optional="show" readonly="1"/>
+                                    <field name="response" optional="hide" readonly="1"/>
                                     <button name="action_approve" type="object" string="Good match" icon="fa-check"
                                             invisible="state == 'approved'"/>
                                     <button name="action_reject" type="object" string="Not a match" icon="fa-times"
@@ -269,7 +272,11 @@
                                 <field name="state" readonly="1" widget="badge" decoration-warning="state == 'suggested'"
                                        decoration-success="state == 'approved'"/>
                                 <field name="notify_state" readonly="1"/>
-                                <field name="response" readonly="1"/>
+                                <field name="notify_channel" readonly="1" optional="show"/>
+                                <field name="feedback" readonly="1" widget="badge" decoration-success="feedback == 'good'"
+                                       decoration-danger="feedback == 'bad'"/>
+                                <field name="open_count" readonly="1" optional="show"/>
+                                <field name="response" readonly="1" optional="hide"/>
                                 <button name="action_approve" type="object" string="Good match" icon="fa-check"
                                         invisible="state == 'approved' or listing_verification != 'verified'"/>
                                 <button name="action_reject" type="object" string="Not a match" icon="fa-times"
@@ -304,6 +311,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='field']" position="after">
                 <field name="cv_occupation_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                <field name="job_alerts_stopped"/>
                 <field name="nqf_level"/>
                 <field name="nqf_source" invisible="not nqf_level"/>
             </xpath>

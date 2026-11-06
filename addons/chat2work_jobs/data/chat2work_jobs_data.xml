@@ -86,5 +86,46 @@
             <field name="button_type">QUICK_REPLY</field>
             <field name="text">Not now</field>
         </record>
+        <record id="wa_template_job_alert" model="whatsapp.template">
+            <field name="name">chat2work_job_alert</field>
+            <field name="language">en</field>
+            <field name="category">MARKETING</field>
+            <field name="body">Hi {{1}} 👋 We found a job that matches your profile:
+
+💼 {{2}}
+🏢 {{3}}
+📍 {{4}}
+📅 Apply by {{5}}
+
+Apply here: {{6}}
+
+Is this a good match for you?</field>
+            <field name="footer">Chat2Work never asks for money.</field>
+            <field name="description">One job per message. {{1}} first name, {{2}} role, {{3}} employer, {{4}} area, {{5}} closing date, {{6}} job link. Button payloads are set when sending.</field>
+        </record>
+        <record id="wa_template_job_alert_good" model="whatsapp.template.button">
+            <field name="template_id" ref="wa_template_job_alert"/>
+            <field name="button_type">QUICK_REPLY</field>
+            <field name="text">👍 Good match</field>
+        </record>
+        <record id="wa_template_job_alert_bad" model="whatsapp.template.button">
+            <field name="template_id" ref="wa_template_job_alert"/>
+            <field name="button_type">QUICK_REPLY</field>
+            <field name="text">👎 Not for me</field>
+        </record>
+        <record id="wa_template_job_alert_stop" model="whatsapp.template.button">
+            <field name="template_id" ref="wa_template_job_alert"/>
+            <field name="button_type">QUICK_REPLY</field>
+            <field name="text">Stop job alerts</field>
+        </record>
+        <record id="ir_cron_chat2work_daily_jobs" model="ir.cron">
+            <field name="name">Chat2Work: send each candidate their best job of the day</field>
+            <field name="model_id" ref="model_chat2work_listing_match"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_daily_jobs()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="False"/>
+        </record>
     </data>
 </odoo>
