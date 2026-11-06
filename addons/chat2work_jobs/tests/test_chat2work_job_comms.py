@@ -6,7 +6,7 @@ from odoo import fields
 from odoo.tests import TransactionCase, tagged
 
 WA = 'odoo.addons.comm_whatsapp.models.whatsapp_message.WhatsAppMessage.send_whatsapp_payload'
-SMS = 'odoo.addons.chat2work_jobs.models.chat2work_job_comms._send_sms'
+SMS = 'odoo.addons.chat2work_jobs.models.chat2work_job_alert._send_sms'
 HOURS = 'odoo.addons.chat2work_jobs.models.chat2work_job_comms.Chat2workListingMatchComms._c2w_in_send_hours'
 
 
@@ -65,8 +65,9 @@ class TestChat2workJobComms(JobCommsCase):
         self._window()
         (self.match | self.match2).action_approve()
         self.Match._cron_send_job_alerts()
-        self.assertEqual(len(self.sent), 1)
-        self.assertIn('2 jobs', self.sent[0]['interactive']['body']['text'])
+        self.assertEqual(len(self.sent), 2, 'one message per job')
+        self.assertEqual({m['interactive']['body']['text'].split('💼 ')[1].split('\n')[0] for m in self.sent},
+                         {'Call centre agent', 'Packer'})
         self.assertEqual(set((self.match | self.match2).mapped('notify_state')), {'sent'})
         self.assertTrue(self.cand.job_alert_at)
         third = self.Match.create({'listing_id': self.env['chat2work.listing'].create({
@@ -74,7 +75,7 @@ class TestChat2workJobComms(JobCommsCase):
         third.listing_id.action_mark_verified()
         third.action_approve()
         self.Match._cron_send_job_alerts()
-        self.assertEqual(len(self.sent), 1, 'one alert every few days')
+        self.assertEqual(len(self.sent), 2, 'one alert every few days')
         self.assertEqual(third.notify_state, 'queued')
         self.cand.job_alert_at = fields.Datetime.now() - timedelta(days=4)
         self.Match._cron_send_job_alerts()
@@ -83,17 +84,21 @@ class TestChat2workJobComms(JobCommsCase):
     def test_sms_when_not_on_whatsapp_or_no_template(self):
         self.match.action_approve()
         self.Match._cron_send_job_alerts()  # on WhatsApp but no window and no approved template
-        self.assertIn('Call centre agent (Soweto)', self.sms.call_args.args[2])
+        self.assertIn('Call centre agent at Acme, Soweto', self.sms.call_args.args[2])
         self.assertEqual(self.match.notify_state, 'sent')
 
     def test_template_outside_the_window(self):
-        tpl = self.env.ref('chat2work_jobs.wa_template_job_match')
+        tpl = self.env.ref('chat2work_jobs.wa_template_job_alert')
         tpl.status = 'APPROVED'
+        self.cand.registered_via = 'whatsapp'
         self.match.action_approve()
         self.Match._cron_send_job_alerts()
         comps = self.sent[0]['template']['components']
-        self.assertEqual(comps[0]['parameters'][0]['text'], 'Sipho')
-        self.assertEqual([c['parameters'][0]['payload'] for c in comps[1:]], ['c2w:jobs', 'c2w:jobs_later'])
+        self.assertEqual([p['text'] for p in comps[0]['parameters']][:5],
+                         ['Sipho', 'Call centre agent', 'Acme', 'Soweto', 'See the link'])
+        self.assertIn('/j/', comps[0]['parameters'][5]['text'])
+        self.assertEqual([c['parameters'][0]['payload'] for c in comps[1:]],
+                         ['c2w:jf:good:%d' % self.match.id, 'c2w:jf:bad:%d' % self.match.id, 'c2w:jf:stop'])
         self.sms.assert_not_called()
 
     def test_closed_listing_is_not_sent(self):
