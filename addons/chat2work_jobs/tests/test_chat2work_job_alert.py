@@ -33,6 +33,11 @@ class TestChat2workJobAlert(JobCommsCase):
         self.assertIn('/j/%s Reply 1=good match, 2=not. STOP to opt out' % self.match.link_token, text)
         self.assertIn('Apply by ', text)
 
+    def test_a_phone_number_is_not_a_name(self):
+        self.cand.name = '0820006001'
+        self.assertEqual(self.match._c2w_alert_parts()['name'], 'there')
+        self.assertIn('Hi there, a job for you', self.match._c2w_sms_text())
+
     def test_top_jobs_pick_the_best_open_ones(self):
         top = self.Match._c2w_top_jobs(3)
         self.assertEqual(set(top[self.cand].ids), {self.match.id, self.match2.id})

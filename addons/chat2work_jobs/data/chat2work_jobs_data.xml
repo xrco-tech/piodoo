@@ -106,12 +106,12 @@ Is this a good match for you?</field>
         <record id="wa_template_job_alert_good" model="whatsapp.template.button">
             <field name="template_id" ref="wa_template_job_alert"/>
             <field name="button_type">QUICK_REPLY</field>
-            <field name="text">👍 Good match</field>
+            <field name="text">Good match</field>
         </record>
         <record id="wa_template_job_alert_bad" model="whatsapp.template.button">
             <field name="template_id" ref="wa_template_job_alert"/>
             <field name="button_type">QUICK_REPLY</field>
-            <field name="text">👎 Not for me</field>
+            <field name="text">Not for me</field>
         </record>
         <record id="wa_template_job_alert_stop" model="whatsapp.template.button">
             <field name="template_id" ref="wa_template_job_alert"/>
