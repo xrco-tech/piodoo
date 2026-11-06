@@ -92,8 +92,9 @@ class Chat2workListingMatchAlert(models.Model):
         location = listing.location or ', '.join(listing.province_ids.mapped('name')[:2])
         if len(listing.province_ids) > 2 and not listing.location:
             location = 'Several provinces'
+        name = first_name(self.candidate_id.name)
         return {
-            'name': first_name(self.candidate_id.name) or 'there',
+            'name': name if name and not re.search(r'\d', name) else 'there',  # never "Hi 0683…"
             'title': _param(re.split(r'\s[-–|]\s|\s\(', listing.title or '')[0]),
             'employer': _param(listing.employer),
             'location': _param(location),
@@ -249,8 +250,8 @@ class Chat2workCandidateJobAlert(models.Model):
                     'body': {'text': WA_BODY.format(**parts)},
                     'footer': {'text': FOOTER},
                     'action': {'buttons': [
-                        {'type': 'reply', 'reply': {'id': ids[0], 'title': '👍 Good match'}},
-                        {'type': 'reply', 'reply': {'id': ids[1], 'title': '👎 Not for me'}},
+                        {'type': 'reply', 'reply': {'id': ids[0], 'title': 'Good match'}},
+                        {'type': 'reply', 'reply': {'id': ids[1], 'title': 'Not for me'}},
                         {'type': 'reply', 'reply': {'id': ids[2], 'title': 'Stop job alerts'}},
                     ]},
                 },
