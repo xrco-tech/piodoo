@@ -9,13 +9,18 @@ _logger = logging.getLogger(__name__)
 
 def _send_sms(env, number, body):
     """Best-effort SMS via core sms.sms. Never raises — a failed/unconfigured
-    SMS gateway must not break the booking/callback it confirms."""
+    SMS gateway must not break the booking/callback it confirms. True only when
+    the gateway took it: a refusal (e.g. out of credit) leaves the SMS in error."""
     if not number:
         return False
     try:
-        env['sms.sms'].sudo().create({
+        sms = env['sms.sms'].sudo().create({
             'number': number, 'body': body, 'state': 'outgoing',
-        })._send()
+        })
+        sms._send()
+        if sms.exists() and sms.state in ('error', 'canceled'):
+            _logger.warning("chat2work: SMS to %s refused: %s", number, sms.failure_type)
+            return False
         return True
     except Exception as e:  # noqa: BLE001
         _logger.warning("chat2work: SMS to %s failed: %s", number, e)
