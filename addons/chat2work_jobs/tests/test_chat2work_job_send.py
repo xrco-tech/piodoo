@@ -25,6 +25,19 @@ class TestChat2workJobSend(JobCommsCase):
         self.assertEqual((self.cand.job_match_review_count, self.cand.job_match_ready_count), (1, 1))
         self.assertEqual(self._wizard().match_ids, self.match)
 
+    def test_card_job_stats(self):
+        stats = lambda: (self.cand.job_good_match_count, self.cand.job_sent_count, self.cand.job_opened_count)
+        self.assertEqual(stats(), (0, 0, 0))
+        self.match.action_approve()
+        self.cand.invalidate_recordset()
+        self.assertEqual(stats(), (1, 0, 0))
+        self.match.write({'notify_state': 'sent', 'opened_at': fields.Datetime.now(), 'open_count': 3})
+        self.cand.invalidate_recordset()
+        self.assertEqual(stats(), (1, 1, 1))
+        self.match.listing_id.state = 'closed'
+        self.cand.invalidate_recordset()
+        self.assertEqual(stats(), (0, 1, 1), 'closed listings no longer count as good matches')
+
     def test_recommendation_follows_engagement(self):
         recommend = self.cand._c2w_recommended_channel
         self.cand.registered_via = 'ussd'

@@ -370,6 +370,27 @@
               action="action_chat2work_listing" sequence="7"/>
     <menuitem id="menu_chat2work_listing_import" name="Import Listings" parent="chat2work.menu_chat2work_root"
               action="action_chat2work_listing_import" sequence="8"/>
+    <record id="view_chat2work_candidate_kanban_jobs" model="ir.ui.view">
+        <field name="name">chat2work.candidate.kanban.jobs</field>
+        <field name="model">chat2work.candidate</field>
+        <field name="inherit_id" ref="chat2work.view_chat2work_candidate_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//footer" position="before">
+                <div class="d-flex flex-wrap gap-3 small text-muted mt-1" name="job_stats"
+                     t-if="record.job_good_match_count.raw_value or record.job_sent_count.raw_value">
+                    <span title="Good matches on open job listings">
+                        <i class="fa fa-check-circle text-success"/> <field name="job_good_match_count"/> good
+                    </span>
+                    <span title="Jobs sent to them">
+                        <i class="fa fa-paper-plane"/> <field name="job_sent_count"/> sent
+                    </span>
+                    <span title="Job links they opened" t-att-class="record.job_opened_count.raw_value ? 'text-primary fw-bold' : ''">
+                        <i class="fa fa-external-link"/> <field name="job_opened_count"/> opened
+                    </span>
+                </div>
+            </xpath>
+        </field>
+    </record>
     <menuitem id="menu_chat2work_listing_sources" name="Listing Sources" parent="chat2work.menu_chat2work_root"
               action="action_chat2work_listing_source" sequence="9"/>
     <menuitem id="menu_chat2work_occupations" name="Occupations" parent="chat2work.menu_chat2work_root"
