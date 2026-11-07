@@ -121,3 +121,27 @@ class Chat2workJobSend(models.TransientModel):
         return {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {
             'type': 'success', 'message': 'Jobs sent to %s by %s.' % (candidate.name, dict(CHANNELS)[self.channel]),
             'next': {'type': 'ir.actions.act_window_close'}}}
+
+
+class Chat2workCandidateJobStats(models.Model):
+    _inherit = 'chat2work.candidate'
+
+    job_good_match_count = fields.Integer('Good Matches', compute='_compute_job_stats',
+                                          help="Good matches on job listings that are still open.")
+    job_sent_count = fields.Integer('Jobs Sent', compute='_compute_job_stats')
+    job_opened_count = fields.Integer('Job Links Opened', compute='_compute_job_stats',
+                                      help="Sent jobs whose link they opened at least once.")
+
+    def _compute_job_stats(self):
+        Match = self.env['chat2work.listing.match'].sudo()
+        base = [('candidate_id', 'in', self.ids)]
+
+        def counts(domain):
+            return {c.id: n for c, n in Match._read_group(base + domain, ['candidate_id'], ['__count'])}
+        good = counts([('state', '=', 'approved'), ('listing_id.state', '=', 'open')])
+        sent = counts([('notify_state', '=', 'sent')])
+        opened = counts([('notify_state', '=', 'sent'), ('opened_at', '!=', False)])
+        for rec in self:
+            rec.job_good_match_count = good.get(rec.id, 0)
+            rec.job_sent_count = sent.get(rec.id, 0)
+            rec.job_opened_count = opened.get(rec.id, 0)

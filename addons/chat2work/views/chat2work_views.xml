@@ -213,6 +213,7 @@
                 <field name="whatsapp_opt_in"/>
                 <field name="open_callback_count"/>
                 <field name="cv_link_state"/>
+                <field name="registered_via"/>
                 <progressbar field="activity_state"
                              colors='{"planned": "success", "today": "warning", "overdue": "danger"}'/>
                 <templates>
@@ -221,7 +222,14 @@
                             <field name="name" class="fw-bold fs-5 flex-grow-1"/>
                             <span t-if="record.whatsapp_opt_in.raw_value" class="fa fa-whatsapp text-success fs-5" title="Uses WhatsApp"/>
                         </div>
-                        <field name="phone" widget="phone"/>
+                        <div class="d-flex align-items-center gap-2">
+                            <field name="phone" widget="phone"/>
+                            <span t-if="record.registered_via.raw_value" name="registered_via"
+                                  class="badge rounded-pill text-bg-light border ms-auto" title="Registered via">
+                                <i t-attf-class="fa #{record.registered_via.raw_value == 'whatsapp' ? 'fa-whatsapp' : (record.registered_via.raw_value == 'ussd' ? 'fa-hashtag' : 'fa-sign-in')} me-1"/>
+                                <t t-esc="record.registered_via.raw_value == 'ussd' ? 'USSD' : (record.registered_via.raw_value == 'whatsapp' ? 'WhatsApp' : record.registered_via.raw_value)"/>
+                            </span>
+                        </div>
                         <div class="text-muted">
                             <field name="province"/>
                             <span t-if="record.province.raw_value and record.employment_status.raw_value"> · </span>
