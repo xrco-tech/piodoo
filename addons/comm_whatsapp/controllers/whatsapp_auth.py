@@ -299,6 +299,13 @@ class WhatsAppAuthController(http.Controller):
                         # stored wa_bsuid silently goes stale.
                         if 'user_id_update' in value:
                             self._process_user_id_update(value['user_id_update'])
+
+                        # A template review finished (approved, rejected, ...).
+                        if change.get('field') == 'message_template_status_update':
+                            try:
+                                request.env['whatsapp.template'].sudo()._handle_status_webhook(value)
+                            except Exception as e:
+                                _logger.error("Error processing template status update: %s", e, exc_info=True)
                 
                 # Process each unique message id only once (avoids duplicate first message)
                 seen_message_ids = set()
