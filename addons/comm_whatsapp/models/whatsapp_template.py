@@ -936,6 +936,71 @@ class WhatsAppTemplate(models.Model):
             _logger.error("comm_whatsapp: template '%s' send error: %s", self.name, e)
             return {'success': False, 'error': str(e)}
 
+    # Meta's review events → our status. Events we don't track (FLAGGED,
+    # IN_APPEAL, ...) leave the status alone.
+    META_STATUS_EVENTS = {
+        'APPROVED': 'APPROVED', 'REINSTATED': 'APPROVED', 'REJECTED': 'REJECTED',
+        'PENDING': 'PENDING', 'PAUSED': 'PAUSED', 'DISABLED': 'DISABLED',
+        'PENDING_DELETION': 'PENDING_DELETION',
+    }
+
+    def _set_meta_status(self, event, reason=None):
+        """Apply a review result from Meta. Returns True when it changed anything."""
+        status = self.META_STATUS_EVENTS.get((event or '').upper())
+        if not status:
+            return False
+        changed = False
+        for template in self:
+            vals = {}
+            if template.status != status:
+                vals['status'] = status
+            if status == 'REJECTED' and reason and reason != 'NONE':
+                vals['rejection_reason'] = reason
+            if vals:
+                template.sudo().write(vals)
+                _logger.info("comm_whatsapp: template '%s' is now %s", template.name, status)
+                changed = True
+        return changed
+
+    @api.model
+    def _handle_status_webhook(self, value):
+        """`message_template_status_update` webhook: Meta tells us a review finished."""
+        meta_id = value.get('message_template_id')
+        templates = self.browse()
+        if meta_id:
+            templates = self.sudo().search([('template_id_meta', '=', str(meta_id))])
+        if not templates and value.get('message_template_name'):
+            domain = [('name', '=', value['message_template_name'])]
+            if value.get('message_template_language'):
+                domain.append(('language', '=', value['message_template_language']))
+            templates = self.sudo().search(domain)
+        if not templates:
+            _logger.info("comm_whatsapp: status update for unknown template %s", meta_id)
+            return False
+        return templates._set_meta_status(value.get('event'), value.get('reason'))
+
+    @api.model
+    def _cron_sync_pending_status(self):
+        """Safety net for a missed webhook: ask Meta about every template still pending review."""
+        for template in self.sudo().search([('status', '=', 'PENDING'), ('template_id_meta', '!=', False)]):
+            token = template._resolve_meta_creds()[0]
+            if not token:
+                continue
+            try:
+                r = requests.get(
+                    f"https://graph.facebook.com/v18.0/{template.template_id_meta}",
+                    params={'fields': 'status,rejected_reason'},
+                    headers={'Authorization': f'Bearer {token}'}, timeout=20)
+                if r.status_code != 200:
+                    _logger.warning("comm_whatsapp: status check for '%s' failed (%s)",
+                                    template.name, r.status_code)
+                    continue
+                data = r.json()
+            except Exception as e:
+                _logger.warning("comm_whatsapp: status check for '%s' failed: %s", template.name, e)
+                continue
+            template._set_meta_status(data.get('status'), data.get('rejected_reason'))
+
 
 class WhatsAppTemplateButton(models.Model):
     _name = 'whatsapp.template.button'
