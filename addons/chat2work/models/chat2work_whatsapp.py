@@ -51,6 +51,7 @@ WA_PROMPTS = {
     'S04': "Please type your 13-digit SA ID number. We'll check it with Home Affairs to confirm it's valid.",
     'S10': "Which province would you most like to work in?",
     'S11': "What kind of work are you looking for?",
+    'S12': "What kind of work would you like? Type it in a few words, e.g. cleaner, cook or security guard.",
 }
 WA_OPTIONS = {
     'S10': [('1', 'Gauteng'), ('2', 'KwaZulu-Natal'), ('3', 'Western Cape'), ('4', 'Eastern Cape'),
@@ -289,7 +290,9 @@ class Chat2workWaSession(models.Model):
             return
         prompt, options = self._screen(self.screen)
         if body.startswith("Invalid choice"):
-            prompt = "Sorry, I didn't get that. Please choose an option below.\n\n" + prompt
+            prompt = ("Sorry, I didn't get that. " + (
+                "Please type the work in a few words." if self.screen == 'S12'
+                else "Please choose an option below.") + "\n\n" + prompt)
         header_image = self.screen in ('S01A', 'S01B') and self._welcome_image_url()
         self._send(self._interactive(prompt, options, header_image), prompt)
 

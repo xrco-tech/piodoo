@@ -17,6 +17,8 @@
                 <field name="field" optional="show"/>
                 <field name="occupation_id" optional="show"/>
                 <field name="nqf_min" optional="hide"/>
+                <field name="experience_years" optional="hide"/>
+                <field name="entry_level" optional="hide"/>
                 <field name="closing_on"/>
                 <field name="verification_state" widget="badge" decoration-success="verification_state == 'verified'"
                        decoration-danger="verification_state in ('invalid', 'cancelled')" decoration-warning="verification_state == 'unverified'"/>
@@ -65,6 +67,15 @@
                             <field name="occupation_source" invisible="not occupation_id"/>
                             <field name="nqf_min"/>
                             <field name="nqf_required" invisible="not nqf_min"/>
+                            <label for="experience_years"/>
+                            <div class="o_row">
+                                <field name="experience_years" class="oe_inline"/> <span>years</span>
+                                <button name="action_read_experience" type="object" string="Read from ad" icon="fa-refresh"
+                                        class="btn-link" invisible="not id or not experience_fixed"
+                                        help="Read the experience from the ad's text again, replacing what was set by hand"/>
+                            </div>
+                            <field name="entry_level"/>
+                            <field name="experience_fixed" invisible="1"/>
                             <field name="employment_type"/>
                             <field name="salary"/>
                         </group>
@@ -177,6 +188,8 @@
                 <filter name="cancelled" string="Cancelled" domain="[('verification_state', '=', 'cancelled')]"/>
                 <separator/>
                 <filter name="no_occupation" string="No occupation" domain="[('occupation_id', '=', False)]"/>
+                <filter name="entry_level" string="Entry-level" domain="[('entry_level', '=', True)]"/>
+                <filter name="needs_experience" string="Needs experience" domain="[('experience_years', '>', 0)]"/>
                 <filter name="to_review" string="Candidates to review" domain="[('match_ids.state', '=', 'suggested')]"/>
                 <separator/>
                 <filter name="group_work_state" string="Next step" context="{'group_by': 'work_state'}"/>
@@ -296,6 +309,10 @@
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
                 <separator/>
+                <filter name="other_work_unknown" string="Other: work they want not known"
+                        domain="[('field', '=', 'other'), ('wanted_work', '=', False), ('wanted_occupation_id', '=', False)]"/>
+                <filter name="no_work_experience" string="No work experience" domain="[('work_experience', '=', 'none')]"/>
+                <separator/>
                 <filter name="job_matches_to_review" string="Job matches to review"
                         domain="[('listing_match_ids', 'any', [('state', '=', 'suggested'), ('listing_id.state', '=', 'open')])]"/>
                 <filter name="job_matches_to_send" string="Jobs to send"
@@ -314,6 +331,10 @@
                 <field name="job_alerts_stopped"/>
                 <field name="nqf_level"/>
                 <field name="nqf_source" invisible="not nqf_level"/>
+                <field name="work_experience"/>
+                <field name="wanted_work" invisible="field != 'other' and not wanted_work"/>
+                <field name="wanted_occupation_id" options="{'no_create': True}"
+                       invisible="field != 'other' and not wanted_work and not wanted_occupation_id"/>
             </xpath>
         </field>
     </record>

@@ -51,12 +51,15 @@ FIELD_PROMPT = "What work do you want?"
 FIELD_OPTIONS = [('1', 'Call centre'), ('2', 'Retail'), ('3', 'Warehouse/Driver'),
                  ('4', 'Admin'), ('5', 'Other'), ('0', 'Skip')]
 FIELD_KEYS = {'1': 'call_centre', '2': 'retail', '3': 'warehouse', '4': 'admin', '5': 'other'}
+OTHER_WORK_PROMPT = "What work do you want? Type it, e.g. cleaner, cook, security guard"
+OTHER_WORK_OPTIONS = [('0', 'Skip')]
+OTHER_WORK_MAX = 60
 
 # Question names for the activity log, so "Yes" reads as "WhatsApp: Yes".
 SCREEN_TOPICS = {
     'S02': 'Terms', 'S03': 'WhatsApp', 'S05': 'Status', 'S08': 'Status',
     'S06': 'Looking for work', 'S09': 'Looking for work',
-    'S10': 'Province', 'S11': 'Type of work',
+    'S10': 'Province', 'S11': 'Type of work', 'S12': 'Work wanted',
 }
 # 13 digits, alone or grouped with spaces/dashes/dots ("930829 0197 084").
 ID_LIKE = re.compile(r'(?<!\d)\d(?:[\s.-]?\d){12}(?!\d)')
@@ -261,6 +264,8 @@ class Chat2workFlow(models.AbstractModel):
             return PROVINCE_PROMPT, PROVINCE_OPTIONS
         if screen == 'S11':
             return FIELD_PROMPT, FIELD_OPTIONS
+        if screen == 'S12':
+            return OTHER_WORK_PROMPT, OTHER_WORK_OPTIONS
         raise ValueError("Unknown Chat2Work screen %s" % screen)
 
     def _set(self, **vals):
@@ -402,6 +407,8 @@ class Chat2workFlow(models.AbstractModel):
             return self._goto('S10')
         if not self.candidate_id.field:
             return self._goto('S11')
+        if self.candidate_id.field == 'other' and not self.candidate_id.wanted_work:
+            return self._goto('S12')
         return self._end_preferences()
 
     def _on_S10(self, inp):
@@ -409,13 +416,29 @@ class Chat2workFlow(models.AbstractModel):
             self.candidate_id.province = PROVINCE_KEYS[inp]
         elif inp != '0':
             return None
-        return self._end_preferences() if self.candidate_id.field else self._goto('S11')
+        if not self.candidate_id.field:
+            return self._goto('S11')
+        if self.candidate_id.field == 'other' and not self.candidate_id.wanted_work:
+            return self._goto('S12')
+        return self._end_preferences()
 
     def _on_S11(self, inp):
         if inp in FIELD_KEYS:
             self.candidate_id.field = FIELD_KEYS[inp]
         elif inp != '0':
             return None
+        if self.candidate_id.field == 'other' and not self.candidate_id.wanted_work:
+            return self._goto('S12')
+        return self._end_preferences()
+
+    def _on_S12(self, inp):
+        """'Other' work, in their words. Never an ID number."""
+        if inp == '0':
+            return self._end_preferences()
+        work = re.sub(r'\s+', ' ', ID_LIKE.sub('', inp or '')).strip(' .,-')
+        if len(work) < 3 or not re.search(r'[A-Za-z]{3}', work):
+            return None
+        self.candidate_id.wanted_work = work[:OTHER_WORK_MAX]
         return self._end_preferences()
 
     def _end_preferences(self):
