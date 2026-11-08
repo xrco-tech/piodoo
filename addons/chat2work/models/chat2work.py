@@ -110,6 +110,8 @@ class Chat2workCandidate(models.Model):
         ('other', 'Other'),
     ], string='Field', tracking=True)
     registered_via = fields.Char('Registered Via', default='ussd')
+    wanted_work = fields.Char('Work They Want', tracking=True,
+                              help="In their own words, when they picked Other as the type of work.")
     active = fields.Boolean(default=True, tracking=True)
     whatsapp_opt_in = fields.Boolean(
         'Uses WhatsApp', tracking=True, help="Follow-up via WhatsApp and SMS when set, SMS only otherwise.")

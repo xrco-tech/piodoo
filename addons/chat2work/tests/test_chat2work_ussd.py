@@ -135,6 +135,20 @@ class TestChat2workUssd(TransactionCase):
         out = self.dial('+27820000024', '1', '1', '1')
         self.assertEqual(out[3], 'END Status updated. Thank you! We will be in touch soon.')
 
+    def test_other_work_asked_in_own_words(self):
+        self.Candidate.create({'name': 'Sipho', 'phone': '+27820000031', 'province': 'gauteng'})
+        out = self.dial('+27820000031', '1', '1', '1', '5', 'x', 'Security guard 9001015009087')
+        self.assertTrue(out[4].startswith('CON What work do you want? Type it'), out[4])
+        self.assertTrue(out[5].startswith('CON Invalid choice.'), 'too short')
+        self.assertEqual(out[6], 'END Status updated. Thank you! We will be in touch soon.')
+        cand = self.Candidate.search([('phone', '=', '+27820000031')])
+        self.assertEqual((cand.field, cand.wanted_work), ('other', 'Security guard'), 'never an ID number')
+        # Chose Other before this question existed: asked next time.
+        self.Candidate.create({'name': 'Lindi', 'phone': '+27820000032', 'province': 'gauteng', 'field': 'other'})
+        out = self.dial('+27820000032', '1', '1', '1', '0')
+        self.assertTrue(out[3].startswith('CON What work do you want? Type it'), out[3])
+        self.assertEqual(out[4], 'END Status updated. Thank you! We will be in touch soon.')
+
     def test_id_retyped_on_error_screen(self):
         id_no = make_id(years_ago(26))
         out = self.dial('+27820000014', '1', '1', '1', '1234567890123', id_no)
@@ -220,7 +234,7 @@ class TestChat2workUssd(TransactionCase):
     def test_screens_fit_160_with_invalid_prefix(self):
         cand = self.Candidate.create({'name': 'X' * 40, 'phone': '+27820000015'})
         screens = ['S01A', 'S01B', 'S03', 'S04', 'S04-ERR1', 'S04-ERR2',
-                   'S05', 'S06', 'S08', 'S09', 'S10', 'S11']
+                   'S05', 'S06', 'S08', 'S09', 'S10', 'S11', 'S12']
         session = self.Session.create({'session_id': 'len', 'msisdn': '+27820000015',
                                        'service_code': CODE, 'candidate_id': cand.id})
         for screen in screens:
