@@ -140,6 +140,18 @@
                 <field name="suggested_count"/>
                 <field name="approved_count"/>
                 <field name="closing_on"/>
+                <field name="state"/>
+                <field name="apply_url"/>
+                <field name="occupation_id"/>
+                <field name="occupation_name"/>
+                <field name="entry_level"/>
+                <field name="experience_years"/>
+                <field name="sent_count"/>
+                <field name="opened_count"/>
+                <field name="feedback_good_count"/>
+                <field name="feedback_bad_count"/>
+                <field name="closing_status"/>
+                <field name="closing_in_days"/>
                 <templates>
                     <t t-name="card">
                         <field name="title" class="fw-bold fs-5"/>
@@ -152,7 +164,24 @@
                             <span t-if="record.location.raw_value and record.field.raw_value"> · </span>
                             <field name="field"/>
                         </div>
+                        <div class="small" name="occupation">
+                            <span t-if="record.occupation_id.raw_value" class="text-muted" title="Occupation (ISCO / OFO)">
+                                <i class="fa fa-briefcase me-1"/><t t-out="record.occupation_name.value"/>
+                            </span>
+                            <span t-else="" class="text-warning" title="Matching is rougher without an occupation">
+                                <i class="fa fa-question-circle me-1"/>No occupation
+                            </span>
+                        </div>
                         <div class="d-flex flex-wrap gap-1 mt-1">
+                            <span t-if="record.state.raw_value == 'open' and !record.apply_url.raw_value" class="badge text-bg-danger"
+                                  title="Job alerts skip listings without an apply link">
+                                <i class="fa fa-chain-broken"/> No apply link
+                            </span>
+                            <span t-if="record.entry_level.raw_value" class="badge text-bg-info">Entry-level</span>
+                            <span t-elif="record.experience_years.raw_value" class="badge text-bg-light border"
+                                  title="Experience the ad asks for">
+                                Needs <t t-out="record.experience_years.raw_value"/> yr<t t-if="record.experience_years.raw_value != 1">s</t>
+                            </span>
                             <span t-if="record.suggested_count.raw_value" class="badge text-bg-warning">
                                 <t t-out="record.suggested_count.raw_value"/> to review
                             </span>
@@ -160,8 +189,29 @@
                                 <t t-out="record.approved_count.raw_value"/> good match
                             </span>
                         </div>
+                        <div class="d-flex flex-wrap gap-3 small text-muted mt-1" name="response"
+                             t-if="record.sent_count.raw_value">
+                            <span title="Sent to candidates"><i class="fa fa-paper-plane"/> <t t-out="record.sent_count.raw_value"/> sent</span>
+                            <span title="Candidates who opened the link" t-att-class="record.opened_count.raw_value ? 'text-primary fw-bold' : ''">
+                                <i class="fa fa-external-link"/> <t t-out="record.opened_count.raw_value"/> opened
+                            </span>
+                            <span t-if="record.feedback_good_count.raw_value" class="text-success" title="Candidates who said Good match">
+                                <i class="fa fa-thumbs-up"/> <t t-out="record.feedback_good_count.raw_value"/>
+                            </span>
+                            <span t-if="record.feedback_bad_count.raw_value" class="text-danger" title="Candidates who said Not for me">
+                                <i class="fa fa-thumbs-down"/> <t t-out="record.feedback_bad_count.raw_value"/>
+                            </span>
+                        </div>
                         <footer class="pt-1">
-                            <span t-if="record.closing_on.raw_value" class="ms-auto text-muted small">
+                            <span t-if="record.closing_status.raw_value == 'past'" class="ms-auto badge text-bg-danger">
+                                Past closing date
+                            </span>
+                            <span t-elif="record.closing_status.raw_value == 'soon'" class="ms-auto badge text-bg-warning">
+                                <t t-if="record.closing_in_days.raw_value == 0">Closes today</t>
+                                <t t-elif="record.closing_in_days.raw_value == 1">Closes tomorrow</t>
+                                <t t-else="">Closes in <t t-out="record.closing_in_days.raw_value"/> days</t>
+                            </span>
+                            <span t-elif="record.closing_on.raw_value" class="ms-auto text-muted small">
                                 Closes <field name="closing_on"/>
                             </span>
                         </footer>

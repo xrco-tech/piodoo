@@ -38,6 +38,22 @@ class TestChat2workJobSend(JobCommsCase):
         self.cand.invalidate_recordset()
         self.assertEqual(stats(), (0, 1, 1), 'closed listings no longer count as good matches')
 
+    def test_listing_card_stats_and_closing(self):
+        from datetime import timedelta
+        listing = self.match.listing_id
+        stats = lambda: (listing.sent_count, listing.opened_count, listing.feedback_good_count, listing.feedback_bad_count)
+        self.assertEqual(stats(), (0, 0, 0, 0))
+        self.match.write({'notify_state': 'sent', 'opened_at': fields.Datetime.now(), 'feedback': 'good'})
+        listing.invalidate_recordset()
+        self.assertEqual(stats(), (1, 1, 1, 0))
+        today = fields.Date.context_today(listing)
+        for days, status in ((-1, 'past'), (0, 'soon'), (3, 'soon'), (4, False)):
+            listing.closing_on = today + timedelta(days=days)
+            self.assertEqual((listing.closing_status, listing.closing_in_days), (status, days), days)
+        listing.closing_on = today - timedelta(days=1)
+        listing.state = 'closed'
+        self.assertFalse(listing.closing_status, 'closed listings are not flagged')
+
     def test_recommendation_follows_engagement(self):
         recommend = self.cand._c2w_recommended_channel
         self.cand.registered_via = 'ussd'
