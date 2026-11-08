@@ -145,3 +145,50 @@ class Chat2workCandidateJobStats(models.Model):
             rec.job_good_match_count = good.get(rec.id, 0)
             rec.job_sent_count = sent.get(rec.id, 0)
             rec.job_opened_count = opened.get(rec.id, 0)
+
+
+CLOSING_SOON_DAYS = 3
+
+
+class Chat2workListingCardStats(models.Model):
+    _inherit = 'chat2work.listing'
+
+    sent_count = fields.Integer('Sent', compute='_compute_card_stats', compute_sudo=True)
+    opened_count = fields.Integer('Links Opened', compute='_compute_card_stats', compute_sudo=True)
+    feedback_good_count = fields.Integer('Said Good Match', compute='_compute_card_stats', compute_sudo=True)
+    feedback_bad_count = fields.Integer('Said Not for Me', compute='_compute_card_stats', compute_sudo=True)
+    closing_status = fields.Selection([('past', 'Past closing date'), ('soon', 'Closing soon')],
+                                      compute='_compute_closing_status')
+    closing_in_days = fields.Integer(compute='_compute_closing_status')
+    occupation_name = fields.Char(related='occupation_id.name', string='Occupation Name')
+
+    def _compute_card_stats(self):
+        Match = self.env['chat2work.listing.match'].sudo()
+        base = [('listing_id', 'in', self.ids)]
+
+        def counts(domain):
+            return {l.id: n for l, n in Match._read_group(base + domain, ['listing_id'], ['__count'])}
+        sent = counts([('notify_state', '=', 'sent')])
+        opened = counts([('notify_state', '=', 'sent'), ('opened_at', '!=', False)])
+        good = counts([('feedback', '=', 'good')])
+        bad = counts([('feedback', '=', 'bad')])
+        for rec in self:
+            rec.sent_count = sent.get(rec.id, 0)
+            rec.opened_count = opened.get(rec.id, 0)
+            rec.feedback_good_count = good.get(rec.id, 0)
+            rec.feedback_bad_count = bad.get(rec.id, 0)
+
+    @api.depends('closing_on', 'state')
+    def _compute_closing_status(self):
+        today = fields.Date.context_today(self)
+        for rec in self:
+            days = (rec.closing_on - today).days if rec.closing_on else None
+            rec.closing_in_days = days or 0
+            if days is None or rec.state != 'open':
+                rec.closing_status = False
+            elif days < 0:
+                rec.closing_status = 'past'
+            elif days <= CLOSING_SOON_DAYS:
+                rec.closing_status = 'soon'
+            else:
+                rec.closing_status = False
