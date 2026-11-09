@@ -1,6 +1,6 @@
 {
     'name': 'Kiosk Receipt Dispatch',
-    'version': '1.0.0',
+    'version': '1.0.1',
     'summary': 'HTTP endpoint that sends POS kiosk receipts via WhatsApp, SMS or Email',
     'description': """
         A thin, token-guarded HTTP endpoint (/receipt/send) the kiosk payment
