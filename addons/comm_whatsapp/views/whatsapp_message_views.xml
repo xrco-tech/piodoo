@@ -442,7 +442,8 @@
         <!-- WhatsApp Root Menu -->
         <menuitem id="menu_whatsapp_root"
                   name="WhatsApp Light"
-                  sequence="100"/>
+                  sequence="100"
+                  web_icon="comm_whatsapp,static/description/icon.png"/>
         
         <!-- WhatsApp Messages Menu Item -->
         <menuitem id="menu_whatsapp_messages"

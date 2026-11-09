@@ -99,7 +99,8 @@
     </record>
 
     <!-- Menu -->
-    <menuitem id="menu_kiosk_root" name="Kiosk" sequence="90"/>
+    <menuitem id="menu_kiosk_root" name="Kiosk" sequence="90"
+              web_icon="kiosk_receipt,static/description/icon.png"/>
     <menuitem id="menu_kiosk_orders" name="Orders" parent="menu_kiosk_root"
               action="action_kiosk_order" sequence="10"/>
     <menuitem id="menu_kiosk_audit" name="Audit Log" parent="menu_kiosk_root"

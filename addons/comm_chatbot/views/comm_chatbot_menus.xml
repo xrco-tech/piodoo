@@ -3,7 +3,8 @@
 
     <menuitem id="menu_comm_chatbot_root"
               name="Comm Bots"
-              sequence="75"/>
+              sequence="75"
+              web_icon="comm_chatbot,static/description/icon.png"/>
 
     <menuitem id="menu_comm_bot"
               name="Bots"
