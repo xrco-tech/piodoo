@@ -7,3 +7,4 @@ from . import chat2work_retention
 from . import chat2work_pipeline
 from . import chat2work_cv_rebuild
 from . import chat2work_cv_followup
+from . import chat2work_menu
