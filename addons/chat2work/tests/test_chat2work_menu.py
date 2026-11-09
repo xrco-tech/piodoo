@@ -7,7 +7,7 @@ from odoo.tests import TransactionCase, tagged
 @tagged('post_install', '-at_install', 'chat2work')
 class TestChat2workAgentMenus(TransactionCase):
 
-    def test_agents_do_not_see_hidden_apps(self):
+    def test_agents_only_see_allowed_apps(self):
         Menu = self.env['ir.ui.menu']
         root = Menu.create({'name': 'Other App'})
         child = Menu.create({'name': 'Other Child', 'parent_id': root.id,
@@ -20,13 +20,20 @@ class TestChat2workAgentMenus(TransactionCase):
                                                     | self.env.ref('chat2work.group_agent')).ids)]})
         plain = users.create({'name': 'Plain', 'login': 'c2w_plain_menu',
                               'groups_id': [(6, 0, self.env.ref('base.group_user').ids)]})
-        with patch('odoo.addons.chat2work.models.chat2work_menu.HIDDEN_FOR_AGENTS',
-                   ('c2w_test.other_root', 'not_installed.menu')):
-            self.env.registry.clear_cache()
+        self.env.registry.clear_cache()
+        agent_sees = Menu.with_user(agent)._visible_menu_ids()
+        self.assertNotIn(root.id, agent_sees)
+        self.assertNotIn(child.id, agent_sees)
+        self.assertNotIn(self.env.ref('contacts.menu_contacts').id, agent_sees)
+        self.assertIn(self.env.ref('chat2work.menu_chat2work_root').id, agent_sees)
+        self.assertIn(self.env.ref('mail.menu_root_discuss').id, agent_sees)
+        with patch('odoo.addons.chat2work.models.chat2work_menu.AGENT_APPS',
+                   ('chat2work.menu_chat2work_root', 'c2w_test.other_root', 'not_installed.menu')):
             agent_sees = Menu.with_user(agent)._visible_menu_ids()
-            self.assertNotIn(root.id, agent_sees)
-            self.assertNotIn(child.id, agent_sees)
-            self.assertIn(self.env.ref('chat2work.menu_chat2work_root').id, agent_sees)
+            self.assertIn(root.id, agent_sees)
+            self.assertIn(child.id, agent_sees)
+            self.assertNotIn(self.env.ref('mail.menu_root_discuss').id, agent_sees)
+        with patch('odoo.addons.chat2work.models.chat2work_menu.AGENT_APPS', ()):
             plain_sees = Menu.with_user(plain)._visible_menu_ids()
             self.assertIn(root.id, plain_sees)
             self.assertIn(root.id, Menu.with_user(self.env.ref('base.user_admin'))._visible_menu_ids())
