@@ -209,9 +209,21 @@
                         <div t-if="!timeline.length" class="o_c2w_evt">Nothing on this candidate's timeline yet.</div>
                     </div>
                     <div class="o_c2w_comp">
+                        <div t-if="c.phone" class="o_c2w_via">
+                            <t t-if="c.whatsapp">
+                                <span>Send by</span>
+                                <button type="button" t-att-class="channel === 'whatsapp' ? 'on' : ''" t-on-click="() => this.setChannel('whatsapp')"><i class="fa fa-whatsapp"/> WhatsApp</button>
+                                <button type="button" t-att-class="channel === 'sms' ? 'on' : ''" t-on-click="() => this.setChannel('sms')"><i class="fa fa-commenting-o"/> SMS</button>
+                            </t>
+                            <span t-else="">Sends by SMS</span>
+                            <button t-if="!composerLock" class="o_c2w_tpl" type="button" t-on-click="openTemplates">
+                                <i class="fa fa-file-text-o"/> <t t-esc="channel === 'sms' ? 'SMS templates' : 'Templates'"/>
+                            </button>
+                        </div>
+                        <div class="o_c2w_line">
                         <t t-if="composerLock">
                             <div class="o_c2w_box lock"><i class="fa fa-lock"/><span t-esc="composerLock"/></div>
-                            <button t-if="c.phone" class="o_c2w_new" type="button" t-on-click="() => this.candidateAction('action_c2w_open_message')">Send a template</button>
+                            <button t-if="c.phone" class="o_c2w_new" type="button" t-on-click="openTemplates">Send a template</button>
                         </t>
                         <t t-else="">
                             <div class="o_c2w_box">
@@ -221,8 +233,8 @@
                                     <i t-attf-class="fa {{ state.sending ? 'fa-circle-o-notch fa-spin' : 'fa-paper-plane' }}"/>
                                 </button>
                             </div>
-                            <button class="o_c2w_tpl" type="button" t-on-click="() => this.candidateAction('action_c2w_open_message')">Send a template</button>
                         </t>
+                        </div>
                     </div>
                 </t>
 

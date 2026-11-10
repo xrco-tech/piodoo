@@ -78,13 +78,16 @@ class Chat2workCandidateContact(models.Model):
     def action_c2w_open_message(self):
         self._c2w_require_phone()
         self._c2w_ensure_token()  # SMS templates can include the CV link
+        context = {'default_candidate_id': self.id}
+        if self.env.context.get('default_channel') in ('whatsapp', 'sms'):
+            context['default_channel'] = self.env.context['default_channel']  # the workspace's choice
         return {
             'type': 'ir.actions.act_window',
             'name': _("Message %s", self.name or self.phone),
             'res_model': 'chat2work.message',
             'view_mode': 'form',
             'target': 'new',
-            'context': {'default_candidate_id': self.id},
+            'context': context,
         }
 
 

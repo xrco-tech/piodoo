@@ -230,15 +230,16 @@ class Chat2workWorkspace(models.AbstractModel):
         return row
 
     @api.model
-    def ws_send(self, candidate_id, text):
-        """Send a typed message: WhatsApp if they use it, otherwise SMS."""
+    def ws_send(self, candidate_id, text, channel=None):
+        """Send a typed message: WhatsApp if they use it, otherwise SMS. An agent
+        can pick SMS for someone who uses WhatsApp (it has no 24-hour rule)."""
         self._check_agent()
         candidate = self.env['chat2work.candidate'].browse(candidate_id).exists()
         candidate._c2w_require_phone()
-        self.env['chat2work.message'].with_context(default_candidate_id=candidate.id).create({
-            'candidate_id': candidate.id,
-            'body': text,
-        }).action_send()
+        vals = {'candidate_id': candidate.id, 'body': text}
+        if channel in ('whatsapp', 'sms'):
+            vals['channel'] = channel
+        self.env['chat2work.message'].with_context(default_candidate_id=candidate.id).create(vals).action_send()
         return self.ws_candidate(candidate.id)
 
     @api.model

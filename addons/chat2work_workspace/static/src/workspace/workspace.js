@@ -115,6 +115,7 @@ export class Chat2workWorkspace extends Component {
             show: "all", // follow-up filter on the Candidates screen
             pinnedId: false,
             cvHelp: false, // { url, name } while the candidate's CV page is open
+            smsFor: false, // the candidate an agent chose to SMS although they use WhatsApp
             more: false, // the list has rows beyond the ones loaded
             loadingMore: false,
         });
@@ -210,16 +211,34 @@ export class Chat2workWorkspace extends Component {
         if (!c.phone) {
             return _t("This candidate has no phone number.");
         }
-        if (c.whatsapp && !c.window_open) {
+        if (this.channel === "whatsapp" && !c.window_open) {
             return _t("WhatsApp only allows a template now: their last message was more than 24 hours ago.");
         }
         return false;
     }
 
+    /** How the next message goes: WhatsApp if they use it, unless the agent picked SMS. */
+    get channel() {
+        const c = this.state.detail;
+        return c.whatsapp && this.state.smsFor !== c.id ? "whatsapp" : "sms";
+    }
+
+    setChannel(channel) {
+        this.state.smsFor = channel === "sms" ? this.state.detail.id : false;
+    }
+
+    openTemplates() {
+        return this.candidateAction("action_c2w_open_message", this.state.detail.id, false,
+                                    { default_channel: this.channel });
+    }
+
     get composerPlaceholder() {
         const c = this.state.detail;
         const first = (c.name || "").split(" ")[0];
-        return c.whatsapp ? _t("Message %s on WhatsApp…", first) : _t("Message %s by SMS (no WhatsApp)…", first);
+        if (this.channel === "whatsapp") {
+            return _t("Message %s on WhatsApp…", first);
+        }
+        return c.whatsapp ? _t("Message %s by SMS…", first) : _t("Message %s by SMS (no WhatsApp)…", first);
     }
 
     // ── Formatting ──────────────────────────────────────────────────────
@@ -440,9 +459,13 @@ export class Chat2workWorkspace extends Component {
     // ── Candidate actions ───────────────────────────────────────────────
 
     /** Run one of the candidate form's buttons and show whatever it opens. */
-    async candidateAction(method, candidateId = this.state.detail.id, done = false) {
-        const result = await this.orm.call("chat2work.candidate", method, [[candidateId]]);
+    async candidateAction(method, candidateId = this.state.detail.id, done = false, context = {}) {
+        const result = await this.orm.call("chat2work.candidate", method, [[candidateId]], { context });
         if (result && typeof result === "object" && result.type) {
+            if (result.type === "ir.actions.act_window" && !result.views) {
+                // A form button gets this filled in by the server; a direct call doesn't.
+                result.views = (result.view_mode || "form").split(",").map((mode) => [false, mode]);
+            }
             if (result.params && result.params.next) {
                 delete result.params.next; // the form reloads itself; here we reload below
             }
@@ -506,7 +529,7 @@ export class Chat2workWorkspace extends Component {
         }
         this.state.sending = true;
         try {
-            this.state.detail = await this.orm.call(WS, "ws_send", [this.state.detail.id, text]);
+            this.state.detail = await this.orm.call(WS, "ws_send", [this.state.detail.id, text, this.channel]);
             this.state.composer = "";
         } finally {
             this.state.sending = false;

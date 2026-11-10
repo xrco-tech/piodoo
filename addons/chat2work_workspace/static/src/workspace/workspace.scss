@@ -551,9 +551,30 @@
     }
     .o_c2w_comp {
         display: flex;
-        align-items: center;
-        gap: 9px;
+        flex-direction: column;
+        gap: 6px;
         padding: 0 14px 4px;
+    }
+    .o_c2w_line { display: flex; align-items: center; gap: 9px; }
+    // Which way the next message goes, and the templates for that way.
+    .o_c2w_via {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--c2w-muted);
+        font-size: 12px;
+
+        button {
+            padding: 3px 10px;
+            border: 1px solid var(--c2w-line);
+            border-radius: 999px;
+            background: var(--c2w-card);
+            color: var(--c2w-fg);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        button.on { border-color: var(--c2w-hiline); background: var(--c2w-accent-soft); color: var(--c2w-accent); font-weight: 600; }
+        .o_c2w_tpl { margin-left: auto; }
     }
     .o_c2w_box {
         flex: 1;
@@ -769,8 +790,8 @@ html .o_web_client > .o_action_manager > .o_action.o_c2w_ws { flex-direction: ro
         .o_c2w_bub { max-width: 100%; }
         .o_c2w_intro b { font-size: 20px; }
         .o_c2w_match { flex-wrap: wrap; .o_c2w_rt { flex: 1 1 60%; } }
-        .o_c2w_comp { flex-wrap: wrap; padding: 0 8px 8px; }
-        .o_c2w_comp .o_c2w_tpl { display: none; }
+        .o_c2w_comp { padding: 0 8px 8px; }
+        .o_c2w_line { flex-wrap: wrap; }
         .o_c2w_bar { flex-wrap: wrap; padding: 0 8px 8px; }
     }
 }
