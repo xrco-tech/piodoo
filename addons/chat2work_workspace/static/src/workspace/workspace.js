@@ -202,7 +202,20 @@ export class Chat2workWorkspace extends Component {
             turns: turns.map((turn, index) => ({ ...turn, key: index, end: finished && index === turns.length - 1 })),
             finished,
             tag: finished ? last.prompt.split(/[.!]/)[0] : _t("Not finished"),
+            length: this.sessionLength(turns),
         };
+    }
+
+    /** How long a USSD session took, first screen to last, or "" when the times weren't kept. */
+    sessionLength(turns) {
+        const first = turns[0]?.at;
+        const last = turns[turns.length - 1]?.at;
+        if (!first || !last) {
+            return "";
+        }
+        const seconds = Math.max(0, Math.round(deserializeDateTime(last).diff(deserializeDateTime(first), "seconds").seconds));
+        const minutes = Math.floor(seconds / 60);
+        return minutes ? _t("%(minutes)s min %(seconds)s s", { minutes, seconds: seconds % 60 }) : _t("%s s", seconds);
     }
 
     /** Why the reply box is locked, or false when a typed message can go. */
