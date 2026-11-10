@@ -9,6 +9,8 @@ import { useDebounced } from "@web/core/utils/timing";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 const WS = "chat2work.workspace";
+const LIVE_CHANNEL = "chat2work_workspace";
+const LIVE_TYPE = "chat2work_workspace/changed";
 const AVATAR_COLOURS = ["#b5651d", "#2f6f8f", "#a3466b", "#7a4fa3", "#2e7d5b", "#8a5a44", "#5a6fb0", "#3f7f6a", "#8f2d3a", "#6b6f7a"];
 const COUNTS_EVERY_MS = 60000;
 // Channels an agent types on; everything else shows as an event on the thread.
@@ -95,6 +97,7 @@ export class Chat2workWorkspace extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
+        this.bus = useService("bus_service");
         this.views = VIEWS;
         this.followUps = FOLLOW_UPS;
 
@@ -141,6 +144,20 @@ export class Chat2workWorkspace extends Component {
 
         const timer = setInterval(() => this.loadCounts(), COUNTS_EVERY_MS);
         onWillDestroy(() => clearInterval(timer));
+
+        // Live updates: the server sends a notice (no details) whenever a
+        // candidate's timeline, a callback or the candidate list changes.
+        this.liveRefresh = useDebounced(() => this.onLiveChange(), 800);
+        const onNotice = () => this.liveRefresh();
+        const onVisible = () => document.visibilityState === "visible" && this.liveRefresh();
+        this.bus.addChannel(LIVE_CHANNEL);
+        this.bus.subscribe(LIVE_TYPE, onNotice);
+        document.addEventListener("visibilitychange", onVisible); // catch up after being in the background
+        onWillDestroy(() => {
+            this.bus.unsubscribe(LIVE_TYPE, onNotice);
+            this.bus.deleteChannel(LIVE_CHANNEL);
+            document.removeEventListener("visibilitychange", onVisible);
+        });
     }
 
     // ── Derived ─────────────────────────────────────────────────────────
@@ -327,12 +344,12 @@ export class Chat2workWorkspace extends Component {
 
     /** Load the list. `keep` reloads as many rows as are already showing, so a
      *  refresh after an action doesn't drop the pages the agent loaded. */
-    async loadList({ keep = false } = {}) {
+    async loadList({ keep = false, quiet = false } = {}) {
         const view = this.state.view;
         const page = this.state.boot.page_size;
         const limit = keep ? Math.max(page, this.state.rows.length) : page;
         const [method, args] = this.view.list(this.pill, this.state.search, 0, limit);
-        this.state.loadingList = true;
+        this.state.loadingList = !quiet;
         try {
             const rows = await this.orm.call(WS, method, args);
             if (view !== this.state.view) {
@@ -350,16 +367,16 @@ export class Chat2workWorkspace extends Component {
         if (!ids.includes(this.state.selId) && !pinned) {
             this.state.selId = ids.length ? ids[0] : false;
         }
-        await this.loadDetail();
+        await this.loadDetail({ quiet });
     }
 
-    async loadDetail() {
+    async loadDetail({ quiet = false } = {}) {
         const id = this.state.selId;
         if (!id) {
             this.state.detail = false;
             return;
         }
-        this.state.loadingDetail = true;
+        this.state.loadingDetail = !quiet;
         try {
             let detail;
             if (this.state.view === "cand") {
@@ -402,6 +419,21 @@ export class Chat2workWorkspace extends Component {
 
     async refresh() {
         await Promise.all([this.loadList({ keep: true }), this.loadCounts()]);
+    }
+
+    /**
+     * Something changed on the server. Reload quietly (no loading state), but
+     * leave the open record alone while the agent is typing in its details or
+     * has a dialog or the CV page open, so nothing they typed is lost.
+     */
+    async onLiveChange() {
+        const busy = this.state.sending || this.state.cvHelp || this.state.loadingMore ||
+            document.querySelector(".o_dialog") || document.activeElement?.closest(".o_c2w_info");
+        if (busy) {
+            await this.loadCounts();
+            return;
+        }
+        await Promise.all([this.loadList({ keep: true, quiet: true }), this.loadCounts()]);
     }
 
     // ── Navigation ──────────────────────────────────────────────────────
