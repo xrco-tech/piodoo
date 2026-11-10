@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Comm Chatbot — SMS Adapter',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Communications',
     'summary': 'SMS channel adapter for comm_chatbot',
     'author': 'XR Co.',
