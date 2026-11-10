@@ -403,6 +403,7 @@
                             <dt>Jobs to send</dt><dd t-esc="c.jobs_to_send"/>
                         </dl>
                     </div>
+                    <button class="o_c2w_wide" type="button" t-on-click="helpBuildCv"><i class="fa fa-pencil-square-o"/> Help build CV</button>
                     <button class="o_c2w_wide" type="button" t-on-click="() => this.candidateAction('action_resend_cv_link', c.id, 'CV link queued')"><i class="fa fa-file-text-o"/> Send CV link again</button>
                     <button class="o_c2w_wide" type="button" t-on-click="() => this.candidateAction('action_c2w_send_jobs')"><i class="fa fa-briefcase"/> Send jobs</button>
                 </t>
@@ -518,6 +519,17 @@
                     <button t-if="k.account" class="o_c2w_wide" type="button" t-on-click="refreshBalance"><i class="fa fa-refresh"/> Refresh balance</button>
                 </t>
             </aside>
+
+            <section class="o_c2w_cv" t-if="state.cvHelp">
+                <div class="o_c2w_cvhead">
+                    <div>
+                        <b>CV page for <t t-esc="state.cvHelp.name"/></b>
+                        <span>You are filling this in for the candidate. Ask them for each answer; it is saved as theirs.</span>
+                    </div>
+                    <button class="o_c2w_new" type="button" t-on-click="closeCvHelp">Done</button>
+                </div>
+                <iframe t-att-src="state.cvHelp.url" title="The candidate's CV page"/>
+            </section>
         </div>
     </t>
 </templates>

@@ -66,6 +66,18 @@ class TestChat2workWorkspace(TransactionCase):
         self._log(self.thandi, 'whatsapp', 'outbound', 'Calling you now')
         self.assertFalse(self.Ws.ws_inbox('reply'))
 
+    def test_cv_help_opens_the_candidates_own_page(self):
+        with self.assertRaises(AccessError):
+            self.env['chat2work.workspace'].with_user(self.outsider).ws_cv_help(self.lerato.id)
+        self.assertFalse(self.lerato.sudo().cv_token)
+        result = self.Ws.ws_cv_help(self.lerato.id)
+        token = self.lerato.sudo().cv_token
+        self.assertEqual(result['url'], '/cv/%s' % token)
+        self.assertEqual(self.env['chat2work.candidate']._c2w_find_by_token(token), self.lerato)
+        self.assertIn('opened the CV page', self.lerato.message_ids[0].body)
+        # A link that is still valid is reused, so the one the candidate was sent keeps working.
+        self.assertEqual(self.Ws.ws_cv_help(self.lerato.id)['url'], result['url'])
+
     def test_callbacks(self):
         self.env['chat2work.callback.request'].create(
             {'candidate_id': self.thandi.id, 'phone': self.thandi.phone, 'channel': 'whatsapp'})

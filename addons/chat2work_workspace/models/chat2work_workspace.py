@@ -239,6 +239,20 @@ class Chat2workWorkspace(models.AbstractModel):
         }).action_send()
         return self.ws_candidate(candidate.id)
 
+    @api.model
+    def ws_cv_help(self, candidate_id):
+        """The candidate's own CV page, for an agent to fill in with them (for
+        example on a call, when they have no smartphone). Noted on the candidate,
+        because what's entered there is saved as coming from them."""
+        self._check_agent()
+        candidate = self.env['chat2work.candidate'].browse(candidate_id).exists()
+        if not candidate:
+            return False
+        token = candidate._c2w_ensure_token()
+        candidate.message_post(body=_("%s opened the CV page to help with the CV.", self.env.user.name))
+        # A path, not the public link: the page must load from the agent's own address to be embedded.
+        return {'url': '/cv/%s' % token, 'name': candidate.display_name}
+
     # ── Candidates ───────────────────────────────────────────────────────────
 
     @api.model
