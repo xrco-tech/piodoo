@@ -169,6 +169,26 @@
                             <div t-elif="m.kind === 'event'" class="o_c2w_evt">
                                 <t t-esc="m.channel_name"/> · <t t-esc="time(m.at)"/> · <t t-esc="m.body"/>
                             </div>
+                            <details t-elif="m.kind === 'session'" class="o_c2w_sess" t-att-open="m.open">
+                                <summary>
+                                    <span>USSD session · <t t-esc="time(m.at)"/></span>
+                                    <span t-attf-class="o_c2w_tag {{ m.finished ? 'ok' : '' }}" t-esc="m.tag"/>
+                                </summary>
+                                <div class="o_c2w_turns">
+                                    <t t-foreach="m.turns" t-as="turn" t-key="turn.key">
+                                        <div t-if="turn.dir === 'in'" class="o_c2w_pick" t-esc="turn.text"/>
+                                        <div t-else="" t-attf-class="o_c2w_screen {{ turn.end ? 'end' : '' }}">
+                                            <t t-esc="turn.prompt"/>
+                                            <ol t-if="turn.options.length">
+                                                <li t-foreach="turn.options" t-as="option" t-key="option[0]"
+                                                    t-att-class="option[0] === turn.picked ? 'on' : ''">
+                                                    <t t-esc="option[0]"/>. <t t-esc="option[1]"/>
+                                                </li>
+                                            </ol>
+                                        </div>
+                                    </t>
+                                </div>
+                            </details>
                             <div t-else="" t-attf-class="o_c2w_msg {{ m.kind }} {{ m.failed ? 'fail' : '' }}">
                                 <t t-call="chat2work_workspace.Avatar">
                                     <t t-set="colour" t-value="m.kind === 'out' ? 'var(--c2w-navy)' : colour(c.name)"/>

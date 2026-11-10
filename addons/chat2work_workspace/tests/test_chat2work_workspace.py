@@ -66,6 +66,19 @@ class TestChat2workWorkspace(TransactionCase):
         self._log(self.thandi, 'whatsapp', 'outbound', 'Calling you now')
         self.assertFalse(self.Ws.ws_inbox('reply'))
 
+    def test_ussd_session_comes_with_its_screens(self):
+        self._log(self.lerato, 'ussd', 'inbound', 'USSD session: an older one\nResult: done', minutes_ago=5)
+        self.lerato._c2w_log_session('ussd', [
+            {'at': fields.Datetime.now(), 'dir': 'outbound', 'text': 'Hi Lerato. What would you like to do?\n1. Update Status\n0. Exit'},
+            {'at': fields.Datetime.now(), 'dir': 'inbound', 'text': 'Exit', 'key': '0'},
+            {'at': fields.Datetime.now(), 'dir': 'outbound', 'text': 'Session ended. Dial *134# to start again.'},
+        ])
+        old, new = self.Ws.ws_candidate(self.lerato.id)['timeline']
+        self.assertFalse(old['session'])
+        self.assertEqual(new['body'], 'USSD session: Exit\nResult: Session ended. Dial *134# to start again.')
+        self.assertEqual(new['session'][0]['picked'], '0')
+        self.assertEqual([t['dir'] for t in new['session']], ['out', 'in', 'out'])
+
     def test_cv_help_opens_the_candidates_own_page(self):
         with self.assertRaises(AccessError):
             self.env['chat2work.workspace'].with_user(self.outsider).ws_cv_help(self.lerato.id)

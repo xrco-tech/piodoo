@@ -273,24 +273,31 @@ class Chat2workFlow(models.AbstractModel):
 
     # ── Activity log ─────────────────────────────────────────────────────────
 
-    def _note(self, direction, text, wa_message_id=None):
+    def _note(self, direction, text, wa_message_id=None, key=None):
         entry = {'at': fields.Datetime.to_string(fields.Datetime.now()), 'dir': direction,
                  'text': ID_LIKE.sub(ID_REDACTED, text or '')}
         if wa_message_id:
             entry['wa'] = wa_message_id
+        if key:
+            entry['key'] = key
         self.transcript = list(self.transcript or []) + [entry]
 
     def _note_input(self, inp):
-        """Record a reply as what it means ("WhatsApp: Yes"), never an ID number."""
+        """Record a reply as what it means ("WhatsApp: Yes"), never an ID number.
+        A reply that picked a menu option also keeps the option's key, so the
+        log can show which line of the screen was chosen."""
+        key = None
         if (self.screen == 'S04' and inp != '0') or ID_LIKE.fullmatch(inp or ''):
             text = ID_REDACTED
         else:
             _prompt, options = self._screen(self.screen)
             text = dict(options).get(inp, inp)
+            if inp in dict(options):
+                key = inp
             topic = SCREEN_TOPICS.get(self.screen)
-            if topic and inp in dict(options) and inp != '0':
+            if topic and key and inp != '0':
                 text = '%s: %s' % (topic, text)
-        self._note('inbound', text)
+        self._note('inbound', text, key=key)
 
     def _log_transcript(self):
         """Hand the session to the candidate's activity log. Only sessions tied
