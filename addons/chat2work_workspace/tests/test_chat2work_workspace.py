@@ -114,6 +114,11 @@ class TestChat2workWorkspace(TransactionCase):
         with patch(WA, autospec=True) as send, self.assertRaises(UserError):
             self.Ws.ws_send(self.thandi.id, 'Hello Thandiwe')
         send.assert_not_called()
+        # SMS has no such rule, so the agent can pick it instead.
+        detail = self.Ws.ws_send(self.thandi.id, 'Hello Thandiwe', 'sms')
+        self.assertEqual((detail['timeline'][-1]['body'], detail['timeline'][-1]['channel']), ('Hello Thandiwe', 'sms'))
+        action = self.thandi.with_user(self.agent).with_context(default_channel='sms').action_c2w_open_message()
+        self.assertEqual(action['context'], {'default_candidate_id': self.thandi.id, 'default_channel': 'sms'})
 
     def test_listings_and_slots(self):
         source = self.env['chat2work.listing.source'].create({'name': 'Test source'})
