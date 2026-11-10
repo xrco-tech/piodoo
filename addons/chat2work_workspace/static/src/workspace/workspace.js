@@ -114,6 +114,7 @@ export class Chat2workWorkspace extends Component {
             sending: false,
             show: "all", // follow-up filter on the Candidates screen
             pinnedId: false,
+            cvHelp: false, // { url, name } while the candidate's CV page is open
             more: false, // the list has rows beyond the ones loaded
             loadingMore: false,
         });
@@ -454,6 +455,15 @@ export class Chat2workWorkspace extends Component {
             await this.orm.write("chat2work.callback.request", [callback.id], { notes });
             callback.notes = notes;
         }
+    }
+
+    async helpBuildCv() {
+        this.state.cvHelp = await this.orm.call(WS, "ws_cv_help", [this.state.detail.id]);
+    }
+
+    async closeCvHelp() {
+        this.state.cvHelp = false;
+        await this.refresh(); // the CV state and stage may have changed
     }
 
     onComposerInput(ev) {
