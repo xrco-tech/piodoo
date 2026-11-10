@@ -83,6 +83,7 @@ class TestChat2workUcx(TransactionCase):
         self.dial('+27820100011', '1', '1', '7', '1', id_no, '1', '2')
         _cand, items = self.logged('+27820100011')
         turns = items.c2w_session
+        self.assertTrue(all(t.pop('at') for t in turns), 'every turn is timed')
         self.assertEqual(turns[0], {
             'dir': 'out', 'prompt': 'Welcome to Chat2Work. What would you like to do?',
             'options': [['1', 'Create Profile'], ['2', 'Request Callback'], ['0', 'Exit']], 'picked': '1'})

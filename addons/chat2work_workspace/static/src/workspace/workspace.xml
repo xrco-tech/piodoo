@@ -171,7 +171,7 @@
                             </div>
                             <details t-elif="m.kind === 'session'" class="o_c2w_sess" t-att-open="m.open">
                                 <summary>
-                                    <span>USSD session · <t t-esc="time(m.at)"/></span>
+                                    <span>USSD session · <t t-esc="time(m.at)"/><t t-if="m.length"> · <t t-esc="m.length"/></t></span>
                                     <span t-attf-class="o_c2w_tag {{ m.finished ? 'ok' : '' }}" t-esc="m.tag"/>
                                 </summary>
                                 <div class="o_c2w_turns">

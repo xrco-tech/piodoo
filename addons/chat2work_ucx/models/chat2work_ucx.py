@@ -27,8 +27,11 @@ def ussd_turns(transcript):
     """A USSD transcript as the turns of a conversation: each screen with its
     prompt, its numbered options and the one that was picked, then the reply.
 
-    [{'dir': 'out', 'prompt', 'options': [[key, label], ...], 'picked': key or False},
-     {'dir': 'in', 'text'}, ...]
+    [{'dir': 'out', 'at', 'prompt', 'options': [[key, label], ...], 'picked': key or False},
+     {'dir': 'in', 'at', 'text'}, ...]
+
+    'at' is when the screen was shown or the reply came in, so the workspace
+    can say how long the session took.
     """
     turns = []
     for entry in transcript:
@@ -40,7 +43,8 @@ def ussd_turns(transcript):
                     options.append([option.group(1), option.group(2)])
                 else:
                     prompt.append(line)
-            turns.append({'dir': 'out', 'prompt': '\n'.join(prompt), 'options': options, 'picked': False})
+            turns.append({'dir': 'out', 'at': entry.get('at') or False, 'prompt': '\n'.join(prompt),
+                          'options': options, 'picked': False})
             continue
         text = entry['text']
         screen = turns[-1] if turns and turns[-1]['dir'] == 'out' else None
@@ -48,7 +52,7 @@ def ussd_turns(transcript):
         if screen and key and key in dict(screen['options']):
             screen['picked'] = key
             text = dict(screen['options'])[key]      # the screen above already says what was asked
-        turns.append({'dir': 'in', 'text': text})
+        turns.append({'dir': 'in', 'at': entry.get('at') or False, 'text': text})
     return turns
 
 

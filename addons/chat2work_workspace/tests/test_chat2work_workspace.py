@@ -69,15 +69,17 @@ class TestChat2workWorkspace(TransactionCase):
     def test_ussd_session_comes_with_its_screens(self):
         self._log(self.lerato, 'ussd', 'inbound', 'USSD session: an older one\nResult: done', minutes_ago=5)
         self.lerato._c2w_log_session('ussd', [
-            {'at': fields.Datetime.now(), 'dir': 'outbound', 'text': 'Hi Lerato. What would you like to do?\n1. Update Status\n0. Exit'},
-            {'at': fields.Datetime.now(), 'dir': 'inbound', 'text': 'Exit', 'key': '0'},
-            {'at': fields.Datetime.now(), 'dir': 'outbound', 'text': 'Session ended. Dial *134# to start again.'},
+            {'at': '2026-11-10 10:00:00', 'dir': 'outbound', 'text': 'Hi Lerato. What would you like to do?\n1. Update Status\n0. Exit'},
+            {'at': '2026-11-10 10:00:20', 'dir': 'inbound', 'text': 'Exit', 'key': '0'},
+            {'at': '2026-11-10 10:00:21', 'dir': 'outbound', 'text': 'Session ended. Dial *134# to start again.'},
         ])
-        old, new = self.Ws.ws_candidate(self.lerato.id)['timeline']
+        new, old = self.Ws.ws_candidate(self.lerato.id)['timeline']    # by time: the session is dated earlier
         self.assertFalse(old['session'])
         self.assertEqual(new['body'], 'USSD session: Exit\nResult: Session ended. Dial *134# to start again.')
         self.assertEqual(new['session'][0]['picked'], '0')
         self.assertEqual([t['dir'] for t in new['session']], ['out', 'in', 'out'])
+        # First and last times are what the screen works the session's length out from.
+        self.assertEqual((new['session'][0]['at'], new['session'][-1]['at']), ('2026-11-10 10:00:00', '2026-11-10 10:00:21'))
 
     def test_cv_help_opens_the_candidates_own_page(self):
         with self.assertRaises(AccessError):
