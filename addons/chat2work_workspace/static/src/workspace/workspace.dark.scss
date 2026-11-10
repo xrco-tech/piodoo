@@ -1,0 +1,26 @@
+// Dark mode: same layout, the colours redefined. Primary buttons turn hi-vis yellow.
+.o_c2w_ws {
+    --c2w-bg: #1b1d21;
+    --c2w-card: #262a31;
+    --c2w-line: #3c404a;
+    --c2w-fg: #e4e6ea;
+    --c2w-muted: #9aa0aa;
+    --c2w-sel: #343841;
+    --c2w-brand: #ffc414;
+    --c2w-on-brand: #16202e;
+    --c2w-accent: #ffc414;
+    --c2w-accent-soft: rgba(255, 196, 20, .16);
+    --c2w-hiline: #ffc414;
+    --c2w-bub-in: #30343c;
+    --c2w-bub-in-line: #454a55;
+    --c2w-bub-out: #4a3f17;
+    --c2w-bub-out-line: #6b5a1e;
+    --c2w-red: #e0586a;
+    --c2w-green: #2aa860;
+    --c2w-warn-bg: #3d3320;
+    --c2w-warn-line: #5c4c2a;
+    --c2w-warn-fg: #f1d9a0;
+    --c2w-ok-bg: #1d3529;
+    --c2w-ok-line: #2f5240;
+    --c2w-ok-fg: #a5dcbd;
+}

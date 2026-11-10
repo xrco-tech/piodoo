@@ -1,0 +1,519 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chat2work_workspace.Avatar">
+        <span class="o_c2w_av" t-att-style="'background:' + colour">
+            <t t-esc="initials"/>
+            <small t-if="badge" t-esc="badge"/>
+        </span>
+    </t>
+
+    <t t-name="chat2work_workspace.Radio">
+        <div class="o_c2w_radio">
+            <button t-foreach="options" t-as="opt" t-key="opt[0]" type="button"
+                    t-att-class="{ on: opt[0] === value }" t-on-click="() => pick(opt[0])">
+                <i/><t t-esc="opt[1]"/>
+            </button>
+        </div>
+    </t>
+
+    <t t-name="chat2work_workspace.Workspace">
+        <div class="o_action o_c2w_ws" t-att-data-pane="state.detail ? state.pane : 'list'">
+
+            <!-- Rail -->
+            <nav class="o_c2w_rail" aria-label="Workspace sections">
+                <button t-foreach="rail" t-as="item" t-key="item.id" type="button"
+                        t-att-class="{ on: item.id === activeRail }" t-on-click="() => this.onRail(item)">
+                    <span class="o_c2w_pill"><i t-attf-class="fa {{ item.icon }}"/></span>
+                    <t t-esc="item.label"/>
+                    <span t-if="item.count and state.counts[item.count]" class="o_c2w_cnt" t-esc="state.counts[item.count]"/>
+                </button>
+            </nav>
+
+            <!-- List -->
+            <section class="o_c2w_card o_c2w_list">
+                <div class="o_c2w_lhead">
+                    <label class="o_c2w_search" t-if="view.search">
+                        <i class="fa fa-search"/>
+                        <input type="text" t-att-placeholder="'Search ' + view.what" t-att-value="state.search"
+                               t-on-input="onSearch"/>
+                    </label>
+                    <button class="o_c2w_ib" type="button" title="Refresh" t-on-click="() => this.refresh()">
+                        <i class="fa fa-refresh" t-att-class="{ 'fa-spin': state.loadingList }"/>
+                    </button>
+                </div>
+                <div class="o_c2w_pills" t-if="view.pills.length">
+                    <button t-foreach="view.pills" t-as="p" t-key="p[0]" type="button"
+                            t-att-class="{ on: p[0] === pill }" t-on-click="() => this.setPill(p[0])" t-esc="p[1]"/>
+                </div>
+                <div class="o_c2w_rows">
+                    <t t-foreach="state.rows" t-as="row" t-key="row.id">
+                        <button type="button" class="o_c2w_row"
+                                t-att-class="{ on: row.id === state.selId, unread: row.needs_reply }"
+                                t-on-click="() => this.select(row.id)">
+                            <t t-call="chat2work_workspace.Avatar">
+                                <t t-set="colour" t-value="colour(row.name)"/>
+                                <t t-set="initials" t-value="initials(row.name)"/>
+                                <t t-set="badge" t-value="state.view === 'inbox' ? channelBadge(row.channel) : ''"/>
+                            </t>
+                            <span class="o_c2w_rt">
+                                <b>
+                                    <em t-esc="row.name"/>
+                                    <time t-if="state.view === 'inbox' or state.view === 'idc'" t-esc="when(row.at)"/>
+                                    <time t-elif="state.view === 'book'" t-esc="slotWhen(row.start)"/>
+                                    <time t-elif="state.view === 'jobs'" t-esc="closing(row)"/>
+                                </b>
+                                <p t-if="state.view === 'inbox'">
+                                    <em><t t-if="row.preview_out">You: </t><t t-esc="row.preview or row.phone"/></em>
+                                    <span t-if="row.needs_reply" class="o_c2w_cnt" title="Needs a reply">!</span>
+                                    <span t-elif="row.callback" class="o_c2w_tag warn">Callback</span>
+                                    <span t-else="" t-attf-class="o_c2w_tag {{ tagClass(row.stage) }}" t-esc="row.stage_label"/>
+                                </p>
+                                <p t-elif="state.view === 'cand'">
+                                    <em>
+                                        <t t-if="row.overdue"><t t-esc="row.overdue"/> overdue · </t>
+                                        <t t-if="row.callbacks"><t t-esc="row.callbacks"/> callbacks · </t>
+                                        <t t-esc="row.no_cv"/> without a CV
+                                    </em>
+                                    <span t-attf-class="o_c2w_tag {{ row.overdue or row.callbacks ? 'warn' : 'plain' }}" t-esc="row.total"/>
+                                </p>
+                                <p t-elif="state.view === 'jobs'">
+                                    <em t-esc="row.employer or 'Employer not stated'"/>
+                                    <span t-attf-class="o_c2w_tag {{ tagClass(row.work_state) }}" t-esc="row.work_label"/>
+                                </p>
+                                <p t-elif="state.view === 'book'">
+                                    <em t-esc="row.location or 'No location'"/>
+                                    <span t-attf-class="o_c2w_tag {{ row.booked >= row.capacity ? 'warn' : 'plain' }}">
+                                        <t t-esc="row.booked"/>/<t t-esc="row.capacity"/>
+                                    </span>
+                                </p>
+                                <p t-elif="state.view === 'idc'">
+                                    <em><t t-esc="row.mode === 'sandbox' ? 'Sandbox check' : 'Production check'"/></em>
+                                    <span t-attf-class="o_c2w_tag {{ tagClass(row.state) }}" t-esc="row.state_label"/>
+                                </p>
+                            </span>
+                        </button>
+                    </t>
+                    <div class="o_c2w_empty" t-if="!state.rows.length and !state.loadingList">
+                        No <t t-esc="view.what"/> here.
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main -->
+            <section class="o_c2w_main">
+                <div class="o_c2w_none" t-if="!state.detail">
+                    <t t-if="state.loadingDetail or state.loadingList">Loading…</t>
+                    <t t-else="">Nothing selected.</t>
+                </div>
+
+                <t t-elif="state.view === 'inbox'">
+                    <t t-set="c" t-value="state.detail"/>
+                    <div class="o_c2w_mhead">
+                        <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')">
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <div class="o_c2w_card o_c2w_who">
+                            <t t-call="chat2work_workspace.Avatar">
+                                <t t-set="colour" t-value="colour(c.name)"/>
+                                <t t-set="initials" t-value="initials(c.name)"/>
+                                <t t-set="badge" t-value="''"/>
+                            </t>
+                            <b t-esc="c.name"/>
+                            <span><t t-esc="c.phone"/><t t-if="c.province"> · <t t-esc="c.province"/></t><t t-if="c.field"> · <t t-esc="c.field"/></t></span>
+                        </div>
+                        <div class="o_c2w_acts">
+                            <button t-if="c.whatsapp" class="o_c2w_call" type="button" title="WhatsApp call"
+                                    t-on-click="() => this.candidateAction('action_c2w_call_whatsapp')">
+                                <i class="fa fa-whatsapp"/>
+                            </button>
+                            <button t-if="c.can_voip" class="o_c2w_call" type="button" title="VoIP call"
+                                    t-on-click="() => this.candidateAction('action_c2w_call_voip')">
+                                <i class="fa fa-phone"/>
+                            </button>
+                            <button class="o_c2w_ib" type="button" title="Open the candidate record"
+                                    t-on-click="() => this.openRecord('chat2work.candidate', c.id)">
+                                <i class="fa fa-external-link"/>
+                            </button>
+                            <button class="o_c2w_ib on o_c2w_keep" type="button" title="Information" t-on-click="() => this.setPane('info')">
+                                <i class="fa fa-info-circle"/>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="o_c2w_banner warn" t-if="c.callback">
+                        <span>Callback requested <t t-esc="when(c.callback.at)"/><t t-if="c.callback.channel"> via <t t-esc="c.callback.channel"/></t></span>
+                        <button type="button" t-on-click="() => this.setCallbackState('done')">Mark as done ›</button>
+                    </div>
+                    <div t-if="c.whatsapp and c.call_permission !== 'granted'" class="o_c2w_banner">
+                        <span t-esc="c.call_permission_note or 'No WhatsApp call permission yet'"/>
+                        <button type="button" t-on-click="() => this.candidateAction('action_c2w_request_call_permission', c.id, 'Permission request sent')">Request permission ›</button>
+                    </div>
+                    <div class="o_c2w_thread" t-ref="thread">
+                        <div class="o_c2w_intro">
+                            <b>
+                                <t t-call="chat2work_workspace.Avatar">
+                                    <t t-set="colour" t-value="colour(c.name)"/>
+                                    <t t-set="initials" t-value="initials(c.name)"/>
+                                    <t t-set="badge" t-value="''"/>
+                                </t>
+                                <t t-esc="c.name"/>
+                            </b>
+                            <p>Everything this candidate has done with Chat2Work, across every channel</p>
+                        </div>
+                        <t t-foreach="timeline" t-as="m" t-key="m.key">
+                            <div t-if="m.kind === 'day'" class="o_c2w_day" t-esc="m.label"/>
+                            <div t-elif="m.kind === 'event'" class="o_c2w_evt">
+                                <t t-esc="m.channel_name"/> · <t t-esc="time(m.at)"/> · <t t-esc="m.body"/>
+                            </div>
+                            <div t-else="" t-attf-class="o_c2w_msg {{ m.kind }} {{ m.failed ? 'fail' : '' }}">
+                                <t t-call="chat2work_workspace.Avatar">
+                                    <t t-set="colour" t-value="m.kind === 'out' ? 'var(--c2w-navy)' : colour(c.name)"/>
+                                    <t t-set="initials" t-value="m.kind === 'out' ? 'C2' : initials(c.name)"/>
+                                    <t t-set="badge" t-value="''"/>
+                                </t>
+                                <div class="o_c2w_mb">
+                                    <span>
+                                        <b t-esc="m.kind === 'out' ? 'Chat2Work' : c.name"/>
+                                        <t t-esc="m.channel_name"/> · <t t-esc="time(m.at)"/>
+                                        <t t-if="m.kind === 'out' and !m.failed"> · <t t-esc="m.status"/></t>
+                                    </span>
+                                    <div class="o_c2w_bub" t-esc="m.body"/>
+                                    <span t-if="m.failed" class="o_c2w_note">Not delivered.</span>
+                                </div>
+                            </div>
+                        </t>
+                        <div t-if="!timeline.length" class="o_c2w_evt">Nothing on this candidate's timeline yet.</div>
+                    </div>
+                    <div class="o_c2w_comp">
+                        <t t-if="composerLock">
+                            <div class="o_c2w_box lock"><i class="fa fa-lock"/><span t-esc="composerLock"/></div>
+                            <button t-if="c.phone" class="o_c2w_new" type="button" t-on-click="() => this.candidateAction('action_c2w_open_message')">Send a template</button>
+                        </t>
+                        <t t-else="">
+                            <div class="o_c2w_box">
+                                <textarea rows="1" t-att-placeholder="composerPlaceholder" t-att-value="state.composer"
+                                          t-on-input="onComposerInput" t-on-keydown="onComposerKeydown"/>
+                                <button type="button" title="Send" t-att-disabled="state.sending or !state.composer.trim()" t-on-click="send">
+                                    <i t-attf-class="fa {{ state.sending ? 'fa-circle-o-notch fa-spin' : 'fa-paper-plane' }}"/>
+                                </button>
+                            </div>
+                            <button class="o_c2w_tpl" type="button" t-on-click="() => this.candidateAction('action_c2w_open_message')">Send a template</button>
+                        </t>
+                    </div>
+                </t>
+
+                <t t-elif="state.view === 'cand'">
+                    <t t-set="s" t-value="state.detail"/>
+                    <div class="o_c2w_mhead">
+                        <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')"><i class="fa fa-chevron-left"/></button>
+                        <div class="o_c2w_card o_c2w_who">
+                            <b t-esc="s.name"/>
+                            <span><t t-esc="s.total"/> <t t-esc="s.total === 1 ? 'candidate' : 'candidates'"/></span>
+                        </div>
+                        <div class="o_c2w_acts">
+                            <button class="o_c2w_ib on o_c2w_keep" type="button" title="Information" t-on-click="() => this.setPane('info')"><i class="fa fa-info-circle"/></button>
+                        </div>
+                    </div>
+                    <div class="o_c2w_banner warn" t-if="s.overdue">
+                        <span>Overdue follow-ups: <t t-esc="s.overdue"/></span>
+                        <button type="button" t-on-click="() => this.setShow('overdue')">Show overdue ›</button>
+                    </div>
+                    <div class="o_c2w_thread topped">
+                        <div class="o_c2w_card o_c2w_match" t-foreach="s.rows" t-as="r" t-key="r.id">
+                            <t t-call="chat2work_workspace.Avatar">
+                                <t t-set="colour" t-value="colour(r.name)"/>
+                                <t t-set="initials" t-value="initials(r.name)"/>
+                                <t t-set="badge" t-value="''"/>
+                            </t>
+                            <span class="o_c2w_rt">
+                                <b><button type="button" class="o_c2w_nm" t-on-click="() => this.openCandidate(r.id)" t-esc="r.name"/></b>
+                                <p><em><t t-esc="r.line or r.phone"/><t t-if="r.at"> · last active <t t-esc="when(r.at)"/></t></em></p>
+                            </span>
+                            <span t-foreach="r.tags" t-as="tag" t-key="tag_index" t-attf-class="o_c2w_tag {{ tag[0] }}" t-esc="tag[1]"/>
+                            <button class="o_c2w_mbtn" type="button" t-on-click="() => this.openCandidate(r.id)"><i class="fa fa-comments-o"/> Open chat</button>
+                        </div>
+                        <div class="o_c2w_evt" t-if="s.rows.length">Showing <t t-esc="s.rows.length"/> of <t t-esc="s.total"/></div>
+                        <div class="o_c2w_evt" t-else="">No candidates match.</div>
+                    </div>
+                </t>
+
+                <t t-elif="state.view === 'jobs'">
+                    <t t-set="j" t-value="state.detail"/>
+                    <div class="o_c2w_mhead">
+                        <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')"><i class="fa fa-chevron-left"/></button>
+                        <div class="o_c2w_card o_c2w_who">
+                            <b t-esc="j.name"/>
+                            <span><t t-esc="j.employer or 'Employer not stated'"/><t t-if="j.location"> · <t t-esc="j.location"/></t></span>
+                        </div>
+                        <div class="o_c2w_acts">
+                            <button class="o_c2w_ib" type="button" title="Open the listing record" t-on-click="() => this.openRecord('chat2work.listing', j.id)"><i class="fa fa-external-link"/></button>
+                            <button class="o_c2w_ib on o_c2w_keep" type="button" title="Information" t-on-click="() => this.setPane('info')"><i class="fa fa-info-circle"/></button>
+                        </div>
+                    </div>
+                    <div class="o_c2w_banner warn" t-if="j.verification_state === 'unverified'">
+                        <span>Verify this listing before sharing it</span>
+                        <button type="button" t-on-click="() => this.setVerification('verified')">Mark verified ›</button>
+                    </div>
+                    <div class="o_c2w_banner warn" t-elif="j.to_review">
+                        <span><t t-esc="j.to_review"/> to review</span>
+                    </div>
+                    <div class="o_c2w_thread topped">
+                        <div class="o_c2w_card o_c2w_match" t-foreach="j.matches" t-as="m" t-key="m.id">
+                            <t t-call="chat2work_workspace.Avatar">
+                                <t t-set="colour" t-value="colour(m.name)"/>
+                                <t t-set="initials" t-value="initials(m.name)"/>
+                                <t t-set="badge" t-value="''"/>
+                            </t>
+                            <span class="o_c2w_rt">
+                                <b><button type="button" class="o_c2w_nm" t-on-click="() => this.openCandidate(m.candidate_id)" t-esc="m.name"/></b>
+                                <p><em t-esc="m.reason or 'No reason recorded'"/></p>
+                            </span>
+                            <t t-if="m.state === 'suggested'">
+                                <button class="o_c2w_mbtn good" type="button" t-on-click="() => this.setMatch(m, true)"><i class="fa fa-check"/> Good match</button>
+                                <button class="o_c2w_mbtn" type="button" t-on-click="() => this.setMatch(m, false)"><i class="fa fa-times"/> Not a match</button>
+                            </t>
+                            <span t-else="" t-attf-class="o_c2w_tag {{ tagClass(m.state) }}" t-esc="m.state_label"/>
+                        </div>
+                        <div class="o_c2w_evt" t-if="!j.matches.length">
+                            <t t-if="j.verification_state === 'verified'">No candidates suggested yet.</t>
+                            <t t-else="">No candidates suggested yet. Verify the listing first.</t>
+                        </div>
+                    </div>
+                    <div class="o_c2w_bar" t-if="j.verification_state === 'verified' and j.state === 'open'">
+                        <button class="o_c2w_new" type="button" t-on-click="suggestCandidates">Suggest candidates</button>
+                    </div>
+                </t>
+
+                <t t-elif="state.view === 'book'">
+                    <t t-set="s" t-value="state.detail"/>
+                    <div class="o_c2w_mhead">
+                        <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')"><i class="fa fa-chevron-left"/></button>
+                        <div class="o_c2w_card o_c2w_who">
+                            <b t-esc="s.name"/>
+                            <span><t t-esc="slotWhen(s.start)"/><t t-if="s.location"> · <t t-esc="s.location"/></t></span>
+                        </div>
+                        <div class="o_c2w_acts">
+                            <button class="o_c2w_ib" type="button" title="Open the slot record" t-on-click="() => this.openRecord('chat2work.interview.slot', s.id)"><i class="fa fa-external-link"/></button>
+                            <button class="o_c2w_ib on o_c2w_keep" type="button" title="Information" t-on-click="() => this.setPane('info')"><i class="fa fa-info-circle"/></button>
+                        </div>
+                    </div>
+                    <div class="o_c2w_banner warn" t-if="s.booked >= s.capacity"><span>This slot is full</span></div>
+                    <div class="o_c2w_banner ok" t-elif="s.available">
+                        <span>Places still open in this slot: <t t-esc="s.open"/></span>
+                    </div>
+                    <div class="o_c2w_thread topped">
+                        <div class="o_c2w_card o_c2w_match" t-foreach="s.bookings" t-as="b" t-key="b.id">
+                            <t t-call="chat2work_workspace.Avatar">
+                                <t t-set="colour" t-value="colour(b.name)"/>
+                                <t t-set="initials" t-value="initials(b.name)"/>
+                                <t t-set="badge" t-value="''"/>
+                            </t>
+                            <span class="o_c2w_rt">
+                                <b>
+                                    <button t-if="b.candidate_id" type="button" class="o_c2w_nm" t-on-click="() => this.openCandidate(b.candidate_id)" t-esc="b.name"/>
+                                    <em t-else="" t-esc="b.name"/>
+                                </b>
+                                <p><em><t t-esc="b.reference"/> · booked by <t t-esc="b.channel or 'unknown'"/> · <t t-esc="when(b.at)"/></em></p>
+                            </span>
+                            <span t-attf-class="o_c2w_tag {{ tagClass(b.state) }}" t-esc="b.state_label"/>
+                            <t t-if="b.state === 'booked'">
+                                <button class="o_c2w_mbtn good" type="button" t-on-click="() => this.setBooking(b, 'completed')"><i class="fa fa-check"/> Completed</button>
+                                <button class="o_c2w_mbtn" type="button" t-on-click="() => this.setBooking(b, 'no_show')"><i class="fa fa-times"/> No show</button>
+                            </t>
+                        </div>
+                        <div class="o_c2w_evt" t-if="!s.bookings.length">Nobody is booked into this slot yet.</div>
+                    </div>
+                </t>
+
+                <t t-elif="state.view === 'idc'">
+                    <t t-set="k" t-value="state.detail"/>
+                    <div class="o_c2w_mhead">
+                        <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')"><i class="fa fa-chevron-left"/></button>
+                        <div class="o_c2w_card o_c2w_who">
+                            <button t-if="k.candidate_id" type="button" class="o_c2w_nm" t-on-click="() => this.openCandidate(k.candidate_id)" t-esc="k.name"/>
+                            <b t-else="" t-esc="k.name"/>
+                            <span>ID check · <t t-esc="when(k.at)"/></span>
+                        </div>
+                        <div class="o_c2w_acts">
+                            <button class="o_c2w_ib on o_c2w_keep" type="button" title="Information" t-on-click="() => this.setPane('info')"><i class="fa fa-info-circle"/></button>
+                        </div>
+                    </div>
+                    <div t-attf-class="o_c2w_banner {{ k.state === 'verified' ? 'ok' : 'warn' }}">
+                        <span t-if="k.state === 'verified'">Home Affairs confirmed this ID</span>
+                        <span t-elif="k.state === 'not_valid'">Home Affairs did not confirm this ID<t t-if="k.id_status">: <t t-esc="k.id_status"/></t></span>
+                        <span t-else="">The check didn't complete<t t-if="k.error">: <t t-esc="k.error"/></t></span>
+                    </div>
+                    <div class="o_c2w_thread">
+                        <div class="o_c2w_intro"><p>ID check history for this candidate</p></div>
+                        <div class="o_c2w_evt" t-foreach="k.history" t-as="h" t-key="h.id">
+                            <t t-esc="when(h.at)"/> · <t t-esc="h.mode"/> check · <t t-esc="h.state_label"/>
+                        </div>
+                    </div>
+                    <div class="o_c2w_bar" t-if="k.candidate_id">
+                        <button class="o_c2w_tpl" type="button" t-on-click="updateIdNumber">Update ID Number</button>
+                        <button class="o_c2w_new" type="button" t-on-click="() => this.candidateAction('action_c2w_id_check', k.candidate_id)"><i class="fa fa-id-card-o"/> Check ID</button>
+                    </div>
+                </t>
+            </section>
+
+            <!-- Information card -->
+            <aside class="o_c2w_card o_c2w_info" t-if="state.detail">
+                <button class="o_c2w_ib o_c2w_back" type="button" title="Back" t-on-click="() => this.setPane('thread')"><i class="fa fa-chevron-left"/></button>
+
+                <t t-if="state.view === 'inbox'">
+                    <t t-set="c" t-value="state.detail"/>
+                    <h4><i class="fa fa-info-circle"/> Candidate</h4>
+                    <div>
+                        <h5>Stage</h5>
+                        <t t-call="chat2work_workspace.Radio">
+                            <t t-set="options" t-value="state.boot.stages"/>
+                            <t t-set="value" t-value="c.stage"/>
+                            <t t-set="pick" t-value="(v) => this.setStage(v)"/>
+                        </t>
+                    </div>
+                    <t t-if="c.callback">
+                        <div>
+                            <h5>Callback</h5>
+                            <t t-call="chat2work_workspace.Radio">
+                                <t t-set="options" t-value="state.boot.callback_states"/>
+                                <t t-set="value" t-value="c.callback.state"/>
+                                <t t-set="pick" t-value="(v) => this.setCallbackState(v)"/>
+                            </t>
+                        </div>
+                        <div>
+                            <h5>Wrap-up note</h5>
+                            <textarea placeholder="What was agreed on the call…" t-att-value="c.callback.notes" t-on-change="saveCallbackNotes"/>
+                        </div>
+                    </t>
+                    <div>
+                        <h5>CV and details</h5>
+                        <dl class="o_c2w_kv">
+                            <dt>CV</dt><dd><t t-esc="c.cv_label"/><t t-if="c.cv_unreadable"> (not readable)</t></dd>
+                            <dt>CV link</dt><dd t-esc="c.cv_link_label"/>
+                            <dt>Registered via</dt><dd t-esc="c.registered_via or '—'"/>
+                            <dt>Town / area</dt><dd t-esc="c.location or '—'"/>
+                            <dt>Uses WhatsApp</dt><dd t-esc="c.whatsapp ? 'Yes' : 'No'"/>
+                            <dt>Looking for work</dt><dd t-esc="c.job_seeking ? 'Yes' : 'No'"/>
+                            <dt>ID check</dt><dd t-esc="c.id_check_label"/>
+                            <dt>Jobs to review</dt><dd t-esc="c.jobs_to_review"/>
+                            <dt>Jobs to send</dt><dd t-esc="c.jobs_to_send"/>
+                        </dl>
+                    </div>
+                    <button class="o_c2w_wide" type="button" t-on-click="() => this.candidateAction('action_resend_cv_link', c.id, 'CV link queued')"><i class="fa fa-file-text-o"/> Send CV link again</button>
+                    <button class="o_c2w_wide" type="button" t-on-click="() => this.candidateAction('action_c2w_send_jobs')"><i class="fa fa-briefcase"/> Send jobs</button>
+                </t>
+
+                <t t-elif="state.view === 'cand'">
+                    <t t-set="s" t-value="state.detail"/>
+                    <h4><i class="fa fa-info-circle"/> Stage</h4>
+                    <div>
+                        <h5>Show</h5>
+                        <t t-call="chat2work_workspace.Radio">
+                            <t t-set="options" t-value="followUps"/>
+                            <t t-set="value" t-value="state.show"/>
+                            <t t-set="pick" t-value="(v) => this.setShow(v)"/>
+                        </t>
+                    </div>
+                    <div>
+                        <h5>In this stage</h5>
+                        <div class="o_c2w_stats">
+                            <div><b t-esc="s.total"/><span>Total</span></div>
+                            <div><b t-esc="s.overdue"/><span>Overdue</span></div>
+                            <div><b t-esc="s.callbacks"/><span>Callbacks</span></div>
+                            <div><b t-esc="s.no_cv"/><span>No CV</span></div>
+                        </div>
+                    </div>
+                </t>
+
+                <t t-elif="state.view === 'jobs'">
+                    <t t-set="j" t-value="state.detail"/>
+                    <h4><i class="fa fa-info-circle"/> Listing</h4>
+                    <div>
+                        <h5>Verification</h5>
+                        <t t-call="chat2work_workspace.Radio">
+                            <t t-set="options" t-value="state.boot.verification_states"/>
+                            <t t-set="value" t-value="j.verification_state"/>
+                            <t t-set="pick" t-value="(v) => this.setVerification(v)"/>
+                        </t>
+                    </div>
+                    <div>
+                        <h5>Responses</h5>
+                        <div class="o_c2w_stats">
+                            <div><b t-esc="j.stats[0]"/><span>Sent</span></div>
+                            <div><b t-esc="j.stats[1]"/><span>Opened</span></div>
+                            <div><b t-esc="j.stats[2]"/><span>Yes</span></div>
+                            <div><b t-esc="j.stats[3]"/><span>No</span></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h5>Details</h5>
+                        <dl class="o_c2w_kv">
+                            <dt>Next step</dt><dd t-esc="j.work_label"/>
+                            <dt>Closes</dt><dd t-esc="j.closing_on or 'No closing date'"/>
+                            <dt>Type of work</dt><dd t-esc="j.field or '—'"/>
+                            <dt>Provinces</dt><dd t-esc="j.provinces or '—'"/>
+                            <dt>Salary</dt><dd t-esc="j.salary or '—'"/>
+                            <dt>Apply link</dt><dd t-esc="j.apply_url ? 'Set' : 'No apply link'"/>
+                            <dt>Source</dt><dd t-esc="j.source"/>
+                        </dl>
+                    </div>
+                </t>
+
+                <t t-elif="state.view === 'book'">
+                    <t t-set="s" t-value="state.detail"/>
+                    <h4><i class="fa fa-info-circle"/> Interview slot</h4>
+                    <div>
+                        <h5>This slot</h5>
+                        <div class="o_c2w_stats">
+                            <div><b t-esc="s.capacity"/><span>Capacity</span></div>
+                            <div><b t-esc="s.booked"/><span>Booked</span></div>
+                            <div><b t-esc="s.open"/><span>Open</span></div>
+                            <div><b t-esc="s.no_show"/><span>No show</span></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h5>Details</h5>
+                        <dl class="o_c2w_kv">
+                            <dt>Job</dt><dd t-esc="s.name"/>
+                            <dt>Location</dt><dd t-esc="s.location or '—'"/>
+                            <dt>Salary</dt><dd t-esc="s.salary or '—'"/>
+                            <dt>Start</dt><dd t-esc="slotWhen(s.start)"/>
+                            <dt>Available</dt><dd t-esc="s.available ? 'Yes' : 'No'"/>
+                        </dl>
+                    </div>
+                </t>
+
+                <t t-elif="state.view === 'idc'">
+                    <t t-set="k" t-value="state.detail"/>
+                    <h4><i class="fa fa-info-circle"/> ID check</h4>
+                    <div>
+                        <h5>Result</h5>
+                        <span t-attf-class="o_c2w_tag {{ tagClass(k.state) }}" t-esc="k.state_label"/>
+                    </div>
+                    <div>
+                        <h5>Home Affairs details</h5>
+                        <dl class="o_c2w_kv">
+                            <dt>ID number</dt><dd t-esc="k.id_number or '—'"/>
+                            <dt>Names</dt><dd t-esc="k.first_names or 'Not returned'"/>
+                            <dt>Surname</dt><dd t-esc="k.last_name or 'Not returned'"/>
+                            <dt>Date of birth</dt><dd t-esc="k.dob or 'Not returned'"/>
+                            <dt>Citizenship</dt><dd t-esc="k.citizenship or 'Not returned'"/>
+                            <dt>Status</dt><dd t-esc="k.id_status or 'Not returned'"/>
+                            <dt>Run by</dt><dd t-esc="k.run_by or '—'"/>
+                            <dt>Credits used</dt><dd t-esc="k.credits_used"/>
+                        </dl>
+                    </div>
+                    <div t-if="k.account">
+                        <h5>VerifyNow credits</h5>
+                        <div class="o_c2w_stats three">
+                            <div><b t-esc="k.account.credits"/><span>Left</span></div>
+                            <div><b t-esc="k.account.used_month"/><span>This month</span></div>
+                            <div><b t-esc="k.account.checks_total"/><span>Checks</span></div>
+                        </div>
+                    </div>
+                    <button t-if="k.account" class="o_c2w_wide" type="button" t-on-click="refreshBalance"><i class="fa fa-refresh"/> Refresh balance</button>
+                </t>
+            </aside>
+        </div>
+    </t>
+</templates>
