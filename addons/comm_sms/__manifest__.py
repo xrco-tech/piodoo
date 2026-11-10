@@ -1,6 +1,6 @@
 {
     'name': 'SMS Integration (Infobip, Africa\'s Talking, Connect Mobile)',
-    'version': '1.1.1',
+    'version': '1.1.2',
     'category': 'Discuss',
     'summary': 'Send and receive SMS through Infobip, Africa\'s Talking or Connect Mobile, per SMS account',
     'description': """

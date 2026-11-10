@@ -2369,12 +2369,21 @@ class WhatsAppChatbotMessage(models.Model):
                 _logger.warning("Inbound SMS missing sender number")
                 return
 
-            partner = self._find_or_create_partner(
+            Sms = self.env['sms.sms'].sudo()
+            partner = Sms._comm_partner_for_number(from_number) or self._find_or_create_partner(
                 from_number, {'wa_id': from_number, 'profile': {}},
             )
             if not partner:
                 _logger.warning(f"Could not find or create partner for SMS from {from_number}")
                 return
+
+            # Keep every inbound SMS (UCX inbox), even when no chatbot takes it.
+            try:
+                with self.env.cr.savepoint():
+                    Sms._comm_record_inbound(partner, from_number, message_text,
+                                             provider_message_id=sms_message_id, to_number=to_number)
+            except Exception:
+                _logger.exception("Couldn't record inbound SMS from partner %s", partner.id)
 
             chatbot_contact = ChatbotContact.search([('partner_id', '=', partner.id)], limit=1)
             if not chatbot_contact:
