@@ -196,6 +196,8 @@ class Chat2workWorkspace(models.AbstractModel):
             'body': i.rendered_body or i.raw_body or '',
             'at': _dt(i.at),
             'status': i.status,
+            # A USSD session's screens and replies; older sessions only have the body.
+            'session': i.c2w_session or False,
         } for i in reversed(interactions)]
         callback = candidate.callback_ids.filtered(lambda c: c.state in OPEN_CALLBACK)[:1]
         message = self.env['chat2work.message'].new({'candidate_id': candidate.id})

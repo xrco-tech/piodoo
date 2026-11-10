@@ -7,6 +7,7 @@ messages), and Chat2Work's log hooks become comm.interaction rows on it.
 """
 
 import logging
+import re
 
 from odoo import fields, models
 
@@ -18,6 +19,37 @@ DEFAULT_STATUS = {'inbound': 'received', 'outbound': 'sent'}
 # Meta's statuses, in the order they happen; a late webhook never moves one back.
 WA_STATUS_RANK = {'sent': 1, 'delivered': 2, 'read': 3, 'failed': 4}
 OPEN_STATES = ('open', 'waiting', 'handoff')
+# A numbered line of a USSD screen: "1. Create Profile".
+USSD_OPTION = re.compile(r'^(\d)\. (.+)$')
+
+
+def ussd_turns(transcript):
+    """A USSD transcript as the turns of a conversation: each screen with its
+    prompt, its numbered options and the one that was picked, then the reply.
+
+    [{'dir': 'out', 'prompt', 'options': [[key, label], ...], 'picked': key or False},
+     {'dir': 'in', 'text'}, ...]
+    """
+    turns = []
+    for entry in transcript:
+        if entry['dir'] == 'outbound':
+            prompt, options = [], []
+            for line in (entry['text'] or '').split('\n'):
+                option = USSD_OPTION.match(line)
+                if option:
+                    options.append([option.group(1), option.group(2)])
+                else:
+                    prompt.append(line)
+            turns.append({'dir': 'out', 'prompt': '\n'.join(prompt), 'options': options, 'picked': False})
+            continue
+        text = entry['text']
+        screen = turns[-1] if turns and turns[-1]['dir'] == 'out' else None
+        key = entry.get('key')
+        if screen and key and key in dict(screen['options']):
+            screen['picked'] = key
+            text = dict(screen['options'])[key]      # the screen above already says what was asked
+        turns.append({'dir': 'in', 'text': text})
+    return turns
 
 
 class Chat2workCandidateUcx(models.Model):
@@ -67,7 +99,7 @@ class Chat2workCandidateUcx(models.Model):
         })
 
     def _c2w_ucx_log(self, channel_code, entries):
-        """Write [{'dir', 'text', 'at'?, 'status'?, 'wa'?}] to the candidate's
+        """Write [{'dir', 'text', 'at'?, 'status'?, 'wa'?, 'session'?}] to the candidate's
         conversation. Never raises: the log must not break the flow."""
         self.ensure_one()
         if not entries:
@@ -94,6 +126,7 @@ class Chat2workCandidateUcx(models.Model):
                         'status': entry.get('status') or DEFAULT_STATUS[entry['dir']],
                         'source_model': source._name if source else False,
                         'source_id': source.id or False,
+                        'c2w_session': entry.get('session') or False,
                     })
                 self.env['comm.interaction'].sudo().create(vals_list)
         except Exception:
@@ -106,10 +139,13 @@ class Chat2workCandidateUcx(models.Model):
             self._c2w_ucx_log(channel, transcript)
             return
         # USSD screens are short-lived menus: one entry per session reads better.
+        # The body is the short form; the screens and replies go with it, so the
+        # workspace can show the session as a conversation.
         choices = [e['text'] for e in transcript if e['dir'] == 'inbound']
         result = next((e['text'] for e in reversed(transcript) if e['dir'] == 'outbound'), '')
         body = 'USSD session: %s\nResult: %s' % (' › '.join(choices) or 'no choices made', result)
-        self._c2w_ucx_log('ussd', [{'dir': 'inbound', 'text': body, 'at': transcript[0].get('at')}])
+        self._c2w_ucx_log('ussd', [{'dir': 'inbound', 'text': body, 'at': transcript[0].get('at'),
+                                    'session': ussd_turns(transcript)}])
 
     def _c2w_erase_extra(self):
         """Remove the Chat2Work conversations, and the contact if Chat2Work made
@@ -137,6 +173,14 @@ class Chat2workCandidateUcx(models.Model):
         super()._c2w_log_event(channel, direction, body, status, wa_message_id)
         for rec in self:
             rec._c2w_ucx_log(channel, [{'dir': direction, 'text': body, 'status': status, 'wa': wa_message_id}])
+
+
+class CommInteractionChat2work(models.Model):
+    _inherit = 'comm.interaction'
+
+    c2w_session = fields.Json(
+        'Chat2Work Session', readonly=True,
+        help="The screens shown and the replies given in a Chat2Work USSD session. ID numbers are never kept.")
 
 
 class WhatsAppMessageUcxStatus(models.Model):

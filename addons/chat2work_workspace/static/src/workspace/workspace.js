@@ -165,11 +165,19 @@ export class Chat2workWorkspace extends Component {
     get timeline() {
         const items = [];
         let lastDay = "";
-        for (const entry of this.state.detail.timeline || []) {
+        const entries = this.state.detail.timeline || [];
+        // Only the latest USSD session starts open, so older ones don't flood the thread.
+        const latestSession = entries.findLast((e) => e.session)?.id;
+        for (const entry of entries) {
             const day = this.day(entry.at);
             if (day !== lastDay) {
                 items.push({ key: "d" + entry.id, kind: "day", label: day });
                 lastDay = day;
+            }
+            if (entry.session) {
+                items.push({ ...entry, ...this.sessionView(entry.session), key: "m" + entry.id,
+                             kind: "session", open: entry.id === latestSession });
+                continue;
             }
             const chat = CHAT_CHANNELS.includes(entry.channel);
             items.push({
@@ -180,6 +188,20 @@ export class Chat2workWorkspace extends Component {
             });
         }
         return items;
+    }
+
+    /**
+     * A USSD session as turns to draw. It finished when the last thing shown
+     * was a closing message (no options); otherwise the caller left part-way.
+     */
+    sessionView(turns) {
+        const last = turns[turns.length - 1];
+        const finished = Boolean(last) && last.dir === "out" && !last.options.length;
+        return {
+            turns: turns.map((turn, index) => ({ ...turn, key: index, end: finished && index === turns.length - 1 })),
+            finished,
+            tag: finished ? last.prompt.split(/[.!]/)[0] : _t("Not finished"),
+        };
     }
 
     /** Why the reply box is locked, or false when a typed message can go. */

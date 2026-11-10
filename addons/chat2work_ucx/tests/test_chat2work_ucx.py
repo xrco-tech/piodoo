@@ -78,6 +78,27 @@ class TestChat2workUcx(TransactionCase):
         self.assertNotIn(id_no, items.raw_body)
         self.assertEqual(items.conversation_id.campaign_id, 'chat2work')
 
+    def test_ussd_session_keeps_screens_and_replies(self):
+        id_no = make_id(years_ago(25))
+        self.dial('+27820100011', '1', '1', '7', '1', id_no, '1', '2')
+        _cand, items = self.logged('+27820100011')
+        turns = items.c2w_session
+        self.assertEqual(turns[0], {
+            'dir': 'out', 'prompt': 'Welcome to Chat2Work. What would you like to do?',
+            'options': [['1', 'Create Profile'], ['2', 'Request Callback'], ['0', 'Exit']], 'picked': '1'})
+        self.assertEqual(turns[1], {'dir': 'in', 'text': 'Create Profile'})
+        self.assertEqual([t['text'] for t in turns if t['dir'] == 'in'],
+                         ['Create Profile', 'I agree', '7', 'Yes', '[ID number]', 'Unemployed', 'No'])
+        # A reply that isn't on the screen picks nothing, and the screen is shown again.
+        whatsapp = [t for t in turns if t['dir'] == 'out' and 'WhatsApp too' in t['prompt']]
+        self.assertEqual([t['picked'] for t in whatsapp], [False, '1'])
+        self.assertTrue(whatsapp[1]['prompt'].startswith('Invalid choice.'))
+        id_screen = next(t for t in turns if t['dir'] == 'out' and 'ID number' in t['prompt'])
+        self.assertFalse(id_screen['picked'])
+        self.assertEqual(turns[-1], {'dir': 'out', 'prompt': 'Profile created! We will contact you soon via WhatsApp/SMS.',
+                                     'options': [], 'picked': False})
+        self.assertNotIn(id_no, str(turns))
+
     def test_cv_link_sms_is_logged(self):
         self.dial('+27820100002', '1', '1', '2', make_id(years_ago(22)), '1', '1', '0', '0')
         cand, _items = self.logged('+27820100002')

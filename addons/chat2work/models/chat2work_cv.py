@@ -86,7 +86,7 @@ class Chat2workCandidateCv(models.Model):
     # No-ops here: chat2work_ucx writes them to the UCX workspace timeline.
 
     def _c2w_log_session(self, channel, transcript):
-        """A finished USSD/WhatsApp session: [{'at', 'dir', 'text', 'wa'?}]."""
+        """A finished USSD/WhatsApp session: [{'at', 'dir', 'text', 'wa'?, 'key'?}]."""
 
     def _c2w_log_event(self, channel, direction, body, status=None, wa_message_id=None):
         """One message or action outside a session (CV link sends, CV page)."""

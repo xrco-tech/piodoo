@@ -412,6 +412,75 @@
         }
         .o_c2w_mb > .o_c2w_note { margin-top: 2px; color: var(--c2w-red); font-weight: 600; }
     }
+    // A USSD session as a conversation: each screen the phone showed, then the reply.
+    .o_c2w_sess {
+        flex: none;
+        max-width: 560px;
+        border: 1px solid var(--c2w-line);
+        border-radius: 12px;
+        background: var(--c2w-card);
+
+        summary {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            list-style: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+
+            &::-webkit-details-marker { display: none; }
+            &::after { content: "Show"; margin-left: auto; color: var(--c2w-muted); font-size: 12px; font-weight: 400; }
+        }
+        &[open] summary::after { content: "Hide"; }
+        .o_c2w_tag {
+            min-width: 0;
+            padding: 1px 8px;
+            border: 1px solid var(--c2w-line);
+            border-radius: 999px;
+            overflow: hidden;
+            color: var(--c2w-muted);
+            font-size: 11px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+
+            &.ok { background: var(--c2w-ok-bg); border-color: var(--c2w-ok-line); color: var(--c2w-ok-fg); }
+        }
+    }
+    .o_c2w_turns {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 12px 12px;
+        border-top: 1px solid var(--c2w-line);
+    }
+    .o_c2w_screen {
+        align-self: flex-start;
+        max-width: 86%;
+        padding: 7px 10px;
+        border: 1px dashed var(--c2w-line);
+        border-radius: 10px;
+        background: var(--c2w-bg);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        overflow-wrap: anywhere;
+        white-space: pre-line;
+
+        ol { margin: 4px 0 0; padding: 0; list-style: none; color: var(--c2w-muted); }
+        li.on { color: var(--c2w-fg); font-weight: 700; }
+        li.on::after { content: " ←"; }
+        &.end { border-style: solid; border-color: var(--c2w-ok-line); background: var(--c2w-ok-bg); color: var(--c2w-ok-fg); }
+    }
+    .o_c2w_pick {
+        align-self: flex-end;
+        max-width: 86%;
+        padding: 6px 11px;
+        border: 1px solid var(--c2w-hiline);
+        border-radius: 12px 0 12px 12px;
+        background: var(--c2w-accent-soft);
+        overflow-wrap: anywhere;
+    }
     .o_c2w_bub {
         display: inline-block;
         max-width: 520px;
