@@ -96,6 +96,15 @@ class TestChat2workWorkspace(TransactionCase):
         self.assertEqual([r['id'] for r in self.Ws.ws_listings('to_verify')], [listing.id])
         self.assertEqual(self.Ws.ws_listing(listing.id)['verification_state'], 'unverified')
 
+        # Paging: the next page starts where the last one ended, with no repeats.
+        self.env['chat2work.listing'].create(
+            [{'title': 'Listing %s' % n, 'source_id': source.id} for n in range(4)])
+        first = self.Ws.ws_listings('to_verify', '', 0, 3)
+        rest = self.Ws.ws_listings('to_verify', '', 3, 3)
+        self.assertEqual((len(first), len(rest)), (3, 2))
+        self.assertFalse({r['id'] for r in first} & {r['id'] for r in rest})
+        self.assertEqual(len(self.Ws.ws_listings('to_verify', '', 0, 5)), 5)
+
         job = self.env['chat2work.job'].create({'name': 'Admin Clerk', 'location': 'Bellville'})
         slot = self.env['chat2work.interview.slot'].create(
             {'job_id': job.id, 'start_datetime': fields.Datetime.now() + timedelta(days=2), 'capacity': 2})

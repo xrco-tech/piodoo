@@ -16,6 +16,7 @@ OPEN_CALLBACK = ('new', 'in_progress')
 # A reply is owed only on channels an agent can answer on.
 REPLY_CHANNELS = ('whatsapp', 'sms')
 LIST_LIMIT = 100
+LIST_MAX = 1000
 TIMELINE_LIMIT = 300
 CV_DONE = ('uploaded', 'built')
 
@@ -33,6 +34,12 @@ class Chat2workWorkspace(models.AbstractModel):
     def _check_agent(self):
         if not self.env.user.has_group('chat2work.group_agent'):
             raise AccessError(_("You don't have access to Chat2Work."))
+
+    @api.model
+    def _page(self, offset, limit):
+        """(offset, limit) for a list: a page by default, more when the screen
+        reloads everything it has already loaded."""
+        return max(int(offset or 0), 0), min(max(int(limit or LIST_LIMIT), 1), LIST_MAX)
 
     def _can_id_check(self):
         return self.env.user.has_group('chat2work_verify.group_id_check')
@@ -127,6 +134,7 @@ class Chat2workWorkspace(models.AbstractModel):
             'booking_states': self._selection('chat2work.interview.booking', 'state'),
             'can_id_check': self._can_id_check(),
             'user_name': self.env.user.name,
+            'page_size': LIST_LIMIT,
             'counts': self.ws_counts(),
         }
 
@@ -148,8 +156,9 @@ class Chat2workWorkspace(models.AbstractModel):
     # ── Conversations ────────────────────────────────────────────────────────
 
     @api.model
-    def ws_inbox(self, pill='all', search=''):
+    def ws_inbox(self, pill='all', search='', offset=0, limit=None):
         self._check_agent()
+        offset, limit = self._page(offset, limit)
         domain = []
         term = (search or '').strip()
         if term:
@@ -163,7 +172,7 @@ class Chat2workWorkspace(models.AbstractModel):
         elif pill == 'sms':
             domain.append(('whatsapp_opt_in', '=', False))
         candidates = self.env['chat2work.candidate'].search(domain, order='last_active_at desc, id desc',
-                                                            limit=LIST_LIMIT)
+                                                            offset=offset, limit=limit)
         last = self._last_messages(candidates.partner_id.ids)
         rows = [self._candidate_row(c, last.get(c.partner_id.id)) for c in candidates]
         rows.sort(key=lambda r: r['at'] or '', reverse=True)
@@ -284,14 +293,15 @@ class Chat2workWorkspace(models.AbstractModel):
     # ── Job listings ─────────────────────────────────────────────────────────
 
     @api.model
-    def ws_listings(self, pill='all', search=''):
+    def ws_listings(self, pill='all', search='', offset=0, limit=None):
         self._check_agent()
+        offset, limit = self._page(offset, limit)
         domain = [('work_state', '=', pill)] if pill != 'all' else [('work_state', 'not in', ('closed', 'rejected'))]
         term = (search or '').strip()
         if term:
             domain += ['|', ('title', 'ilike', term), ('employer', 'ilike', term)]
         listings = self.env['chat2work.listing'].search(domain, order='closing_on asc nulls last, id desc',
-                                                        limit=LIST_LIMIT)
+                                                        offset=offset, limit=limit)
         return [self._listing_row(listing) for listing in listings]
 
     def _listing_row(self, listing):
@@ -342,13 +352,15 @@ class Chat2workWorkspace(models.AbstractModel):
     # ── Bookings ─────────────────────────────────────────────────────────────
 
     @api.model
-    def ws_slots(self, pill='upcoming'):
+    def ws_slots(self, pill='upcoming', offset=0, limit=None):
         self._check_agent()
+        offset, limit = self._page(offset, limit)
         now = fields.Datetime.now()
         past = pill == 'past'
         slots = self.env['chat2work.interview.slot'].with_context(active_test=False).search(
             [('start_datetime', '<' if past else '>=', now)],
-            order='start_datetime desc' if past else 'start_datetime asc', limit=LIST_LIMIT)
+            order='start_datetime desc, id desc' if past else 'start_datetime asc, id asc',
+            offset=offset, limit=limit)
         return [self._slot_row(slot) for slot in slots]
 
     def _slot_row(self, slot):
@@ -398,11 +410,12 @@ class Chat2workWorkspace(models.AbstractModel):
             raise AccessError(_("You don't have access to ID checks."))
 
     @api.model
-    def ws_checks(self, pill='all'):
+    def ws_checks(self, pill='all', offset=0, limit=None):
         self._check_id_access()
+        offset, limit = self._page(offset, limit)
         domain = [('state', '=', pill)] if pill != 'all' else []
         checks = self.env['chat2work.verify.check'].search(domain, order='create_date desc, id desc',
-                                                           limit=LIST_LIMIT)
+                                                           offset=offset, limit=limit)
         return [self._check_row(check) for check in checks]
 
     def _check_row(self, check):

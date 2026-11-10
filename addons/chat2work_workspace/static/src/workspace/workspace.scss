@@ -184,6 +184,15 @@
         &.unread .o_c2w_rt b em { font-weight: 700; }
         &.unread .o_c2w_rt p { color: var(--c2w-fg); }
     }
+    .o_c2w_more {
+        flex: none;
+        margin: 6px 0 2px;
+        padding: 6px;
+        border: 1px solid var(--c2w-line);
+        border-radius: 8px;
+        background: var(--c2w-sel);
+        font-size: 13px;
+    }
     .o_c2w_empty {
         padding: 22px 8px;
         color: var(--c2w-muted);
