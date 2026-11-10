@@ -81,6 +81,24 @@ class TestChat2workWorkspace(TransactionCase):
         # First and last times are what the screen works the session's length out from.
         self.assertEqual((new['session'][0]['at'], new['session'][-1]['at']), ('2026-11-10 10:00:00', '2026-11-10 10:00:21'))
 
+    def test_changes_tell_open_workspaces_to_reload(self):
+        def notices(sendone):
+            return [c.args[1:] for c in sendone.call_args_list if c.args[0] == 'chat2work_workspace']
+
+        with patch('odoo.addons.bus.models.bus.ImBus._sendone') as sendone:
+            self._log(self.thandi, 'whatsapp', 'inbound', 'Hello')
+            self.assertEqual(notices(sendone), [('chat2work_workspace/changed', {'what': 'timeline'})])
+            self.env['chat2work.callback.request'].request_callback(phone='+27715550107', channel='ussd')
+            self.assertIn(('chat2work_workspace/changed', {'what': 'callback'}), notices(sendone))
+            # Someone who isn't a candidate: not the workspace's business.
+            before = len(notices(sendone))
+            stranger = self.env['res.partner'].create({'name': 'Not a candidate'})
+            channel = self.env['comm.channel'].search([('code', '=', 'sms')], limit=1)
+            conversation = self.env['comm.conversation'].create({'partner_id': stranger.id, 'primary_channel_id': channel.id})
+            self.env['comm.interaction'].create({'conversation_id': conversation.id, 'channel_id': channel.id,
+                                                 'direction': 'inbound', 'raw_body': 'Hi'})
+            self.assertEqual(len(notices(sendone)), before)
+
     def test_cv_help_opens_the_candidates_own_page(self):
         with self.assertRaises(AccessError):
             self.env['chat2work.workspace'].with_user(self.outsider).ws_cv_help(self.lerato.id)
