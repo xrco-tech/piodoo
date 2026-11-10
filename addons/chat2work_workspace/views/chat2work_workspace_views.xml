@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_chat2work_workspace" model="ir.actions.client">
+        <field name="name">Workspace</field>
+        <field name="tag">chat2work_workspace</field>
+    </record>
+
+    <!-- First in the app, so Chat2Work opens on the workspace. -->
+    <menuitem id="menu_chat2work_workspace" name="Workspace" parent="chat2work.menu_chat2work_root"
+              action="action_chat2work_workspace" sequence="1"/>
+</odoo>
