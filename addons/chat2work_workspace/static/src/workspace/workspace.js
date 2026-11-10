@@ -27,7 +27,8 @@ const VIEWS = {
         what: _t("candidates"),
         pills: [["all", _t("All")], ["reply", _t("Needs reply")], ["callbacks", _t("Callbacks")],
                 ["whatsapp", _t("WhatsApp")], ["sms", _t("SMS only")]],
-        list: (pill, search) => ["ws_inbox", [pill, search]],
+        list: (pill, search, offset, limit) => ["ws_inbox", [pill, search, offset, limit]],
+        paged: true,
         detail: "ws_candidate",
     },
     cand: {
@@ -44,7 +45,8 @@ const VIEWS = {
         what: _t("listings"),
         pills: [["all", _t("Open")], ["to_verify", _t("To verify")], ["to_review", _t("To review")],
                 ["ready", _t("Ready to share")], ["closed", _t("Closed")]],
-        list: (pill, search) => ["ws_listings", [pill, search]],
+        list: (pill, search, offset, limit) => ["ws_listings", [pill, search, offset, limit]],
+        paged: true,
         detail: "ws_listing",
     },
     book: {
@@ -52,7 +54,8 @@ const VIEWS = {
         label: _t("Bookings"),
         what: _t("slots"),
         pills: [["upcoming", _t("Upcoming")], ["past", _t("Past")]],
-        list: (pill) => ["ws_slots", [pill]],
+        list: (pill, search, offset, limit) => ["ws_slots", [pill, offset, limit]],
+        paged: true,
         detail: "ws_slot",
     },
     idc: {
@@ -61,7 +64,8 @@ const VIEWS = {
         what: _t("checks"),
         pills: [["all", _t("All")], ["verified", _t("Verified")], ["not_valid", _t("Not valid")],
                 ["failed", _t("Failed")]],
-        list: (pill) => ["ws_checks", [pill]],
+        list: (pill, search, offset, limit) => ["ws_checks", [pill, offset, limit]],
+        paged: true,
         detail: "ws_check",
     },
 };
@@ -110,6 +114,8 @@ export class Chat2workWorkspace extends Component {
             sending: false,
             show: "all", // follow-up filter on the Candidates screen
             pinnedId: false,
+            more: false, // the list has rows beyond the ones loaded
+            loadingMore: false,
         });
 
         this.threadRef = useRef("thread");
@@ -264,9 +270,13 @@ export class Chat2workWorkspace extends Component {
         this.state.counts = await this.orm.silent.call(WS, "ws_counts", []);
     }
 
-    async loadList() {
+    /** Load the list. `keep` reloads as many rows as are already showing, so a
+     *  refresh after an action doesn't drop the pages the agent loaded. */
+    async loadList({ keep = false } = {}) {
         const view = this.state.view;
-        const [method, args] = this.view.list(this.pill, this.state.search);
+        const page = this.state.boot.page_size;
+        const limit = keep ? Math.max(page, this.state.rows.length) : page;
+        const [method, args] = this.view.list(this.pill, this.state.search, 0, limit);
         this.state.loadingList = true;
         try {
             const rows = await this.orm.call(WS, method, args);
@@ -274,6 +284,7 @@ export class Chat2workWorkspace extends Component {
                 return; // the agent moved on while this was loading
             }
             this.state.rows = rows;
+            this.state.more = Boolean(this.view.paged) && rows.length >= limit;
         } finally {
             this.state.loadingList = false;
         }
@@ -310,8 +321,32 @@ export class Chat2workWorkspace extends Component {
         }
     }
 
+    async loadMore() {
+        if (this.state.loadingMore) {
+            return;
+        }
+        const view = this.state.view;
+        const page = this.state.boot.page_size;
+        const [method, args] = this.view.list(this.pill, this.state.search, this.state.rows.length, page);
+        this.state.loadingMore = true;
+        try {
+            const rows = await this.orm.call(WS, method, args);
+            if (view === this.state.view) {
+                const have = new Set(this.state.rows.map((r) => r.id));
+                this.state.rows.push(...rows.filter((r) => !have.has(r.id)));
+                this.state.more = rows.length >= page;
+            }
+        } finally {
+            this.state.loadingMore = false;
+        }
+    }
+
+    badge(count) {
+        return count > 99 ? "99+" : count;
+    }
+
     async refresh() {
-        await Promise.all([this.loadList(), this.loadCounts()]);
+        await Promise.all([this.loadList({ keep: true }), this.loadCounts()]);
     }
 
     // ── Navigation ──────────────────────────────────────────────────────
@@ -444,7 +479,7 @@ export class Chat2workWorkspace extends Component {
         } finally {
             this.state.sending = false;
         }
-        this.loadList();
+        this.loadList({ keep: true });
     }
 
     // ── Candidates screen ───────────────────────────────────────────────
