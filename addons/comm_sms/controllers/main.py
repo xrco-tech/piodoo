@@ -7,6 +7,11 @@ from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
+
+def _loggable(params):
+    """Callback params without the webhook ?token= secret, for logging."""
+    return {k: v for k, v in params.items() if k != 'token'}
+
 # Africa's Talking delivery report status -> report status
 # https://developers.africastalking.com/docs/sms/notifications
 AFRICASTALKING_DLR_STATUS = {
@@ -83,7 +88,7 @@ class InfoBipSMSControler(http.Controller):
                 )
             else:
                 # TODO: Handle form data or other formats
-                _logger.info(f"Form data: {kwargs}")
+                _logger.info("Form data: %s", _loggable(kwargs))
                 return request.make_response(
                     json.dumps({"status": "success"}),
                     headers={'Content-Type': 'application/json'}
@@ -198,7 +203,7 @@ class AfricasTalkingSMSController(http.Controller):
         failureReason, retryCount. `id` is the messageId returned at send."""
         if not _webhook_account('africastalking'):
             return _forbidden()
-        _logger.info("Africa's Talking delivery report: %s", kwargs)
+        _logger.info("Africa's Talking delivery report: %s", _loggable(kwargs))
         message_id = kwargs.get('id')
         status = AFRICASTALKING_DLR_STATUS.get(kwargs.get('status'))
         if message_id and status:
@@ -216,7 +221,7 @@ class ConnectMobileSMSController(http.Controller):
         cost. `userid` is the uuid we sent as `id`; `smsid` their X-SMS-ID."""
         if not _webhook_account('connect_mobile'):
             return _forbidden()
-        _logger.info("Connect Mobile delivery report: %s", kwargs)
+        _logger.info("Connect Mobile delivery report: %s", _loggable(kwargs))
         status = CONNECT_MOBILE_DLR_STATUS.get((kwargs.get('status') or '').upper())
         SmsSms = request.env['sms.sms'].sudo()
         sms = SmsSms.browse()
