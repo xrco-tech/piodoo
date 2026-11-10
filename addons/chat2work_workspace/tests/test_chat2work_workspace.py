@@ -9,6 +9,7 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 WA = 'odoo.addons.comm_whatsapp.models.whatsapp_message.WhatsAppMessage.send_whatsapp_payload'
+AI = 'odoo.addons.chat2work_workspace.models.chat2work_workspace_ai._ai_json'
 
 
 @tagged('post_install', '-at_install', 'chat2work')
@@ -98,6 +99,60 @@ class TestChat2workWorkspace(TransactionCase):
             self.env['comm.interaction'].create({'conversation_id': conversation.id, 'channel_id': channel.id,
                                                  'direction': 'inbound', 'raw_body': 'Hi'})
             self.assertEqual(len(notices(sendone)), before)
+
+    def test_assistant_needs_a_key_and_an_agent(self):
+        self.assertFalse(self.Ws.ws_bootstrap()['ai'])
+        with self.assertRaises(UserError):
+            self.Ws.ws_ai_draft(self.thandi.id)
+        with self.assertRaises(AccessError):
+            self.env['chat2work.workspace'].with_user(self.outsider).ws_ai_summary(self.thandi.id)
+
+    def test_assistant_drafts_summarises_and_answers(self):
+        self.env['ir.config_parameter'].sudo().set_param('comm_chatbot.anthropic_api_key', 'test-key')
+        self.assertTrue(self.Ws.ws_bootstrap()['ai'])
+        self._log(self.thandi, 'whatsapp', 'inbound', 'My ID is 9001015009087, call 082 555 0142 please', minutes_ago=5)
+        answers = {'reply': 'Hi Thandiwe,\nwe will call you.', 'summary': 'Thandiwe asked for a call.', 'answer': 'Not on the record.'}
+        with patch(AI, side_effect=lambda env, key, system, content, schema: answers) as ai, patch(WA, autospec=True) as send:
+            draft = self.Ws.ws_ai_draft(self.thandi.id, 'sms')
+            self.assertEqual(draft, {'text': 'Hi Thandiwe, we will call you.', 'channel': 'sms'})  # one line for SMS
+            self.assertEqual(self.Ws.ws_ai_draft(self.thandi.id)['channel'], 'whatsapp')
+            self.assertEqual(self.Ws.ws_ai_summary(self.thandi.id), {'text': 'Thandiwe asked for a call.'})
+            asked = self.Ws.ws_ai_ask(self.thandi.id, 'Do they have a CV?', [{'q': 'Earlier?', 'a': 'Yes.'}])
+            self.assertEqual(asked, {'answer': 'Not on the record.'})
+            send.assert_not_called()                      # drafting never sends
+        sent = [call.args[3] for call in ai.call_args_list]
+        self.assertIn('First name: Thandiwe', sent[0])
+        self.assertIn('Agent asked: Earlier?', sent[-1])
+        self.assertIn('<question>\nDo they have a CV?', sent[-1])
+        for content in sent:                              # no ID number, no phone number
+            self.assertNotIn('9001015009087', content)
+            self.assertNotIn('0142', content)
+            self.assertNotIn('Mokoena', content)
+        with patch(AI, side_effect=ValueError('Anthropic returned 529')), self.assertRaises(UserError):
+            self.Ws.ws_ai_summary(self.thandi.id)
+
+    def test_needs_help_and_next_step(self):
+        rows = {r['id']: r for r in self.Ws.ws_inbox()}
+        self.assertFalse(rows[self.thandi.id]['help'])
+        self.assertFalse(self.Ws.ws_inbox('help'))
+        step = self.Ws.ws_candidate(self.thandi.id)['next_step']
+        self.assertEqual((step['action'], step['label']), ('cv_link', 'Send CV link'))
+
+        self._log(self.thandi, 'whatsapp', 'inbound', 'I am stuck, please help')
+        self._log(self.lerato, 'sms', 'inbound', 'Thanks', minutes_ago=60 * 30)
+        rows = {r['id']: r for r in self.Ws.ws_inbox('help')}
+        self.assertEqual(rows[self.thandi.id]['help'], 'Their last message asks for help')
+        self.assertEqual(rows[self.lerato.id]['help'], 'Waiting more than a day for a reply')
+        self.assertEqual([r['id'] for r in self.Ws.ws_inbox('help', 'lerato')], [self.lerato.id])
+        detail = self.Ws.ws_candidate(self.thandi.id)
+        self.assertEqual(detail['next_step']['action'], 'reply')   # no assistant key: write it yourself
+        self.assertEqual(detail['help'], 'Their last message asks for help')
+
+        self._log(self.thandi, 'whatsapp', 'outbound', 'Calling you now')
+        self.assertEqual([r['id'] for r in self.Ws.ws_inbox('help')], [self.lerato.id])
+        self.lerato.stage = 'help'
+        self._log(self.lerato, 'sms', 'outbound', 'Hello')
+        self.assertEqual(self.Ws.ws_inbox('help')[0]['help'], 'In the Needs help stage')
 
     def test_cv_help_opens_the_candidates_own_page(self):
         with self.assertRaises(AccessError):

@@ -27,7 +27,7 @@ const VIEWS = {
         search: true,
         label: _t("Conversations"),
         what: _t("candidates"),
-        pills: [["all", _t("All")], ["reply", _t("Needs reply")], ["callbacks", _t("Callbacks")],
+        pills: [["all", _t("All")], ["reply", _t("Needs reply")], ["help", _t("Needs help")], ["callbacks", _t("Callbacks")],
                 ["whatsapp", _t("WhatsApp")], ["sms", _t("SMS only")]],
         list: (pill, search, offset, limit) => ["ws_inbox", [pill, search, offset, limit]],
         paged: true,
@@ -119,6 +119,8 @@ export class Chat2workWorkspace extends Component {
             pinnedId: false,
             cvHelp: false, // { url, name } while the candidate's CV page is open
             smsFor: false, // the candidate an agent chose to SMS although they use WhatsApp
+            // The assistant: what is running, and its answers for one candidate at a time.
+            ai: { busy: "", forId: false, summary: "", chat: [], question: "" },
             more: false, // the list has rows beyond the ones loaded
             loadingMore: false,
         });
@@ -132,6 +134,19 @@ export class Chat2workWorkspace extends Component {
                 }
             },
             () => [this.state.detail]
+        );
+
+        // The reply box grows with its text (a drafted reply is several lines), up to its CSS max-height.
+        this.composerRef = useRef("composer");
+        useEffect(
+            () => {
+                const el = this.composerRef.el;
+                if (el) {
+                    el.style.height = "auto";
+                    el.style.height = el.scrollHeight + "px";
+                }
+            },
+            () => [this.state.composer, this.composerRef.el]
         );
 
         this.debouncedLoad = useDebounced(() => this.loadList(), 300);
@@ -245,6 +260,101 @@ export class Chat2workWorkspace extends Component {
             return _t("WhatsApp only allows a template now: their last message was more than 24 hours ago.");
         }
         return false;
+    }
+
+    // ── Assistant ───────────────────────────────────────────────────────
+
+    /** The assistant's answers belong to one candidate; opening another starts clean. */
+    get ai() {
+        const ai = this.state.ai;
+        const id = this.state.detail && this.state.detail.id;
+        if (ai.forId !== id) {
+            Object.assign(ai, { forId: id, summary: "", chat: [], question: "" });
+        }
+        return ai;
+    }
+
+    async aiCall(what, method, args) {
+        const ai = this.ai;
+        if (ai.busy) {
+            return false;
+        }
+        const id = ai.forId;
+        ai.busy = what;
+        try {
+            const result = await this.orm.call(WS, method, [id, ...args]);
+            return this.state.ai.forId === id ? result : false; // the agent moved on meanwhile
+        } finally {
+            this.state.ai.busy = "";
+        }
+    }
+
+    /** Put a drafted reply in the box for the agent to edit. Nothing is sent. */
+    async draftReply() {
+        if (this.composerLock) {
+            return;
+        }
+        const result = await this.aiCall("draft", "ws_ai_draft", [this.channel]);
+        if (result) {
+            this.state.composer = result.text;
+        }
+    }
+
+    async catchUp() {
+        const result = await this.aiCall("summary", "ws_ai_summary", []);
+        if (result) {
+            this.ai.summary = result.text;
+        }
+    }
+
+    async ask() {
+        const ai = this.ai;
+        const question = ai.question.trim();
+        if (!question) {
+            return;
+        }
+        const history = ai.chat.map((item) => ({ q: item.q, a: item.a }));
+        const result = await this.aiCall("ask", "ws_ai_ask", [question, history]);
+        if (result) {
+            ai.chat.push({ q: question, a: result.answer });
+            ai.question = "";
+        }
+    }
+
+    onAskInput(ev) {
+        this.ai.question = ev.target.value;
+    }
+
+    onAskKeydown(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.ask();
+        }
+    }
+
+    /** Do the suggested next step with the button the screen already has. */
+    nextStep() {
+        const c = this.state.detail;
+        const action = c.next_step && c.next_step.action;
+        if (action === "draft") {
+            this.setPane("thread");
+            if (this.composerLock && c.phone) {
+                this.setChannel("sms"); // WhatsApp is past its 24 hours; SMS has no such rule
+            }
+            return this.draftReply();
+        }
+        if (action === "reply") {
+            return this.setPane("thread");
+        }
+        if (action === "cv_help") {
+            return this.helpBuildCv();
+        }
+        if (action === "cv_link") {
+            return this.candidateAction("action_resend_cv_link", c.id, _t("CV link queued"));
+        }
+        if (action === "jobs") {
+            return this.candidateAction("action_c2w_send_jobs");
+        }
     }
 
     /** How the next message goes: WhatsApp if they use it, unless the agent picked SMS. */
