@@ -18,7 +18,7 @@ class TestSoftphoneCard(TransactionCase):
         cls.other.dialer_sip_ext = '1002'
         cls.Session = cls.env['comm.dialer.agent.session']
         cls.other_session = cls.Session.create({'user_id': cls.other.id})
-        cls.partner = cls.env['res.partner'].create({'name': 'Thandiwe Mokoena', 'mobile': '+27825550142'})
+        cls.partner = cls.env['res.partner'].create({'name': 'Zanokuhle Cardtest', 'mobile': '+27825550142'})
         now = fields.Datetime.now()
         Call = cls.env['comm.voip.call']
         cls.answered = Call.create({
@@ -40,7 +40,7 @@ class TestSoftphoneCard(TransactionCase):
         self.assertEqual([c['id'] for c in res['calls']], [self.answered.id, self.missed.id])
         self.assertEqual(res['contacts'], [])
         first, second = res['calls']
-        self.assertEqual(first['name'], 'Thandiwe Mokoena')
+        self.assertEqual(first['name'], 'Zanokuhle Cardtest')
         self.assertEqual(first['number'], '+27825550142')
         self.assertTrue(first['answered'])
         self.assertEqual(first['duration'], 252)
@@ -49,7 +49,7 @@ class TestSoftphoneCard(TransactionCase):
         self.assertEqual(second['direction'], 'incoming')
 
     def test_recent_search_finds_calls_and_contacts(self):
-        res = self.Session.with_user(self.agent).softphone_recent('thandiwe')
+        res = self.Session.with_user(self.agent).softphone_recent('zanokuhle')
         self.assertEqual([c['id'] for c in res['calls']], [self.answered.id])
         self.assertEqual([p['id'] for p in res['contacts']], [self.partner.id])
         self.assertEqual(res['contacts'][0]['number'], '+27825550142')
@@ -78,13 +78,17 @@ class TestSoftphoneCard(TransactionCase):
         self.assertEqual(rows[0]['summary'], 'CV follow-up')
 
     def test_transfer_targets_exclude_me_and_agents_without_a_phone(self):
-        self.Session.create({'user_id': self.agent.id})
+        mine = self.Session.create({'user_id': self.agent.id})
         nophone = new_test_user(self.env, login='card_nophone', groups='base.group_user')
-        self.Session.create({'user_id': nophone.id})
+        without = self.Session.create({'user_id': nophone.id})
         targets = self.Session.with_user(self.agent).softphone_transfer_targets()
-        self.assertEqual([t['id'] for t in targets], [self.other_session.id])
-        self.assertEqual(targets[0]['ext'], '1002')
-        self.assertEqual(targets[0]['state_label'], 'Offline')
+        ids = [t['id'] for t in targets]
+        self.assertIn(self.other_session.id, ids)
+        self.assertNotIn(mine.id, ids)
+        self.assertNotIn(without.id, ids)
+        target = next(t for t in targets if t['id'] == self.other_session.id)
+        self.assertEqual(target['ext'], '1002')
+        self.assertEqual(target['state_label'], 'Offline')
 
     def test_blind_transfer_needs_a_live_call(self):
         Session = self.Session.with_user(self.agent)

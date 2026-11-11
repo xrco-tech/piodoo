@@ -4,7 +4,7 @@
 // bottom. Everything is a token on .o_phone_card so the dark bundle only has
 // to redefine the tokens (phone_card.dark.scss).
 
-.o_phone_card, .o_phone_pill {
+.o_phone_card, .o_phone_pill, .o_phone_tray {
     --pc-card: #ffffff;
     --pc-line: #e5e7eb;
     --pc-fg: #1f2937;
@@ -289,6 +289,27 @@
     .fa { color: var(--pc-accent); }
     &.ring .fa { color: var(--pc-amber); animation: o_phone_pulse 1s infinite; }
     &.o_phone_second { bottom: 64px; }
+}
+
+// Systray icon that opens the WhatsApp card: presence dot + missed-calls count.
+.o_phone_tray {
+    display: flex;
+    align-items: center;
+
+    > button { position: relative; color: inherit; }
+    .o_phone_tray_dot {
+        position: absolute; right: 2px; bottom: 2px; width: 8px; height: 8px; border-radius: 50%;
+        background: var(--pc-muted);
+        &.ok { background: var(--pc-green); }
+        &.away { background: var(--pc-amber); }
+        &.off { background: var(--pc-red); }
+        &.ring { background: var(--pc-amber); animation: o_phone_pulse 1s infinite; }
+    }
+    .o_phone_tray_n {
+        position: absolute; top: 2px; right: 0; min-width: 15px; height: 15px; padding: 0 4px;
+        border-radius: 999px; background: var(--pc-red); color: #fff;
+        font-size: 10px; font-weight: 700; line-height: 15px; text-align: center;
+    }
 }
 
 @keyframes o_phone_pulse {

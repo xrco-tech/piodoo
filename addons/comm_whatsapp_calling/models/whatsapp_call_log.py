@@ -117,6 +117,43 @@ class WhatsappCallLog(models.Model):
         self.write(vals)
         return True
 
+    # ── Phone card ────────────────────────────────────────────────────
+    @api.model
+    def phone_card_activities(self, limit=40):
+        """The signed-in user's open phone-call activities, most overdue
+        first, for the Activities tab of the phone card (WhatsApp calling
+        here and the VoIP softphone in comm_dialer)."""
+        activities = self.env['mail.activity'].search([
+            ('user_id', '=', self.env.uid),
+            ('activity_type_id.category', '=', 'phonecall'),
+        ], order='date_deadline, id', limit=limit)
+        today = fields.Date.context_today(self)
+        rows = []
+        for activity in activities:
+            record = self.env[activity.res_model].browse(activity.res_id).exists() \
+                if activity.res_model in self.env else False
+            number = ''
+            if record:
+                holders = [record]
+                if 'partner_id' in record._fields:
+                    holders.append(record.partner_id)
+                for holder in holders:
+                    for field in ('mobile', 'phone'):
+                        if not number and holder and field in holder._fields:
+                            number = holder[field] or ''
+            rows.append({
+                'id': activity.id,
+                'name': activity.res_name or (record and record.display_name) or _("Call"),
+                'summary': activity.summary or activity.activity_type_id.name or '',
+                'number': number,
+                'due': fields.Date.to_string(activity.date_deadline),
+                'late': bool(activity.date_deadline and activity.date_deadline < today),
+                'today': activity.date_deadline == today,
+                'res_model': activity.res_model,
+                'res_id': activity.res_id,
+            })
+        return rows
+
     # ── Recording ─────────────────────────────────────────────────────
     # WhatsApp calls are end-to-end encrypted between the browser and
     # Meta, so there's nothing server-side to record — the browser

@@ -1,31 +1,32 @@
 /** @odoo-module **/
 
 /**
- * Incoming WhatsApp call popup + WebRTC pipeline.
+ * WhatsApp calling service: the WebRTC pipeline, and the state the phone
+ * card (phone_card.js / phone_card.xml) draws from.
  *
- * Registered as an OWL service so bus_service can be resolved via the
- * standard dependency injection. The old approach of reaching for
- * `odoo.env.services.bus_service` off a global object doesn't work in
- * Odoo 18 — services are only available inside components / services.
+ * Registered as a service so bus_service can be resolved via the standard
+ * dependency injection, and so a call can ring in from anywhere in the app.
  *
  * Flow:
  *   1. Meta webhook stores SDP offer on whatsapp.call.log.
  *   2. Server pushes { call_log_id, sdp_offer, partner_name, ... } over
  *      the whatsapp_incoming_call bus channel.
- *   3. This service shows a popup with Accept/Decline.
+ *   3. The phone card shows the Incoming screen with Accept/Decline.
  *   4. On Accept: getUserMedia → RTCPeerConnection → setRemoteDescription
  *      (offer) → createAnswer → setLocalDescription → wait for ICE →
  *      POST answer to /whatsapp/call/answer/<id>.
  *   5. Server forwards answer to Meta.
  *   6. Meta establishes DTLS-SRTP; remote audio arrives via ontrack and
  *      plays through a hidden <audio autoplay>.
+ *
+ * The view never touches the pipeline's objects: the functions the pipeline
+ * calls to show something (showPopup, showHud, hideHud, renderScriptPanel…)
+ * only copy what the card needs into `state`.
  */
 
+import { reactive } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 
-const POPUP_ID = "comm_whatsapp_calling_incoming_popup";
-const HUD_ID = "comm_whatsapp_calling_call_hud";
-const SCRIPT_PANEL_ID = "comm_whatsapp_calling_script_panel";
 const AUDIO_ID = "comm_whatsapp_calling_remote_audio";
 const LOG_TAG = "[wa-call]";
 
@@ -34,50 +35,13 @@ const ICE_SERVERS = [
     { urls: "stun:stun1.l.google.com:19302" },
 ];
 
-// ── Theme ────────────────────────────────────────────────────────────
-// Persisted per-browser (not per-user record) since this is a purely
-// visual preference for floating widgets that live outside any view.
-const THEME_STORAGE_KEY = "comm_whatsapp_calling_theme";
-const THEMES = {
-    dark: {
-        card: "#111827", cardAlt: "#1f2937", text: "#fff", textMuted: "#9ca3af",
-        border: "#1f2937", accent: "#25D366", primary: "#4a6cf7", danger: "#dc2626",
-        inputBg: "#1f2937", inputBorder: "#374151", callBg: "rgba(37,211,102,0.15)",
-        shadow: "0 10px 30px rgba(0,0,0,0.35)", shadowSm: "0 6px 18px rgba(0,0,0,0.25)",
-    },
-    light: {
-        card: "#ffffff", cardAlt: "#f3f4f6", text: "#111827", textMuted: "#6b7280",
-        border: "#e5e7eb", accent: "#128C7E", primary: "#4a6cf7", danger: "#dc2626",
-        inputBg: "#f9fafb", inputBorder: "#d1d5db", callBg: "#d9ead3",
-        shadow: "0 10px 30px rgba(0,0,0,0.15)", shadowSm: "0 6px 18px rgba(0,0,0,0.12)",
-    },
-};
-function getStoredTheme() {
-    try { return localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light"; }
-    catch (e) { return "light"; }
-}
-function setStoredTheme(t) {
-    try { localStorage.setItem(THEME_STORAGE_KEY, t); } catch (e) {}
-}
+const PRESENCE_LABELS = { available: "Available", away: "Away", dnd: "Do not disturb" };
 
 function log(...args) {
     try { console.log(LOG_TAG, ...args); } catch (e) {}
 }
 function warn(...args) {
     try { console.warn(LOG_TAG, ...args); } catch (e) {}
-}
-
-function escapeHtml(s) {
-    return String(s ?? "")
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
-function formatDuration(ms) {
-    const totalSec = Math.max(0, Math.floor(ms / 1000));
-    const m = Math.floor(totalSec / 60);
-    const s = totalSec % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function callRpc(url, params = {}) {
@@ -153,140 +117,140 @@ const waCallService = {
         // { sessionId, chatbotName, bubbles, terminated } while a suggested
         // voice script is being followed for the current accepted call.
         let scriptSession = null;
-        // Ticks the HUD's "In call for: mm:ss" label once a second.
-        let hudTimerId = null;
-        let theme = getStoredTheme();
-        function colors() { return THEMES[theme]; }
-        function themeToggleHtml() {
-            const c = colors();
-            return `<button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                        style="background:none;border:none;color:${c.textMuted};font-size:13px;cursor:pointer;padding:2px 4px;line-height:1;">
-                        <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                    </button>`;
-        }
-        function wireThemeToggle(root, rerender) {
-            const btn = root.querySelector('[data-action="theme-toggle"]');
-            if (btn) {
-                btn.addEventListener("click", () => {
-                    theme = theme === "dark" ? "light" : "dark";
-                    setStoredTheme(theme);
-                    rerender();
-                });
-            }
-        }
-        // Icon button used in every widget's "Shortcuts"/"Call" row. When a
-        // `label` is given it renders as an icon-over-text pill (so agents
-        // don't have to rely on hover tooltips); with no label it stays the
-        // original compact 40px circle.
-        function iconBtn(action, icon, title, extra = "", label = "") {
-            const c = colors();
-            if (label) {
-                // Keep the round icon; the label sits BELOW the circle. The
-                // button itself is transparent — `extra` styles the circle
-                // (e.g. the mute/record active-state background).
-                return `<button data-action="${action}" title="${escapeHtml(title)}"
-                             style="display:inline-flex;flex-direction:column;align-items:center;gap:5px;
-                                    background:none;border:none;padding:0;cursor:pointer;line-height:1;">
-                            <span style="width:48px;height:48px;border-radius:50%;background:${c.cardAlt};color:${c.text};
-                                         display:inline-flex;align-items:center;justify-content:center;font-size:17px;${extra}">
-                                <i class="fa ${icon}"></i>
-                            </span>
-                            <span style="font-size:11px;font-weight:600;color:${c.textMuted};white-space:nowrap;">${escapeHtml(label)}</span>
-                        </button>`;
-            }
-            return `<button data-action="${action}" title="${escapeHtml(title)}"
-                         style="width:40px;height:40px;border-radius:50%;background:${c.cardAlt};color:${c.text};
-                                border:none;font-size:15px;cursor:pointer;${extra}">
-                        <i class="fa ${icon}"></i>
-                    </button>`;
-        }
-        function shortcutsRowHtml(rows) {
-            const c = colors();
-            return `
-                <div style="padding:12px 16px 4px;">
-                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Shortcuts</div>
-                    <div style="display:flex;gap:12px;justify-content:flex-start;">${rows.filter(Boolean).join("")}</div>
-                </div>
-            `;
+
+        // ── What the phone card shows ────────────────────────────────
+        // Each key is one screen (or part of one) and holds only what that
+        // screen prints. The card picks the screen in this order:
+        // permission, picker, incoming, call, transferRequest, connecting,
+        // wrapup, then the three tabs.
+        const state = reactive({
+            open: false,            // the card is on screen
+            tab: "recent",          // recent | keypad | activities
+            presence: "available",  // available | away | dnd
+            missed: 0,              // count on the Recent tab and the systray icon
+            incoming: null,         // { callLogId, name, number, partnerId, scriptName }
+            transferRequest: null,  // { by, name, number }
+            connecting: null,       // { label, name, number } while a call is being set up
+            call: null,             // { callLogId, name, number, partnerId, startTime, muted, recording }
+            script: null,           // { name, bubbles, terminated, loading }
+            scriptOpen: false,      // the script follower is in front of the call screen
+            picker: null,           // { kind: script|campaign, title, items, owner }
+            transfer: null,         // { callLogId, teams, teamId }
+            permission: null,       // { name, number, chip, message, hint, canTry, canRequest }
+            wrapup: null,           // { callLogId, name, dispositions, dispositionId, note }
+            keypad: {
+                number: "",
+                accounts: [],       // [{ id, label }]
+                accountId: null,
+                chatbotId: null,
+                chatbotName: "",
+                contact: null,      // { name, partnerId } matched on the number
+                permission: null,   // granted | pending | declined | expired
+            },
+        });
+        // The bus payloads and callbacks behind those screens stay out of
+        // `state`, so the pipeline is handed back the very objects it gave.
+        let incomingPayload = null;
+        let transferPayload = null;
+        let pickerSelect = null;
+        let permissionAnswer = null;   // resolves confirmDialWithoutPermission
+        let permissionRequest = null;  // { toNumber, accountId, partnerName, partnerId }
+        let pendingDial = null;        // arguments of the outbound call being set up
+        let wrapupSeq = 0;
+        let connectingSeq = 0;
+        let openScriptWhenReady = false;
+
+        function openCard(tab) {
+            if (tab) state.tab = tab;
+            state.open = true;
+            refreshMissed();
+            if (state.tab === "keypad") loadAccounts();
         }
 
-        // Anchors every floating call widget near the systray phone icon
-        // that triggers it, instead of a fixed top-right corner far from
-        // it. These widgets live in document.body, not in the icon's own
-        // component tree, so CSS anchoring (position:absolute under the
-        // button, like the presence dropdown uses) isn't available here —
-        // this needs real viewport math. `extraRight` shifts further left
-        // (e.g. the script panel sitting beside the HUD instead of on
-        // top of it).
-        const MOBILE_MAX_WIDTH = 500;
-        const MOBILE_MARGIN = 8;
-        function anchorTopRight(extraRight = 0) {
-            const icon = document.querySelector(".o_wa_dialer_btn")
-                || document.querySelector(".o_wa_calls_systray");
-            if (icon) {
-                const r = icon.getBoundingClientRect();
-                return {
-                    top: Math.round(r.bottom + 8),
-                    // On a phone the icon sits mid-screen, so a card lined up
-                    // with it would run off the left edge.
-                    right: window.innerWidth <= MOBILE_MAX_WIDTH
-                        ? MOBILE_MARGIN
-                        : Math.round(window.innerWidth - r.right) + extraRight,
-                };
-            }
-            if (window.innerWidth <= MOBILE_MAX_WIDTH) {
-                return { top: 20, right: MOBILE_MARGIN };
-            }
-            return { top: 20, right: 20 + extraRight };
-        }
-
-        // Close "×" or back "←" for pickers reachable both directly and
-        // as a step from another widget (e.g. via the dial pad's
-        // shortcuts). When `onBack` is given, the button returns to
-        // that widget instead of closing the whole call-widget stack —
-        // otherwise it reads as "cancel" when it's really "previous
-        // screen".
-        function closeOrBackButtonHtml(onBack) {
-            return onBack
-                ? `<button data-action="back" title="Back"
-                        style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:14px;cursor:pointer;padding:4px 6px;line-height:1;">
-                        <i class="fa fa-arrow-left"></i>
-                   </button>`
-                : `<button data-action="close" title="Close"
-                        style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>`;
-        }
-        function wireCloseOrBack(modal, onBack) {
-            if (onBack) {
-                modal.querySelector("[data-action=back]")
-                     .addEventListener("click", () => { modal.remove(); onBack(); });
+        function toggleCard() {
+            if (state.open) {
+                state.open = false;
             } else {
-                modal.querySelector("[data-action=close]")
-                     .addEventListener("click", () => modal.remove());
+                openCard();
             }
         }
 
-        // Closes `el` on a click anywhere outside it, mirroring how
-        // Discuss's own pickers/dropdowns behave. Only wired onto plain
-        // "menu" widgets with no destructive dismiss consequence — the
-        // incoming-call popup and active-call HUD are deliberately left
-        // out (dismissing them would strand a still-ringing/still-live
-        // call with no UI to act on it), and so is the voice-script
-        // panel (its own close button ends the call outright, so an
-        // accidental outside click must never reach that same path).
-        function wireOutsideClickClose(el) {
-            const handler = (ev) => {
-                if (!document.body.contains(el)) {
-                    document.removeEventListener("pointerdown", handler, true);
-                    return;
+        function minimise() {
+            state.open = false;
+        }
+
+        // ── Presence (Available / Away / Do not disturb) ─────────────
+        // Away and DND users are skipped when the inbound webhook
+        // broadcasts a ringing event, so their browsers stay quiet.
+        async function loadPresence() {
+            try {
+                const data = await callRpc("/whatsapp/call/presence/get", {});
+                if (data && data.presence) state.presence = data.presence;
+            } catch (e) {
+                warn("presence fetch failed:", e);
+            }
+        }
+
+        async function setPresence(next) {
+            if (!PRESENCE_LABELS[next] || next === state.presence) return;
+            const previous = state.presence;
+            state.presence = next;
+            try {
+                const result = await callRpc("/whatsapp/call/presence/set", { presence: next });
+                if (!result?.success) {
+                    throw new Error(result?.error || "unknown");
                 }
-                if (el.contains(ev.target)) return;
-                document.removeEventListener("pointerdown", handler, true);
-                el.remove();
-            };
-            // Deferred so the click that opened this widget (already
-            // dispatched by the time this runs) isn't also the one that
-            // immediately closes it.
-            setTimeout(() => document.addEventListener("pointerdown", handler, true), 0);
+                notify(`Presence: ${PRESENCE_LABELS[next]}`, "info");
+            } catch (e) {
+                // Roll back so the dot shows what the server actually has.
+                state.presence = previous;
+                notify("Could not update presence: " + (e?.message || e), "danger");
+            }
+        }
+
+        // Missed calls since midnight (this browser's day), so the badge
+        // is today's backlog and clears itself overnight.
+        async function refreshMissed() {
+            try {
+                const midnight = new Date();
+                midnight.setHours(0, 0, 0, 0);
+                const since = midnight.toISOString().slice(0, 19).replace("T", " ");
+                state.missed = await orm.searchCount("whatsapp.call.log", [
+                    ["is_missed", "=", true],
+                    ["create_date", ">=", since],
+                ]);
+            } catch (e) {
+                state.missed = 0;
+            }
+        }
+
+        // ── Pickers (script, campaign) ───────────────────────────────
+        // A picker sits in front of the screen it was opened from, and goes
+        // away with it: `owner` is incoming | call | keypad.
+        function pickerOwner() {
+            return state.incoming ? "incoming" : state.call ? "call" : "keypad";
+        }
+
+        function ownerGone(owner) {
+            return (owner === "incoming" && !state.incoming) || (owner === "call" && !state.call);
+        }
+
+        function openPicker(kind, title, items, onSelect, owner) {
+            pickerSelect = onSelect;
+            state.picker = { kind, title, items, owner };
+            state.open = true;
+        }
+
+        function closePicker() {
+            pickerSelect = null;
+            state.picker = null;
+        }
+
+        function pick(id) {
+            const item = state.picker && state.picker.items.find((i) => i.id === id);
+            const select = pickerSelect;
+            closePicker();
+            if (item && select && !item.already) select(item.id, item.name);
         }
 
         function notify(message, type) {
@@ -405,105 +369,53 @@ const waCallService = {
             }
         }
 
+        // ── Incoming screen ──────────────────────────────────────────
         function hidePopup() {
             stopRinging();
-            const el = document.getElementById(POPUP_ID);
-            if (el) el.remove();
+            incomingPayload = null;
+            state.incoming = null;
+            if (state.picker && state.picker.owner === "incoming") closePicker();
         }
 
         function showPopup(payload) {
             hidePopup();
-            const c = colors();
-            const wrap = document.createElement("div");
-            wrap.id = POPUP_ID;
-            wrap.dataset.callLogId = payload.call_log_id;
-            const anchor = anchorTopRight();
-            Object.assign(wrap.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10000", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            const scriptHint = payload.suggested_chatbot_id
-                ? `<div style="font-size:11px;color:${c.accent};margin-top:10px;">
-                       <i class="fa fa-list-alt me-1"></i>${escapeHtml(payload.suggested_chatbot_name || "")}
-                   </div>`
-                : "";
-            const shortcuts = shortcutsRowHtml([
-                payload.partner_id ? iconBtn("view-inbox", "fa-inbox", "View in Inbox", "", "Inbox") : "",
-                iconBtn("change-script", "fa-list-alt", "Choose voice script", "", "Script"),
-                payload.partner_id ? iconBtn("add-campaign", "fa-bullhorn", "Add to campaign", "", "Campaign") : "",
-            ]);
-            wrap.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-whatsapp me-1"></i>WhatsApp Call
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        <button data-action="close" title="Decline"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
-                    </div>
-                </div>
-                <div style="padding:18px 16px 6px;text-align:center;">
-                    <div style="font-size:12px;color:${c.textMuted};">Incoming call from...</div>
-                    <div style="width:64px;height:64px;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;margin:12px auto;">
-                        <i class="fa fa-user" style="font-size:26px;color:${c.textMuted};"></i>
-                    </div>
-                    <div style="font-size:16px;font-weight:700;">${escapeHtml(payload.partner_name || "Unknown")}</div>
-                    <div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
-                    ${scriptHint}
-                </div>
-                ${shortcuts}
-                <div style="display:flex;justify-content:center;gap:36px;padding:18px 16px 22px;">
-                    <button data-action="decline" title="Decline"
-                            style="width:52px;height:52px;border-radius:50%;background:${c.danger};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
-                        <i class="fa fa-phone" style="transform:rotate(135deg);display:inline-block;"></i>
-                    </button>
-                    <button data-action="accept" title="Accept"
-                            style="width:52px;height:52px;border-radius:50%;background:${c.accent};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
-                        <i class="fa fa-phone"></i>
-                    </button>
-                </div>
-            `;
-            wrap.querySelector("[data-action=decline]").addEventListener("click", () => declineCall(payload.call_log_id));
-            wrap.querySelector("[data-action=close]").addEventListener("click", () => declineCall(payload.call_log_id));
-            wrap.querySelector("[data-action=accept]").addEventListener("click", () => acceptCall(payload));
-            const inboxBtn = wrap.querySelector("[data-action=view-inbox]");
-            if (inboxBtn) {
-                inboxBtn.addEventListener("click", () => openContactInboxFor(payload.partner_id));
-            }
-            const changeScriptBtn = wrap.querySelector("[data-action=change-script]");
-            if (changeScriptBtn) {
-                changeScriptBtn.addEventListener("click", () => pickScriptForPopup(payload));
-            }
-            const addCampaignBtn = wrap.querySelector("[data-action=add-campaign]");
-            if (addCampaignBtn) {
-                addCampaignBtn.addEventListener("click", () => showCampaignPicker(payload.partner_id));
-            }
-            wireThemeToggle(wrap, () => showPopup(payload));
-            document.body.appendChild(wrap);
+            incomingPayload = payload;
+            state.incoming = {
+                callLogId: payload.call_log_id,
+                name: payload.partner_name || "Unknown",
+                number: payload.from_number || "",
+                partnerId: payload.partner_id || null,
+                scriptName: payload.suggested_chatbot_id ? (payload.suggested_chatbot_name || "") : "",
+            };
+            state.open = true;
             startRinging(payload);
         }
 
-        function stopHudTimer() {
-            if (hudTimerId) {
-                clearInterval(hudTimerId);
-                hudTimerId = null;
+        // Between Accept (or Call) and the call being up there is no call to
+        // show or end yet, only this screen.
+        function showConnecting(label, name, number) {
+            state.connecting = { label, name: name || number || "", number: number || "" };
+            state.open = true;
+            return ++connectingSeq;
+        }
+
+        function hideConnecting(seq) {
+            if (seq === connectingSeq) state.connecting = null;
+        }
+
+        async function acceptIncoming() {
+            const payload = incomingPayload;
+            if (!payload) return;
+            const seq = activeCall ? 0 : showConnecting("Connecting", payload.partner_name, payload.from_number);
+            try {
+                await acceptCall(payload);
+            } finally {
+                hideConnecting(seq);
             }
         }
 
-        function startHudTimer() {
-            stopHudTimer();
-            hudTimerId = setInterval(() => {
-                const el = document.querySelector(`#${HUD_ID} [data-role=duration]`);
-                if (!el || !activeCall || !activeCall.startTime) return;
-                el.textContent = `In call for: ${formatDuration(Date.now() - activeCall.startTime)}`;
-            }, 1000);
+        function declineIncoming() {
+            if (incomingPayload) declineCall(incomingPayload.call_log_id);
         }
 
         function toggleMute() {
@@ -708,188 +620,91 @@ const waCallService = {
             }
         }
 
-        let lastHudPayload = null; // to redraw the HUD when recording starts or fails
+        // ── In-call screen ───────────────────────────────────────────
+        // The pipeline calls showHud whenever something the screen prints
+        // has changed (answered, muted, recording started or failed).
+        let lastHudPayload = null;
         function showHud(payload) {
             lastHudPayload = payload;
-            const existing = document.getElementById(HUD_ID);
-            if (existing) existing.remove();
-            const c = colors();
-            const connected = !!(activeCall && activeCall.startTime);
-            const muted = !!(activeCall && activeCall.muted);
-            const recording = !!(activeCall && activeCall.recording);
-            const hud = document.createElement("div");
-            hud.id = HUD_ID;
-            const anchor = anchorTopRight();
-            Object.assign(hud.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10000", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            const shortcuts = shortcutsRowHtml([
-                payload.partner_id ? iconBtn("view-inbox", "fa-inbox", "View in Inbox", "", "Inbox") : "",
-                iconBtn("script", "fa-list-alt", scriptSession ? "Change voice script" : "Start voice script", "", "Script"),
-                payload.partner_id ? iconBtn("add-campaign", "fa-bullhorn", "Add to campaign", "", "Campaign") : "",
-                iconBtn("theme-toggle", theme === "dark" ? "fa-sun-o" : "fa-moon-o",
-                         `Switch to ${theme === "dark" ? "light" : "dark"} theme`, "", "Theme"),
-            ]);
-            hud.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-whatsapp me-1"></i>WhatsApp Call
-                    </div>
-                    <button data-action="hangup" title="Hang up"
-                            style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
-                </div>
-                <div style="background:${c.callBg};padding:16px;text-align:center;">
-                    <div style="width:64px;height:64px;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;margin:0 auto 10px;overflow:hidden;">
-                        <i class="fa fa-user" style="font-size:26px;color:${c.textMuted};"></i>
-                    </div>
-                    <div style="font-size:16px;font-weight:700;color:${c.text};">${escapeHtml(payload.partner_name || "In call")}</div>
-                    <div data-role="duration" style="font-size:12px;color:${c.accent};font-weight:600;margin-top:2px;">
-                        ${connected ? `In call for: ${formatDuration(Date.now() - activeCall.startTime)}` : "Calling…"}
-                    </div>
-                    ${payload.from_number ? `<div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number)}</div>` : ""}
-                </div>
-                ${shortcuts}
-                <div style="padding:14px 16px 6px;border-top:1px solid ${c.border};margin-top:8px;">
-                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:${c.textMuted};margin-bottom:8px;">Call</div>
-                    <div style="display:flex;gap:12px;">
-                        ${iconBtn("transfer", "fa-random", "Transfer to team", "", "Transfer")}
-                        ${iconBtn("mute", muted ? "fa-microphone-slash" : "fa-microphone", muted ? "Unmute" : "Mute",
-                                  muted ? `background:${c.danger};color:#fff;` : "", muted ? "Unmute" : "Mute")}
-                        ${connected ? iconBtn("record", "fa-circle", recording ? "Stop recording" : "Record this call",
-                                  recording ? `background:${c.danger};color:#fff;` : "", recording ? "Stop" : "Record") : ""}
-                    </div>
-                </div>
-                <div style="display:flex;justify-content:center;padding:16px;">
-                    <button data-action="hangup" title="Hang up"
-                            style="width:52px;height:52px;border-radius:50%;background:${c.danger};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
-                        <i class="fa fa-phone" style="transform:rotate(135deg);display:inline-block;"></i>
-                    </button>
-                </div>
-            `;
-            hud.querySelectorAll("[data-action=hangup]").forEach((btn) =>
-                btn.addEventListener("click", () => hangupCall(payload.call_log_id)));
-            hud.querySelector("[data-action=transfer]")
-                .addEventListener("click", () => openTransferPicker(payload.call_log_id));
-            hud.querySelector("[data-action=script]")
-                .addEventListener("click", () => openScriptPicker());
-            const inboxBtn = hud.querySelector("[data-action=view-inbox]");
-            if (inboxBtn) {
-                inboxBtn.addEventListener("click", () => openContactInboxFor(payload.partner_id));
-            }
-            const addCampaignBtn = hud.querySelector("[data-action=add-campaign]");
-            if (addCampaignBtn) {
-                addCampaignBtn.addEventListener("click", () => showCampaignPicker(payload.partner_id));
-            }
-            const muteBtn = hud.querySelector("[data-action=mute]");
-            if (muteBtn) {
-                muteBtn.addEventListener("click", () => { toggleMute(); showHud(payload); });
-            }
-            const recordBtn = hud.querySelector("[data-action=record]");
-            if (recordBtn) {
-                recordBtn.addEventListener("click", async () => { await toggleRecording(); showHud(payload); });
-            }
-            wireThemeToggle(hud, () => showHud(payload));
-            document.body.appendChild(hud);
-            if (connected) startHudTimer();
+            // A new call brings the card up; a redraw leaves a minimised card alone.
+            if (!state.call) state.open = true;
+            state.call = {
+                callLogId: payload.call_log_id,
+                name: payload.partner_name || "In call",
+                number: payload.from_number || "",
+                partnerId: payload.partner_id || null,
+                startTime: (activeCall && activeCall.startTime) || null,
+                muted: !!(activeCall && activeCall.muted),
+                recording: !!(activeCall && activeCall.recording),
+            };
         }
 
-        // ── Transfer request popup (target agent side) ─────────────
-        const TRANSFER_POPUP_ID = "wa_transfer_request_popup";
+        function hideHud() {
+            state.call = null;
+            state.transfer = null;
+            state.scriptOpen = false;
+            openScriptWhenReady = false;
+            if (state.picker && state.picker.owner === "call") closePicker();
+        }
 
+        function hangupFromCard() {
+            if (state.call) hangupCall(state.call.callLogId);
+        }
+
+        function muteFromCard() {
+            toggleMute();
+            if (activeCall && lastHudPayload) showHud(lastHudPayload);
+        }
+
+        async function recordFromCard() {
+            await toggleRecording();
+            if (activeCall && lastHudPayload) showHud(lastHudPayload);
+        }
+
+        // ── Transfer request (target agent side) ─────────────────────
         function showTransferRequestPopup(payload) {
             if (activeCall) {
-                // Don't interrupt an active call — this popup can queue
-                // as an alternative or just be skipped.
+                // Don't interrupt an active call.
                 notify(`Transfer request from ${payload.transferred_from_name} ignored (in call)`,
                        "info");
                 return;
             }
-            const existing = document.getElementById(TRANSFER_POPUP_ID);
-            if (existing) existing.remove();
+            transferPayload = payload;
+            state.transferRequest = {
+                by: payload.transferred_from_name || "Someone",
+                name: payload.partner_name || "Caller",
+                number: payload.from_number || "",
+            };
+            state.open = true;
 
-            const c = colors();
-            const wrap = document.createElement("div");
-            wrap.id = TRANSFER_POPUP_ID;
-            wrap.dataset.sourceCallLogId = payload.source_call_log_id;
-            const anchor = anchorTopRight();
-            Object.assign(wrap.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10000", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            const remove = () => wrap.remove();
-            wrap.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-random me-1"></i>Call Transfer
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        <button data-action="close" title="Decline"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
-                    </div>
-                </div>
-                <div style="padding:18px 16px 6px;text-align:center;">
-                    <div style="font-size:12px;color:${c.textMuted};">
-                        Transferred by ${escapeHtml(payload.transferred_from_name || "Someone")}
-                    </div>
-                    <div style="width:64px;height:64px;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;margin:12px auto;">
-                        <i class="fa fa-user" style="font-size:26px;color:${c.textMuted};"></i>
-                    </div>
-                    <div style="font-size:16px;font-weight:700;">${escapeHtml(payload.partner_name || "Caller")}</div>
-                    <div style="font-size:12px;color:${c.textMuted};margin-top:2px;">${escapeHtml(payload.from_number || "")}</div>
-                </div>
-                <div style="display:flex;justify-content:center;gap:36px;padding:18px 16px 22px;">
-                    <button data-action="decline" title="Decline"
-                            style="width:52px;height:52px;border-radius:50%;background:${c.danger};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
-                        <i class="fa fa-phone" style="transform:rotate(135deg);display:inline-block;"></i>
-                    </button>
-                    <button data-action="accept" title="Call back"
-                            style="width:52px;height:52px;border-radius:50%;background:${c.accent};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
-                        <i class="fa fa-phone"></i>
-                    </button>
-                </div>
-            `;
-            wrap.querySelector("[data-action=decline]").addEventListener("click", remove);
-            wrap.querySelector("[data-action=close]").addEventListener("click", remove);
-            wrap.querySelector("[data-action=accept]").addEventListener("click", async () => {
-                remove();
-                // Dial the customer back via the standard outbound path.
-                // The new call log will get transferred_from_call_log_id
-                // via a follow-up write from server side (not yet — cold
-                // transfer means no continuity carried by Meta; this is
-                // a fresh outbound call).
-                await dialCall({
-                    toNumber:    payload.from_number,
-                    partnerId:   payload.partner_id || null,
-                    partnerName: payload.partner_name || payload.from_number,
-                    accountId:   payload.account_id || null,
-                });
-            });
-            wireThemeToggle(wrap, () => showTransferRequestPopup(payload));
-            document.body.appendChild(wrap);
-            wireOutsideClickClose(wrap);
-
-            // If the transfer request stales (someone else accepted the
-            // source call ended, etc.), auto-remove after 60s.
+            // If the transfer request stales (someone else accepted, the
+            // source call ended, etc.), drop it after 60s.
             setTimeout(() => {
-                const el = document.getElementById(TRANSFER_POPUP_ID);
-                if (el && +el.dataset.sourceCallLogId === payload.source_call_log_id) {
-                    el.remove();
-                }
+                if (transferPayload === payload) declineTransferRequest();
             }, 60000);
         }
 
-        // ── Transfer picker ────────────────────────────────────────
+        function declineTransferRequest() {
+            transferPayload = null;
+            state.transferRequest = null;
+        }
+
+        async function acceptTransferRequest() {
+            const payload = transferPayload;
+            if (!payload) return;
+            declineTransferRequest();
+            // Dial the customer back via the standard outbound path: a cold
+            // transfer carries no continuity from Meta, so this is a fresh
+            // outbound call.
+            await placeCall({
+                toNumber:    payload.from_number,
+                partnerId:   payload.partner_id || null,
+                partnerName: payload.partner_name || payload.from_number,
+                accountId:   payload.account_id || null,
+            });
+        }
+
+        // ── Transfer to a team ───────────────────────────────────────
         async function openTransferPicker(callLogId) {
             let teams = [];
             try {
@@ -904,99 +719,54 @@ const waCallService = {
                 notify("No call teams configured.", "warning");
                 return;
             }
-            // Remove any existing picker.
-            const existing = document.getElementById("wa_transfer_picker");
-            if (existing) existing.remove();
-
-            const c = colors();
-            const modal = document.createElement("div");
-            modal.id = "wa_transfer_picker";
-            const anchor = anchorTopRight();
-            Object.assign(modal.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10001", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            const rows = teams.map(t =>
-                `<button data-team="${t.id}"
-                         ${t.available_count === 0 ? "disabled" : ""}
-                         style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-                                padding:10px 16px;background:transparent;
-                                border:none;border-top:1px solid ${c.border};
-                                color:${c.text};cursor:${t.available_count ? "pointer" : "default"};
-                                opacity:${t.available_count ? "1" : "0.5"};">
-                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
-                        <i class="fa fa-users" style="font-size:13px;color:${c.textMuted};"></i>
-                    </span>
-                    <span>
-                        <div style="font-weight:600;font-size:13px;">${escapeHtml(t.name)}</div>
-                        <div style="font-size:11px;color:${c.textMuted};">
-                            ${t.available_count} of ${t.member_count} available
-                        </div>
-                    </span>
-                </button>`
-            ).join("");
-            modal.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-random me-1"></i>Transfer to Team
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        <button data-action="close" title="Close"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
-                    </div>
-                </div>
-                ${rows}
-            `;
-            modal.querySelector("[data-action=close]")
-                 .addEventListener("click", () => modal.remove());
-            wireThemeToggle(modal, () => openTransferPicker(callLogId));
-            modal.querySelectorAll("[data-team]").forEach(btn => {
-                if (btn.disabled) return;
-                btn.addEventListener("click", async () => {
-                    const teamId = +btn.dataset.team;
-                    modal.remove();
-                    try {
-                        const result = await callRpc(
-                            `/whatsapp/call/transfer/${callLogId}`,
-                            { team_id: teamId },
-                        );
-                        if (!result?.success) {
-                            throw new Error(result?.error || "Transfer failed");
-                        }
-                        notify(`Transferring — ${result.targets_notified} agent(s) notified`,
-                               "success");
-                        // hangupCall, not a bare teardownCall — this
-                        // source call was already answered, so closing
-                        // the local RTCPeerConnection alone leaves it
-                        // "ongoing" from Meta's side (Meta was never
-                        // told to terminate it). That's exactly what
-                        // then blocks the receiving agent's "Call back"
-                        // with "A call with this number is already
-                        // ongoing" — Meta sees an existing open session
-                        // with that customer and refuses the new one.
-                        hangupCall(callLogId);
-                    } catch (err) {
-                        notify("Transfer failed: " + (err?.message || err),
-                               "danger");
-                    }
-                });
-            });
-            document.body.appendChild(modal);
-            wireOutsideClickClose(modal);
+            if (!state.call || state.call.callLogId !== callLogId) return; // call ended while loading
+            state.transfer = {
+                callLogId,
+                teamId: null,
+                teams: teams.map((t) => ({
+                    id: t.id, name: t.name, available: t.available_count, members: t.member_count,
+                })),
+            };
         }
 
-        // ── Voice script picker (start or switch mid-call) ──────────
-        // Generic themed list picker used for both the mid-call "change
-        // script" flow and the pre-accept "choose script" flow on the
-        // incoming popup — onSelect(chatbotId, chatbotName) fires on click.
-        async function showChatbotPicker(title, onSelect, onBack) {
+        function closeTransfer() {
+            state.transfer = null;
+        }
+
+        async function transferToTeam() {
+            const transfer = state.transfer;
+            if (!transfer || !transfer.teamId) return;
+            const callLogId = transfer.callLogId;
+            const teamId = transfer.teamId;
+            state.transfer = null;
+            try {
+                const result = await callRpc(
+                    `/whatsapp/call/transfer/${callLogId}`,
+                    { team_id: teamId },
+                );
+                if (!result?.success) {
+                    throw new Error(result?.error || "Transfer failed");
+                }
+                notify(`Transferring — ${result.targets_notified} agent(s) notified`,
+                       "success");
+                // hangupCall, not a bare teardownCall — this source call was
+                // already answered, so closing the local RTCPeerConnection
+                // alone leaves it "ongoing" from Meta's side (Meta was never
+                // told to terminate it). That's exactly what then blocks the
+                // receiving agent's "Call back" with "A call with this number
+                // is already ongoing" — Meta sees an existing open session
+                // with that customer and refuses the new one.
+                hangupCall(callLogId);
+            } catch (err) {
+                notify("Transfer failed: " + (err?.message || err),
+                       "danger");
+            }
+        }
+
+        // ── Call script picker (before accepting, on the keypad, mid-call) ──
+        // onSelect(chatbotId, chatbotName) fires when a script is chosen.
+        async function showChatbotPicker(title, onSelect) {
+            const owner = pickerOwner();
             let chatbots = [];
             try {
                 chatbots = await orm.searchRead(
@@ -1012,85 +782,62 @@ const waCallService = {
                 notify("No published voice scripts available.", "warning");
                 return;
             }
-            const existing = document.getElementById("wa_script_picker");
-            if (existing) existing.remove();
-
-            const c = colors();
-            const modal = document.createElement("div");
-            modal.id = "wa_script_picker";
-            const anchor = anchorTopRight();
-            Object.assign(modal.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10001", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            const rows = chatbots.map((cb) =>
-                `<button data-chatbot="${cb.id}"
-                         style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-                                padding:10px 16px;background:transparent;
-                                border:none;border-top:1px solid ${c.border};
-                                color:${c.text};cursor:pointer;">
-                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
-                        <i class="fa fa-list-alt" style="font-size:13px;color:${c.textMuted};"></i>
-                    </span>
-                    <span style="font-weight:600;font-size:13px;">${escapeHtml(cb.name)}</span>
-                </button>`
-            ).join("");
-            modal.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-list-alt me-1"></i>${escapeHtml(title)}
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        ${closeOrBackButtonHtml(onBack)}
-                    </div>
-                </div>
-                ${rows}
-            `;
-            wireCloseOrBack(modal, onBack);
-            wireThemeToggle(modal, () => showChatbotPicker(title, onSelect, onBack));
-            modal.querySelectorAll("[data-chatbot]").forEach((btn) => {
-                btn.addEventListener("click", () => {
-                    const chatbotId = +btn.dataset.chatbot;
-                    const chatbot = chatbots.find((cb) => cb.id === chatbotId);
-                    modal.remove();
-                    onSelect(chatbotId, chatbot ? chatbot.name : "Voice script");
-                });
-            });
-            document.body.appendChild(modal);
-            wireOutsideClickClose(modal);
+            if (ownerGone(owner)) return;
+            openPicker(
+                "script", title,
+                chatbots.map((cb) => ({ id: cb.id, name: cb.name })),
+                (chatbotId, chatbotName) => onSelect(chatbotId, chatbotName || "Voice script"),
+                owner,
+            );
         }
 
         async function openScriptPicker() {
             if (!activeCall) return;
             await showChatbotPicker(
-                scriptSession ? "Change Voice Script" : "Start Voice Script",
-                (chatbotId, chatbotName) => switchVoiceScript(chatbotId, chatbotName)
+                scriptSession ? "Change call script" : "Start a call script",
+                (chatbotId, chatbotName) => {
+                    // The agent asked for it, so the follower comes to the front.
+                    openScriptWhenReady = true;
+                    switchVoiceScript(chatbotId, chatbotName);
+                }
             );
         }
 
         // Pre-accept: let the agent override which script will run once
         // they answer, before the call (and any voice session) exists yet.
         async function pickScriptForPopup(payload) {
-            await showChatbotPicker("Choose Voice Script", (chatbotId, chatbotName) => {
+            await showChatbotPicker("Choose a call script", (chatbotId, chatbotName) => {
                 payload.suggested_chatbot_id = chatbotId;
                 payload.suggested_chatbot_name = chatbotName;
                 showPopup(payload);
             });
         }
 
-        // ── Add caller to a campaign (popup + HUD "Shortcuts") ──────
-        async function showCampaignPicker(partnerId, onBack) {
+        function scriptForIncoming() {
+            if (incomingPayload) pickScriptForPopup(incomingPayload);
+        }
+
+        // Script button on the call screen: the follower when a script is
+        // running, else the picker.
+        function scriptFromCard() {
+            if (state.script) {
+                state.scriptOpen = true;
+            } else {
+                openScriptPicker();
+            }
+        }
+
+        function showScript(open) {
+            state.scriptOpen = !!open && !!state.script;
+        }
+
+        // ── Add caller to a campaign ─────────────────────────────────
+        async function showCampaignPicker(partnerId) {
             if (!partnerId) {
                 notify("No linked contact for this call.", "warning");
                 return;
             }
+            const owner = pickerOwner();
             let contacts = [];
             try {
                 contacts = await orm.searchRead(
@@ -1117,59 +864,12 @@ const waCallService = {
                 notify("No campaigns configured.", "warning");
                 return;
             }
-            const existing = document.getElementById("wa_campaign_picker");
-            if (existing) existing.remove();
-
-            const c = colors();
-            const modal = document.createElement("div");
-            modal.id = "wa_campaign_picker";
-            const anchor = anchorTopRight();
-            Object.assign(modal.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10001", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
+            if (ownerGone(owner)) return;
             const already = new Set(contact.campaign_ids || []);
-            const rows = campaigns.map((camp) => {
-                const isIn = already.has(camp.id);
-                return `<button data-campaign="${camp.id}" ${isIn ? "disabled" : ""}
-                         style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-                                padding:10px 16px;background:transparent;
-                                border:none;border-top:1px solid ${c.border};
-                                color:${c.text};cursor:${isIn ? "default" : "pointer"};
-                                opacity:${isIn ? "0.5" : "1"};">
-                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
-                        <i class="fa fa-bullhorn" style="font-size:13px;color:${c.textMuted};"></i>
-                    </span>
-                    <span style="font-weight:600;font-size:13px;">
-                        ${escapeHtml(camp.name)}${isIn ? " (added)" : ""}
-                    </span>
-                </button>`;
-            }).join("");
-            modal.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-bullhorn me-1"></i>Add to Campaign
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        ${closeOrBackButtonHtml(onBack)}
-                    </div>
-                </div>
-                ${rows}
-            `;
-            wireCloseOrBack(modal, onBack);
-            wireThemeToggle(modal, () => showCampaignPicker(partnerId, onBack));
-            modal.querySelectorAll("[data-campaign]").forEach((btn) => {
-                if (btn.disabled) return;
-                btn.addEventListener("click", async () => {
-                    const campaignId = +btn.dataset.campaign;
-                    modal.remove();
+            openPicker(
+                "campaign", "Add to campaign",
+                campaigns.map((camp) => ({ id: camp.id, name: camp.name, already: already.has(camp.id) })),
+                async (campaignId) => {
                     try {
                         await orm.write("contact.centre.contact", [contact.id], {
                             campaign_ids: [[4, campaignId]],
@@ -1178,10 +878,9 @@ const waCallService = {
                     } catch (err) {
                         notify("Could not add to campaign: " + (err?.message || err), "danger");
                     }
-                });
-            });
-            document.body.appendChild(modal);
-            wireOutsideClickClose(modal);
+                },
+                owner,
+            );
         }
 
         // ── Phone-number lookups (dial pad "Add to campaign" / "History") ──
@@ -1199,7 +898,7 @@ const waCallService = {
                 const contacts = await orm.searchRead(
                     "contact.centre.contact",
                     [["phone_number", "ilike", suffix]],
-                    ["id", "partner_id"],
+                    ["id", "name", "partner_id"],
                     { limit: 1 },
                 );
                 return contacts[0] || null;
@@ -1208,22 +907,8 @@ const waCallService = {
             }
         }
 
-        // Resolves the "other party" of a call log row and places a call
-        // to them immediately — used by both History and Contacts rows.
-        async function callFromLog(l) {
-            const toNumber = l.call_direction === "incoming" ? l.from_number : l.to_number;
-            if (!toNumber) {
-                notify("This call has no reachable number.", "warning");
-                return;
-            }
-            await dialCall({
-                toNumber,
-                partnerId:   l.partner_id ? l.partner_id[0] : null,
-                partnerName: l.contact_display || toNumber,
-            });
-        }
-
-        async function fetchCallHistory(term) {
+        // ── Recent tab: call history, plus matching contacts on a search ──
+        async function recentCalls(term) {
             const domain = [];
             const t = (term || "").trim();
             if (t) {
@@ -1234,233 +919,56 @@ const waCallService = {
                     ["to_number", "ilike", numberTerm],
                     ["partner_id.name", "ilike", t]);
             }
-            return orm.searchRead(
+            const logs = await orm.searchRead(
                 "whatsapp.call.log", domain,
-                ["call_direction", "call_status", "call_timestamp", "duration_display",
+                ["call_direction", "call_status", "call_timestamp", "duration",
                  "is_missed", "from_number", "to_number", "partner_id", "contact_display",
                  "has_recording", "recording_ids"],
                 { limit: 50, order: "call_timestamp desc" },
             );
+            return logs.map((l) => {
+                const number = (l.call_direction === "incoming" ? l.from_number : l.to_number) || "";
+                return {
+                    id: l.id,
+                    at: l.call_timestamp || false,
+                    name: l.contact_display || number || "Unknown",
+                    number,
+                    partnerId: l.partner_id ? l.partner_id[0] : null,
+                    direction: l.call_direction,
+                    status: l.call_status,
+                    missed: !!l.is_missed,
+                    duration: l.duration || 0,
+                    recordingId: (l.has_recording && l.recording_ids && l.recording_ids[0]) || null,
+                };
+            });
         }
 
-        function callHistoryRowsHtml(c, logs, emptyLabel) {
-            if (!logs.length) {
-                return `<div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">${escapeHtml(emptyLabel)}</div>`;
+        // Contact-centre contacts matching a search. Empty when that app
+        // isn't installed.
+        async function matchingContacts(term) {
+            const t = (term || "").trim();
+            if (!t) return [];
+            try {
+                const contacts = await orm.searchRead(
+                    "contact.centre.contact",
+                    ["|", ["name", "ilike", t], ["phone_number", "ilike", t]],
+                    ["name", "phone_number", "partner_id"],
+                    { limit: 20, order: "name" },
+                );
+                return contacts.filter((ct) => ct.phone_number).map((ct) => ({
+                    id: ct.id,
+                    name: ct.name || ct.phone_number,
+                    number: ct.phone_number,
+                    partnerId: ct.partner_id ? ct.partner_id[0] : null,
+                }));
+            } catch (e) {
+                return [];
             }
-            return logs.map((l, i) => {
-                const dirIcon = l.call_direction === "incoming" ? "fa-arrow-down" : "fa-arrow-up";
-                const dirColor = l.is_missed ? c.danger : c.textMuted;
-                const label = l.call_direction === "incoming"
-                    ? (l.is_missed ? "Missed call" : "Incoming call")
-                    : "Outgoing call";
-                const who = l.contact_display
-                    || (l.call_direction === "incoming" ? l.from_number : l.to_number)
-                    || "Unknown";
-                const when = l.call_timestamp ? String(l.call_timestamp).slice(0, 16) : "";
-                const recordingId = l.has_recording && l.recording_ids && l.recording_ids[0];
-                return `<div data-row="${i}"
-                         style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-                                padding:10px 16px;background:transparent;
-                                border-top:1px solid ${c.border};color:${c.text};cursor:pointer;">
-                    <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
-                        <i class="fa ${dirIcon}" style="font-size:12px;color:${dirColor};"></i>
-                    </span>
-                    <span style="flex:1;min-width:0;">
-                        <div style="font-weight:600;font-size:13px;color:${c.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(who)}</div>
-                        <div style="font-size:11px;color:${dirColor};">${label} · ${escapeHtml(when)}</div>
-                    </span>
-                    <span style="font-size:11px;color:${c.textMuted};flex:none;">${escapeHtml(l.duration_display || "")}</span>
-                    ${recordingId ? `<button data-play="${recordingId}" title="Play recording"
-                            style="background:none;border:none;color:${c.accent};font-size:14px;cursor:pointer;padding:2px 4px;flex:none;">
-                            <i class="fa fa-headphones"></i>
-                        </button>` : ""}
-                </div>`;
-            }).join("");
         }
 
-        async function showCallHistory(onBack) {
-            const existing = document.getElementById("wa_call_history");
-            if (existing) existing.remove();
-
-            const c = colors();
-            const modal = document.createElement("div");
-            modal.id = "wa_call_history";
-            const anchor = anchorTopRight();
-            Object.assign(modal.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", maxHeight: "70vh", display: "flex", flexDirection: "column",
-                background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10001", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            modal.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;flex:none;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-history me-1"></i>Call History
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        ${closeOrBackButtonHtml(onBack)}
-                    </div>
-                </div>
-                <div style="padding:10px 14px;flex:none;">
-                    <input data-role="search" type="text" placeholder="Search name or number…"
-                           style="width:100%;box-sizing:border-box;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:7px 10px;font-size:13px;"/>
-                </div>
-                <div data-role="rows" style="overflow-y:auto;flex:1;">
-                    <div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">Loading…</div>
-                </div>
-            `;
-            wireCloseOrBack(modal, onBack);
-            wireThemeToggle(modal, () => showCallHistory(onBack));
-            document.body.appendChild(modal);
-            wireOutsideClickClose(modal);
-
-            const rowsEl = modal.querySelector("[data-role=rows]");
-            const searchInput = modal.querySelector("[data-role=search]");
-            let currentLogs = [];
-            let debounceId = null;
-
-            async function refresh(term) {
-                let logs;
-                try {
-                    logs = await fetchCallHistory(term);
-                } catch (err) {
-                    rowsEl.innerHTML = `<div style="padding:20px 16px;color:${c.danger};font-size:13px;text-align:center;">Could not load call history.</div>`;
-                    return;
-                }
-                if (!document.body.contains(modal)) return; // closed while awaiting
-                currentLogs = logs;
-                rowsEl.innerHTML = callHistoryRowsHtml(c, logs, term ? "No matching calls." : "No call history yet.");
-                rowsEl.querySelectorAll("[data-row]").forEach((row) => {
-                    row.addEventListener("click", async () => {
-                        const log = currentLogs[+row.dataset.row];
-                        modal.remove();
-                        if (log) await callFromLog(log);
-                    });
-                });
-                rowsEl.querySelectorAll("[data-play]").forEach((btn) => {
-                    btn.addEventListener("click", (ev) => {
-                        ev.stopPropagation();
-                        // Dedicated streaming route, not /web/content — plays
-                        // inline for anyone who can read the call; download
-                        // stays gated to Call Recording Managers server-side.
-                        window.open(`/whatsapp/call/recording/${btn.dataset.play}`, "_blank");
-                    });
-                });
-            }
-
-            searchInput.addEventListener("input", () => {
-                clearTimeout(debounceId);
-                debounceId = setTimeout(() => refresh(searchInput.value), 300);
-            });
-            refresh("");
-        }
-
-        // ── Contacts (dial pad "Contacts" shortcut) ──────────────────
-        async function showContactsPicker(onBack) {
-            const existing = document.getElementById("wa_contacts_picker");
-            if (existing) existing.remove();
-
-            const c = colors();
-            const modal = document.createElement("div");
-            modal.id = "wa_contacts_picker";
-            const anchor = anchorTopRight();
-            Object.assign(modal.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", maxHeight: "70vh", display: "flex", flexDirection: "column",
-                background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10001", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            modal.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;flex:none;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-address-book me-1"></i>Contacts
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        ${closeOrBackButtonHtml(onBack)}
-                    </div>
-                </div>
-                <div style="padding:10px 14px;flex:none;">
-                    <input data-role="search" type="text" placeholder="Search contacts…"
-                           style="width:100%;box-sizing:border-box;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:7px 10px;font-size:13px;"/>
-                </div>
-                <div data-role="rows" style="overflow-y:auto;flex:1;">
-                    <div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">Loading…</div>
-                </div>
-            `;
-            wireCloseOrBack(modal, onBack);
-            wireThemeToggle(modal, () => showContactsPicker(onBack));
-            document.body.appendChild(modal);
-            wireOutsideClickClose(modal);
-
-            const rowsEl = modal.querySelector("[data-role=rows]");
-            const searchInput = modal.querySelector("[data-role=search]");
-            let currentContacts = [];
-            let debounceId = null;
-
-            async function refresh(term) {
-                const t = (term || "").trim();
-                const domain = t
-                    ? ["|", ["name", "ilike", t], ["phone_number", "ilike", t]]
-                    : [];
-                let contacts;
-                try {
-                    contacts = await orm.searchRead(
-                        "contact.centre.contact", domain,
-                        ["name", "phone_number", "partner_id"],
-                        { limit: 50, order: "name" },
-                    );
-                } catch (err) {
-                    rowsEl.innerHTML = `<div style="padding:20px 16px;color:${c.danger};font-size:13px;text-align:center;">Could not load contacts.</div>`;
-                    return;
-                }
-                if (!document.body.contains(modal)) return;
-                currentContacts = contacts.filter((ct) => ct.phone_number);
-                rowsEl.innerHTML = currentContacts.length ? currentContacts.map((ct, i) => `
-                    <button data-row="${i}"
-                            style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-                                   padding:10px 16px;background:transparent;border:none;
-                                   border-top:1px solid ${c.border};color:${c.text};cursor:pointer;">
-                        <span style="width:32px;height:32px;flex:none;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;">
-                            <i class="fa fa-user" style="font-size:13px;color:${c.textMuted};"></i>
-                        </span>
-                        <span style="flex:1;min-width:0;">
-                            <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(ct.name || ct.phone_number)}</div>
-                            <div style="font-size:11px;color:${c.textMuted};">${escapeHtml(ct.phone_number)}</div>
-                        </span>
-                        <i class="fa fa-phone" style="font-size:13px;color:${c.accent};flex:none;"></i>
-                    </button>
-                `).join("") : `<div style="padding:20px 16px;color:${c.textMuted};font-size:13px;text-align:center;">${t ? "No matching contacts." : "No contacts yet."}</div>`;
-                rowsEl.querySelectorAll("[data-row]").forEach((btn) => {
-                    btn.addEventListener("click", async () => {
-                        const ct = currentContacts[+btn.dataset.row];
-                        modal.remove();
-                        if (!ct) return;
-                        await dialCall({
-                            toNumber:    ct.phone_number,
-                            partnerId:   ct.partner_id ? ct.partner_id[0] : null,
-                            partnerName: ct.name || ct.phone_number,
-                        });
-                    });
-                });
-            }
-
-            searchInput.addEventListener("input", () => {
-                clearTimeout(debounceId);
-                debounceId = setTimeout(() => refresh(searchInput.value), 300);
-            });
-            refresh("");
+        // The signed-in user's open phone-call activities, most overdue first.
+        function activities() {
+            return orm.call("whatsapp.call.log", "phone_card_activities", []);
         }
 
         async function switchVoiceScript(chatbotId, chatbotName) {
@@ -1510,93 +1018,29 @@ const waCallService = {
             });
         }
 
-        function hideHud() {
-            stopHudTimer();
-            const hud = document.getElementById(HUD_ID);
-            if (hud) hud.remove();
-        }
-
-        // ── Suggested voice script (accepted inbound calls only) ────
-        // Mirrors contact_centre_inbox's VoiceScriptPanel (same /voice/*
-        // endpoints) as plain DOM instead of an OWL component - this
-        // service floats outside any view's component tree (a call can
-        // ring in from anywhere in the app), and comm_whatsapp_calling
-        // doesn't depend on contact_centre_inbox, so it can't import that
-        // component directly.
+        // ── Call script follower ─────────────────────────────────────
+        // Same /voice/* endpoints as contact_centre_inbox's VoiceScriptPanel;
+        // comm_whatsapp_calling doesn't depend on that app, so the follower
+        // is a sheet of the phone card. A script that starts by itself
+        // (suggested for the call) stays behind the call screen until the
+        // agent opens it.
         function hideScriptPanel() {
-            const el = document.getElementById(SCRIPT_PANEL_ID);
-            if (el) el.remove();
+            state.script = null;
+            state.scriptOpen = false;
         }
 
         function renderScriptPanel() {
             if (!scriptSession) return;
-            hideScriptPanel();
-            const c = colors();
-            const panel = document.createElement("div");
-            panel.id = SCRIPT_PANEL_ID;
-            const anchor = anchorTopRight(300);
-            Object.assign(panel.style, {
-                // Sits to the left of the HUD (280px wide + 20px gap)
-                // rather than stacked under it, so it doesn't collide with
-                // the HUD's own height changing as call state changes.
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "340px", maxWidth: "calc(100vw - 16px)", maxHeight: "80vh", display: "flex", flexDirection: "column",
-                background: c.card, color: c.text, borderRadius: "10px",
-                boxShadow: c.shadow, zIndex: "10000", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            const bubblesHtml = scriptSession.bubbles.map((b) => `
-                <div style="background:${c.cardAlt};border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;white-space:pre-wrap;">
-                    ${escapeHtml(b.body || "")}
-                </div>
-            `).join("");
-            panel.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">
-                        <i class="fa fa-list-alt me-1"></i>${escapeHtml(scriptSession.chatbotName)}
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="change-script" title="Change script"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:13px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa fa-exchange"></i>
-                        </button>
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        <button data-action="close" title="End script"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
-                    </div>
-                </div>
-                <div style="padding:10px 14px;overflow-y:auto;flex:1;">
-                    ${bubblesHtml}
-                    ${scriptSession.loading ? `<div style="font-size:12px;color:${c.textMuted};">Loading next step…</div>` : ""}
-                </div>
-                ${scriptSession.terminated
-                    ? `<div style="padding:10px 14px;color:${c.accent};font-size:12px;">Script complete.</div>`
-                    : `<div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid ${c.border};">
-                           <input data-role="input" type="text" placeholder="Customer's answer…"
-                                  style="flex:1;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:6px 8px;font-size:13px;"/>
-                           <button data-action="send" style="background:${c.accent};color:#fff;border:none;border-radius:6px;padding:0 12px;font-weight:700;cursor:pointer;">Send</button>
-                       </div>`
-                }
-            `;
-            panel.querySelector("[data-action=close]").addEventListener("click", () => endVoiceScript());
-            panel.querySelector("[data-action=change-script]").addEventListener("click", () => openScriptPicker());
-            wireThemeToggle(panel, () => renderScriptPanel());
-            const sendBtn = panel.querySelector("[data-action=send]");
-            const input = panel.querySelector("[data-role=input]");
-            if (sendBtn && input) {
-                const submit = () => {
-                    const text = input.value.trim();
-                    if (text) sendScriptTurn(text);
-                };
-                sendBtn.addEventListener("click", submit);
-                input.addEventListener("keydown", (ev) => {
-                    if (ev.key === "Enter") submit();
-                });
+            state.script = {
+                name: scriptSession.chatbotName,
+                bubbles: scriptSession.bubbles.slice(),
+                terminated: !!scriptSession.terminated,
+                loading: !!scriptSession.loading,
+            };
+            if (openScriptWhenReady) {
+                openScriptWhenReady = false;
+                state.scriptOpen = true;
             }
-            document.body.appendChild(panel);
         }
 
         async function startVoiceScript(payload) {
@@ -1757,14 +1201,11 @@ const waCallService = {
             showDispositionWrapup(callLogId, wrapupName);
         }
 
-        // After a call ends, offer a quick wrap-up: a floating card with a
-        // disposition picker + note that writes to whatsapp.call.log. Kept
-        // fully standalone (its own DOM element, not part of the HUD) so it
-        // is decoupled from the HUD/PC teardown lifecycle.
+        // ── Wrap-up ──────────────────────────────────────────────────
+        // After a call ends, offer a disposition + note that writes to
+        // whatsapp.call.log. Independent of the call's own teardown.
         async function showDispositionWrapup(callLogId, contactName) {
             if (!callLogId) return;
-            const existing = document.getElementById("wa_call_disposition_prompt");
-            if (existing) existing.remove();
             let dispositions = [];
             try {
                 dispositions = await orm.searchRead(
@@ -1773,56 +1214,40 @@ const waCallService = {
                 return; // model missing / no access — silently skip
             }
             if (!dispositions.length) return;
-            const c = colors();
-            const anchor = anchorTopRight();
-            const wrap = document.createElement("div");
-            wrap.id = "wa_call_disposition_prompt";
-            Object.assign(wrap.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "300px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow, zIndex: "10001",
-                overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            const options = ['<option value="">— Select outcome —</option>']
-                .concat(dispositions.map(
-                    (d) => `<option value="${d.id}">${escapeHtml(d.name)}</option>`))
-                .join("");
-            wrap.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;"><i class="fa fa-clipboard me-1"></i>Call ended — set outcome</div>
-                    <button data-action="skip" title="Skip" style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
-                </div>
-                <div style="padding:14px;">
-                    <div style="font-size:12px;color:${c.textMuted};margin-bottom:8px;">${escapeHtml(contactName || "")}</div>
-                    <select data-role="disp" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid ${c.inputBorder};background:${c.inputBg};color:${c.text};font-size:13px;margin-bottom:8px;">${options}</select>
-                    <textarea data-role="note" rows="2" placeholder="Wrap-up note…" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid ${c.inputBorder};background:${c.inputBg};color:${c.text};font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
-                    <div style="display:flex;gap:6px;margin-top:10px;">
-                        <button data-action="save" style="flex:1;background:${c.primary};color:#fff;border:none;border-radius:6px;padding:7px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>
-                        <button data-action="skip2" style="background:${c.cardAlt};color:${c.text};border:1px solid ${c.border};border-radius:6px;padding:7px 12px;font-size:13px;cursor:pointer;">Skip</button>
-                    </div>
-                </div>`;
-            document.body.appendChild(wrap);
-            const remove = () => { try { wrap.remove(); } catch (e) {} };
-            const save = async () => {
-                const dispId = parseInt(wrap.querySelector("[data-role=disp]").value, 10) || false;
-                const note = wrap.querySelector("[data-role=note]").value || "";
-                try {
-                    await orm.call("whatsapp.call.log", "action_set_disposition",
-                        [[callLogId], dispId, note]);
-                    notify("Disposition saved.", "success");
-                } catch (e) {
-                    notify("Could not save disposition.", "danger");
-                }
-                remove();
+            const seq = ++wrapupSeq;
+            state.wrapup = {
+                callLogId,
+                name: contactName || "",
+                dispositions: dispositions.map((d) => ({ id: d.id, name: d.name })),
+                dispositionId: "",
+                note: "",
             };
-            wrap.querySelector("[data-action=save]").addEventListener("click", save);
-            wrap.querySelector("[data-action=skip]").addEventListener("click", remove);
-            wrap.querySelector("[data-action=skip2]").addEventListener("click", remove);
+            state.open = true;
             // Don't linger forever if the agent walks away.
             setTimeout(() => {
-                if (document.getElementById("wa_call_disposition_prompt") === wrap) remove();
+                if (wrapupSeq === seq) skipWrapup();
             }, 90000);
+        }
+
+        function skipWrapup() {
+            wrapupSeq++;
+            state.wrapup = null;
+        }
+
+        async function saveWrapup() {
+            const wrapup = state.wrapup;
+            if (!wrapup) return;
+            const seq = wrapupSeq;
+            const dispId = parseInt(wrapup.dispositionId, 10) || false;
+            const note = wrapup.note || "";
+            try {
+                await orm.call("whatsapp.call.log", "action_set_disposition",
+                    [[wrapup.callLogId], dispId, note]);
+                notify("Outcome saved.", "success");
+            } catch (e) {
+                notify("Could not save the outcome.", "danger");
+            }
+            if (wrapupSeq === seq) skipWrapup();
         }
 
         function teardownCall(userInitiated) {
@@ -1857,115 +1282,108 @@ const waCallService = {
             if (!userInitiated) notify("Call ended.", "info");
         }
 
-        // ── Call permission request (offered after a "no permission"
-        // dial failure) ──────────────────────────────────────────────
-        async function offerCallPermissionRequest(toNumber, accountId, partnerName, partnerId, status) {
-            const existing = document.getElementById("wa_call_permission_prompt");
-            if (existing) existing.remove();
-            const c = colors();
-            const wrap = document.createElement("div");
-            wrap.id = "wa_call_permission_prompt";
-            const anchor = anchorTopRight();
-            Object.assign(wrap.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10001", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            wrap.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-shield me-1"></i>Call Permission Needed
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        <button data-action="close" title="Dismiss"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
-                    </div>
-                </div>
-                <div style="padding:16px;">
-                    <div style="font-size:13px;color:${c.text};line-height:1.4;">
-                        ${escapeHtml(status?.message || `${partnerName || toNumber} hasn't granted this number permission to call them on WhatsApp yet.`)}
-                    </div>
-                    <div style="font-size:12px;color:${c.textMuted};margin-top:8px;">
-                        ${status?.declined_by_person
-                            ? "Only ask again if they've told you they now want to be called."
-                            : "Send a call permission request so they can approve it, then try calling again."}
-                    </div>
-                </div>
-                <div style="display:flex;gap:8px;padding:0 16px 16px;">
-                    <button data-action="dismiss" style="flex:1;background:${c.cardAlt};color:${c.text};border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Dismiss</button>
-                    <button data-action="send" style="flex:1;background:${c.accent};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Send Request</button>
-                </div>
-            `;
-            wrap.querySelector("[data-action=close]").addEventListener("click", () => wrap.remove());
-            wrap.querySelector("[data-action=dismiss]").addEventListener("click", () => wrap.remove());
-            wrap.querySelector("[data-action=send]").addEventListener("click", async () => {
-                wrap.remove();
-                notify("Sending call permission request…", "info");
-                try {
-                    const result = await callRpc("/whatsapp/call/request_permission", {
-                        to_number: toNumber, account_id: accountId || null,
-                        partner_name: partnerName || null,
-                        partner_id: partnerId || null,
-                    });
-                    if (result?.success) {
-                        notify("Call permission request sent. You'll be told here when they reply.", "success");
-                    } else if (result?.error === "template_missing") {
-                        notify("Call permission not granted by user. Ensure that the call permission template is available and try again.", "danger");
-                    } else {
-                        notify("Failed to send permission request: " + (result?.error || "Unknown error"), "danger");
-                    }
-                } catch (err) {
-                    notify("Failed to send permission request: " + (err?.message || err), "danger");
+        // ── Call permission ──────────────────────────────────────────
+        // One screen, reached two ways: before ringing someone we know
+        // hasn't allowed calls (confirmDialWithoutPermission), and after
+        // WhatsApp refused a call or the permission lapsed
+        // (offerCallPermissionRequest).
+        const PERMISSION_CHIPS = {
+            pending: "Asked, no reply yet",
+            declined: "Declined calls",
+            expired: "Permission expired",
+        };
+
+        function showPermission(status, screen) {
+            screen.chip = PERMISSION_CHIPS[status?.state] || "No call permission yet";
+            state.permission = screen;
+            state.open = true;
+        }
+
+        // Closes the screen. `choice` is cancel | request | call.
+        function answerPermission(choice) {
+            const answer = permissionAnswer;
+            const request = permissionRequest;
+            permissionAnswer = null;
+            permissionRequest = null;
+            state.permission = null;
+            if (answer) answer(choice === "call");
+            if (choice === "request" && request) sendPermissionRequest(request);
+        }
+
+        async function sendPermissionRequest({ toNumber, accountId, partnerName, partnerId }) {
+            notify("Sending call permission request…", "info");
+            try {
+                const result = await callRpc("/whatsapp/call/request_permission", {
+                    to_number: toNumber, account_id: accountId || null,
+                    partner_name: partnerName || null,
+                    partner_id: partnerId || null,
+                });
+                if (result?.success) {
+                    notify("Call permission request sent. You'll be told here when they reply.", "success");
+                } else if (result?.error === "template_missing") {
+                    notify("Call permission not granted by user. Ensure that the call permission template is available and try again.", "danger");
+                } else {
+                    notify("Failed to send permission request: " + (result?.error || "Unknown error"), "danger");
                 }
+            } catch (err) {
+                notify("Failed to send permission request: " + (err?.message || err), "danger");
+            }
+        }
+
+        // Offered after a "no permission" dial failure, or when the
+        // permission we had has lapsed.
+        function offerCallPermissionRequest(toNumber, accountId, partnerName, partnerId, status) {
+            answerPermission("cancel");
+            permissionRequest = { toNumber, accountId, partnerName, partnerId };
+            showPermission(status, {
+                name: partnerName || toNumber,
+                number: partnerName && partnerName !== toNumber ? toNumber : "",
+                message: status?.message
+                    || `${partnerName || toNumber} hasn't granted this number permission to call them on WhatsApp yet.`,
+                hint: status?.declined_by_person
+                    ? "Only ask again if they've told you they now want to be called."
+                    : "Send a call permission request so they can approve it, then try calling again.",
+                canRequest: true,
+                canTry: false,
             });
-            wireThemeToggle(wrap, () => offerCallPermissionRequest(toNumber, accountId, partnerName, partnerId, status));
-            document.body.appendChild(wrap);
-            wireOutsideClickClose(wrap);
         }
 
         // Warn before ringing someone we know hasn't allowed calls. Our record
         // can be out of date and Meta has the final say, so this never blocks.
         function confirmDialWithoutPermission(status) {
             return new Promise((resolve) => {
-                const existing = document.getElementById("wa_call_permission_warning");
-                if (existing) existing.remove();
-                const c = colors();
-                const wrap = document.createElement("div");
-                wrap.id = "wa_call_permission_warning";
-                const anchor = anchorTopRight();
-                Object.assign(wrap.style, {
-                    position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                    width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                    borderRadius: "10px", boxShadow: c.shadow,
-                    zIndex: "10001", overflow: "hidden",
-                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                answerPermission("cancel");
+                const dial = pendingDial;
+                permissionAnswer = resolve;
+                permissionRequest = dial && {
+                    toNumber: dial.toNumber, accountId: dial.accountId,
+                    partnerName: dial.partnerName, partnerId: dial.partnerId,
+                };
+                showPermission(status, {
+                    name: (dial && (dial.partnerName || dial.toNumber)) || "",
+                    number: dial && dial.partnerName && dial.partnerName !== dial.toNumber ? dial.toNumber : "",
+                    message: status.message,
+                    hint: "WhatsApp will block the call unless they've allowed it since.",
+                    canRequest: !!dial,
+                    canTry: true,
                 });
-                wrap.innerHTML = `
-                    <div style="background:#714B67;color:#fff;padding:10px 14px;font-size:13px;font-weight:600;">
-                        <i class="fa fa-exclamation-triangle me-1"></i>No Call Permission
-                    </div>
-                    <div style="padding:16px;">
-                        <div style="font-size:13px;color:${c.text};line-height:1.4;">${escapeHtml(status.message)}</div>
-                        <div style="font-size:12px;color:${c.textMuted};margin-top:8px;">
-                            WhatsApp will block the call unless they've allowed it since.
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:8px;padding:0 16px 16px;">
-                        <button data-action="cancel" style="flex:1;background:${c.accent};color:#fff;border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Don't call</button>
-                        <button data-action="call" style="flex:1;background:${c.cardAlt};color:${c.text};border:none;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;">Try anyway</button>
-                    </div>
-                `;
-                const finish = (answer) => { wrap.remove(); resolve(answer); };
-                wrap.querySelector("[data-action=cancel]").addEventListener("click", () => finish(false));
-                wrap.querySelector("[data-action=call]").addEventListener("click", () => finish(true));
-                document.body.appendChild(wrap);
             });
+        }
+
+        // Every outbound call starts here: it puts the "Calling…" screen up
+        // while dialCall sets the call up.
+        async function placeCall(args) {
+            let seq = 0;
+            if (args && args.toNumber && !activeCall) {
+                pendingDial = args;
+                seq = showConnecting("Calling", args.partnerName, args.toNumber);
+            }
+            try {
+                return await dialCall(args);
+            } finally {
+                if (pendingDial === args) pendingDial = null;
+                hideConnecting(seq);
+            }
         }
 
         // ── Outbound dial ─────────────────────────────────────────────
@@ -2152,146 +1570,109 @@ const waCallService = {
             } catch (e) { /* Notifications not available — ignore */ }
         }
 
-        // ── Dial pad (opened from the systray phone icon) ───────────
-        // Same VoIP-card look as the incoming popup/HUD, driven by the
-        // same theme system, so it's light-by-default like the rest.
-        const DIALPAD_ID = "comm_whatsapp_calling_dialpad";
-
-        function hideDialPad() {
-            const el = document.getElementById(DIALPAD_ID);
-            if (el) el.remove();
+        // ── Keypad tab ───────────────────────────────────────────────
+        async function loadAccounts() {
+            try {
+                const result = await callRpc("/whatsapp/call/accounts", {});
+                const accounts = result?.accounts || [];
+                state.keypad.accounts = accounts.map((a) => ({
+                    id: a.id,
+                    label: (a.phone_number || a.name) + (a.is_default ? " (default)" : ""),
+                }));
+                if (!accounts.some((a) => a.id === state.keypad.accountId)) {
+                    state.keypad.accountId = result?.default_id || (accounts[0] && accounts[0].id) || null;
+                    // Call permission is per sending number.
+                    lookupKeypadNumber();
+                }
+            } catch (e) {
+                warn("account fetch failed:", e);
+            }
         }
 
+        // Opens the card on the keypad (the res.partner button, the inbox…).
         async function openDialPad() {
             if (activeCall) {
                 notify("Another call is in progress.", "warning");
                 return;
             }
-            hideDialPad();
-            const c = colors();
-            let accounts = [];
-            let selectedAccountId = null;
-            try {
-                const result = await callRpc("/whatsapp/call/accounts", {});
-                accounts = result?.accounts || [];
-                selectedAccountId = result?.default_id || (accounts[0] && accounts[0].id) || null;
-            } catch (e) {
-                warn("account fetch failed:", e);
-            }
+            openCard("keypad");
+        }
 
-            const wrap = document.createElement("div");
-            wrap.id = DIALPAD_ID;
-            const anchor = anchorTopRight();
-            Object.assign(wrap.style, {
-                position: "fixed", top: `${anchor.top}px`, right: `${anchor.right}px`,
-                width: "280px", maxWidth: "calc(100vw - 16px)", background: c.card, color: c.text,
-                borderRadius: "10px", boxShadow: c.shadow,
-                zIndex: "10000", overflow: "hidden",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            });
-            const accountOptions = accounts.map((a) =>
-                `<option value="${a.id}" ${a.id === selectedAccountId ? "selected" : ""}>
-                    ${escapeHtml((a.phone_number || a.name) + (a.is_default ? " (default)" : ""))}
-                 </option>`
-            ).join("");
-            // Chosen via the "Voice Script" shortcut below — kept outside
-            // any re-render so picking a script doesn't clear the number
-            // the agent already typed.
-            let selectedChatbotId = null;
-            let selectedChatbotName = "";
-            const shortcuts = shortcutsRowHtml([
-                iconBtn("script", "fa-list-alt", "Choose voice script", "", "Script"),
-                iconBtn("add-campaign", "fa-bullhorn", "Add to campaign", "", "Campaign"),
-                iconBtn("history", "fa-history", "Call history", "", "History"),
-                iconBtn("contacts", "fa-address-book", "Contacts", "", "Contacts"),
-            ]);
-            wrap.innerHTML = `
-                <div style="background:#714B67;color:#fff;padding:8px 10px 8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:600;">
-                        <i class="fa fa-whatsapp me-1"></i>New Call
-                    </div>
-                    <div style="display:flex;align-items:center;gap:2px;">
-                        <button data-action="theme-toggle" title="Switch to ${theme === "dark" ? "light" : "dark"} theme"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;padding:4px;line-height:1;">
-                            <i class="fa ${theme === "dark" ? "fa-sun-o" : "fa-moon-o"}"></i>
-                        </button>
-                        <button data-action="close" title="Close"
-                                style="background:none;border:none;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;">×</button>
-                    </div>
-                </div>
-                <div style="padding:18px 16px 6px;text-align:center;">
-                    <div style="width:64px;height:64px;border-radius:50%;background:${c.cardAlt};display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
-                        <i class="fa fa-phone" style="font-size:24px;color:${c.textMuted};"></i>
-                    </div>
-                    ${accounts.length > 1 ? `
-                    <select data-role="account" style="width:100%;box-sizing:border-box;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:7px 8px;font-size:12px;margin-bottom:10px;">
-                        ${accountOptions}
-                    </select>` : ""}
-                    <input data-role="number" type="tel" placeholder="+27600000000"
-                           style="width:100%;box-sizing:border-box;background:${c.inputBg};border:1px solid ${c.inputBorder};border-radius:6px;color:${c.text};padding:9px 10px;font-size:14px;text-align:center;"/>
-                    <div data-role="script-hint" style="display:none;font-size:11px;color:${c.accent};margin-top:8px;">
-                        <i class="fa fa-list-alt me-1"></i><span data-role="script-hint-text"></span>
-                    </div>
-                </div>
-                ${shortcuts}
-                <div style="display:flex;justify-content:center;padding:14px 16px 20px;">
-                    <button data-action="dial" title="Call"
-                            style="width:52px;height:52px;border-radius:50%;background:${c.accent};color:#fff;border:none;font-size:18px;cursor:pointer;box-shadow:${c.shadowSm};">
-                        <i class="fa fa-phone"></i>
-                    </button>
-                </div>
-            `;
-            const numberInput = wrap.querySelector("[data-role=number]");
-            const accountSelect = wrap.querySelector("[data-role=account]");
-            const scriptHint = wrap.querySelector("[data-role=script-hint]");
-            const scriptHintText = wrap.querySelector("[data-role=script-hint-text]");
-            const dial = async () => {
-                const to = (numberInput.value || "").trim();
-                if (!to) {
-                    notify("Enter a number to dial.", "warning");
-                    return;
-                }
-                const accountId = accountSelect ? +accountSelect.value : selectedAccountId;
-                hideDialPad();
-                await dialCall({
-                    toNumber: to, accountId: accountId || null,
-                    chatbotId: selectedChatbotId || null, chatbotName: selectedChatbotName,
+        function setKeypadNumber(number) {
+            state.keypad.number = number || "";
+            lookupKeypadNumber();
+        }
+
+        // Who the typed number belongs to and whether they allow calls, shown
+        // under the number before dialling.
+        let lookupSeq = 0;
+        async function lookupKeypadNumber() {
+            const seq = ++lookupSeq;
+            const keypad = state.keypad;
+            const number = keypad.number.trim();
+            if (normalizeDigits(number).length < 9) {
+                keypad.contact = null;
+                keypad.permission = null;
+                return;
+            }
+            const contact = await resolveContactForNumber(number);
+            let permission = null;
+            try {
+                permission = await callRpc("/whatsapp/call/permission_status", {
+                    to_number: number, account_id: keypad.accountId || null,
+                    partner_name: (contact && contact.name) || null,
                 });
+            } catch (e) {
+                // Unknown is fine: dialCall checks again before ringing.
+            }
+            if (seq !== lookupSeq) return; // the number changed meanwhile
+            keypad.contact = contact
+                ? { name: contact.name || number, partnerId: contact.partner_id ? contact.partner_id[0] : null }
+                : null;
+            keypad.permission = (permission && permission.state) || null;
+        }
+
+        async function dialFromKeypad() {
+            const keypad = state.keypad;
+            const to = keypad.number.trim();
+            if (!to) {
+                notify("Enter a number to dial.", "warning");
+                return;
+            }
+            const args = {
+                toNumber: to, accountId: keypad.accountId || null,
+                chatbotId: keypad.chatbotId || null, chatbotName: keypad.chatbotName,
             };
-            wrap.querySelector("[data-action=dial]").addEventListener("click", dial);
-            numberInput.addEventListener("keydown", (ev) => { if (ev.key === "Enter") dial(); });
-            wrap.querySelector("[data-action=close]").addEventListener("click", () => hideDialPad());
-            wrap.querySelector("[data-action=script]").addEventListener("click", () => {
-                showChatbotPicker("Choose Voice Script", (chatbotId, chatbotName) => {
-                    selectedChatbotId = chatbotId;
-                    selectedChatbotName = chatbotName;
-                    scriptHintText.textContent = chatbotName;
-                    scriptHint.style.display = "block";
-                }, () => openDialPad());
+            if (keypad.contact) {
+                args.partnerId = keypad.contact.partnerId;
+                args.partnerName = keypad.contact.name;
+            }
+            await placeCall(args);
+            if (activeCall) {
+                // The call is up: start the next one from a clean keypad.
+                Object.assign(keypad, { number: "", chatbotId: null, chatbotName: "", contact: null, permission: null });
+            }
+        }
+
+        function scriptForKeypad() {
+            showChatbotPicker("Choose a call script", (chatbotId, chatbotName) => {
+                state.keypad.chatbotId = chatbotId;
+                state.keypad.chatbotName = chatbotName;
             });
-            wrap.querySelector("[data-action=add-campaign]").addEventListener("click", async () => {
-                const to = (numberInput.value || "").trim();
-                if (!to) {
-                    notify("Enter a number first.", "warning");
-                    return;
-                }
-                const contact = await resolveContactForNumber(to);
-                if (!contact) {
-                    notify("No matching contact found for this number.", "warning");
-                    return;
-                }
-                showCampaignPicker(contact.partner_id ? contact.partner_id[0] : false, () => openDialPad());
-            });
-            wrap.querySelector("[data-action=history]").addEventListener("click", () => {
-                showCallHistory(() => openDialPad());
-            });
-            wrap.querySelector("[data-action=contacts]").addEventListener("click", () => {
-                showContactsPicker(() => openDialPad());
-            });
-            wireThemeToggle(wrap, () => openDialPad());
-            document.body.appendChild(wrap);
-            wireOutsideClickClose(wrap);
-            numberInput.focus();
+        }
+
+        async function campaignForKeypad() {
+            const to = state.keypad.number.trim();
+            if (!to) {
+                notify("Enter a number first.", "warning");
+                return;
+            }
+            const contact = await resolveContactForNumber(to);
+            if (!contact) {
+                notify("No matching contact found for this number.", "warning");
+                return;
+            }
+            showCampaignPicker(contact.partner_id ? contact.partner_id[0] : false);
         }
 
         // The comm.voip.call / whatsapp.call.log id of the current active call
@@ -2359,13 +1740,33 @@ const waCallService = {
             activeCall._monitorUplink = null;
         }
 
-        // Public API for other components (systray, res.partner button,
-        // Agent Workspace, call monitor, etc.).
+        // Public API for other components (res.partner button, inbox,
+        // Agent Workspace, call monitor, etc.). dialCall goes through
+        // placeCall so every outbound call shows in the card from the start.
         const publicApi = {
-            dialCall, hangupActive, isActive, openDialPad, ensureNotificationPermission,
+            dialCall: placeCall, hangupActive, isActive, openDialPad, ensureNotificationPermission,
             getActiveCallId, buildMonitorMix, injectMonitorUplink, clearMonitorUplink,
+            // For the phone card and its systray icon only.
+            state,
+            card: {
+                toggleCard, openCard, minimise, setPresence, refreshMissed,
+                acceptIncoming, declineIncoming, scriptForIncoming,
+                acceptTransferRequest, declineTransferRequest,
+                hangup: hangupFromCard, mute: muteFromCard, record: recordFromCard,
+                openTransfer: openTransferPicker, closeTransfer, transferToTeam,
+                script: scriptFromCard, showScript, changeScript: openScriptPicker,
+                scriptAnswer: sendScriptTurn, endScript: endVoiceScript,
+                campaign: showCampaignPicker, inbox: openContactInboxFor,
+                pick, closePicker, answerPermission, saveWrapup, skipWrapup,
+                recentCalls, matchingContacts, activities, placeCall,
+                loadAccounts, setKeypadNumber, lookupKeypadNumber, dialFromKeypad,
+                scriptForKeypad, campaignForKeypad,
+            },
         };
         env.services.comm_whatsapp_calling = publicApi;
+
+        loadPresence();
+        refreshMissed();
 
         // ── Bus wiring ────────────────────────────────────────────────
         try {
@@ -2398,9 +1799,9 @@ const waCallService = {
                 // Fired when: (a) another agent accepted / declined /
                 // hung up, or (b) the remote side ended the call
                 // (verb === "remote_ended"). We do THREE things here:
-                //  1. Kill our ringing popup if it's for this call.
+                //  1. Drop our Incoming screen if it's for this call.
                 //  2. If our active call matches this id, tear it down —
-                //     stops audio, closes the PC, removes the HUD.
+                //     stops audio, closes the PC, clears the call screen.
                 //  3. Skip step 1 (but NOT step 2) for the session that
                 //     initiated the action so the accepting/hanging-up
                 //     agent's own UI isn't clobbered before their flow
@@ -2412,8 +1813,7 @@ const waCallService = {
 
                 // (1) popup dismissal — skip for the acting user.
                 if (!isSelf) {
-                    const el = document.getElementById(POPUP_ID);
-                    if (el && +el.dataset.callLogId === payload.call_log_id) {
+                    if (state.incoming && state.incoming.callLogId === payload.call_log_id) {
                         log("call taken elsewhere, hiding popup:", payload);
                         hidePopup();
                     }
@@ -2433,6 +1833,7 @@ const waCallService = {
                     teardownCall(false);
                     showDispositionWrapup(wrapupId, wrapupName);
                 }
+                refreshMissed();
             });
             if (typeof bus_service.start === "function") {
                 bus_service.start();

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Calling (comm_whatsapp)',
-    'version': '18.0.1.11.0',
+    'version': '18.0.1.12.0',
     'category': 'Communications',
     'summary': 'WhatsApp Cloud API Calling: make and receive calls with comm_whatsapp',
     'description': """
@@ -41,17 +41,16 @@ See WHATSAPP_CALLING_PLAN.md for Meta API details and WebRTC options.
     ],
     'assets': {
         'web.assets_backend': [
-            'comm_whatsapp_calling/static/src/css/incoming_call_popup.css',
-            'comm_whatsapp_calling/static/src/css/systray_dialer.css',
-            'comm_whatsapp_calling/static/src/css/systray_presence.css',
+            'comm_whatsapp_calling/static/src/scss/phone_card.scss',
             'comm_whatsapp_calling/static/src/css/call_log_kanban.css',
-            'comm_whatsapp_calling/static/src/xml/systray_dialer.xml',
-            'comm_whatsapp_calling/static/src/xml/systray_presence.xml',
+            'comm_whatsapp_calling/static/src/xml/phone_card.xml',
             'comm_whatsapp_calling/static/src/js/incoming_call_popup.js',
+            'comm_whatsapp_calling/static/src/js/phone_card.js',
             'comm_whatsapp_calling/static/src/js/call_monitor.js',
-            'comm_whatsapp_calling/static/src/js/systray_dialer.js',
-            'comm_whatsapp_calling/static/src/js/systray_presence.js',
             'comm_whatsapp_calling/static/src/js/dial_action.js',
+        ],
+        'web.assets_web_dark': [
+            'comm_whatsapp_calling/static/src/scss/phone_card.dark.scss',
         ],
     },
     'installable': True,

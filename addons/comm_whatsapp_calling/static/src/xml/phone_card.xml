@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="comm_whatsapp_calling.PhoneSystray">
+        <div class="o_phone_tray">
+            <button class="btn" t-att-title="title" t-on-click="() => this.toggle()">
+                <i class="fa fa-whatsapp"/>
+                <span class="o_phone_tray_dot" t-att-class="dot"/>
+                <span t-if="state.missed" class="o_phone_tray_n" t-esc="missed"/>
+            </button>
+        </div>
+    </t>
+
+    <t t-name="comm_whatsapp_calling.PhoneCard">
+        <!-- Minimised during a call or wrap-up: a pill that brings the card back. -->
+        <button t-if="(busy or state.wrapup) and !state.open" type="button"
+                class="o_phone_pill o_phone_wa" t-att-class="{ ring: ringing, o_phone_second: ui.pillSecond }"
+                t-on-click="() => this.card.openCard()" title="Open the WhatsApp phone">
+            <i class="fa fa-whatsapp"/>
+            <span t-esc="head.label"/>
+            <span class="text-truncate" style="max-width:140px" t-esc="pillName"/>
+        </button>
+
+        <div t-if="state.open" class="o_phone_card o_phone_wa" t-att-class="{ o_phone_second: ui.second }"
+             role="dialog" aria-label="WhatsApp phone" t-on-click="() => this.closeMenu()">
+            <div class="o_phone_head">
+                <t t-if="head.live">
+                    <span class="o_phone_dot" t-att-class="head.dot"/>
+                    <span t-esc="head.label"/>
+                </t>
+                <button t-else="" type="button" class="o_phone_status" title="Change your call status"
+                        aria-haspopup="true" t-on-click.stop="() => this.toggleMenu()">
+                    <span class="o_phone_dot" t-att-class="head.dot"/>
+                    <span t-esc="head.label"/>
+                    <i class="fa fa-caret-down"/>
+                </button>
+                <span class="o_phone_line">WhatsApp</span>
+                <button type="button" class="o_phone_hbtn" t-on-click="() => this.allCalls()" title="All calls">
+                    <i class="fa fa-external-link"/>
+                </button>
+                <button type="button" class="o_phone_hbtn" t-on-click="() => this.card.minimise()" title="Minimise">
+                    <i class="fa fa-minus"/>
+                </button>
+                <div t-if="ui.menu and !head.live" class="o_phone_menu" role="menu">
+                    <button type="button" role="menuitem" t-foreach="presences" t-as="p" t-key="p.key"
+                            t-att-class="p.key === state.presence ? 'on' : ''" t-on-click="() => this.setPresence(p.key)">
+                        <span class="o_phone_dot" t-att-class="p.dot"/>
+                        <t t-esc="p.label"/>
+                    </button>
+                </div>
+            </div>
+
+            <div class="o_phone_body">
+                <!-- ═══ Call permission ═══ -->
+                <div t-if="state.permission" class="o_phone_scr">
+                    <t t-set="pav" t-value="avatar(state.permission)"/>
+                    <div class="o_phone_who">
+                        <span class="o_phone_av" t-att-class="pav.cls" t-esc="pav.text"/>
+                        <b t-esc="state.permission.name"/>
+                        <span t-if="state.permission.number" t-esc="state.permission.number"/>
+                        <div class="o_phone_tags">
+                            <span class="o_phone_chip warn" t-esc="state.permission.chip"/>
+                        </div>
+                    </div>
+                    <div class="o_phone_sheet">
+                        <p t-esc="state.permission.message"/>
+                        <p t-esc="state.permission.hint"/>
+                        <div class="o_phone_btns">
+                            <button type="button" t-on-click="() => this.card.answerPermission('cancel')">Don't call</button>
+                            <button type="button" class="pri" t-if="state.permission.canRequest"
+                                    t-on-click="() => this.card.answerPermission('request')">Send request</button>
+                        </div>
+                        <button type="button" class="o_phone_under" t-if="state.permission.canTry"
+                                t-on-click="() => this.card.answerPermission('call')">Try anyway</button>
+                    </div>
+                </div>
+
+                <!-- ═══ Script / campaign picker ═══ -->
+                <div t-elif="state.picker" class="o_phone_scr">
+                    <div class="o_phone_sheet">
+                        <h4 t-esc="state.picker.title"/>
+                        <div class="o_phone_opts">
+                            <button type="button" class="o_phone_opt" t-foreach="state.picker.items" t-as="item" t-key="item.id"
+                                    t-att-disabled="item.already" t-on-click="() => this.card.pick(item.id)">
+                                <b t-esc="item.name"/>
+                                <span t-if="item.already">Added</span>
+                            </button>
+                        </div>
+                        <div class="o_phone_btns">
+                            <button type="button" t-on-click="() => this.card.closePicker()"
+                                    t-esc="state.picker.owner === 'call' ? 'Back to call' : 'Back'"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ Incoming, waiting for Accept / Decline ═══ -->
+                <div t-elif="state.incoming" class="o_phone_scr">
+                    <t t-set="iav" t-value="avatar(state.incoming)"/>
+                    <div class="o_phone_who">
+                        <span class="o_phone_state ring">Incoming WhatsApp call</span>
+                        <span class="o_phone_av" t-att-class="iav.cls" t-esc="iav.text"/>
+                        <b t-esc="state.incoming.name"/>
+                        <span t-if="state.incoming.number" t-esc="state.incoming.number"/>
+                        <div class="o_phone_tags" t-if="state.incoming.scriptName">
+                            <span class="o_phone_chip" t-att-title="'Suggested script: ' + state.incoming.scriptName">Script: <t t-esc="state.incoming.scriptName"/></span>
+                        </div>
+                    </div>
+                    <div class="o_phone_links">
+                        <button type="button" t-if="state.incoming.partnerId"
+                                t-on-click="() => this.card.inbox(state.incoming.partnerId)">Inbox</button>
+                        <button type="button" t-on-click="() => this.card.scriptForIncoming()">Script</button>
+                        <button type="button" t-if="state.incoming.partnerId"
+                                t-on-click="() => this.card.campaign(state.incoming.partnerId)">Campaign</button>
+                    </div>
+                    <div class="o_phone_callrow o_phone_end">
+                        <button type="button" class="o_phone_big end" t-on-click="() => this.card.declineIncoming()" title="Decline">
+                            <i class="fa fa-phone"/>
+                        </button>
+                        <button type="button" class="o_phone_big" t-on-click="() => this.card.acceptIncoming()" title="Accept">
+                            <i class="fa fa-phone"/>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ═══ A call is up ═══ -->
+                <t t-elif="state.call">
+                    <!-- Transfer to a team -->
+                    <div t-if="state.transfer" class="o_phone_scr">
+                        <div class="o_phone_sheet">
+                            <h4>Transfer to a team</h4>
+                            <p><t t-esc="state.call.name"/> · <t t-esc="callState.toLowerCase()"/></p>
+                            <div class="o_phone_opts">
+                                <button type="button" class="o_phone_opt" t-foreach="state.transfer.teams" t-as="team" t-key="team.id"
+                                        t-att-class="state.transfer.teamId === team.id ? 'on' : ''"
+                                        t-att-disabled="!team.available" t-on-click="() => this.selectTeam(team)">
+                                    <b t-esc="team.name"/>
+                                    <span><t t-esc="team.available"/> of <t t-esc="team.members"/> available</span>
+                                </button>
+                            </div>
+                            <div class="o_phone_btns">
+                                <button type="button" t-on-click="() => this.card.closeTransfer()">Back to call</button>
+                                <button type="button" class="pri" t-att-disabled="!state.transfer.teamId"
+                                        t-on-click="() => this.card.transferToTeam()">Transfer</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Call script follower -->
+                    <div t-elif="state.scriptOpen and state.script" class="o_phone_scr">
+                        <div class="o_phone_sheet">
+                            <button type="button" class="o_phone_back" t-on-click="() => this.backToCall()">
+                                <i class="fa fa-angle-left"/> Back to call · <t t-esc="callState"/>
+                            </button>
+                            <h4 t-esc="state.script.name"/>
+                            <div class="o_phone_bubbles">
+                                <div class="o_phone_bubble" t-foreach="state.script.bubbles" t-as="b" t-key="b_index">
+                                    <em t-if="b.coaching_notes" t-esc="b.coaching_notes"/>
+                                    <t t-esc="b.body or b.text"/>
+                                    <div t-if="b.buttons and b.buttons.length and !state.script.terminated" class="o_phone_answers">
+                                        <button type="button" t-foreach="b.buttons" t-as="opt" t-key="opt_index"
+                                                t-on-click="() => this.scriptAnswer(opt)" t-esc="opt"/>
+                                    </div>
+                                    <div t-if="b.list_rows and b.list_rows.length and !state.script.terminated" class="o_phone_answers">
+                                        <button type="button" t-foreach="b.list_rows" t-as="row" t-key="row_index"
+                                                t-on-click="() => this.scriptAnswer(row)" t-esc="row"/>
+                                    </div>
+                                </div>
+                                <p t-if="state.script.loading">Loading the next step…</p>
+                                <p t-if="state.script.terminated">Script complete.</p>
+                            </div>
+                            <div t-if="!state.script.terminated" class="o_phone_send">
+                                <input type="text" t-model="ui.answer" placeholder="Customer's answer…"
+                                       t-on-keydown="(ev) => this.onScriptKeydown(ev)"/>
+                                <button type="button" t-on-click="() => this.scriptAnswer(ui.answer)">Send</button>
+                            </div>
+                            <div class="o_phone_btns">
+                                <button type="button" t-on-click="() => this.card.changeScript()">Change script</button>
+                                <button type="button" t-att-class="ui.confirmEnd ? 'bad' : ''" t-on-click="() => this.endScript()"
+                                        t-esc="ui.confirmEnd ? 'Click again to hang up' : 'End script and call'"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- The call itself -->
+                    <div t-else="" class="o_phone_scr">
+                        <t t-set="cav" t-value="avatar(state.call)"/>
+                        <div class="o_phone_who">
+                            <span class="o_phone_state" t-esc="callState"/>
+                            <span class="o_phone_av" t-att-class="cav.cls" t-esc="cav.text"/>
+                            <b t-esc="state.call.name"/>
+                            <span t-if="state.call.number and state.call.number !== state.call.name" t-esc="state.call.number"/>
+                            <div class="o_phone_tags" t-if="state.script">
+                                <span class="o_phone_chip" t-att-title="'Script: ' + state.script.name">Script: <t t-esc="state.script.name"/></span>
+                            </div>
+                        </div>
+                        <div class="o_phone_ctl">
+                            <button type="button" t-att-class="state.call.muted ? 'on' : ''" t-on-click="() => this.card.mute()">
+                                <i t-att-class="state.call.muted ? 'fa fa-microphone-slash' : 'fa fa-microphone'"/>
+                                <t t-esc="state.call.muted ? 'Muted' : 'Mute'"/>
+                            </button>
+                            <button type="button" class="rec" t-att-class="state.call.recording ? 'on' : ''"
+                                    t-att-disabled="!state.call.startTime" t-on-click="() => this.card.record()"
+                                    t-att-title="state.call.recording ? 'Stop recording' : 'Record this call'">
+                                <i class="fa fa-circle"/>
+                                <t t-esc="state.call.recording ? 'Recording' : 'Record'"/>
+                            </button>
+                            <button type="button" t-on-click="() => this.card.openTransfer(state.call.callLogId)" title="Transfer to a team">
+                                <i class="fa fa-exchange"/>Transfer
+                            </button>
+                            <button type="button" t-att-class="state.script ? 'on' : ''" t-on-click="() => this.card.script()">
+                                <i class="fa fa-list-alt"/>Script
+                            </button>
+                            <button type="button" t-att-disabled="!state.call.partnerId" title="Add to campaign"
+                                    t-on-click="() => this.card.campaign(state.call.partnerId)">
+                                <i class="fa fa-bullhorn"/>Campaign
+                            </button>
+                            <button type="button" t-att-disabled="!state.call.partnerId" title="Open the conversation in the Inbox"
+                                    t-on-click="() => this.card.inbox(state.call.partnerId)">
+                                <i class="fa fa-inbox"/>Inbox
+                            </button>
+                        </div>
+                        <div class="o_phone_callrow" style="padding-top:10px">
+                            <button type="button" class="o_phone_big end" t-on-click="() => this.card.hangup()" title="End call">
+                                <i class="fa fa-phone"/>
+                            </button>
+                        </div>
+                    </div>
+                </t>
+
+                <!-- ═══ A colleague transferred a caller to this team ═══ -->
+                <div t-elif="state.transferRequest" class="o_phone_scr">
+                    <t t-set="tav" t-value="avatar(state.transferRequest)"/>
+                    <div class="o_phone_who">
+                        <span class="o_phone_state ring">Transferred by <t t-esc="state.transferRequest.by"/></span>
+                        <span class="o_phone_av" t-att-class="tav.cls" t-esc="tav.text"/>
+                        <b t-esc="state.transferRequest.name"/>
+                        <span t-if="state.transferRequest.number" t-esc="state.transferRequest.number"/>
+                    </div>
+                    <div class="o_phone_callrow o_phone_end">
+                        <button type="button" class="o_phone_big end" t-on-click="() => this.card.declineTransferRequest()" title="Decline">
+                            <i class="fa fa-phone"/>
+                        </button>
+                        <button type="button" class="o_phone_big" t-on-click="() => this.card.acceptTransferRequest()" title="Call back">
+                            <i class="fa fa-phone"/>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ═══ Outbound call being set up (nothing to end yet) ═══ -->
+                <div t-elif="state.connecting" class="o_phone_scr">
+                    <t t-set="oav" t-value="avatar(state.connecting)"/>
+                    <div class="o_phone_who">
+                        <span class="o_phone_state"><t t-esc="state.connecting.label"/>…</span>
+                        <span class="o_phone_av" t-att-class="oav.cls" t-esc="oav.text"/>
+                        <b t-esc="state.connecting.name"/>
+                        <span t-if="state.connecting.number !== state.connecting.name" t-esc="state.connecting.number"/>
+                    </div>
+                    <div class="o_phone_empty">Setting up the call…</div>
+                </div>
+
+                <!-- ═══ Wrap-up ═══ -->
+                <div t-elif="state.wrapup" class="o_phone_scr">
+                    <div class="o_phone_sheet">
+                        <h4>Call ended</h4>
+                        <p t-if="state.wrapup.name" t-esc="state.wrapup.name"/>
+                        <select t-model="state.wrapup.dispositionId" aria-label="Outcome">
+                            <option value="">Outcome…</option>
+                            <option t-foreach="state.wrapup.dispositions" t-as="d" t-key="d.id" t-att-value="d.id" t-esc="d.name"/>
+                        </select>
+                        <textarea t-model="state.wrapup.note" placeholder="Wrap-up note…" aria-label="Wrap-up note"/>
+                        <div class="o_phone_btns">
+                            <button type="button" t-on-click="() => this.card.skipWrapup()">Skip</button>
+                            <button type="button" class="pri" t-on-click="() => this.card.saveWrapup()">Save</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ Idle: the three tabs ═══ -->
+                <t t-else="">
+                    <div t-if="state.tab === 'recent'" class="o_phone_scr">
+                        <label class="o_phone_search">
+                            <i class="fa fa-search"/>
+                            <input type="text" placeholder="Search name or number…" t-att-value="ui.search"
+                                   t-on-input="(ev) => this.onSearch(ev)"/>
+                        </label>
+                        <div class="o_phone_scroll">
+                            <t t-if="ui.contacts.length">
+                                <div class="o_phone_day">Contacts</div>
+                                <div class="o_phone_row" t-foreach="ui.contacts" t-as="p" t-key="'p' + p.id">
+                                    <t t-set="pav" t-value="avatar(p)"/>
+                                    <span class="o_phone_av" t-att-class="pav.cls" t-esc="pav.text"/>
+                                    <button type="button" class="o_phone_t" title="Put this number on the keypad"
+                                            t-on-click="() => this.toKeypad(p.number)">
+                                        <b t-esc="p.name"/><span t-esc="p.number"/>
+                                    </button>
+                                    <button type="button" class="o_phone_go" title="Call" t-on-click="() => this.call(p)">
+                                        <i class="fa fa-phone"/>
+                                    </button>
+                                </div>
+                            </t>
+                            <t t-foreach="days" t-as="day" t-key="day.label">
+                                <div class="o_phone_day" t-esc="day.label"/>
+                                <div class="o_phone_row" t-foreach="day.rows" t-as="c" t-key="c.id">
+                                    <span class="o_phone_av" t-att-class="c.av.cls" t-esc="c.av.text"/>
+                                    <button type="button" class="o_phone_t" title="Put this number on the keypad"
+                                            t-on-click="() => this.toKeypad(c.number)">
+                                        <b t-esc="c.name"/>
+                                        <span t-att-class="c.line.miss ? 'miss' : ''" t-esc="c.line.text"/>
+                                    </button>
+                                    <time t-esc="c.time"/>
+                                    <t t-if="c.recordingId">
+                                        <button type="button" class="o_phone_hbtn" title="Open the recording in a new tab"
+                                                t-on-click="() => this.openRecording(c.recordingId)">
+                                            <i class="fa fa-external-link"/>
+                                        </button>
+                                        <button type="button" class="o_phone_go"
+                                                t-att-title="ui.playing === c.recordingId ? 'Stop the recording' : 'Play recording'"
+                                                t-on-click="() => this.playRecording(c.recordingId)">
+                                            <i t-att-class="ui.playing === c.recordingId ? 'fa fa-pause' : 'fa fa-play'"/>
+                                        </button>
+                                    </t>
+                                    <button t-else="" type="button" class="o_phone_go" title="Call back" t-att-disabled="!c.number"
+                                            t-on-click="() => this.call(c)">
+                                        <i class="fa fa-phone"/>
+                                    </button>
+                                </div>
+                            </t>
+                            <div t-if="!ui.calls.length and !ui.contacts.length" class="o_phone_empty">
+                                <t t-if="ui.loading">Loading…</t>
+                                <t t-elif="ui.failed">Could not load the call history.</t>
+                                <t t-elif="ui.search">Nothing matches "<t t-esc="ui.search"/>".</t>
+                                <t t-else="">No calls yet. Calls you make and take here will be listed.</t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div t-elif="state.tab === 'activities'" class="o_phone_scr">
+                        <div class="o_phone_scroll">
+                            <div class="o_phone_row" t-foreach="ui.activities" t-as="a" t-key="a.id">
+                                <t t-set="aav" t-value="avatar(a)"/>
+                                <span class="o_phone_av" t-att-class="aav.cls" t-esc="aav.text"/>
+                                <button type="button" class="o_phone_t" t-on-click="() => this.openRecord(a.res_model, a.res_id)">
+                                    <b t-esc="a.name"/>
+                                    <span t-att-class="a.late ? 'miss' : ''">
+                                        <t t-esc="a.summary"/> ·
+                                        <t t-if="a.late">overdue since <t t-esc="a.due"/></t>
+                                        <t t-elif="a.today">today</t>
+                                        <t t-else="">due <t t-esc="a.due"/></t>
+                                    </span>
+                                </button>
+                                <button type="button" class="o_phone_go" title="Call" t-att-disabled="!a.number"
+                                        t-on-click="() => this.callActivity(a)">
+                                    <i class="fa fa-phone"/>
+                                </button>
+                            </div>
+                            <div t-if="!ui.activities.length" class="o_phone_empty">
+                                <t t-if="ui.loading">Loading…</t>
+                                <t t-else="">No call activities assigned to you.</t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div t-else="" class="o_phone_scr">
+                        <div class="o_phone_num">
+                            <input type="text" inputmode="tel" t-att-value="state.keypad.number" placeholder="Number to call"
+                                   aria-label="Number to call" t-on-input="(ev) => this.onNumberInput(ev)"
+                                   t-on-keydown="(ev) => this.onNumberKeydown(ev)"/>
+                            <button type="button" t-if="state.keypad.number" t-on-click="() => this.backspace()" title="Delete">
+                                <i class="fa fa-long-arrow-left"/>
+                            </button>
+                        </div>
+                        <div class="o_phone_hint" t-if="state.keypad.contact or keypadChip">
+                            <t t-if="state.keypad.contact" t-esc="state.keypad.contact.name"/>
+                            <span t-if="keypadChip" class="o_phone_chip" t-att-class="keypadChip.cls" t-esc="keypadChip.label"/>
+                        </div>
+                        <div class="o_phone_hint" t-if="state.keypad.accounts.length">
+                            From:
+                            <select t-if="state.keypad.accounts.length > 1" aria-label="Call from"
+                                    t-on-change="(ev) => this.onAccountChange(ev)">
+                                <option t-foreach="state.keypad.accounts" t-as="acc" t-key="acc.id" t-att-value="acc.id"
+                                        t-att-selected="acc.id === state.keypad.accountId" t-esc="acc.label"/>
+                            </select>
+                            <t t-else="" t-esc="state.keypad.accounts[0].label"/>
+                        </div>
+                        <div class="o_phone_links" style="padding-top:10px">
+                            <button type="button" t-on-click="() => this.card.scriptForKeypad()">
+                                <t t-if="state.keypad.chatbotName">Script: <t t-esc="state.keypad.chatbotName"/></t>
+                                <t t-else="">Choose script</t>
+                            </button>
+                            <button type="button" t-on-click="() => this.card.campaignForKeypad()">Add to campaign</button>
+                        </div>
+                        <div class="o_phone_pad">
+                            <button type="button" t-foreach="keys" t-as="k" t-key="k[0]" t-on-click="() => this.press(k[0])">
+                                <b t-esc="k[0]"/><small t-if="k[1]" t-esc="k[1]"/>
+                            </button>
+                        </div>
+                        <div class="o_phone_callrow">
+                            <button type="button" class="o_phone_big" title="Call on WhatsApp"
+                                    t-att-disabled="!state.keypad.number.trim()" t-on-click="() => this.card.dialFromKeypad()">
+                                <i class="fa fa-phone"/>
+                            </button>
+                        </div>
+                    </div>
+                </t>
+            </div>
+
+            <div class="o_phone_foot" t-if="idle">
+                <button type="button" t-foreach="tabs" t-as="tab" t-key="tab[0]"
+                        t-att-class="state.tab === tab[0] ? 'on' : ''" t-on-click="() => this.setTab(tab[0])">
+                    <i t-attf-class="fa {{tab[2]}}"/><t t-esc="tab[1]"/>
+                    <span t-if="tab[0] === 'recent' and state.missed" class="o_phone_n" t-esc="state.missed > 99 ? '99+' : state.missed"/>
+                </button>
+            </div>
+        </div>
+    </t>
+
+</templates>
