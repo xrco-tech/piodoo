@@ -97,6 +97,13 @@ def _clean(text, limit=AI_BODY_CHARS):
     return text.strip()[:limit]
 
 
+def _ai_first_name(name):
+    """A first name that is safe to send out. A candidate who never gave a name
+    is saved under their phone number, and that must not leave as a "name"."""
+    first = first_name(name)
+    return '' if re.search(r'\d{5}', re.sub(r'[\s+()-]', '', first or '')) else first
+
+
 class Chat2workWorkspaceAi(models.AbstractModel):
     _inherit = 'chat2work.workspace'
 
@@ -107,7 +114,7 @@ class Chat2workWorkspaceAi(models.AbstractModel):
         label = lambda field: self._label(candidate, field) or 'not given'  # noqa: E731
         callback = candidate.callback_ids.filtered(lambda c: c.state in OPEN_CALLBACK)[:1]
         lines = [
-            'First name: %s' % (first_name(candidate.name) or 'not given'),
+            'First name: %s' % (_ai_first_name(candidate.name) or 'not given'),
             'Stage: %s' % label('stage'),
             'CV: %s' % label('cv_state'),
             'CV link: %s%s' % (label('cv_link_state'), candidate.cv_link_sent_at and

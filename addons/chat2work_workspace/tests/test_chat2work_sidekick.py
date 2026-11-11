@@ -56,6 +56,16 @@ class TestChat2workSidekick(TransactionCase):
             chat = (self.Ws if ws is None else ws).ws_sidekick_ask(chat_id, question, candidate and candidate.id)
         return chat, ai.call_args.args[3] if ai.called else ''
 
+    def test_a_candidate_saved_under_their_number_is_not_named_to_the_ai(self):
+        nameless = self.env['chat2work.candidate'].create({'name': '0825550199', 'phone': '+27825550199'})
+        nameless.cv_state = 'started'
+        _chat, sent = self._ask('Who started a CV?', said(list='cv_started'))
+        self.assertNotIn('0825550199', sent)
+        self.assertIn('no name given', sent)
+        _chat, sent = self._ask('What has been tried?', said(), candidate=nameless)
+        self.assertNotIn('0825550199', sent)
+        self.assertIn('First name: not given', sent)
+
     def _ids(self, ws, key):
         return [row['id'] for row in ws._sidekick_list(key, 50)['rows']]
 

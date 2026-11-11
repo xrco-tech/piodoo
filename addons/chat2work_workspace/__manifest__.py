@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work Workspace',
-    'version': '18.0.1.7.0',
+    'version': '18.0.1.7.1',
     'category': 'Human Resources/Recruitment',
     'summary': 'One screen for agents: conversations, candidates, job listings, bookings and an AI sidekick',
     'description': """

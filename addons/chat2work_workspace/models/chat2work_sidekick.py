@@ -31,7 +31,7 @@ from odoo.addons.chat2work_jobs.models.chat2work_occupation import _ai_json, _ap
 
 from .chat2work_workspace import ID_LISTS, LIST_MAX, OPEN_CALLBACK, _dt
 from .chat2work_workspace_ai import (
-    AI_BODY_CHARS, AI_QUESTION_CHARS, AI_TIMELINE, CHAT_CHANNELS, SMS_SINGLE, WA_REPLY_MAX, _clean)
+    AI_BODY_CHARS, AI_QUESTION_CHARS, AI_TIMELINE, CHAT_CHANNELS, SMS_SINGLE, WA_REPLY_MAX, _ai_first_name, _clean)
 
 _logger = logging.getLogger(__name__)
 
@@ -202,7 +202,7 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
         lines = []
         for key, info in lists.items():
             data = self._sidekick_list(key, FACT_NAMES)
-            people = '; '.join('%s (%s)' % (first_name(Candidate.browse(row['id']).name) or 'no name given',
+            people = '; '.join('%s (%s)' % (_ai_first_name(Candidate.browse(row['id']).name) or 'no name given',
                                             _clean(row['reason'], 120)) for row in data['rows'])
             lines.append('%s = %s: %s%s' % (key, info['what'], data['total'], people and '. First: %s' % people or ''))
         # Today 00:00 where the agent is, as the UTC the database keeps.
@@ -283,7 +283,7 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
             sources.append(_("%(where)s at %(time)s", where=lists[raw['list']]['source'], time=at))
         if candidate:
             sources.append(_("%(name)s's timeline (%(count)s entries) and Chat2Work record",
-                             name=first_name(candidate.name) or _("this candidate"), count=entries))
+                             name=_ai_first_name(candidate.name) or _("this candidate"), count=entries))
         titles = notes.mapped('name')
         used = [title for title in titles if title in (raw.get('notes_used') or [])]
         if used:
