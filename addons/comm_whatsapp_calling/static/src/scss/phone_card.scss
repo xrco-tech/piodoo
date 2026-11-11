@@ -296,9 +296,13 @@
     display: flex;
     align-items: center;
 
-    > button { position: relative; color: inherit; }
+    > button { color: inherit; }
+    // The dot and the count hang off the icon itself, not the button: the
+    // button is much bigger than the icon on a phone.
+    .o_phone_tray_ico { position: relative; display: inline-flex; }
     .o_phone_tray_dot {
-        position: absolute; right: 2px; bottom: 2px; width: 8px; height: 8px; border-radius: 50%;
+        position: absolute; right: -4px; bottom: -3px; width: 8px; height: 8px; border-radius: 50%;
+        border: 1px solid var(--o-navbar-bg, #fff);
         background: var(--pc-muted);
         &.ok { background: var(--pc-green); }
         &.away { background: var(--pc-amber); }
@@ -306,7 +310,7 @@
         &.ring { background: var(--pc-amber); animation: o_phone_pulse 1s infinite; }
     }
     .o_phone_tray_n {
-        position: absolute; top: 2px; right: 0; min-width: 15px; height: 15px; padding: 0 4px;
+        position: absolute; top: -8px; right: -11px; min-width: 15px; height: 15px; padding: 0 4px;
         border-radius: 999px; background: var(--pc-red); color: #fff;
         font-size: 10px; font-weight: 700; line-height: 15px; text-align: center;
     }

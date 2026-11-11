@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Comm Dialer — Progressive / Predictive',
-    'version': '18.0.1.3.1',
+    'version': '18.0.1.3.2',
     'category': 'Communications',
     'summary': 'Outbound dialer: campaigns, call lists, agent pacing (preview / progressive / predictive)',
     'description': """
