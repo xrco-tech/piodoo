@@ -5,8 +5,10 @@
         <div class="o_dialer_softphone" t-if="state.enabled">
             <button class="btn o_dialer_sp_btn" t-att-title="statusLabel"
                     t-on-click="() => this.toggleDialer()">
-                <i class="fa fa-headphones"/>
-                <span class="o_dialer_sp_dot" t-att-class="dotClass"/>
+                <span class="o_dialer_sp_ico">
+                    <i class="fa fa-headphones"/>
+                    <span class="o_dialer_sp_dot" t-att-class="dotClass"/>
+                </span>
             </button>
         </div>
     </t>

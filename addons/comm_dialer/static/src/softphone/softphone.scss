@@ -4,13 +4,18 @@
     align-items: center;
 
     .o_dialer_sp_btn {
-        position: relative;
         color: inherit;
+    }
+    // The dot hangs off the icon itself, not the button: the button is much
+    // bigger than the icon on a phone.
+    .o_dialer_sp_ico {
+        position: relative;
+        display: inline-flex;
     }
     .o_dialer_sp_dot {
         position: absolute;
-        right: 2px;
-        bottom: 2px;
+        right: -4px;
+        bottom: -3px;
         width: 8px;
         height: 8px;
         border-radius: 50%;

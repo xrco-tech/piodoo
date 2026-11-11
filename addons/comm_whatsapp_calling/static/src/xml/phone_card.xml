@@ -4,9 +4,11 @@
     <t t-name="comm_whatsapp_calling.PhoneSystray">
         <div class="o_phone_tray">
             <button class="btn" t-att-title="title" t-on-click="() => this.toggle()">
-                <i class="fa fa-whatsapp"/>
-                <span class="o_phone_tray_dot" t-att-class="dot"/>
-                <span t-if="state.missed" class="o_phone_tray_n" t-esc="missed"/>
+                <span class="o_phone_tray_ico">
+                    <i class="fa fa-whatsapp"/>
+                    <span class="o_phone_tray_dot" t-att-class="dot"/>
+                    <span t-if="state.missed" class="o_phone_tray_n" t-esc="missed"/>
+                </span>
             </button>
         </div>
     </t>
