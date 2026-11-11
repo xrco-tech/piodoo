@@ -23,7 +23,14 @@ export const softphoneService = {
             manual: false, // ring with Accept/Decline instead of auto-answering
             recording: false,
             autoRecord: false,
-            dialerOpen: false, // manual click-to-dial panel visible
+            dialerOpen: false, // the phone card is open
+            number: "",        // the other party's number (caller holds their name)
+            partnerId: false,  // contact on the call, when known
+            since: 0,          // ms timestamp the call connected (for the timer)
+            held: false,       // caller on hold
+            live: false,       // a call is ringing, connecting or connected
+            // Attended transfer in progress: {id, mode, state, target}.
+            transfer: null,
             // Campaign + call script for the live call (softphone_call_context).
             ctx: null,
             // Voice script being followed: {sessionId, chatbotId, name, bubbles,
@@ -50,6 +57,8 @@ export const softphoneService = {
         let callId = null; // comm.voip.call this call is logged as
         let myExt = "";    // this agent's own SIP extension
         let myDomain = ""; // SIP domain, for outbound INVITEs
+        let dialName = ""; // name of the contact being dialled from the card
+        let transferTimer = null;
 
         // One shared AudioContext, primed/kept-running by real user gestures so
         // the browser autoplay policy can't leave it suspended (which yields
@@ -111,11 +120,18 @@ export const softphoneService = {
             const outgoing = s.direction === "outgoing";
             const ri = s.remote_identity;
             const peer = (ri && ri.uri && ri.uri.user) || "";
-            state.caller = peer || "Call";
+            state.caller = (outgoing && dialName) || peer || "Call";
+            dialName = "";
+            state.number = peer;
+            state.partnerId = false;
             state.status = outgoing ? "calling" : "ringing";
             state.muted = false;
             state.recording = false;
-            state.dialerOpen = false;
+            state.held = false;
+            state.since = 0;
+            state.transfer = null;
+            state.dialerOpen = true; // a call always brings the card up
+            state.live = true;
             callId = null;
 
             // Incoming legs from the ARI bridge carry the comm.voip.call id.
@@ -133,6 +149,9 @@ export const softphoneService = {
             let callStarted = false;
             const onIncall = async () => {
                 state.status = "incall";
+                if (!state.since) {
+                    state.since = Date.now();
+                }
                 if (!callStarted) {
                     callStarted = true;
                     try {
@@ -153,6 +172,9 @@ export const softphoneService = {
             s.on("accepted", onIncall);
             s.on("confirmed", onIncall);
             s.on("ended", onEnded);
+            // Only our own hold counts: the far end holding us is not our button.
+            s.on("hold", (ev) => { if (ev && ev.originator === "local") { state.held = true; } });
+            s.on("unhold", (ev) => { if (ev && ev.originator === "local") { state.held = false; } });
             s.on("failed", (ev) => {
                 const cause = (ev && ev.cause) || "unknown";
                 console.warn("[softphone] session failed:", cause, ev);
@@ -204,14 +226,15 @@ export const softphoneService = {
             }
         }
 
-        function dial(number) {
-            number = (number || "").trim();
+        function dial(number, name) {
+            number = (number || "").replace(/[\s()-]/g, "");
             if (!ua || !number) {
                 return;
             }
-            if (["ringing", "calling", "incall"].includes(state.status)) {
+            if (["ringing", "connecting", "calling", "incall"].includes(state.status)) {
                 return; // already on a call
             }
+            dialName = name || "";
             try {
                 ua.call("sip:" + number + "@" + myDomain, {
                     mediaConstraints: { audio: true, video: false },
@@ -228,9 +251,117 @@ export const softphoneService = {
             // itself surfaces the connection status (and disables Call) when the
             // softphone isn't registered, instead of the icon doing nothing.
             state.dialerOpen = !state.dialerOpen;
-            if (state.dialerOpen && ["idle", "unregistered", "failed"].includes(state.status)) {
-                // A click is a user gesture — a good moment to (re)try registering.
+            if (state.dialerOpen) {
+                retry();
+            }
+        }
+
+        // (Re)try registering when the softphone isn't connected. Called from a
+        // click, which is also the user gesture browsers want before audio.
+        function retry() {
+            if (["idle", "unregistered", "failed"].includes(state.status)) {
                 try { connect(state._cfg); } catch { /* no cfg yet */ }
+            }
+        }
+
+        // Send a keypad tone on the live call (menus, extensions).
+        function sendDtmf(tone) {
+            if (session && state.status === "incall" && /^[0-9*#]$/.test(tone)) {
+                try { session.sendDTMF(tone); } catch (err) { console.warn("[softphone] DTMF failed:", err); }
+            }
+        }
+
+        // Hold / resume: a SIP re-INVITE, so Asterisk plays hold music.
+        function toggleHold() {
+            if (!session || state.status !== "incall") {
+                return;
+            }
+            try {
+                const ok = state.held ? session.unhold() : session.hold();
+                if (!ok) {
+                    notification.add("Hold isn't available on this call right now.", { type: "warning" });
+                }
+            } catch (err) {
+                console.warn("[softphone] hold failed:", err);
+                notification.add("Couldn't change hold: " + (err && err.message || err), { type: "danger" });
+            }
+        }
+
+        // ── Card reads ──────────────────────────────────────────────────
+        const AGENT = "comm.dialer.agent.session";
+        const recent = (search) => orm.call(AGENT, "softphone_recent", [search || ""]);
+        const activities = () => orm.call(AGENT, "softphone_activities", []);
+        const transferTargets = () => orm.call(AGENT, "softphone_transfer_targets", []);
+
+        // ── Transfer ────────────────────────────────────────────────────
+        function stopTransferWatch() {
+            if (transferTimer) {
+                clearInterval(transferTimer);
+                transferTimer = null;
+            }
+        }
+
+        async function transfer(targetId, mode) {
+            if (!callId) {
+                return false;
+            }
+            let res;
+            try {
+                res = await orm.call(AGENT, "softphone_transfer", [callId, targetId, mode]);
+            } catch (err) {
+                res = { ok: false, message: (err && err.message) || String(err) };
+            }
+            if (!res.ok) {
+                notification.add(res.message || "The transfer could not be started.",
+                    { type: "danger", title: "Transfer" });
+                return false;
+            }
+            if (res.mode !== "attended") {
+                notification.add(res.message, { type: "success", title: "Transfer" });
+                return true;
+            }
+            state.transfer = { id: res.id, mode: res.mode, state: res.state, target: res.target };
+            stopTransferWatch();
+            transferTimer = setInterval(async () => {
+                const current = state.transfer;
+                if (!current) {
+                    stopTransferWatch();
+                    return;
+                }
+                try {
+                    const st = await orm.call(AGENT, "softphone_transfer_status", [current.id]);
+                    if (!state.transfer || state.transfer.id !== current.id) {
+                        return;
+                    }
+                    state.transfer.state = st.state;
+                    if (!st.live) {
+                        stopTransferWatch();
+                        state.transfer = null;
+                        if (st.state === "failed") {
+                            notification.add(st.error || "The transfer failed. You still have the caller.",
+                                { type: "danger", title: "Transfer" });
+                        }
+                    }
+                } catch {
+                    // keep polling; a blip must not lose the consult controls
+                }
+            }, 2000);
+            return true;
+        }
+
+        async function transferDecide(complete) {
+            const current = state.transfer;
+            if (!current) {
+                return;
+            }
+            try {
+                const st = await orm.call(AGENT, "softphone_transfer_decide", [current.id, !!complete]);
+                if (state.transfer && state.transfer.id === current.id) {
+                    state.transfer.state = st.state;
+                }
+            } catch (err) {
+                notification.add("Couldn't update the transfer: " + (err && err.message || err),
+                    { type: "danger" });
             }
         }
 
@@ -288,7 +419,14 @@ export const softphoneService = {
             callId = null;
             session = null;
             answering = false;
+            stopTransferWatch();
+            state.transfer = null;
+            state.live = false;
             state.caller = "";
+            state.number = "";
+            state.partnerId = false;
+            state.since = 0;
+            state.held = false;
             state.muted = false;
             state.status = ua && ua.isRegistered() ? "registered" : "unregistered";
         }
@@ -315,6 +453,8 @@ export const softphoneService = {
             if (ctx.partner_name) {
                 state.caller = ctx.partner_name;
             }
+            state.partnerId = ctx.partner_id || false;
+            state.number = ctx.number || state.number;
             if (ctx.chatbot_id && !state.script) {
                 startScript(ctx.chatbot_id, ctx.chatbot_name);
             }
@@ -624,10 +764,14 @@ export const softphoneService = {
                     register: true,
                     session_timers: false,
                 });
-                ua.on("registered", () => (state.status = "registered"));
-                ua.on("unregistered", () => (state.status = "unregistered"));
-                ua.on("registrationFailed", () => (state.status = "failed"));
-                ua.on("disconnected", () => (state.status = "failed"));
+                // A registration change must not overwrite the status of a
+                // live call (the call screen would lose its controls); the
+                // status is re-read from the UA when the call ends.
+                const setReg = (st) => { if (!state.live) { state.status = st; } };
+                ua.on("registered", () => setReg("registered"));
+                ua.on("unregistered", () => setReg("unregistered"));
+                ua.on("registrationFailed", () => setReg("failed"));
+                ua.on("disconnected", () => setReg("failed"));
                 ua.on("newRTCSession", onSession);
                 ua.start();
             } catch {
@@ -685,6 +829,8 @@ export const softphoneService = {
         init();
         return {
             state, toggleMute, hangup, accept, decline, toggleRecord, dial, toggleDialer,
+            retry, sendDtmf, toggleHold, recent, activities,
+            transferTargets, transfer, transferDecide,
             startScript, scriptTurn, closeScript: closeScriptSession,
             campaignOptions, addToCampaign, scriptOptions,
             // The comm.voip.call id of the current call (for the Transfer wizard).

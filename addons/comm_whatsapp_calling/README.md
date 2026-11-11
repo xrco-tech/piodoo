@@ -47,7 +47,7 @@ See **WHATSAPP_CALLING_PLAN.md** for Meta API details and WebRTC options.
 
 ### Blank screen after adding the module
 
-If the backend shows a blank screen after upgrading, it may be caused by the **systray** component (or another asset). You can temporarily disable the systray by removing from `__manifest__.py` under `web.assets_backend` the lines for `systray_whatsapp_calls.css`, `systray_whatsapp_calls.xml`, and `systray_whatsapp_calls.js`, then update the module again. The rest of the module (Calls menu, webhook, popup) will still work.
+If the backend shows a blank screen after upgrading, it may be caused by the **systray** component (or another asset). You can temporarily disable the phone card and its systray icon by removing from `__manifest__.py` under `web.assets_backend` the lines for `phone_card.xml` and `phone_card.js`, then update the module again. The rest of the module (Calls menu, webhook) will still work, without a calling screen.
 
 ### "could not serialize access due to concurrent update" (bus_presence)
 

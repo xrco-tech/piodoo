@@ -1,0 +1,327 @@
+// Phone card — the one look both dialers share (the VoIP softphone in
+// comm_dialer and WhatsApp calling here), modelled on the Odoo 20 phone
+// widget: a white card with a status header, a body and three tabs along the
+// bottom. Everything is a token on .o_phone_card so the dark bundle only has
+// to redefine the tokens (phone_card.dark.scss).
+
+.o_phone_card, .o_phone_pill, .o_phone_tray {
+    --pc-card: #ffffff;
+    --pc-line: #e5e7eb;
+    --pc-fg: #1f2937;
+    --pc-muted: #6b7280;
+    --pc-soft: #f6f7f9;
+    --pc-hover: #f3f4f6;
+    --pc-accent: #017e84;
+    --pc-accent-soft: #e4f1f2;
+    --pc-green: #16a34a;
+    --pc-green2: #34b866;
+    --pc-red: #dc4b4b;
+    --pc-red-soft: #fdecec;
+    --pc-amber: #b45309;
+    --pc-amber-soft: #fef3c7;
+    --pc-shadow: 0 8px 28px rgba(15, 23, 42, .18);
+}
+// WhatsApp calling uses the same card with WhatsApp green as its accent.
+.o_phone_card.o_phone_wa, .o_phone_pill.o_phone_wa {
+    --pc-accent: #1fa855;
+    --pc-accent-soft: #e6f6ec;
+}
+
+.o_phone_card {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 1080;
+    width: 340px;
+    height: 580px;
+    max-height: calc(100vh - 72px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--pc-card);
+    color: var(--pc-fg);
+    border: 1px solid var(--pc-line);
+    border-radius: 14px;
+    box-shadow: var(--pc-shadow);
+    font-size: 14px;
+    line-height: 1.45;
+
+    // Two cards open at once (a VoIP and a WhatsApp one) sit side by side.
+    &.o_phone_second { right: 372px; }
+
+    button { font: inherit; color: inherit; cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+        outline: 2px solid var(--pc-accent);
+        outline-offset: 2px;
+    }
+    button:disabled { cursor: default; opacity: .45; }
+
+    // ── Header ──────────────────────────────────────────────────────────
+    .o_phone_head {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 12px 11px 14px;
+        border-bottom: 1px solid var(--pc-line);
+        font-weight: 500;
+        position: relative;
+        white-space: nowrap;
+
+        small { flex: 0 1 auto; color: var(--pc-muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    }
+    .o_phone_status {
+        display: flex; align-items: center; gap: 8px; min-width: 0;
+        border: 0; background: none; padding: 0; font-weight: 500;
+        .fa-caret-down { color: var(--pc-muted); font-size: 12px; }
+    }
+    .o_phone_dot {
+        flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--pc-muted);
+        &.ok { background: var(--pc-green); }
+        &.away { background: #d97706; }
+        &.off { background: var(--pc-red); }
+        &.ring { background: #d97706; animation: o_phone_pulse 1s infinite; }
+    }
+    .o_phone_line {
+        margin-left: auto; flex: none;
+        font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+        background: var(--pc-accent-soft); color: var(--pc-accent);
+    }
+    .o_phone_hbtn {
+        flex: none; border: 0; background: none; color: var(--pc-muted);
+        width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center;
+        &:hover { background: var(--pc-hover); color: var(--pc-fg); }
+    }
+    .o_phone_menu {
+        position: absolute; top: 100%; left: 10px; z-index: 2; min-width: 190px;
+        background: var(--pc-card); border: 1px solid var(--pc-line); border-radius: 10px;
+        box-shadow: var(--pc-shadow); padding: 4px; display: flex; flex-direction: column;
+        button {
+            display: flex; align-items: center; gap: 8px; border: 0; background: none;
+            padding: 7px 9px; border-radius: 7px; text-align: left;
+            &:hover { background: var(--pc-hover); }
+            &.on { font-weight: 600; }
+        }
+        hr { margin: 4px 0; border: 0; border-top: 1px solid var(--pc-line); opacity: 1; }
+    }
+
+    // ── Body + tabs ─────────────────────────────────────────────────────
+    .o_phone_body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+    .o_phone_scr { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .o_phone_scroll { flex: 1; min-height: 0; overflow: auto; }
+
+    .o_phone_foot {
+        flex: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+        padding: 8px 12px; border-top: 1px solid var(--pc-line);
+
+        button {
+            border: 0; background: none; border-radius: 999px; padding: 6px 0 4px;
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            font-size: 12px; font-weight: 500; position: relative; color: var(--pc-muted);
+            i { display: grid; place-items: center; width: 64px; height: 24px; border-radius: 999px; font-size: 15px; }
+            &.on { color: var(--pc-accent); i { background: var(--pc-accent-soft); } }
+        }
+        .o_phone_n {
+            position: absolute; top: 0; right: 22px; min-width: 16px; height: 16px; padding: 0 4px;
+            border-radius: 999px; background: var(--pc-red); color: #fff;
+            font-size: 10px; font-weight: 700; display: grid; place-items: center;
+        }
+    }
+
+    // ── Recent / contacts / activities ──────────────────────────────────
+    .o_phone_search {
+        flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 14px;
+        border-bottom: 1px solid var(--pc-line); color: var(--pc-muted);
+        input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--pc-fg); padding: 2px 0; }
+    }
+    .o_phone_day {
+        flex: none; padding: 10px 14px 6px; font-weight: 600; font-size: 13px;
+        border-bottom: 1px solid var(--pc-line);
+    }
+    .o_phone_row {
+        display: flex; align-items: center; gap: 11px; padding: 9px 14px;
+        &:hover { background: var(--pc-hover); }
+        time { flex: none; font-size: 12px; color: var(--pc-muted); align-self: flex-start; }
+    }
+    .o_phone_t {
+        flex: 1; min-width: 0; border: 0; background: none; padding: 0; text-align: left;
+        b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        span { font-size: 13px; color: var(--pc-muted); }
+        span.miss { color: var(--pc-red); }
+    }
+    .o_phone_go {
+        flex: none; border: 0; width: 30px; height: 30px; border-radius: 50%;
+        background: var(--pc-accent-soft); color: var(--pc-accent) !important; display: grid; place-items: center;
+    }
+    .o_phone_av {
+        flex: none; width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center;
+        color: #fff; font-weight: 700; background: #3fb8a5;
+        &.c1 { background: #5a6fb0; } &.c2 { background: #b5651d; } &.c3 { background: #8e5aa8; }
+        &.c4 { background: #c2567a; } &.c5 { background: #4a8f5c; }
+        &.u { background: var(--pc-soft); color: var(--pc-muted); }
+    }
+    .o_phone_chip {
+        display: inline-block; font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px;
+        background: var(--pc-soft); color: var(--pc-muted) !important; margin-left: 4px;
+        max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;
+        &.ok { background: var(--pc-accent-soft); color: var(--pc-accent) !important; }
+        &.warn { background: var(--pc-amber-soft); color: var(--pc-amber) !important; }
+        &.bad { background: var(--pc-red-soft); color: var(--pc-red) !important; }
+    }
+    .o_phone_empty { padding: 28px 16px; text-align: center; color: var(--pc-muted); font-size: 13px; }
+
+    // ── Keypad ──────────────────────────────────────────────────────────
+    .o_phone_num {
+        flex: none; display: flex; align-items: center; gap: 8px; margin: 14px 20px 0;
+        padding-bottom: 6px; border-bottom: 2px solid var(--pc-accent);
+        input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--pc-fg); font-size: 20px; padding: 0; }
+        button { border: 0; background: none; color: var(--pc-muted); padding: 2px 4px; }
+    }
+    .o_phone_hint { flex: none; margin: 8px 20px 0; font-size: 12.5px; color: var(--pc-muted);
+        select { max-width: 100%; border: 1px solid var(--pc-line); border-radius: 8px; background: var(--pc-card); color: var(--pc-fg); padding: 3px 6px; font-size: 12.5px; }
+    }
+    .o_phone_banner {
+        flex: none; margin: 10px 14px 0; padding: 8px 10px; border-radius: 10px; font-size: 12.5px;
+        background: var(--pc-amber-soft); color: var(--pc-amber);
+        &.bad { background: var(--pc-red-soft); color: var(--pc-red); }
+        button { border: 0; background: none; font-weight: 700; text-decoration: underline; padding: 0; margin-left: 4px; color: inherit; }
+    }
+    .o_phone_pad {
+        margin-top: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 20px 8px;
+        button {
+            height: 50px; border: 1px solid var(--pc-line); border-radius: 999px; background: var(--pc-card);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05;
+            &:hover { background: var(--pc-hover); }
+            b { font-size: 18px; font-weight: 700; }
+            small { font-size: 9.5px; color: var(--pc-muted); letter-spacing: .06em; }
+        }
+    }
+    .o_phone_callrow { flex: none; display: flex; justify-content: center; gap: 16px; padding: 4px 20px 12px; }
+    .o_phone_big {
+        border: 0; width: 92px; height: 46px; border-radius: 999px; display: grid; place-items: center;
+        color: #fff !important; font-size: 19px;
+        background: linear-gradient(135deg, var(--pc-green2), var(--pc-green));
+        &.end { background: var(--pc-red); .fa { transform: rotate(135deg); } }
+    }
+
+    // ── Incoming / in call ──────────────────────────────────────────────
+    .o_phone_who {
+        flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px;
+        padding: 24px 16px 10px; text-align: center;
+        .o_phone_av { width: 68px; height: 68px; border-radius: 16px; font-size: 24px; }
+        b { font-size: 18px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+        > span { color: var(--pc-muted); font-size: 13px; }
+        .o_phone_state { font-size: 13px; font-weight: 600; color: var(--pc-accent);
+            &.ring { color: var(--pc-amber); } }
+    }
+    .o_phone_tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; .o_phone_chip { margin: 0; } }
+    .o_phone_ctl {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 8px; padding: 12px 20px; margin-top: auto;
+        button {
+            border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 5px;
+            font-size: 11.5px; color: var(--pc-muted);
+            i { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--pc-line);
+                display: grid; place-items: center; color: var(--pc-fg); background: var(--pc-card); font-size: 16px; }
+            &:hover i { background: var(--pc-hover); }
+            &.on i { background: var(--pc-accent); border-color: var(--pc-accent); color: var(--pc-card); }
+            &.rec i { color: var(--pc-red); }
+            &.rec.on i { background: var(--pc-red); border-color: var(--pc-red); color: #fff; }
+        }
+    }
+    .o_phone_links {
+        flex: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 4px 14px;
+        button { border: 1px solid var(--pc-line); background: var(--pc-card); border-radius: 999px; padding: 4px 11px; font-size: 12px;
+            &:hover { background: var(--pc-hover); } }
+    }
+    .o_phone_end { margin-top: auto; padding-bottom: 22px; }
+
+    // ── Sheets (transfer, pickers, wrap-up, permission, script) ─────────
+    .o_phone_sheet {
+        flex: 1; min-height: 0; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+        h4 { margin: 0; font-size: 15px; font-weight: 600; }
+        p { margin: 0; color: var(--pc-muted); font-size: 13px; }
+        select, textarea, input[type="text"] {
+            width: 100%; border: 1px solid var(--pc-line); border-radius: 10px; padding: 8px 11px;
+            background: var(--pc-card); color: var(--pc-fg); font-size: 13px;
+        }
+        textarea { min-height: 64px; resize: vertical; }
+    }
+    .o_phone_back {
+        align-self: flex-start; border: 0; background: none; padding: 0; color: var(--pc-muted); font-size: 12.5px;
+        &:hover { color: var(--pc-fg); }
+    }
+    .o_phone_opts { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+    .o_phone_opt {
+        flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 11px; text-align: left;
+        border: 1px solid var(--pc-line); border-radius: 10px; background: var(--pc-card);
+        b { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+        span { font-size: 12px; color: var(--pc-muted); flex: none; }
+        &:hover { background: var(--pc-hover); }
+        &.on { border-color: var(--pc-accent); background: var(--pc-accent-soft); }
+    }
+    .o_phone_btns {
+        flex: none; display: flex; gap: 8px; margin-top: auto;
+        button { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--pc-line); background: var(--pc-card); font-weight: 600; font-size: 13px;
+            &.pri { background: var(--pc-accent); border-color: var(--pc-accent); color: var(--pc-card); }
+            &.bad { background: var(--pc-red); border-color: var(--pc-red); color: #fff; } }
+    }
+    .o_phone_under { border: 0; background: none; text-decoration: underline; color: var(--pc-muted); font-size: 12.5px; align-self: center; padding: 0; }
+
+    // Call script follower.
+    .o_phone_bubbles { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+    .o_phone_bubble {
+        background: var(--pc-soft); border-radius: 10px; padding: 9px 11px; font-size: 13px; white-space: pre-wrap;
+        em { display: block; font-size: 12px; color: var(--pc-muted); margin-bottom: 4px; }
+        .o_phone_answers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+            button { border: 1px solid var(--pc-accent); color: var(--pc-accent); background: var(--pc-card); border-radius: 999px; padding: 3px 10px; font-size: 12px; } }
+    }
+    .o_phone_send { flex: none; display: flex; gap: 6px;
+        input { flex: 1; min-width: 0; }
+        button { flex: none; border: 0; border-radius: 10px; background: var(--pc-accent); color: var(--pc-card); padding: 0 12px; font-weight: 600; } }
+}
+
+// Minimised while a call is live: a pill that reopens the card.
+.o_phone_pill {
+    position: fixed; right: 16px; bottom: 16px; z-index: 1080;
+    display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+    border: 1px solid var(--pc-line); border-radius: 999px; cursor: pointer;
+    background: var(--pc-card); color: var(--pc-fg); box-shadow: var(--pc-shadow); font-weight: 500;
+    .fa { color: var(--pc-accent); }
+    &.ring .fa { color: var(--pc-amber); animation: o_phone_pulse 1s infinite; }
+    &.o_phone_second { bottom: 64px; }
+}
+
+// Systray icon that opens the WhatsApp card: presence dot + missed-calls count.
+.o_phone_tray {
+    display: flex;
+    align-items: center;
+
+    > button { position: relative; color: inherit; }
+    .o_phone_tray_dot {
+        position: absolute; right: 2px; bottom: 2px; width: 8px; height: 8px; border-radius: 50%;
+        background: var(--pc-muted);
+        &.ok { background: var(--pc-green); }
+        &.away { background: var(--pc-amber); }
+        &.off { background: var(--pc-red); }
+        &.ring { background: var(--pc-amber); animation: o_phone_pulse 1s infinite; }
+    }
+    .o_phone_tray_n {
+        position: absolute; top: 2px; right: 0; min-width: 15px; height: 15px; padding: 0 4px;
+        border-radius: 999px; background: var(--pc-red); color: #fff;
+        font-size: 10px; font-weight: 700; line-height: 15px; text-align: center;
+    }
+}
+
+@keyframes o_phone_pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .35; }
+}
+
+// Phone: the card takes the width of the screen, one at a time.
+@media (max-width: 500px) {
+    .o_phone_card, .o_phone_card.o_phone_second {
+        left: 8px; right: 8px; bottom: 8px; width: auto;
+        max-height: calc(100vh - 62px);
+    }
+    .o_phone_pill, .o_phone_pill.o_phone_second { right: 8px; }
+}
