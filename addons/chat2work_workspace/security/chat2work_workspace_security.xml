@@ -11,4 +11,10 @@
         <field name="model_id" ref="model_chat2work_sidekick_message"/>
         <field name="domain_force">[('chat_id.user_id', '=', user.id)]</field>
     </record>
+
+    <!-- Who gets the email when someone has been left waiting. Tick it on a user under Settings > Users. -->
+    <record id="group_waiting_email" model="res.groups">
+        <field name="name">Chat2Work: emailed when someone is left waiting</field>
+        <field name="comment">Gets an email when a candidate's message, a callback request or a WhatsApp from someone who isn't a candidate has gone unanswered for too long.</field>
+    </record>
 </odoo>

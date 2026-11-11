@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work Workspace',
-    'version': '18.0.1.7.2',
+    'version': '18.0.1.8.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'One screen for agents: conversations, candidates, job listings, bookings and an AI sidekick',
     'description': """
@@ -17,6 +17,11 @@ sections, a list, the selected record and an information card.
   VerifyNow credits are on the candidate's information card.
 - Job listings: verification and suggested candidates.
 - Bookings: interview slots and who is booked into them.
+- Alerts: an icon in the top bar counts who is waiting (a reply, a callback, or
+  a WhatsApp from someone who isn't a candidate yet), with a pop-up, a sound and
+  an optional desktop notification for each new one. People in the "emailed when
+  someone is left waiting" group get an email after 15 minutes
+  (chat2work_workspace.waiting_email_minutes; 0 turns it off).
 - Sidekick: a chat for agents about candidates, callbacks, CVs, jobs, ID checks
   and how the Workspace works. Lists are counted by the server, how-to answers
   come from the Agent Notes, and it never sends or changes anything.
@@ -33,12 +38,17 @@ sidekick chats and the agent notes.
         'security/chat2work_workspace_security.xml',
         'views/chat2work_workspace_views.xml',
         'data/chat2work_agent_note_data.xml',
+        'data/chat2work_alerts_data.xml',
     ],
     'assets': {
         'web.assets_backend': [
             'chat2work_workspace/static/src/workspace/workspace.scss',
             'chat2work_workspace/static/src/workspace/workspace.js',
             'chat2work_workspace/static/src/workspace/workspace.xml',
+            'chat2work_workspace/static/src/alerts/alerts_service.js',
+            'chat2work_workspace/static/src/alerts/alerts_systray.js',
+            'chat2work_workspace/static/src/alerts/alerts_systray.xml',
+            'chat2work_workspace/static/src/alerts/alerts_systray.scss',
         ],
         'web.assets_web_dark': [
             'chat2work_workspace/static/src/workspace/workspace.dark.scss',

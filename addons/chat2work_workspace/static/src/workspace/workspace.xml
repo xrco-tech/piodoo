@@ -78,7 +78,12 @@
                                     <time t-elif="state.view === 'book'" t-esc="slotWhen(row.start)"/>
                                     <time t-elif="state.view === 'jobs'" t-esc="closing(row)"/>
                                 </b>
-                                <p t-if="state.view === 'inbox'">
+                                <p t-if="kind === 'unknown'">
+                                    <em><t t-if="row.preview_out">You: </t><t t-esc="row.preview"/></em>
+                                    <span t-if="row.needs_reply" class="o_c2w_cnt" title="Needs a reply">!</span>
+                                    <span t-else="" class="o_c2w_tag plain">Not a candidate</span>
+                                </p>
+                                <p t-elif="state.view === 'inbox'">
                                     <em><t t-if="row.preview_out">You: </t><t t-esc="row.preview or row.phone"/></em>
                                     <span t-if="row.help" class="o_c2w_tag help" t-att-title="row.help">Needs help</span>
                                     <span t-elif="row.needs_reply" class="o_c2w_cnt" title="Needs a reply">!</span>
@@ -116,7 +121,8 @@
                         <t t-else="">Load more</t>
                     </button>
                     <div class="o_c2w_empty" t-if="!state.rows.length and !state.loadingList">
-                        No <t t-esc="view.what"/> here.
+                        <t t-if="kind === 'unknown'">Nobody who isn't a candidate has written in on WhatsApp in the last 14 days.</t>
+                        <t t-else="">No <t t-esc="view.what"/> here.</t>
                     </div>
                 </div>
             </section>
@@ -267,6 +273,77 @@
                                 </button>
                             </div>
                         </t>
+                        </div>
+                    </div>
+                </t>
+
+                <t t-elif="kind === 'unknown'">
+                    <t t-set="u" t-value="state.detail"/>
+                    <div class="o_c2w_mhead">
+                        <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')">
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <div class="o_c2w_card o_c2w_who">
+                            <t t-call="chat2work_workspace.Avatar">
+                                <t t-set="colour" t-value="colour(u.name)"/>
+                                <t t-set="initials" t-value="initials(u.name)"/>
+                                <t t-set="badge" t-value="''"/>
+                            </t>
+                            <b t-esc="u.name"/>
+                            <span><t t-esc="u.phone"/> · Not a candidate</span>
+                        </div>
+                        <div class="o_c2w_acts">
+                            <button class="o_c2w_ib on o_c2w_keep" type="button" title="Information" t-on-click="() => this.setPane('info')">
+                                <i class="fa fa-info-circle"/>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="o_c2w_banner warn" t-if="u.needs_reply">
+                        <span>Nobody has answered their last message</span>
+                        <button type="button" t-on-click="unknownDone">Mark as dealt with ›</button>
+                    </div>
+                    <div class="o_c2w_thread" t-ref="thread">
+                        <div class="o_c2w_intro">
+                            <b>
+                                <t t-call="chat2work_workspace.Avatar">
+                                    <t t-set="colour" t-value="colour(u.name)"/>
+                                    <t t-set="initials" t-value="initials(u.name)"/>
+                                    <t t-set="badge" t-value="''"/>
+                                </t>
+                                <t t-esc="u.name"/>
+                            </b>
+                            <p>WhatsApp messages with a number that isn't a candidate</p>
+                        </div>
+                        <t t-foreach="timeline" t-as="m" t-key="m.key">
+                            <div t-if="m.kind === 'day'" class="o_c2w_day" t-esc="m.label"/>
+                            <div t-else="" t-attf-class="o_c2w_msg {{ m.kind }} {{ m.failed ? 'fail' : '' }}">
+                                <t t-call="chat2work_workspace.Avatar">
+                                    <t t-set="colour" t-value="m.kind === 'out' ? 'var(--c2w-navy)' : colour(u.name)"/>
+                                    <t t-set="initials" t-value="m.kind === 'out' ? 'C2' : initials(u.name)"/>
+                                    <t t-set="badge" t-value="''"/>
+                                </t>
+                                <div class="o_c2w_mb">
+                                    <span>
+                                        <b t-esc="m.kind === 'out' ? 'Chat2Work' : u.name"/>
+                                        WhatsApp · <t t-esc="time(m.at)"/>
+                                        <t t-if="m.kind === 'out' and !m.failed and m.status"> · <t t-esc="m.status"/></t>
+                                    </span>
+                                    <div class="o_c2w_bub" t-esc="m.body"/>
+                                    <span t-if="m.failed" class="o_c2w_note">Not delivered.<t t-if="m.fail_reason"> <t t-esc="m.fail_reason"/></t></span>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                    <div class="o_c2w_comp">
+                        <div class="o_c2w_line">
+                            <div t-if="composerLock" class="o_c2w_box lock"><i class="fa fa-lock"/><span t-esc="composerLock"/></div>
+                            <div t-else="" class="o_c2w_box">
+                                <textarea rows="1" t-ref="composer" placeholder="Reply on WhatsApp…" t-att-value="state.composer"
+                                          t-on-input="onComposerInput" t-on-keydown="onComposerKeydown"/>
+                                <button type="button" title="Send" t-att-disabled="state.sending or !state.composer.trim()" t-on-click="send">
+                                    <i t-attf-class="fa {{ state.sending ? 'fa-circle-o-notch fa-spin' : 'fa-paper-plane' }}"/>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </t>
@@ -635,6 +712,22 @@
                             </button>
                         </div>
                         <span>Answers come only from this candidate's record and timeline.</span>
+                    </div>
+                </t>
+
+                <t t-elif="kind === 'unknown'">
+                    <t t-set="u" t-value="state.detail"/>
+                    <h4><i class="fa fa-info-circle"/> Not a candidate</h4>
+                    <div>
+                        <h5>Who</h5>
+                        <p><t t-esc="u.name"/><br/><t t-esc="u.phone"/></p>
+                        <p>First wrote <t t-esc="when(u.first_at)"/> · <t t-esc="u.received"/> message(s) from them</p>
+                    </div>
+                    <div>
+                        <h5>What to do</h5>
+                        <p>They wrote in on WhatsApp but never finished signing up, so they have no candidate record.
+                           Answer them here within 24 hours of their last message. To sign up they send "Hi".</p>
+                        <button t-if="u.needs_reply" class="o_c2w_wide" type="button" t-on-click="unknownDone">Mark as dealt with</button>
                     </div>
                 </t>
 

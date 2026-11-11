@@ -3,3 +3,4 @@ access_chat2work_sidekick_chat_agent,chat2work.sidekick.chat.agent,model_chat2wo
 access_chat2work_sidekick_message_agent,chat2work.sidekick.message.agent,model_chat2work_sidekick_message,chat2work.group_agent,1,1,1,1
 access_chat2work_agent_note_agent,chat2work.agent.note.agent,model_chat2work_agent_note,chat2work.group_agent,1,0,0,0
 access_chat2work_agent_note_admin,chat2work.agent.note.admin,model_chat2work_agent_note,base.group_system,1,1,1,1
+access_chat2work_workspace_handled_agent,chat2work.workspace.handled.agent,model_chat2work_workspace_handled,chat2work.group_agent,1,0,0,0

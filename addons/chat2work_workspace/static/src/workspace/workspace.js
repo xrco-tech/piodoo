@@ -29,8 +29,9 @@ const VIEWS = {
         label: _t("Conversations"),
         what: _t("candidates"),
         pills: [["all", _t("All")], ["reply", _t("Needs reply")], ["help", _t("Needs help")], ["callbacks", _t("Callbacks")],
-                ["whatsapp", _t("WhatsApp")], ["sms", _t("SMS only")]],
-        list: (pill, search, offset, limit) => ["ws_inbox", [pill, search, offset, limit]],
+                ["whatsapp", _t("WhatsApp")], ["sms", _t("SMS only")], ["unknown", _t("Not candidates")]],
+        list: (pill, search, offset, limit) =>
+            pill === "unknown" ? ["ws_unknown", [search, offset, limit]] : ["ws_inbox", [pill, search, offset, limit]],
         paged: true,
         detail: "ws_candidate",
     },
@@ -109,6 +110,7 @@ export class Chat2workWorkspace extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.bus = useService("bus_service");
+        this.alerts = useService("chat2work_alerts");
         this.rail = RAIL;
         this.followUps = FOLLOW_UPS;
 
@@ -143,7 +145,7 @@ export class Chat2workWorkspace extends Component {
         useEffect(
             () => {
                 const el = this.threadRef.el;
-                if (el && (this.kind === "candidate" || this.state.view === "side")) {
+                if (el && (["candidate", "unknown"].includes(this.kind) || this.state.view === "side")) {
                     el.scrollTop = el.scrollHeight;
                 }
             },
@@ -168,8 +170,18 @@ export class Chat2workWorkspace extends Component {
         onWillStart(async () => {
             this.state.boot = await this.orm.call(WS, "ws_bootstrap", []);
             this.state.counts = this.state.boot.counts;
+            // An alert that opened the Workspace says what to show.
+            const target = this.alerts.takePending();
+            if (target) {
+                this.applyTarget(target);
+            }
             await this.loadList();
         });
+
+        // While this screen is up, alerts open their candidate here instead of reloading it.
+        const show = (target) => this.openTarget(target);
+        this.alerts.attach(show);
+        onWillDestroy(() => this.alerts.detach(show));
 
         const timer = setInterval(() => this.loadCounts(), COUNTS_EVERY_MS);
         onWillDestroy(() => clearInterval(timer));
@@ -208,6 +220,9 @@ export class Chat2workWorkspace extends Component {
      *  inbox and on the Candidates lists, otherwise whatever the view lists. */
     get kind() {
         const view = this.state.view;
+        if (view === "inbox" && this.pill === "unknown") {
+            return "unknown"; // someone who wrote in on WhatsApp and isn't a candidate
+        }
         return view === "inbox" || (view === "cand" && this.pill !== "stages") ? "candidate" : view;
     }
 
@@ -216,7 +231,9 @@ export class Chat2workWorkspace extends Component {
         const lists = this.state.counts.lists || {};
         return this.view.pills
             .filter(([id]) => id !== "idc" || this.state.boot.can_id_check)
-            .map(([id, label]) => ({ id, label, count: id === "idc" ? lists.id_open : 0 }));
+            .map(([id, label]) => ({
+                id, label, count: id === "idc" ? lists.id_open : id === "unknown" ? this.state.counts.unknown : 0,
+            }));
     }
 
     get idSubs() {
@@ -283,6 +300,10 @@ export class Chat2workWorkspace extends Component {
     /** Why the reply box is locked, or false when a typed message can go. */
     get composerLock() {
         const c = this.state.detail;
+        if (this.kind === "unknown") {
+            return c.window_open ? false
+                : _t("WhatsApp won't deliver a typed reply now: their last message was more than 24 hours ago.");
+        }
         if (!c.phone) {
             return _t("This candidate has no phone number.");
         }
@@ -526,7 +547,7 @@ export class Chat2workWorkspace extends Component {
                 const stage = this.state.rows.find((r) => r.id === id);
                 detail = { ...stage, ...(await this.orm.call(WS, "ws_stage", [id, this.state.show, this.state.search])) };
             } else {
-                detail = await this.orm.call(WS, this.view.detail, [id]);
+                detail = await this.orm.call(WS, this.kind === "unknown" ? "ws_unknown_thread" : this.view.detail, [id]);
             }
             if (id === this.state.selId) {
                 this.state.detail = detail;
@@ -619,7 +640,8 @@ export class Chat2workWorkspace extends Component {
     }
 
     async setPill(pill) {
-        if (this.state.view === "cand" && pill !== this.pill) {
+        const numbers = this.state.view === "inbox" && (pill === "unknown") !== (this.pill === "unknown");
+        if ((this.state.view === "cand" && pill !== this.pill) || numbers) {
             // Stages and candidate lists are drawn differently: don't show one as the other while loading.
             Object.assign(this.state, { selId: false, detail: false, rows: [] });
         }
@@ -660,6 +682,30 @@ export class Chat2workWorkspace extends Component {
         this.state.detail = false;
         this.state.rows = [];
         await this.loadList();
+    }
+
+    /** Point the screen at what an alert is about; the next list load shows it. */
+    applyTarget(target) {
+        const number = target.unknown;
+        Object.assign(this.state, {
+            view: "inbox", search: "", detail: false, rows: [], composer: "",
+            selId: target.candidate_id || number || false,
+            pinnedId: target.candidate_id || number || false,
+            pane: target.candidate_id || number ? "thread" : "list",
+        });
+        this.state.pills.inbox = number ? "unknown" : target.pill || "all";
+    }
+
+    async openTarget(target) {
+        this.applyTarget(target);
+        await Promise.all([this.loadList(), this.loadCounts()]);
+    }
+
+    /** "Dealt with": off the waiting list until they write again. */
+    async unknownDone() {
+        await this.orm.call(WS, "ws_unknown_done", [this.state.detail.id]);
+        await this.refresh();
+        this.alerts.refresh();
     }
 
     openRecord(model, id) {
@@ -741,7 +787,9 @@ export class Chat2workWorkspace extends Component {
         }
         this.state.sending = true;
         try {
-            this.state.detail = await this.orm.call(WS, "ws_send", [this.state.detail.id, text, this.channel]);
+            this.state.detail = this.kind === "unknown"
+                ? await this.orm.call(WS, "ws_unknown_send", [this.state.detail.id, text])
+                : await this.orm.call(WS, "ws_send", [this.state.detail.id, text, this.channel]);
             this.state.composer = "";
         } finally {
             this.state.sending = false;
