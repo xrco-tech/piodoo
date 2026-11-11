@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chat2work_workspace.AlertsSystray">
+        <Dropdown t-if="state.agent" position="'bottom-end'" menuClass="'o_c2w_alerts'">
+            <button type="button" class="o_c2w_alerts_btn" title="Chat2Work: people waiting" aria-label="Chat2Work: people waiting">
+                <i class="fa fa-comments-o"/>
+                <span t-if="state.count" class="o_c2w_alerts_n" t-esc="badge"/>
+            </button>
+            <t t-set-slot="content">
+                <div class="o_c2w_alerts_h">People waiting</div>
+                <DropdownItem t-foreach="lists" t-as="list" t-key="list.pill" onSelected="() => this.openList(list.pill)">
+                    <div class="o_c2w_alerts_row">
+                        <span t-esc="list.label"/>
+                        <b t-att-class="{ none: !list.count }" t-esc="list.count"/>
+                    </div>
+                </DropdownItem>
+                <t t-if="recent.length">
+                    <div class="o_c2w_alerts_h">In the last day</div>
+                    <DropdownItem t-foreach="recent" t-as="item" t-key="item.key" onSelected="() => this.openItem(item)">
+                        <div class="o_c2w_alerts_item">
+                            <span><b t-esc="item.name"/><time t-esc="when(item.since)"/></span>
+                            <em t-esc="item.text"/>
+                        </div>
+                    </DropdownItem>
+                </t>
+                <div class="o_c2w_alerts_set">
+                    <label>
+                        <span>Sound for a new one</span>
+                        <input type="checkbox" t-att-checked="state.sound" t-on-change="toggleSound"/>
+                    </label>
+                    <div t-if="state.desktop !== 'unsupported'">
+                        <span>Desktop notifications</span>
+                        <button t-if="state.desktop === 'default'" type="button" class="btn btn-link p-0"
+                                t-on-click="() => this.alerts.askDesktop()" t-esc="desktopLabel"/>
+                        <em t-else="" t-esc="desktopLabel"/>
+                    </div>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+</templates>
