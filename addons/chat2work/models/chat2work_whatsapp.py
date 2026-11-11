@@ -40,6 +40,8 @@ GREETING_STARTS = GREETINGS + (
     'hola', 'yo', 'sho', 'greetings', 'morning', 'afternoon', 'evening', 'good', 'goeie', 'goeiemore',
     'sanibonani', 'molweni', 'dumelang', 'lumela', 'thobela', 'lotjhani', 'ndaa', 'abuxeni', 'kunjani', 'unjani')
 GREETING_MAX_WORDS = 5
+# Shortest start keyword that still counts when it's typed one letter out.
+FUZZY_MIN_LENGTH = 5
 # Campaign codes kept as candidate.source_tag; anything else after the keyword is ignored.
 DEFAULT_SOURCE_TAGS = 'FLYER,POSTER,CAR,TAXI,SOCIAL,QR,RADIO,SMS,WEB,REFERRAL'
 
@@ -60,6 +62,16 @@ WA_OPTIONS = {
     'S11': [('1', 'Call centre'), ('2', 'Retail'), ('3', 'Warehouse / Driver'),
             ('4', 'Admin / General'), ('5', 'Other'), ('0', 'Skip')],
 }
+
+
+def _one_letter_out(word, target):
+    """True when `word` is `target` with one letter changed, added or dropped."""
+    if word == target or abs(len(word) - len(target)) > 1:
+        return False
+    if len(word) == len(target):
+        return sum(a != b for a, b in zip(word, target)) == 1
+    short, long_ = sorted((word, target), key=len)
+    return any(long_[:i] + long_[i + 1:] == short for i in range(len(long_)))
 
 
 class Chat2workWaSession(models.Model):
@@ -140,14 +152,33 @@ class Chat2workWaSession(models.Model):
         triggers = self._triggers()
         if not triggers:
             return None
+        # Stray marks before the first word ("'Ispani", "*jobs") come from
+        # keyboards and copy-paste, not from the person.
+        text = re.sub(r'^[\W_]+', '', (text or '').strip())
         pattern = r'^(?:(?:%s)\b[\s,!.]*)?(?:%s)\b(.*)$' % (
             '|'.join(GREETINGS), '|'.join(re.escape(t) for t in triggers))
-        m = re.match(pattern, (text or '').strip(), re.IGNORECASE | re.DOTALL)
-        if not m:
+        m = re.match(pattern, text, re.IGNORECASE | re.DOTALL)
+        rest = m.group(1) if m else self._match_misspelt_trigger(text, triggers)
+        if rest is None:
             return None
-        words = re.findall(r'[A-Za-z0-9_-]+', m.group(1))
+        words = re.findall(r'[A-Za-z0-9_-]+', rest)
         tag = words[0].upper() if words else ''
         return tag if tag in self._source_tags() else ''
+
+    @api.model
+    def _match_misspelt_trigger(self, text, triggers):
+        """What follows a keyword typed one letter out ("Ispann", "Sebenzza"),
+        or None. Only keywords of FUZZY_MIN_LENGTH letters or more: one letter
+        out of "jobs" or "hi" is too often a different word."""
+        words = re.findall(r'\S+', text)
+        if words and re.sub(r'[\W_]+$', '', words[0]).lower() in GREETINGS:
+            words = words[1:]
+        if not words:
+            return None
+        first = re.sub(r'^[\W_]+|[\W_]+$', '', words[0]).lower()
+        if any(len(t) >= FUZZY_MIN_LENGTH and _one_letter_out(first, t) for t in triggers):
+            return ' '.join(words[1:])
+        return None
 
     @api.model
     def _is_greeting(self, text):

@@ -22,6 +22,7 @@ STATES = [
     ('granted', 'Allowed'),
     ('declined', 'Declined'),
     ('expired', 'No longer valid'),
+    ('failed', 'Request not delivered'),
 ]
 
 
@@ -43,6 +44,10 @@ class WhatsAppCallPermission(models.Model):
     requested_at = fields.Datetime(readonly=True)
     requested_by_id = fields.Many2one('res.users', 'Requested By', ondelete='set null', readonly=True)
     responded_at = fields.Datetime(readonly=True)
+    request_message_id = fields.Char(
+        'Request Message ID', index=True, readonly=True,
+        help="Meta's id of the last request sent, to match it with its delivery status.")
+    fail_reason = fields.Char('Why It Wasn\'t Delivered', readonly=True)
 
     _sql_constraints = [
         ('phone_number_uniq', 'unique(phone, phone_number_id)', 'One permission per person and business number.'),
@@ -89,6 +94,10 @@ class WhatsAppCallPermission(models.Model):
         self.ensure_one()
         state = self.current_state
         name = name or self.phone
+        if state == 'failed':
+            return _("The call permission request to %(name)s on %(date)s was not delivered, so they never saw it. "
+                     "%(reason)s", name=name, date=self._format_date(self.requested_at),
+                     reason=self.fail_reason or '')
         if state == 'pending':
             return _("A call permission request was sent to %(name)s on %(date)s and they haven't replied yet.",
                      name=name, date=self._format_date(self.requested_at))
@@ -165,6 +174,7 @@ class WhatsAppCallPermission(models.Model):
                 'state': 'pending', 'is_permanent': False, 'expires_at': False, 'response_source': False,
                 'responded_at': False, 'requested_at': fields.Datetime.now(), 'requested_by_id': self.env.uid,
                 'partner_id': partner_id or record.partner_id.id,
+                'request_message_id': result.get('message_id') or False, 'fail_reason': False,
             })
             record._post_note(_("Call permission request sent."))
         return result
@@ -176,6 +186,19 @@ class WhatsAppCallPermission(models.Model):
         if record and record.current_state == 'granted':
             record.write({'state': 'expired'})
             record._post_note(_("WhatsApp refused a call: call permission is no longer valid."))
+
+    @api.model
+    def _request_failed(self, message_id, reason):
+        """Meta could not deliver the request sent as `message_id`: say so on
+        the record and tell the agent who asked, instead of leaving it
+        "waiting for reply" forever."""
+        record = self.sudo().search([
+            ('request_message_id', '=', message_id), ('state', '=', 'pending')], limit=1) if message_id else self
+        if not record:
+            return record
+        record.write({'state': 'failed', 'fail_reason': reason})
+        record._announce()
+        return record
 
     # ── Replies ──────────────────────────────────────────────────────────────
 
@@ -250,3 +273,14 @@ class WhatsAppCallPermission(models.Model):
             reply = self._reply_from_message(message)
             if reply and message.wa_id and message.phone_number_id:
                 self._get_or_create(message.wa_id, message.phone_number_id)._apply_payload(message, reply)
+
+
+class WhatsAppMessageCallPermission(models.Model):
+    """Call permission requests are sent without a whatsapp.message record, so
+    their delivery failures are picked up here."""
+    _inherit = 'whatsapp.message'
+
+    @api.model
+    def _wa_delivery_failed(self, message_id, recipient_id, reason, error):
+        super()._wa_delivery_failed(message_id, recipient_id, reason, error)
+        self.env['whatsapp.call.permission']._request_failed(message_id, reason)

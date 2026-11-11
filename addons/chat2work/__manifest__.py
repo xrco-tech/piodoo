@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work',
-    'version': '18.0.1.22.1',
+    'version': '18.0.1.22.2',
     'category': 'Human Resources/Recruitment',
     'summary': 'Job openings, interview slots and bookings for the Chat2Work service',
     'description': """

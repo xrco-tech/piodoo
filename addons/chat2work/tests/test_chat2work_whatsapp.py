@@ -104,6 +104,23 @@ class TestChat2workWhatsapp(TransactionCase):
         for other in ('do you have any jobs?', 'I am a jobseeker', 'jobsearch', 'hello', 'Hi there', ''):
             self.assertIsNone(match(other), other)
 
+    def test_trigger_with_stray_marks_or_a_typo(self):
+        self.env['ir.config_parameter'].sudo().set_param('chat2work.wa_triggers', 'chat2work,jobs,sebenza,ispani,hi')
+        match = self.Session._match_trigger
+        for body in ("'Ispani", '*ispani*', ' "Ispani" ', 'Ispann', 'Ispan', 'Isspani', 'Hi, sebenzza', 'chat2wrk'):
+            self.assertEqual(match(body), '', body)
+        self.assertEqual(match("'Ispani poster"), 'POSTER')
+        self.assertEqual(match('Ispann FLYER'), 'FLYER')
+        # Short keywords must be spelt right, and a typo only counts as the first word.
+        for other in ('job', 'jabs', 'ho', 'I want ispann', 'spain', 'is pain', 'Hiking boots'):
+            self.assertIsNone(match(other), other)
+
+    def test_apostrophe_keyword_starts_a_session(self):
+        self.env['ir.config_parameter'].sudo().set_param('chat2work.wa_triggers', 'chat2work,ispani')
+        wa = '27820001013'
+        self.assertEqual(self.chat(wa, text(wa, "'Ispani")), [True])
+        self.assertIn('Welcome to Chat2Work', json.dumps(self.sent[-1]))
+
     def test_jobs_mid_sentence_goes_to_chatbot(self):
         self.env['ir.config_parameter'].sudo().set_param('chat2work.wa_triggers', 'chat2work,jobs')
         wa = '27820001009'

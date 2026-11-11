@@ -395,7 +395,9 @@
                                     <group string="Error Information" invisible="message_status != 'failed'">
                                         <field name="status_error_code" invisible="message_status != 'failed'"/>
                                         <field name="status_error_title" invisible="message_status != 'failed'"/>
+                                        <field name="failure_reason" invisible="message_status != 'failed'"/>
                                         <field name="status_error_message" widget="text" invisible="message_status != 'failed'"/>
+                                        <field name="status_error_details" widget="text" invisible="message_status != 'failed' or not status_error_details"/>
                                     </group>
                                 </group>
                                 <group>

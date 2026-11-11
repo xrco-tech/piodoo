@@ -127,6 +127,11 @@ class WhatsAppMessage(models.Model):
     status_error_title = fields.Char(string='Error Title', readonly=True, help='Error title if message failed')
     status_error_message = fields.Text(string='Error Message', readonly=True, help='Error message if message failed')
     
+    status_error_details = fields.Text(string='Error Details', readonly=True,
+                                       help="Meta's longer explanation of why the message failed")
+    failure_reason = fields.Char(string='Why It Failed', compute='_compute_failure_reason',
+                                 help='The reason this message was not delivered, in plain words')
+
     # Pricing information
     pricing_category = fields.Char(string='Pricing Category', readonly=True,
                                   help='Pricing category (e.g., business_initiated, user_initiated)')
@@ -1033,3 +1038,97 @@ class WhatsAppMessage(models.Model):
             }
         }
 
+
+    # ── Delivery status (Meta's status webhooks) ─────────────────────────────
+
+    # Failures an agent can act on, said plainly. Anything else shows Meta's own wording.
+    FAILURE_REASONS = {
+        131042: "The WhatsApp Business account has unpaid charges. Settle the payment in Meta Business billing.",
+        131026: "This person can't receive the message: the number isn't on WhatsApp, or their app is too old.",
+        131047: "More than 24 hours have passed since their last message. Send an approved template instead.",
+        131049: "WhatsApp held this message back to limit marketing messages to this person. Try again later.",
+    }
+
+    @api.depends('message_status', 'status_error_code', 'status_error_title', 'status_error_details')
+    def _compute_failure_reason(self):
+        for message in self:
+            message.failure_reason = message.message_status == 'failed' and self._failure_reason_text(
+                message.status_error_code, message.status_error_title, message.status_error_details) or False
+
+    @api.model
+    def _failure_reason_text(self, code, title=None, details=None):
+        return self.FAILURE_REASONS.get(code) or details or title or (
+            "WhatsApp error %s" % code if code else "WhatsApp didn't say why.")
+
+    @api.model
+    def _status_error(self, status):
+        """The first error on a status webhook as {code, title, message, details}, or {}.
+
+        Meta sends a list under "errors"; "error" is accepted too for older payloads."""
+        errors = status.get('errors') or status.get('error') or []
+        error = errors[0] if isinstance(errors, list) and errors else errors
+        if not isinstance(error, dict) or not error:
+            return {}
+        try:
+            code = int(error.get('code') or 0)
+        except (TypeError, ValueError):
+            code = 0
+        return {
+            'code': code,
+            'title': error.get('title') or error.get('message') or False,
+            'message': error.get('message') or error.get('title') or False,
+            'details': (error.get('error_data') or {}).get('details') or False,
+        }
+
+    @api.model
+    def _apply_status_update(self, status):
+        """Record one status (sent, delivered, read, failed) from Meta on the
+        message it belongs to. Returns that message, empty if we never logged it."""
+        message_id = status.get('id')
+        status_value = status.get('status')
+        try:
+            status_timestamp = datetime.fromtimestamp(int(status.get('timestamp')))
+        except (ValueError, TypeError, OSError):
+            status_timestamp = fields.Datetime.now()
+        error = self._status_error(status) if status_value == 'failed' else {}
+
+        message = self.sudo().search([('message_id', '=', message_id)], limit=1) if message_id else self.browse()
+        if message:
+            pricing = status.get('pricing') or {}
+            vals = {
+                'message_status': status_value,
+                'status_timestamp': status_timestamp,
+                'status_recipient_id': status.get('recipient_id'),
+                'pricing_category': pricing.get('category'),
+                'pricing_model': pricing.get('pricing_model'),
+            }
+            if error:
+                vals.update({
+                    'status_error_code': error['code'],
+                    'status_error_title': error['title'],
+                    'status_error_message': error['message'],
+                    'status_error_details': error['details'],
+                })
+            elif status_value in ('sent', 'delivered', 'read') and message.status == 'received':
+                vals['status'] = 'processed'
+            message.write(vals)
+            _logger.info("Updated message %s status to %s", message_id, status_value)
+        else:
+            _logger.warning("Message %s not found for status update", message_id)
+
+        if status_value == 'failed' and message_id:
+            reason = self._failure_reason_text(error.get('code'), error.get('title'), error.get('details'))
+            _logger.warning("WhatsApp message %s was not delivered: %s (code %s)",
+                            message_id, reason, error.get('code'))
+            try:
+                with self.env.cr.savepoint():
+                    self._wa_delivery_failed(message_id, status.get('recipient_id'), reason, error)
+            except Exception:
+                _logger.exception("Follow-up on failed WhatsApp message %s raised", message_id)
+        return message
+
+    @api.model
+    def _wa_delivery_failed(self, message_id, recipient_id, reason, error):
+        """Hook: Meta could not deliver `message_id`. Called for every failed
+        message, including ones sent without a whatsapp.message record
+        (e.g. call permission requests)."""

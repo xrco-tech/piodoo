@@ -230,7 +230,7 @@
                                         <t t-if="m.kind === 'out' and !m.failed"> · <t t-esc="m.status"/></t>
                                     </span>
                                     <div class="o_c2w_bub" t-esc="m.body"/>
-                                    <span t-if="m.failed" class="o_c2w_note">Not delivered.</span>
+                                    <span t-if="m.failed" class="o_c2w_note">Not delivered.<t t-if="m.fail_reason"> <t t-esc="m.fail_reason"/></t></span>
                                 </div>
                             </div>
                         </t>

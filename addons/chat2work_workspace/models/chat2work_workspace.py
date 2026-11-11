@@ -203,6 +203,10 @@ class Chat2workWorkspace(models.AbstractModel):
         interactions = self.env['comm.interaction'].sudo().search(
             [('conversation_id.partner_id', '=', partner.id)], order='at desc, id desc',
             limit=TIMELINE_LIMIT) if partner else self.env['comm.interaction']
+        # Why WhatsApp didn't deliver a message, so "Not delivered" says what to do about it.
+        failed_ids = [i.source_id for i in interactions
+                      if i.status == 'failed' and i.source_model == 'whatsapp.message' and i.source_id]
+        reasons = {m.id: m.failure_reason for m in self.env['whatsapp.message'].sudo().browse(failed_ids).exists()}
         timeline = [{
             'id': i.id,
             'dir': i.direction,
@@ -211,6 +215,7 @@ class Chat2workWorkspace(models.AbstractModel):
             'body': i.rendered_body or i.raw_body or '',
             'at': _dt(i.at),
             'status': i.status,
+            'fail_reason': (i.source_model == 'whatsapp.message' and reasons.get(i.source_id)) or '',
             # A USSD session's screens and replies; older sessions only have the body.
             'session': i.c2w_session or False,
         } for i in reversed(interactions)]

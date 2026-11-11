@@ -380,56 +380,8 @@ class WhatsAppAuthController(http.Controller):
             for status in statuses:
                 _logger.info(f"Processing status: {status}")
                 
-                # Extract status information
-                message_id = status.get('id')
-                status_value = status.get('status')  # sent, delivered, read, failed, deleted
-                timestamp_str = status.get('timestamp')
-                recipient_id = status.get('recipient_id')
-                pricing = status.get('pricing', {})
-                error = status.get('error', {})
-                
-                # Convert timestamp
-                status_timestamp = False
-                if timestamp_str:
-                    try:
-                        timestamp_int = int(timestamp_str)
-                        status_timestamp = datetime.fromtimestamp(timestamp_int)
-                    except (ValueError, TypeError, OSError):
-                        status_timestamp = fields.Datetime.now()
-                else:
-                    status_timestamp = fields.Datetime.now()
-                
-                # Find the message by message_id
-                message = WhatsAppMessage.search([('message_id', '=', message_id)], limit=1)
-                
-                if message:
-                    # Update message status
-                    update_vals = {
-                        'message_status': status_value,
-                        'status_timestamp': status_timestamp,
-                        'status_recipient_id': recipient_id,
-                        'pricing_category': pricing.get('category'),
-                        'pricing_model': pricing.get('pricing_model'),
-                    }
-                    
-                    # Add error information if status is failed
-                    if status_value == 'failed' and error:
-                        update_vals.update({
-                            'status_error_code': error.get('code'),
-                            'status_error_title': error.get('title'),
-                            'status_error_message': error.get('message'),
-                            'status': 'error',  # Update internal status
-                        })
-                    elif status_value in ('sent', 'delivered', 'read'):
-                        # Update internal status to processed if message was successfully sent
-                        if message.status == 'received':
-                            update_vals['status'] = 'processed'
-                    
-                    message.write(update_vals)
-                    _logger.info(f"Updated message {message_id} status to {status_value}")
-                else:
-                    _logger.warning(f"Message {message_id} not found for status update")
-                    
+                WhatsAppMessage._apply_status_update(status)
+
         except Exception as e:
             _logger.error(f"Error processing statuses: {e}", exc_info=True)
 
