@@ -311,7 +311,9 @@ class WhatsAppMessageCvStatus(models.Model):
                 cands = Candidate.search([
                     ('cv_link_wa_message_id', 'in', ids), ('cv_link_state', '=', 'wa_sent')])
                 if cands and status == 'failed':
-                    cands.write({'cv_link_state': 'sms_queued', 'cv_link_error': 'WhatsApp delivery failed'})
+                    reason = self[:1].failure_reason
+                    cands.write({'cv_link_state': 'sms_queued',
+                                 'cv_link_error': 'WhatsApp delivery failed%s' % (': ' + reason if reason else '')})
                     cron = self.env.ref('chat2work.ir_cron_chat2work_cv_links', raise_if_not_found=False)
                     if cron:
                         cron.sudo()._trigger()

@@ -52,6 +52,7 @@ const PERMISSION_CHIPS = {
     pending: { label: "Asked, no reply yet", cls: "warn" },
     declined: { label: "Declined calls", cls: "bad" },
     expired: { label: "Permission expired", cls: "warn" },
+    failed: { label: "Request not delivered", cls: "bad" },
 };
 
 /** "4 min 12 s" / "58 s" */

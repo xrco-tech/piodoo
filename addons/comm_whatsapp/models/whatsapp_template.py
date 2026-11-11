@@ -842,7 +842,8 @@ class WhatsAppTemplate(models.Model):
         outright. Templates with no body placeholders at all ignore
         `variables` and send as-is.
 
-        Returns {'success': True} or {'success': False, 'error': <message>}.
+        Returns {'success': True, 'message_id': <Meta's id, to match the
+        delivery status that follows>} or {'success': False, 'error': <message>}.
         """
         self.ensure_one()
         if self.status != 'APPROVED':
@@ -922,7 +923,11 @@ class WhatsAppTemplate(models.Model):
                     'usage_count': self.usage_count + 1,
                     'last_used': fields.Datetime.now(),
                 })
-                return {'success': True}
+                try:
+                    sent_id = ((r.json() or {}).get('messages') or [{}])[0].get('id')
+                except Exception:
+                    sent_id = None
+                return {'success': True, 'message_id': sent_id}
             try:
                 error_message = (r.json() or {}).get('error', {}).get('message', r.text)
             except Exception:

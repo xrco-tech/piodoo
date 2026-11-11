@@ -1291,6 +1291,7 @@ const waCallService = {
             pending: "Asked, no reply yet",
             declined: "Declined calls",
             expired: "Permission expired",
+            failed: "Request not delivered",
         };
 
         function showPermission(status, screen) {
@@ -1319,7 +1320,7 @@ const waCallService = {
                     partner_id: partnerId || null,
                 });
                 if (result?.success) {
-                    notify("Call permission request sent. You'll be told here when they reply.", "success");
+                    notify("Call permission request sent. You'll be told here when they reply, or if WhatsApp can't deliver it.", "success");
                 } else if (result?.error === "template_missing") {
                     notify("Call permission not granted by user. Ensure that the call permission template is available and try again.", "danger");
                 } else {
@@ -1405,7 +1406,7 @@ const waCallService = {
             } catch (err) {
                 warn("permission check failed, dialling anyway:", err);
             }
-            if (permission?.state === "expired") {
+            if (["expired", "failed"].includes(permission?.state)) {
                 offerCallPermissionRequest(toNumber, accountId, partnerName, partnerId, permission);
                 return;
             }
@@ -1784,7 +1785,7 @@ const waCallService = {
             bus_service.subscribe("whatsapp_call_permission", (payload) => {
                 notification.add(payload.message, {
                     title: "WhatsApp call permission", sticky: true,
-                    type: payload.state === "granted" ? "success" : "warning",
+                    type: payload.state === "granted" ? "success" : payload.state === "failed" ? "danger" : "warning",
                 });
             });
             bus_service.subscribe("whatsapp_outbound_answered", (payload) => {

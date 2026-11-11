@@ -82,6 +82,20 @@ class TestChat2workWorkspace(TransactionCase):
         # First and last times are what the screen works the session's length out from.
         self.assertEqual((new['session'][0]['at'], new['session'][-1]['at']), ('2026-11-10 10:00:00', '2026-11-10 10:00:21'))
 
+    def test_failed_whatsapp_says_why(self):
+        message = self.env['whatsapp.message'].create({
+            'message_id': 'wamid.ws_failed', 'wa_id': '27825550142', 'is_incoming': False,
+            'message_type': 'template', 'message_timestamp': fields.Datetime.now()})
+        self.thandi._c2w_log_event('whatsapp', 'outbound', 'Here is your CV link', status='sent',
+                                   wa_message_id='wamid.ws_failed')
+        self.env['whatsapp.message']._apply_status_update({
+            'id': 'wamid.ws_failed', 'status': 'failed', 'timestamp': '1762500000',
+            'errors': [{'code': 131042, 'title': 'Business eligibility payment issue'}]})
+        entry = self.Ws.ws_candidate(self.thandi.id)['timeline'][-1]
+        self.assertEqual(entry['status'], 'failed')
+        self.assertIn('unpaid charges', entry['fail_reason'])
+        self.assertTrue(message.failure_reason)
+
     def test_changes_tell_open_workspaces_to_reload(self):
         def notices(sendone):
             return [c.args[1:] for c in sendone.call_args_list if c.args[0] == 'chat2work_workspace']
