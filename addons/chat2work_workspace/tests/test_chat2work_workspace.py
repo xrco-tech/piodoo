@@ -42,7 +42,7 @@ class TestChat2workWorkspace(TransactionCase):
         self.assertEqual(boot['stages'][0], ['new', 'New'])
         self.assertFalse(boot['can_id_check'])
         with self.assertRaises(AccessError):
-            self.Ws.ws_checks()
+            self.Ws.ws_candidates('idc')
 
     def test_inbox_needs_reply_and_timeline(self):
         self._log(self.thandi, 'whatsapp', 'outbound', 'Welcome', minutes_ago=10)

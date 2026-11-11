@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Starting notes, describing the Workspace as it works today. Edit them under Chat2Work > Agent Notes. -->
+    <record id="note_cv_link" model="chat2work.agent.note">
+        <field name="name">CV link problems</field>
+        <field name="sequence">10</field>
+        <field name="body">When a candidate says they never got the CV link:
+1. Open the candidate and look at "CV link" under "CV and details" in the information card. "Failed" means it could not be sent. "Not sent" means no link has gone out yet.
+2. Check the phone number with them. It shows under their name at the top. If it is wrong, open the candidate record (the arrow button at the top) and correct it first.
+3. Press "Send CV link again" in the information card. It is queued and goes out within a few minutes: by WhatsApp if they use WhatsApp with us, otherwise by SMS. If a WhatsApp link is not delivered within about 15 minutes, it is sent again by SMS automatically.
+4. The link is personal to them and works for 30 days.
+5. If it still does not reach them, or they have no smartphone, offer to fill the CV in with them on a call: press "Help build CV".</field>
+    </record>
+    <record id="note_needs_help" model="chat2work.agent.note">
+        <field name="name">What "Needs help" means</field>
+        <field name="sequence">20</field>
+        <field name="body">A candidate shows the red "Needs help" tag in the inbox, and is listed under the "Needs help" filter, when any one of these is true:
+1. They are in the "Needs help" stage. A callback request or asking for CV help moves them there automatically; an agent can also put them there.
+2. They asked for help with their CV on the CV page.
+3. Their last WhatsApp or SMS message has not been answered and it asks for help (words like help, stuck, problem, usizo, ngicela, thusa, hulp).
+4. Their last WhatsApp or SMS message has not been answered for more than 24 hours.
+The information card says which reason applies, under "Next step". Answering them clears reasons 3 and 4. Reasons 1 and 2 clear when their stage or CV changes.</field>
+    </record>
+    <record id="note_whatsapp_window" model="chat2work.agent.note">
+        <field name="name">WhatsApp 24-hour rule and SMS</field>
+        <field name="sequence">30</field>
+        <field name="body">WhatsApp only lets us send a typed message within 24 hours of the candidate's last WhatsApp message to us.
+1. Inside the 24 hours: type in the reply box and press Send.
+2. After 24 hours the reply box locks. You can press "Send a template" to send an approved WhatsApp template, or switch "Send by" above the reply box to SMS.
+3. SMS has no 24-hour rule, so you can always type an SMS. Keep it short: one SMS is 160 characters.
+4. A candidate who does not use WhatsApp with us only gets SMS; the reply box says "Sends by SMS".
+"Draft reply" writes a message for the channel you have chosen. Nothing is sent until you press Send.</field>
+    </record>
+    <record id="note_callbacks" model="chat2work.agent.note">
+        <field name="name">Callbacks</field>
+        <field name="sequence">40</field>
+        <field name="body">A candidate can ask us to call them back, for example on USSD, or by asking for help on the CV page.
+1. Open "Callbacks" on the rail to see everyone with an open callback request. The number on it is how many requests are open.
+2. Open the candidate. A yellow banner at the top says when they asked and how.
+3. Call them with the call buttons at the top (WhatsApp call or VoIP call, when they show), or from your own phone.
+4. In the information card, set "Callback" to "In Progress" while you are busy with it and write what was agreed under "Wrap-up note".
+5. When it is finished, set "Callback" to "Done", or press "Mark as done" on the banner. "Cancelled" is for a request that is no longer needed.
+The sidekick calls a callback overdue when it has been open for more than a day.</field>
+    </record>
+    <record id="note_help_build_cv" model="chat2work.agent.note">
+        <field name="name">Help build CV</field>
+        <field name="sequence">50</field>
+        <field name="body">Use this when a candidate cannot fill in the CV page themselves, for example because they have no smartphone.
+1. Call the candidate and open them in the Workspace.
+2. Press "Help build CV" in the information card. Their own CV page opens inside the Workspace.
+3. Ask them for each answer and type it in. What you enter is saved as theirs, so only enter what they tell you.
+4. Press "Done" at the top when you are finished. The CV status and stage update by themselves.
+It is noted on the candidate's record that you opened their CV page.</field>
+    </record>
+    <record id="note_id_checks" model="chat2work.agent.note">
+        <field name="name">ID checks and credits</field>
+        <field name="sequence">60</field>
+        <field name="body">Only staff who may run ID checks see the "ID check" box on a candidate's information card and the "ID check" filter on Candidates.
+1. The candidate needs an ID number. "Update ID number" in the box adds or corrects it; you must give a reason.
+2. Press "Run ID check". The number is checked with Home Affairs through VerifyNow and the result shows straight away.
+3. "Verified": Home Affairs confirmed the ID. "Failed": Home Affairs did not confirm it; check the number with the candidate, correct it, then run the check again. "Waiting": the check did not complete (for example VerifyNow could not be reached); run it again, it is not charged twice if you do so within three days.
+4. A real check uses 1 VerifyNow credit. A candidate who already has a result is not checked, or charged, a second time unless their ID number is corrected.
+5. The credits left show under the button. "Refresh" fetches the latest balance from VerifyNow.
+On Candidates, the "ID check" filter lists Failed, Waiting and Not done (a finished CV and no check yet).
+In sandbox mode the results are test data, nothing on the candidate changes and no credits are used.</field>
+    </record>
+</odoo>

@@ -24,7 +24,10 @@
             <nav class="o_c2w_rail" aria-label="Workspace sections">
                 <button t-foreach="rail" t-as="item" t-key="item.id" type="button"
                         t-att-class="{ on: item.id === activeRail }" t-on-click="() => this.onRail(item)">
-                    <span class="o_c2w_pill"><i t-attf-class="fa {{ item.icon }}"/></span>
+                    <span class="o_c2w_pill">
+                        <span t-if="item.spark" class="o_c2w_spark">✦</span>
+                        <i t-else="" t-attf-class="fa {{ item.icon }}"/>
+                    </span>
                     <t t-esc="item.label"/>
                     <span t-if="item.count and state.counts[item.count]" class="o_c2w_cnt" t-esc="badge(state.counts[item.count])"/>
                 </button>
@@ -33,6 +36,7 @@
             <!-- List -->
             <section class="o_c2w_card o_c2w_list">
                 <div class="o_c2w_lhead">
+                    <button t-if="state.view === 'side'" class="o_c2w_new" type="button" t-on-click="newSidekickChat">+ New chat</button>
                     <label class="o_c2w_search" t-if="view.search">
                         <i class="fa fa-search"/>
                         <input type="text" t-att-placeholder="'Search ' + view.what" t-att-value="state.search"
@@ -42,16 +46,26 @@
                         <i class="fa fa-refresh" t-att-class="{ 'fa-spin': state.loadingList }"/>
                     </button>
                 </div>
-                <div class="o_c2w_pills" t-if="view.pills.length">
-                    <button t-foreach="view.pills" t-as="p" t-key="p[0]" type="button"
-                            t-att-class="{ on: p[0] === pill }" t-on-click="() => this.setPill(p[0])" t-esc="p[1]"/>
+                <div class="o_c2w_pills" t-if="pills.length">
+                    <button t-foreach="pills" t-as="p" t-key="p.id" type="button"
+                            t-att-class="{ on: p.id === pill }" t-on-click="() => this.setPill(p.id)">
+                        <t t-esc="p.label"/><b t-if="p.count" t-esc="badge(p.count)"/>
+                    </button>
+                    <t t-if="state.view === 'cand' and pill === 'idc'">
+                        <i class="o_c2w_brk"/>
+                        <button t-foreach="idSubs" t-as="p" t-key="p.id" type="button"
+                                t-att-class="{ on: p.id === state.idSub }" t-on-click="() => this.setIdSub(p.id)">
+                            <t t-esc="p.label"/><b t-esc="badge(p.count)"/>
+                        </button>
+                    </t>
                 </div>
                 <div class="o_c2w_rows">
                     <t t-foreach="state.rows" t-as="row" t-key="row.id">
                         <button type="button" class="o_c2w_row"
                                 t-att-class="{ on: row.id === state.selId, unread: row.needs_reply }"
                                 t-on-click="() => this.select(row.id)">
-                            <t t-call="chat2work_workspace.Avatar">
+                            <span t-if="state.view === 'side' and !row.candidate_id" class="o_c2w_av o_c2w_sk">✦</span>
+                            <t t-else="" t-call="chat2work_workspace.Avatar">
                                 <t t-set="colour" t-value="colour(row.name)"/>
                                 <t t-set="initials" t-value="initials(row.name)"/>
                                 <t t-set="badge" t-value="state.view === 'inbox' ? channelBadge(row.channel) : ''"/>
@@ -59,7 +73,8 @@
                             <span class="o_c2w_rt">
                                 <b>
                                     <em t-esc="row.name"/>
-                                    <time t-if="state.view === 'inbox' or state.view === 'idc'" t-esc="when(row.at)"/>
+                                    <time t-if="state.view === 'inbox' or state.view === 'side'" t-esc="when(row.at)"/>
+                                    <time t-elif="kind === 'candidate'" t-esc="when(row.line_at)"/>
                                     <time t-elif="state.view === 'book'" t-esc="slotWhen(row.start)"/>
                                     <time t-elif="state.view === 'jobs'" t-esc="closing(row)"/>
                                 </b>
@@ -69,6 +84,11 @@
                                     <span t-elif="row.needs_reply" class="o_c2w_cnt" title="Needs a reply">!</span>
                                     <span t-elif="row.callback" class="o_c2w_tag warn">Callback</span>
                                     <span t-else="" t-attf-class="o_c2w_tag {{ tagClass(row.stage) }}" t-esc="row.stage_label"/>
+                                </p>
+                                <p t-elif="state.view === 'side'"><em t-esc="row.preview"/></p>
+                                <p t-elif="kind === 'candidate'">
+                                    <em t-esc="row.line"/>
+                                    <span t-if="row.line_tag" t-attf-class="o_c2w_tag {{ row.line_tag[0] }}" t-esc="row.line_tag[1]"/>
                                 </p>
                                 <p t-elif="state.view === 'cand'">
                                     <em>
@@ -87,10 +107,6 @@
                                     <span t-attf-class="o_c2w_tag {{ row.booked >= row.capacity ? 'warn' : 'plain' }}">
                                         <t t-esc="row.booked"/>/<t t-esc="row.capacity"/>
                                     </span>
-                                </p>
-                                <p t-elif="state.view === 'idc'">
-                                    <em><t t-esc="row.mode === 'sandbox' ? 'Sandbox check' : 'Production check'"/></em>
-                                    <span t-attf-class="o_c2w_tag {{ tagClass(row.state) }}" t-esc="row.state_label"/>
                                 </p>
                             </span>
                         </button>
@@ -112,7 +128,7 @@
                     <t t-else="">Nothing selected.</t>
                 </div>
 
-                <t t-elif="state.view === 'inbox'">
+                <t t-elif="kind === 'candidate'">
                     <t t-set="c" t-value="state.detail"/>
                     <div class="o_c2w_mhead">
                         <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')">
@@ -255,7 +271,7 @@
                     </div>
                 </t>
 
-                <t t-elif="state.view === 'cand'">
+                <t t-elif="kind === 'cand'">
                     <t t-set="s" t-value="state.detail"/>
                     <div class="o_c2w_mhead">
                         <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')"><i class="fa fa-chevron-left"/></button>
@@ -378,42 +394,130 @@
                     </div>
                 </t>
 
-                <t t-elif="state.view === 'idc'">
-                    <t t-set="k" t-value="state.detail"/>
-                    <div class="o_c2w_mhead">
-                        <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')"><i class="fa fa-chevron-left"/></button>
-                        <div class="o_c2w_card o_c2w_who">
-                            <button t-if="k.candidate_id" type="button" class="o_c2w_nm" t-on-click="() => this.openCandidate(k.candidate_id)" t-esc="k.name"/>
-                            <b t-else="" t-esc="k.name"/>
-                            <span>ID check · <t t-esc="when(k.at)"/></span>
-                        </div>
-                        <div class="o_c2w_acts">
-                            <button class="o_c2w_ib on o_c2w_keep" type="button" title="Information" t-on-click="() => this.setPane('info')"><i class="fa fa-info-circle"/></button>
-                        </div>
+                <t t-elif="state.view === 'side'">
+                    <t t-set="chat" t-value="state.detail"/>
+                    <t t-set="side" t-value="state.side"/>
+                    <div class="o_c2w_card o_c2w_skhead">
+                        <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the chats" t-on-click="() => this.setPane('list')">
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <b t-esc="chat.name"/>
+                        <span t-if="chat.candidate" class="o_c2w_ctx">
+                            <span t-attf-class="o_c2w_tag {{ ['uploaded', 'built'].includes(chat.candidate.cv_state) ? 'ok' : 'warn' }}" t-esc="chat.candidate.cv_label"/>
+                            <span class="o_c2w_tag plain">
+                                <t t-if="!chat.candidate.whatsapp">SMS only</t>
+                                <t t-elif="chat.candidate.window_open">WhatsApp open</t>
+                                <t t-else="">WhatsApp closed</t>
+                            </span>
+                            <button class="o_c2w_lnk" type="button" t-on-click="() => this.openCandidate(chat.candidate.id)">Open candidate</button>
+                        </span>
                     </div>
-                    <div t-attf-class="o_c2w_banner {{ k.state === 'verified' ? 'ok' : 'warn' }}">
-                        <span t-if="k.state === 'verified'">Home Affairs confirmed this ID</span>
-                        <span t-elif="k.state === 'not_valid'">Home Affairs did not confirm this ID<t t-if="k.id_status">: <t t-esc="k.id_status"/></t></span>
-                        <span t-else="">The check didn't complete<t t-if="k.error">: <t t-esc="k.error"/></t></span>
+                    <div class="o_c2w_thread o_c2w_side" t-ref="thread">
+                        <t t-if="!chat.messages.length and !side.pending">
+                            <div class="o_c2w_hello">
+                                <h2><span class="o_c2w_av o_c2w_sk">✦</span>Chat2Work sidekick</h2>
+                                <p t-if="chat.candidate">Ask me about <t t-esc="chat.candidate.first_name"/>: what has happened so far, what to do next, or a message to send. I answer from their Chat2Work record and timeline, and I never send anything myself.</p>
+                                <p t-else="">Ask me about candidates, callbacks, CVs, jobs and how Chat2Work works. I answer from Chat2Work's own records, and I never send anything myself.</p>
+                            </div>
+                            <div t-if="side.start and !side.start.ai" class="o_c2w_cant">
+                                The sidekick isn't set up on this system yet, so it can't answer. An administrator has to add the assistant's key first.
+                            </div>
+                            <t t-elif="side.start and !chat.candidate">
+                                <div class="o_c2w_sugg" t-foreach="side.start.suggestions" t-as="group" t-key="group_index">
+                                    <h3 t-esc="group.title"/>
+                                    <div class="o_c2w_chips">
+                                        <button t-foreach="group.items" t-as="text" t-key="text_index" type="button"
+                                                t-on-click="() => this.sideAsk(text)" t-esc="text"/>
+                                    </div>
+                                </div>
+                            </t>
+                        </t>
+                        <t t-foreach="sideThread" t-as="m" t-key="m.key">
+                            <div t-if="m.kind === 'day'" class="o_c2w_day" t-esc="m.label"/>
+                            <div t-elif="m.kind === 'q'" class="o_c2w_q">
+                                <small><t t-esc="state.boot.user_name"/> · <t t-esc="time(m.at)"/></small>
+                                <p t-esc="m.text"/>
+                            </div>
+                            <div t-else="" class="o_c2w_a">
+                                <span class="o_c2w_av o_c2w_sk">✦</span>
+                                <div class="o_c2w_t">
+                                    <div t-if="m.cannot" class="o_c2w_cant" t-esc="m.cannot"/>
+                                    <t t-foreach="m.blocks" t-as="block" t-key="block_index">
+                                        <p t-if="block.kind === 'p'" t-esc="block.text"/>
+                                        <ol t-elif="block.kind === 'ol'"><li t-foreach="block.items" t-as="line" t-key="line_index" t-esc="line"/></ol>
+                                        <ul t-else=""><li t-foreach="block.items" t-as="line" t-key="line_index" t-esc="line"/></ul>
+                                    </t>
+                                    <t t-if="m.list">
+                                        <div t-if="m.list.rows.length" class="o_c2w_res">
+                                            <div t-foreach="m.list.rows" t-as="row" t-key="row.id">
+                                                <b t-esc="row.name"/>
+                                                <span>
+                                                    <span t-if="row.tag" t-attf-class="o_c2w_tag {{ row.tag[0] }}" t-esc="row.tag[1]"/>
+                                                    <t t-esc="row.reason"/>
+                                                </span>
+                                                <time t-esc="row.wait ? waited(row.when) : when(row.when)"/>
+                                                <button class="o_c2w_lnk" type="button" t-on-click="() => this.openCandidate(row.id)">Open</button>
+                                            </div>
+                                        </div>
+                                        <p class="o_c2w_src">
+                                            <t t-if="m.list.total">Showing <t t-esc="m.list.rows.length"/> of <t t-esc="m.list.total"/></t>
+                                            <t t-else="">Nobody is on this list</t>
+                                            <t t-if="m.source"> · <t t-esc="m.source"/></t>
+                                            <t t-if="m.list.total"> ·
+                                                <button type="button" t-on-click="() => this.openScreen(m.list.open)">Open all <t t-esc="m.list.total"/> in <t t-esc="m.list.open.label"/></button>
+                                            </t>
+                                        </p>
+                                    </t>
+                                    <div t-if="m.draft" class="o_c2w_dr">
+                                        <p t-esc="m.draft.text"/>
+                                        <span class="o_c2w_meta" t-esc="draftMeta(m.draft)"/>
+                                        <div class="o_c2w_chips">
+                                            <button t-if="chat.candidate" class="pri" type="button" t-on-click="() => this.useDraft(m.draft)">Put in reply box</button>
+                                            <button t-else="" class="pri" type="button" t-on-click="() => this.copyDraft(m.draft)">Copy</button>
+                                            <button type="button" t-att-disabled="side.busy" t-on-click="() => this.sideAsk('Make that draft shorter')">Shorter</button>
+                                            <button type="button" t-att-disabled="side.busy" t-on-click="() => this.sideAsk('Write that draft in isiZulu')">In isiZulu</button>
+                                        </div>
+                                    </div>
+                                    <p t-if="m.draft" class="o_c2w_src">
+                                        <t t-if="chat.candidate">Nothing is sent until you press Send in <t t-esc="chat.candidate.first_name"/>'s reply box.</t>
+                                        <t t-else="">Nothing is sent. Copy it into a candidate's reply box and press Send there.</t>
+                                    </p>
+                                    <p t-if="m.source and !m.list" class="o_c2w_src" t-esc="m.source"/>
+                                    <div t-if="m.open or (m_last and m.follow_ups.length)" class="o_c2w_chips">
+                                        <button t-if="m.open" type="button" t-on-click="() => this.openScreen(m.open)" t-esc="m.open.label"/>
+                                        <t t-if="m_last">
+                                            <button t-foreach="m.follow_ups" t-as="text" t-key="text_index" type="button"
+                                                    t-att-disabled="side.busy" t-on-click="() => this.sideAsk(text)" t-esc="text"/>
+                                        </t>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                        <t t-if="side.pending">
+                            <div class="o_c2w_q">
+                                <small t-esc="state.boot.user_name"/>
+                                <p t-esc="side.pending"/>
+                            </div>
+                            <div class="o_c2w_think">Thinking<i/><i/><i/></div>
+                        </t>
+                        <div t-if="side.error" class="o_c2w_cant" t-esc="side.error"/>
                     </div>
-                    <div class="o_c2w_thread">
-                        <div class="o_c2w_intro"><p>ID check history for this candidate</p></div>
-                        <div class="o_c2w_evt" t-foreach="k.history" t-as="h" t-key="h.id">
-                            <t t-esc="when(h.at)"/> · <t t-esc="h.mode"/> check · <t t-esc="h.state_label"/>
-                        </div>
+                    <div class="o_c2w_skbox">
+                        <input type="text" maxlength="500" t-att-placeholder="sidePlaceholder" t-att-value="side.question"
+                               t-att-disabled="side.start and !side.start.ai" t-on-input="onSideInput" t-on-keydown="onSideKeydown"/>
+                        <button type="button" title="Ask" t-att-disabled="side.busy or !side.question.trim()" t-on-click="() => this.sideAsk()">
+                            <i t-attf-class="fa {{ side.busy ? 'fa-circle-o-notch fa-spin' : 'fa-arrow-right' }}"/>
+                        </button>
                     </div>
-                    <div class="o_c2w_bar" t-if="k.candidate_id">
-                        <button class="o_c2w_tpl" type="button" t-on-click="updateIdNumber">Update ID Number</button>
-                        <button class="o_c2w_new" type="button" t-on-click="() => this.candidateAction('action_c2w_id_check', k.candidate_id)"><i class="fa fa-id-card-o"/> Check ID</button>
-                    </div>
+                    <p class="o_c2w_foot">The sidekick can be wrong. It never sends or changes anything itself.</p>
                 </t>
             </section>
 
             <!-- Information card -->
-            <aside class="o_c2w_card o_c2w_info" t-if="state.detail">
+            <aside class="o_c2w_card o_c2w_info" t-if="state.detail and state.view !== 'side'">
                 <button class="o_c2w_ib o_c2w_back" type="button" title="Back" t-on-click="() => this.setPane('thread')"><i class="fa fa-chevron-left"/></button>
 
-                <t t-if="state.view === 'inbox'">
+                <t t-if="kind === 'candidate'">
                     <t t-set="c" t-value="state.detail"/>
                     <h4><i class="fa fa-info-circle"/> Candidate</h4>
                     <div t-if="c.next_step" class="o_c2w_next">
@@ -461,6 +565,62 @@
                     <button class="o_c2w_wide" type="button" t-on-click="helpBuildCv"><i class="fa fa-pencil-square-o"/> Help build CV</button>
                     <button class="o_c2w_wide" type="button" t-on-click="() => this.candidateAction('action_resend_cv_link', c.id, 'CV link queued')"><i class="fa fa-file-text-o"/> Send CV link again</button>
                     <button class="o_c2w_wide" type="button" t-on-click="() => this.candidateAction('action_c2w_send_jobs')"><i class="fa fa-briefcase"/> Send jobs</button>
+                    <div t-if="c.id_check">
+                        <t t-set="k" t-value="c.id_check"/>
+                        <h5>ID check</h5>
+                        <div class="o_c2w_idc">
+                            <p>
+                                <span t-attf-class="o_c2w_tag {{ k.tag[0] }}" t-esc="k.tag[1]"/>
+                                <t t-if="k.at"> <t t-esc="when(k.at)"/></t>
+                            </p>
+                            <p t-esc="k.reason"/>
+                            <button t-if="k.can_run" class="o_c2w_wide pri" type="button" t-on-click="runIdCheck">
+                                <i class="fa fa-id-card-o"/> <t t-esc="k.again ? 'Run ID check again' : 'Run ID check'"/>
+                            </button>
+                            <button class="o_c2w_wide" type="button" t-on-click="updateIdNumber">
+                                <t t-esc="k.has_id_number ? 'Update ID number' : 'Add ID number'"/>
+                            </button>
+                            <small>
+                                <t t-if="k.mode === 'sandbox'">Sandbox: test data, no credits used</t>
+                                <t t-else="">Uses <t t-esc="k.cost"/> <t t-esc="k.cost === 1 ? 'credit' : 'credits'"/></t>
+                                · <b t-att-class="{ low: k.account.is_low }"><t t-esc="k.account.credits"/></b> VerifyNow credits left ·
+                                <button type="button" t-on-click="refreshBalance">Refresh</button>
+                            </small>
+                            <details t-if="k.details">
+                                <summary>Home Affairs details</summary>
+                                <dl class="o_c2w_kv">
+                                    <dt>ID number</dt><dd t-esc="k.id_number or '—'"/>
+                                    <dt>Names</dt><dd t-esc="k.details.first_names or 'Not returned'"/>
+                                    <dt>Surname</dt><dd t-esc="k.details.last_name or 'Not returned'"/>
+                                    <dt>Date of birth</dt><dd t-esc="k.details.dob or 'Not returned'"/>
+                                    <dt>Citizenship</dt><dd t-esc="k.details.citizenship or 'Not returned'"/>
+                                    <dt>Status</dt><dd t-esc="k.details.id_status or k.details.error or 'Not returned'"/>
+                                    <dt>Run by</dt><dd t-esc="k.details.run_by or '—'"/>
+                                    <dt>Credits used</dt><dd t-esc="k.details.credits_used"/>
+                                </dl>
+                            </details>
+                            <details t-if="k.history.length">
+                                <summary>History (<t t-esc="k.history.length"/>)</summary>
+                                <ul>
+                                    <li t-foreach="k.history" t-as="h" t-key="h.id">
+                                        <t t-esc="when(h.at)"/> · <t t-esc="h.mode"/> check · <t t-esc="h.state_label"/>
+                                    </li>
+                                </ul>
+                            </details>
+                            <details>
+                                <summary>VerifyNow credits</summary>
+                                <div class="o_c2w_stats three">
+                                    <div><b t-esc="k.account.credits"/><span>Left</span></div>
+                                    <div><b t-esc="k.account.used_month"/><span>This month</span></div>
+                                    <div><b t-esc="k.account.checks_total"/><span>Checks</span></div>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                    <div>
+                        <h5>Assistant</h5>
+                        <button class="o_c2w_wide" type="button" t-on-click="askSidekick"><span class="o_c2w_spark">✦</span> Ask sidekick</button>
+                    </div>
                     <div t-if="state.boot.ai" class="o_c2w_ask">
                         <h5>Ask about this candidate</h5>
                         <div t-foreach="ai.chat" t-as="item" t-key="item_index" class="o_c2w_qa">
@@ -478,7 +638,7 @@
                     </div>
                 </t>
 
-                <t t-elif="state.view === 'cand'">
+                <t t-elif="kind === 'cand'">
                     <t t-set="s" t-value="state.detail"/>
                     <h4><i class="fa fa-info-circle"/> Stage</h4>
                     <div>
@@ -556,37 +716,6 @@
                             <dt>Available</dt><dd t-esc="s.available ? 'Yes' : 'No'"/>
                         </dl>
                     </div>
-                </t>
-
-                <t t-elif="state.view === 'idc'">
-                    <t t-set="k" t-value="state.detail"/>
-                    <h4><i class="fa fa-info-circle"/> ID check</h4>
-                    <div>
-                        <h5>Result</h5>
-                        <span t-attf-class="o_c2w_tag {{ tagClass(k.state) }}" t-esc="k.state_label"/>
-                    </div>
-                    <div>
-                        <h5>Home Affairs details</h5>
-                        <dl class="o_c2w_kv">
-                            <dt>ID number</dt><dd t-esc="k.id_number or '—'"/>
-                            <dt>Names</dt><dd t-esc="k.first_names or 'Not returned'"/>
-                            <dt>Surname</dt><dd t-esc="k.last_name or 'Not returned'"/>
-                            <dt>Date of birth</dt><dd t-esc="k.dob or 'Not returned'"/>
-                            <dt>Citizenship</dt><dd t-esc="k.citizenship or 'Not returned'"/>
-                            <dt>Status</dt><dd t-esc="k.id_status or 'Not returned'"/>
-                            <dt>Run by</dt><dd t-esc="k.run_by or '—'"/>
-                            <dt>Credits used</dt><dd t-esc="k.credits_used"/>
-                        </dl>
-                    </div>
-                    <div t-if="k.account">
-                        <h5>VerifyNow credits</h5>
-                        <div class="o_c2w_stats three">
-                            <div><b t-esc="k.account.credits"/><span>Left</span></div>
-                            <div><b t-esc="k.account.used_month"/><span>This month</span></div>
-                            <div><b t-esc="k.account.checks_total"/><span>Checks</span></div>
-                        </div>
-                    </div>
-                    <button t-if="k.account" class="o_c2w_wide" type="button" t-on-click="refreshBalance"><i class="fa fa-refresh"/> Refresh balance</button>
                 </t>
             </aside>
 

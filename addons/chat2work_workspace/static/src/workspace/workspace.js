@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 import { Component, onWillStart, onWillDestroy, useEffect, useRef, useState } from "@odoo/owl";
+import { browser } from "@web/core/browser/browser";
 import { _t } from "@web/core/l10n/translation";
 import { deserializeDateTime } from "@web/core/l10n/dates";
 import { registry } from "@web/core/registry";
@@ -37,9 +38,12 @@ const VIEWS = {
         search: true,
         label: _t("Candidates"),
         what: _t("candidates"),
-        pills: [],
-        list: () => ["ws_pipeline", []],
-        detail: false,
+        pills: [["stages", _t("Stages")], ["no_cv", _t("No CV")], ["cv_started", _t("CV started")],
+                ["jobs_ready", _t("Jobs to send")], ["idc", _t("ID check")]],
+        list: (pill, search, offset, limit, sub) =>
+            pill === "stages" ? ["ws_pipeline", []] : ["ws_candidates", [pill, sub, search, offset, limit]],
+        paged: true,
+        detail: "ws_candidate",
     },
     jobs: {
         search: true,
@@ -60,17 +64,24 @@ const VIEWS = {
         paged: true,
         detail: "ws_slot",
     },
-    idc: {
-        search: false,
-        label: _t("ID checks"),
-        what: _t("checks"),
-        pills: [["all", _t("All")], ["verified", _t("Verified")], ["not_valid", _t("Not valid")],
-                ["failed", _t("Failed")]],
-        list: (pill, search, offset, limit) => ["ws_checks", [pill, offset, limit]],
+    side: {
+        search: true,
+        label: _t("Sidekick"),
+        what: _t("chats"),
+        pills: [["all", _t("All")], ["cand", _t("About a candidate")]],
+        list: (pill, search, offset, limit) => ["ws_sidekick_chats", [pill, search, offset, limit]],
         paged: true,
-        detail: "ws_check",
+        detail: "ws_sidekick_chat",
     },
 };
+
+// The ID check filter on Candidates: [sub-filter, label, its count in counts.lists].
+const ID_SUBS = [
+    ["open", _t("Open"), "id_open"],
+    ["failed", _t("Failed"), "id_failed"],
+    ["waiting", _t("Waiting"), "id_waiting"],
+    ["not_done", _t("Not done"), "id_not_done"],
+];
 
 const RAIL = [
     { id: "inbox", icon: "fa-comments-o", label: _t("Inbox"), view: "inbox", pill: "all", count: "inbox" },
@@ -78,7 +89,7 @@ const RAIL = [
     { id: "cand", icon: "fa-users", label: _t("Candidates"), view: "cand" },
     { id: "jobs", icon: "fa-briefcase", label: _t("Jobs"), view: "jobs", pill: "all", count: "jobs" },
     { id: "book", icon: "fa-calendar", label: _t("Bookings"), view: "book", pill: "upcoming" },
-    { id: "idc", icon: "fa-id-card-o", label: _t("ID checks"), view: "idc", pill: "all", count: "idc", idCheck: true },
+    { id: "side", spark: true, label: _t("Sidekick"), view: "side" },
 ];
 
 const FOLLOW_UPS = [
@@ -98,14 +109,15 @@ export class Chat2workWorkspace extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.bus = useService("bus_service");
-        this.views = VIEWS;
+        this.rail = RAIL;
         this.followUps = FOLLOW_UPS;
 
         this.state = useState({
             boot: null,
             counts: {},
             view: "inbox",
-            pills: { inbox: "all", jobs: "all", book: "upcoming", idc: "all" },
+            pills: { inbox: "all", cand: "stages", jobs: "all", book: "upcoming", side: "all" },
+            idSub: "open", // the ID check sub-filter on the Candidates screen
             search: "",
             rows: [],
             loadingList: true,
@@ -123,17 +135,19 @@ export class Chat2workWorkspace extends Component {
             ai: { busy: "", forId: false, summary: "", chat: [], question: "" },
             more: false, // the list has rows beyond the ones loaded
             loadingMore: false,
+            // The sidekick: what a new chat offers, the question being typed and the one being answered.
+            side: { start: null, question: "", pending: "", busy: false, error: "" },
         });
 
         this.threadRef = useRef("thread");
         useEffect(
             () => {
                 const el = this.threadRef.el;
-                if (el && this.state.view === "inbox") {
+                if (el && (this.kind === "candidate" || this.state.view === "side")) {
                     el.scrollTop = el.scrollHeight;
                 }
             },
-            () => [this.state.detail]
+            () => [this.state.detail, this.state.side.pending, this.state.side.error]
         );
 
         // The reply box grows with its text (a drafted reply is several lines), up to its CSS max-height.
@@ -177,10 +191,6 @@ export class Chat2workWorkspace extends Component {
 
     // ── Derived ─────────────────────────────────────────────────────────
 
-    get rail() {
-        return RAIL.filter((r) => !r.idCheck || this.state.boot.can_id_check);
-    }
-
     get activeRail() {
         const { view, pills } = this.state;
         return view === "inbox" && pills.inbox === "callbacks" ? "callbacks" : view;
@@ -192,6 +202,26 @@ export class Chat2workWorkspace extends Component {
 
     get pill() {
         return this.state.pills[this.state.view];
+    }
+
+    /** What the main pane and the information card show: a candidate on the
+     *  inbox and on the Candidates lists, otherwise whatever the view lists. */
+    get kind() {
+        const view = this.state.view;
+        return view === "inbox" || (view === "cand" && this.pill !== "stages") ? "candidate" : view;
+    }
+
+    /** The filters above the list. Only staff who may run ID checks get that one. */
+    get pills() {
+        const lists = this.state.counts.lists || {};
+        return this.view.pills
+            .filter(([id]) => id !== "idc" || this.state.boot.can_id_check)
+            .map(([id, label]) => ({ id, label, count: id === "idc" ? lists.id_open : 0 }));
+    }
+
+    get idSubs() {
+        const lists = this.state.counts.lists || {};
+        return ID_SUBS.map(([id, label, count]) => ({ id, label, count: lists[count] || 0 }));
     }
 
     /** The thread, with a divider wherever the day changes. */
@@ -458,7 +488,7 @@ export class Chat2workWorkspace extends Component {
         const view = this.state.view;
         const page = this.state.boot.page_size;
         const limit = keep ? Math.max(page, this.state.rows.length) : page;
-        const [method, args] = this.view.list(this.pill, this.state.search, 0, limit);
+        const [method, args] = this.view.list(this.pill, this.state.search, 0, limit, this.state.idSub);
         this.state.loadingList = !quiet;
         try {
             const rows = await this.orm.call(WS, method, args);
@@ -469,6 +499,9 @@ export class Chat2workWorkspace extends Component {
             this.state.more = Boolean(this.view.paged) && rows.length >= limit;
         } finally {
             this.state.loadingList = false;
+        }
+        if (view === "side") {
+            return; // the open chat is the agent's choice (or a new one), not the list's
         }
         const ids = this.state.rows.map((r) => r.id);
         // A candidate opened from another screen stays open even when the list
@@ -489,7 +522,7 @@ export class Chat2workWorkspace extends Component {
         this.state.loadingDetail = !quiet;
         try {
             let detail;
-            if (this.state.view === "cand") {
+            if (this.state.view === "cand" && this.pill === "stages") {
                 const stage = this.state.rows.find((r) => r.id === id);
                 detail = { ...stage, ...(await this.orm.call(WS, "ws_stage", [id, this.state.show, this.state.search])) };
             } else {
@@ -509,7 +542,8 @@ export class Chat2workWorkspace extends Component {
         }
         const view = this.state.view;
         const page = this.state.boot.page_size;
-        const [method, args] = this.view.list(this.pill, this.state.search, this.state.rows.length, page);
+        const [method, args] = this.view.list(this.pill, this.state.search, this.state.rows.length, page,
+                                              this.state.idSub);
         this.state.loadingMore = true;
         try {
             const rows = await this.orm.call(WS, method, args);
@@ -539,7 +573,7 @@ export class Chat2workWorkspace extends Component {
     async onLiveChange() {
         const busy = this.state.sending || this.state.cvHelp || this.state.loadingMore ||
             document.querySelector(".o_dialog") || document.activeElement?.closest(".o_c2w_info");
-        if (busy) {
+        if (busy || this.state.view === "side") {
             await this.loadCounts();
             return;
         }
@@ -563,10 +597,32 @@ export class Chat2workWorkspace extends Component {
     }
 
     onRail(item) {
-        return this.go(item.view, item.pill);
+        return item.view === "side" ? this.openSidekick() : this.go(item.view, item.pill);
+    }
+
+    /** Open a screen an answer or a list points at. */
+    openScreen(open) {
+        if (open.candidate_id) {
+            return this.openCandidate(open.candidate_id);
+        }
+        if (open.sub) {
+            this.state.idSub = open.sub;
+        }
+        return this.go(open.view, open.pill);
+    }
+
+    async setIdSub(sub) {
+        this.state.idSub = sub;
+        this.state.pinnedId = false;
+        this.state.pane = "list";
+        await this.loadList();
     }
 
     async setPill(pill) {
+        if (this.state.view === "cand" && pill !== this.pill) {
+            // Stages and candidate lists are drawn differently: don't show one as the other while loading.
+            Object.assign(this.state, { selId: false, detail: false, rows: [] });
+        }
         this.state.pills[this.state.view] = pill;
         this.state.pinnedId = false;
         this.state.pane = "list";
@@ -583,6 +639,7 @@ export class Chat2workWorkspace extends Component {
         this.state.pinnedId = false;
         this.state.pane = "thread";
         this.state.composer = "";
+        this.state.side.error = "";
         await this.loadDetail();
     }
 
@@ -726,18 +783,187 @@ export class Chat2workWorkspace extends Component {
         await this.refresh();
     }
 
-    // ── ID check actions ────────────────────────────────────────────────
+    // ── ID check, on the candidate's information card ───────────────────
+
+    /** The same button as the candidate form. The candidate stays open even
+     *  when the result takes them off the list being shown. */
+    runIdCheck() {
+        this.state.pinnedId = this.state.detail.id;
+        return this.candidateAction("action_c2w_id_check");
+    }
 
     async updateIdNumber() {
         await this.action.doAction("chat2work.action_chat2work_id_update", {
-            additionalContext: { default_candidate_id: this.state.detail.candidate_id },
+            additionalContext: { default_candidate_id: this.state.detail.id },
             onClose: () => this.refresh(),
         });
     }
 
     async refreshBalance() {
-        await this.orm.call("chat2work.verify.account", "action_refresh_balance", [[this.state.detail.account.id]]);
-        await this.loadDetail();
+        await this.orm.call("chat2work.verify.account", "action_refresh_balance", [[this.state.detail.id_check.account.id]]);
+        await this.loadDetail({ quiet: true });
+    }
+
+    // ── Sidekick ────────────────────────────────────────────────────────
+
+    newChat() {
+        return { id: false, name: _t("New chat"), candidate: false, messages: [] };
+    }
+
+    /** Show the sidekick: on `chat` (one about a candidate, from their
+     *  information card), otherwise on a new chat with today's suggestions. */
+    async openSidekick(chat = false) {
+        Object.assign(this.state, {
+            view: "side", search: "", pane: "thread", pinnedId: false, rows: [],
+            selId: chat ? chat.id : false, detail: chat || this.newChat(),
+        });
+        Object.assign(this.state.side, { question: "", pending: "", error: "" });
+        const [start] = await Promise.all([this.orm.call(WS, "ws_sidekick_start", []), this.loadList()]);
+        this.state.side.start = start;
+    }
+
+    async askSidekick() {
+        const chat = await this.orm.call(WS, "ws_sidekick_for_candidate", [this.state.detail.id]);
+        if (chat) {
+            await this.openSidekick(chat);
+        }
+    }
+
+    /** The chat as the thread draws it: a divider where the day changes, and
+     *  each answer's text split into paragraphs and lists. */
+    get sideThread() {
+        const items = [];
+        let lastDay = "";
+        for (const message of this.state.detail.messages || []) {
+            const day = this.day(message.at);
+            if (day !== lastDay) {
+                items.push({ key: "d" + message.id, kind: "day", label: day });
+                lastDay = day;
+            }
+            const answer = message.role === "sidekick";
+            items.push({ ...message, key: "m" + message.id, kind: answer ? "a" : "q",
+                         blocks: answer ? this.textBlocks(message.text) : [] });
+        }
+        return items;
+    }
+
+    /** Plain text as blocks: lines starting "1." or "-" become a list, the rest paragraphs. */
+    textBlocks(text) {
+        const blocks = [];
+        for (const line of (text || "").split("\n").map((l) => l.trim()).filter(Boolean)) {
+            const item = line.match(/^(\d+[.)]|[-•*])\s+(.*)$/);
+            const kind = !item ? "p" : /\d/.test(item[1]) ? "ol" : "ul";
+            const last = blocks[blocks.length - 1];
+            if (item && last && last.kind === kind) {
+                last.items.push(item[2]);
+            } else {
+                blocks.push(item ? { kind, items: [item[2]] } : { kind, text: line });
+            }
+        }
+        return blocks;
+    }
+
+    /** How long since `value`: "19 h", "1 d 3 h", "4 d". */
+    waited(value) {
+        if (!value) {
+            return "";
+        }
+        const minutes = Math.max(0, Math.floor(luxon.DateTime.local().diff(deserializeDateTime(value), "minutes").minutes));
+        const d = Math.floor(minutes / 1440);
+        const h = Math.floor((minutes % 1440) / 60);
+        if (d) {
+            return h && d < 3 ? _t("%(d)s d %(h)s h", { d, h }) : _t("%s d", d);
+        }
+        return h ? _t("%s h", h) : _t("%s min", minutes);
+    }
+
+    draftMeta(draft) {
+        const length = draft.text.length;
+        return draft.channel === "sms"
+            ? _t("SMS · %(length)s of %(limit)s characters", { length, limit: 160 })
+            : _t("WhatsApp · %s characters", length);
+    }
+
+    get sidePlaceholder() {
+        const chat = this.state.detail;
+        if (chat.candidate) {
+            return _t("Ask about %s…", chat.candidate.first_name);
+        }
+        return chat.id ? _t("Ask a follow-up…") : _t("Ask about a candidate, a callback, a job…");
+    }
+
+    async newSidekickChat() {
+        this.state.selId = false;
+        this.state.detail = this.newChat();
+        this.state.pane = "thread";
+        Object.assign(this.state.side, { question: "", error: "" });
+        this.state.side.start = await this.orm.silent.call(WS, "ws_sidekick_start", []);
+    }
+
+    onSideInput(ev) {
+        this.state.side.question = ev.target.value;
+    }
+
+    onSideKeydown(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.sideAsk();
+        }
+    }
+
+    /** Ask what is typed, or `text` (a suggestion or a follow-up). The answer
+     *  comes back as the whole chat; an error leaves the question in the box. */
+    async sideAsk(text = null) {
+        const side = this.state.side;
+        const question = (text === null ? side.question : text).trim();
+        if (!question || side.busy || !side.start || !side.start.ai) {
+            return;
+        }
+        const chat = this.state.detail;
+        Object.assign(side, { busy: true, pending: question, error: "", question: "" });
+        let result;
+        try {
+            result = await this.orm.silent.call(WS, "ws_sidekick_ask",
+                                                [chat.id, question, chat.candidate ? chat.candidate.id : false]);
+        } catch {
+            result = { error: _t("The sidekick couldn't answer just now. Your question is still here: try again.") };
+        } finally {
+            Object.assign(side, { busy: false, pending: "" });
+        }
+        const here = this.state.view === "side" && this.state.detail === chat;
+        if (result.error) {
+            if (here) {
+                Object.assign(side, { error: result.error, question });
+            }
+            return;
+        }
+        if (here) {
+            this.state.selId = result.id;
+            this.state.detail = result;
+        }
+        if (this.state.view === "side") {
+            await this.loadList({ keep: true, quiet: true });
+        }
+    }
+
+    /** Put a draft in the candidate's reply box for the agent to edit and send:
+     *  by SMS when it was written as one or WhatsApp is past its 24 hours. */
+    async useDraft(draft) {
+        const candidate = this.state.detail.candidate;
+        await this.openCandidate(candidate.id);
+        const c = this.state.detail;
+        if (!c || c.id !== candidate.id) {
+            return;
+        }
+        if (c.whatsapp) {
+            this.setChannel(draft.channel === "sms" || !c.window_open ? "sms" : "whatsapp");
+        }
+        this.state.composer = draft.text;
+    }
+
+    async copyDraft(draft) {
+        await browser.navigator.clipboard.writeText(draft.text);
+        this.notification.add(_t("Draft copied"), { type: "success" });
     }
 }
 

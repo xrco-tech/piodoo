@@ -8,4 +8,59 @@
     <!-- First in the app, so Chat2Work opens on the workspace. -->
     <menuitem id="menu_chat2work_workspace" name="Workspace" parent="chat2work.menu_chat2work_root"
               action="action_chat2work_workspace" sequence="1"/>
+
+    <!-- The how-to notes the sidekick answers from. -->
+    <record id="view_chat2work_agent_note_list" model="ir.ui.view">
+        <field name="name">chat2work.agent.note.list</field>
+        <field name="model">chat2work.agent.note</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_chat2work_agent_note_form" model="ir.ui.view">
+        <field name="name">chat2work.agent.note.form</field>
+        <field name="model">chat2work.agent.note</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <group>
+                        <field name="name" placeholder="e.g. CV link problems"/>
+                    </group>
+                    <p class="text-muted">
+                        Write how this works today, in plain words and short steps. The sidekick answers agents'
+                        how-to questions from these notes only, and names the notes it used.
+                        Don't put phone numbers or ID numbers in a note.
+                    </p>
+                    <field name="body" placeholder="1. Open the candidate…"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_chat2work_agent_note_search" model="ir.ui.view">
+        <field name="name">chat2work.agent.note.search</field>
+        <field name="model">chat2work.agent.note</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('body', 'ilike', self)]"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_chat2work_agent_note" model="ir.actions.act_window">
+        <field name="name">Agent Notes</field>
+        <field name="res_model">chat2work.agent.note</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Write the first note for agents</p>
+            <p>The sidekick in the Workspace answers "how do I…" questions from these notes.</p>
+        </field>
+    </record>
+    <menuitem id="menu_chat2work_agent_notes" name="Agent Notes" parent="chat2work.menu_chat2work_root"
+              action="action_chat2work_agent_note" sequence="90" groups="base.group_system"/>
 </odoo>
