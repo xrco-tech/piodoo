@@ -3,8 +3,9 @@
 
 One read call per pane, so the screen never assembles a candidate from a
 dozen requests. Changes go through the existing models and their actions
-(stage, callback state, verification, call and message buttons); nothing here
-writes except `ws_send`, which uses the same sender as the Send a Message form.
+(stage, callback state, verification, ID check, call and message buttons);
+nothing here writes except `ws_send`, which uses the same sender as the Send a
+Message form.
 """
 
 from odoo import _, api, fields, models
@@ -19,6 +20,16 @@ LIST_LIMIT = 100
 LIST_MAX = 1000
 TIMELINE_LIMIT = 300
 CV_DONE = ('uploaded', 'built')
+# The ID check filters on Candidates. A check has no "sent, no answer yet" state:
+# "failed" is Home Affairs not confirming the ID, "waiting" is a check that didn't
+# complete and has to be run again.
+ID_LISTS = {
+    'id_open': [('id_check_state', 'in', ('not_valid', 'failed'))],
+    'id_failed': [('id_check_state', '=', 'not_valid')],
+    'id_waiting': [('id_check_state', '=', 'failed')],
+    'id_not_done': [('id_check_state', '=', 'none'), ('cv_state', 'in', CV_DONE)],
+}
+CANDIDATE_LISTS = ('no_cv', 'cv_started', 'jobs_ready')
 
 
 def _dt(value):
@@ -43,6 +54,11 @@ class Chat2workWorkspace(models.AbstractModel):
 
     def _can_id_check(self):
         return self.env.user.has_group('chat2work_verify.group_id_check')
+
+    def _check_id_access(self):
+        self._check_agent()
+        if not self._can_id_check():
+            raise AccessError(_("You don't have access to ID checks."))
 
     @api.model
     def _label(self, record, name):
@@ -147,10 +163,9 @@ class Chat2workWorkspace(models.AbstractModel):
             'callbacks': self.env['chat2work.callback.request'].search_count(
                 [('state', 'in', OPEN_CALLBACK), ('candidate_id', '!=', False)]),
             'jobs': self.env['chat2work.listing'].search_count([('work_state', 'in', ('to_verify', 'to_review'))]),
-            'idc': 0,
+            # The filters on the Candidates screen.
+            'lists': {key: Candidate.search_count(self._list_domain(key)) for key in self._list_keys()},
         }
-        if self._can_id_check():
-            counts['idc'] = Candidate.search_count([('id_check_state', 'in', ('not_valid', 'failed'))])
         return counts
 
     # ── Conversations ────────────────────────────────────────────────────────
@@ -214,6 +229,7 @@ class Chat2workWorkspace(models.AbstractModel):
             'cv_link_error': candidate.cv_link_error or '',
             'cv_unreadable': candidate.cv_text_state == 'unreadable',
             'id_check_label': self._label(candidate, 'id_check_state'),
+            'id_check': self._id_check_card(candidate) if self._can_id_check() else False,
             'has_id_number': candidate.has_id_number,
             'window_open': message.window_open,
             'can_voip': candidate.c2w_can_voip,
@@ -419,62 +435,132 @@ class Chat2workWorkspace(models.AbstractModel):
         })
         return row
 
-    # ── ID checks ────────────────────────────────────────────────────────────
+    # ── Candidate lists: the filters on Candidates, also used by the sidekick ─
 
-    def _check_id_access(self):
-        self._check_agent()
-        if not self._can_id_check():
-            raise AccessError(_("You don't have access to ID checks."))
+    def _list_keys(self):
+        return list(CANDIDATE_LISTS) + (list(ID_LISTS) if self._can_id_check() else [])
+
+    def _list_domain(self, key):
+        if key == 'no_cv':
+            return [('cv_state', '=', 'none')]
+        if key == 'cv_started':
+            return [('cv_state', '=', 'started')]
+        if key == 'jobs_ready':
+            # The same rule as the candidate's "Matches to Send" count.
+            matches = self.env['chat2work.listing.match'].search([
+                ('state', '=', 'approved'), ('notify_state', '!=', 'sent'), ('listing_id.state', '=', 'open')])
+            return [('id', 'in', matches.candidate_id.ids)]
+        if key in ID_LISTS:
+            self._check_id_access()
+            return list(ID_LISTS[key])
+        raise AccessError(_("There's no such list."))
+
+    def _list_line(self, key, candidate):
+        """Why this candidate is on the list: {'reason', 'when', 'tag'}."""
+        if key in ID_LISTS:
+            state = candidate.id_check_state
+            latest = candidate.id_check_ids.filtered(lambda c: c.mode == 'production')[:1]
+            if state == 'not_valid':
+                reason = _("Home Affairs did not confirm this ID")
+                detail = latest.id_status
+                tag = ['bad', _("Failed")]
+            elif state == 'failed':
+                reason = _("The check didn't complete, run it again")
+                detail = latest.error
+                tag = ['warn', _("Waiting")]
+            else:
+                reason, detail, tag = _("CV finished, no ID check yet"), False, False
+            return {'reason': '%s: %s' % (reason, detail) if detail else reason,
+                    'when': _dt(candidate.id_check_at or candidate.cv_submitted_at), 'tag': tag}
+        if key == 'jobs_ready':
+            reason = _("%s matched job(s) ready to send", candidate.job_match_ready_count)
+        elif key == 'cv_started':
+            reason = _("CV started, not finished")
+        else:
+            reason = _("No CV yet. CV link: %s", self._label(candidate, 'cv_link_state') or _("Not sent"))
+        return {'reason': reason, 'when': _dt(candidate.cv_link_sent_at or candidate.last_active_at), 'tag': False}
 
     @api.model
-    def ws_checks(self, pill='all', offset=0, limit=None):
-        self._check_id_access()
+    def ws_candidates(self, pill, sub='open', search='', offset=0, limit=None):
+        """Candidates on one list. `pill` is a list, or 'idc' with `sub` one of
+        open, failed, waiting, not_done."""
+        self._check_agent()
         offset, limit = self._page(offset, limit)
-        domain = [('state', '=', pill)] if pill != 'all' else []
-        checks = self.env['chat2work.verify.check'].search(domain, order='create_date desc, id desc',
-                                                           offset=offset, limit=limit)
-        return [self._check_row(check) for check in checks]
+        key = 'id_%s' % sub if pill == 'idc' else pill
+        domain = self._list_domain(key)
+        term = (search or '').strip()
+        if term:
+            domain += ['|', ('name', 'ilike', term), ('phone', 'ilike', term)]
+        order = 'id_check_at desc, id desc' if key in ID_LISTS else 'last_active_at desc, id desc'
+        rows = []
+        for candidate in self.env['chat2work.candidate'].search(domain, order=order, offset=offset, limit=limit):
+            row = self._candidate_row(candidate)
+            line = self._list_line(key, candidate)
+            row.update(line=line['reason'], line_at=line['when'], line_tag=line['tag'])
+            rows.append(row)
+        return rows
+
+    # ── ID check, on the candidate's information card ────────────────────────
 
     def _check_row(self, check):
         return {
             'id': check.id,
-            'candidate_id': check.candidate_id.id,
-            'name': check.candidate_id.display_name or _("Deleted candidate"),
             'state': check.state,
             'state_label': self._label(check, 'state') or _("Not finished"),
             'mode': check.mode,
             'at': _dt(check.create_date),
         }
 
-    @api.model
-    def ws_check(self, check_id):
-        self._check_id_access()
-        check = self.env['chat2work.verify.check'].browse(check_id).exists()
-        if not check:
-            return False
+    def _id_check_card(self, candidate):
+        """The latest result, whether a check can be run now, and the credits."""
         account = self.env['chat2work.verify.account']._get()
-        row = self._check_row(check)
-        row.update({
-            'run_by': check.user_id.name or '',
-            'id_number': check.candidate_id.id_number_masked or '',
-            'first_names': check.first_names or '',
-            'last_name': check.last_name or '',
-            'dob': fields.Date.to_string(check.dob) if check.dob else '',
-            'gender': check.gender or '',
-            'citizenship': check.citizenship or '',
-            'id_status': check.id_status or '',
-            'error': check.error or '',
-            'credits_used': check.credits_used,
-            'history': [self._check_row(c) for c in check.candidate_id.id_check_ids.sorted('create_date')]
-            if check.candidate_id else [],
+        service = self.env.ref('chat2work_verify.service_said').sudo()
+        checks = candidate.id_check_ids.sorted('id', reverse=True)
+        latest = checks[:1]
+        state = candidate.id_check_state
+        line = self._list_line('id_open', candidate)
+        if state == 'verified':
+            tag, reason = ['ok', _("Verified")], _("Home Affairs confirmed this ID.")
+        elif state == 'not_valid':
+            tag = line['tag']
+            reason = _("%s. Check the ID number with them, correct it, then run the check again.", line['reason'])
+        elif state == 'failed':
+            tag, reason = line['tag'], _("%s. It isn't charged twice.", line['reason'].rstrip('.'))
+        elif not candidate.has_id_number:
+            tag, reason = ['plain', _("Not done")], _("No ID number on this candidate yet.")
+        else:
+            tag, reason = ['plain', _("Not done")], _("No ID check has been run.")
+        # A paid check is final; only one that didn't complete (or a new ID number) can be run again.
+        can_run = candidate.has_id_number and (account.mode == 'sandbox' or state in ('none', 'failed'))
+        return {
+            'state': state,
+            'tag': tag,
+            'reason': reason,
+            'at': _dt(candidate.id_check_at),
+            'has_id_number': candidate.has_id_number,
+            'id_number': candidate.id_number_masked or '',
+            'can_run': bool(can_run),
+            'again': bool(checks),
+            'mode': account.mode,
+            'cost': service.credits if account.mode == 'production' else 0,
+            'details': {
+                'first_names': latest.first_names or '',
+                'last_name': latest.last_name or '',
+                'dob': fields.Date.to_string(latest.dob) if latest.dob else '',
+                'citizenship': latest.citizenship or '',
+                'id_status': latest.id_status or '',
+                'error': latest.error or '',
+                'run_by': latest.user_id.name or '',
+                'credits_used': latest.credits_used,
+                'mode': latest.mode,
+            } if latest else False,
+            'history': [self._check_row(check) for check in checks],
             'account': {
                 'id': account.id,
                 'credits': account.available_credits,
                 'used_month': account.credits_used_month,
                 'checks_total': account.checks_total,
                 'is_low': account.is_low,
-                'mode': account.mode,
                 'balance_at': _dt(account.balance_at),
-            } if account else False,
-        })
-        return row
+            },
+        }
