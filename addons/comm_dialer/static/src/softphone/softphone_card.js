@@ -1,9 +1,38 @@
 /** @odoo-module **/
 
-import { Component, onWillUnmount, useEffect, useState } from "@odoo/owl";
+import { Component, onWillUnmount, useEffect, useExternalListener, useState } from "@odoo/owl";
 import { deserializeDateTime } from "@web/core/l10n/dates";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+
+// Only one phone card is open at a time, and clicking away from it hides it.
+// The two cards live in different addons, so they talk through a window event
+// (this hook is the same in comm_dialer and comm_whatsapp_calling). A live call
+// keeps its pill, so hiding the card never strands a call.
+const CARD_OPENED = "phone-card-opened";
+const NOT_AWAY = ".o_phone_card, .o_phone_pill, .o_phone_tray, .o_dialer_softphone, " +
+    ".modal, .o_notification_manager, .o-overlay-container, .o_popover";
+function useOneCardAtATime(kind, isOpen, close) {
+    useEffect(
+        (open) => {
+            if (open) {
+                window.dispatchEvent(new CustomEvent(CARD_OPENED, { detail: kind }));
+            }
+        },
+        () => [isOpen()]
+    );
+    useExternalListener(window, CARD_OPENED, (ev) => {
+        if (ev.detail !== kind && isOpen()) {
+            close();
+        }
+    });
+    useExternalListener(window, "pointerdown", (ev) => {
+        const target = ev.target;
+        if (isOpen() && !(target && target.closest && target.closest(NOT_AWAY))) {
+            close();
+        }
+    }, { capture: true });
+}
 
 const KEYS = [
     ["1", ""], ["2", "ABC"], ["3", "DEF"], ["4", "GHI"], ["5", "JKL"], ["6", "MNO"],
@@ -96,6 +125,7 @@ export class DialerSoftphoneCard extends Component {
             now: Date.now(),
         });
         this.searchSeq = 0;
+        useOneCardAtATime("voip", () => this.state.enabled && this.state.dialerOpen, () => this.sp.toggleDialer());
 
         // A call starting or ending resets the in-call screen; a script that
         // starts on its own (campaign suggestion) does not take the screen over.

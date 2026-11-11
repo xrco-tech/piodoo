@@ -21,7 +21,7 @@
             <span class="text-truncate" style="max-width:140px" t-esc="pillName"/>
         </button>
 
-        <div t-if="state.open" class="o_phone_card o_phone_wa" t-att-class="{ o_phone_second: ui.second }"
+        <div t-if="state.open" class="o_phone_card o_phone_wa"
              role="dialog" aria-label="WhatsApp phone" t-on-click="() => this.closeMenu()">
             <div class="o_phone_head">
                 <t t-if="head.live">
