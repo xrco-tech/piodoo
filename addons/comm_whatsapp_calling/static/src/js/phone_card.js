@@ -1,12 +1,41 @@
 /** @odoo-module **/
 
-import { Component, onWillUnmount, useEffect, useState } from "@odoo/owl";
+import { Component, onWillUnmount, useEffect, useExternalListener, useState } from "@odoo/owl";
 import { deserializeDateTime } from "@web/core/l10n/dates";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
 // The helpers below mirror comm_dialer's softphone_card.js. They are copied,
 // not imported: comm_dialer depends on this addon, not the other way round.
+
+// Only one phone card is open at a time, and clicking away from it hides it.
+// The two cards live in different addons, so they talk through a window event
+// (this hook is the same in comm_dialer and comm_whatsapp_calling). A live call
+// keeps its pill, so hiding the card never strands a call.
+const CARD_OPENED = "phone-card-opened";
+const NOT_AWAY = ".o_phone_card, .o_phone_pill, .o_phone_tray, .o_dialer_softphone, " +
+    ".modal, .o_notification_manager, .o-overlay-container, .o_popover";
+function useOneCardAtATime(kind, isOpen, close) {
+    useEffect(
+        (open) => {
+            if (open) {
+                window.dispatchEvent(new CustomEvent(CARD_OPENED, { detail: kind }));
+            }
+        },
+        () => [isOpen()]
+    );
+    useExternalListener(window, CARD_OPENED, (ev) => {
+        if (ev.detail !== kind && isOpen()) {
+            close();
+        }
+    });
+    useExternalListener(window, "pointerdown", (ev) => {
+        const target = ev.target;
+        if (isOpen() && !(target && target.closest && target.closest(NOT_AWAY))) {
+            close();
+        }
+    }, { capture: true });
+}
 
 const KEYS = [
     ["1", ""], ["2", "ABC"], ["3", "DEF"], ["4", "GHI"], ["5", "JKL"], ["6", "MNO"],
@@ -106,11 +135,11 @@ export class WhatsAppPhoneCard extends Component {
             answer: "",         // script follower input
             confirmEnd: false,  // "End script and call" was clicked once
             playing: null,      // recording id being played
-            second: false,      // a VoIP card is open too: sit to its left
             pillSecond: false,  // a VoIP card or pill holds the corner: stack above it
             now: Date.now(),
         });
         this.searchSeq = 0;
+        useOneCardAtATime("wa", () => this.state.open, () => this.card.minimise());
         this.audio = null;
 
         // Tick the call timer only while a call is connected.
@@ -134,15 +163,13 @@ export class WhatsAppPhoneCard extends Component {
             },
             () => [this.state.open, this.idle, this.state.tab]
         );
-        // Make room for the VoIP softphone whenever both are on screen,
-        // whichever opened first. Its card is not ours to watch, so look for it.
+        // Only one card is open at a time, but both can hold a pill: stack ours above the VoIP one.
         useEffect(
             (shown) => {
                 if (!shown) {
                     return;
                 }
                 const check = () => {
-                    this.ui.second = !!document.querySelector(".o_phone_card.o_phone_voip");
                     this.ui.pillSecond = !!document.querySelector(
                         ".o_phone_card.o_phone_voip, .o_phone_pill:not(.o_phone_wa)");
                 };
