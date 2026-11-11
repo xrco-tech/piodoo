@@ -12,3 +12,4 @@ from . import comm_dialer_contact
 from . import comm_dialer_agent
 from . import comm_dialer_barge
 from . import comm_dialer_transfer
+from . import comm_dialer_phone

@@ -11,157 +11,319 @@
         </div>
     </t>
 
-    <t t-name="comm_dialer.SoftphoneBar">
-        <!-- In-call bar -->
-        <div class="o_dialer_sp_bar" t-if="active">
-            <span class="o_dialer_sp_ic">
-                <i class="fa fa-phone" t-att-class="state.status === 'ringing' ? 'o_ring' : ''"/>
-            </span>
-            <div class="o_dialer_sp_meta">
-                <span class="o_dialer_sp_state" t-esc="stateLabel"/>
-                <span class="o_dialer_sp_num" t-esc="state.caller"/>
-                <span class="o_dialer_sp_camp" t-if="state.ctx and state.ctx.campaign_name"
-                      t-att-title="'Campaign: ' + state.ctx.campaign_name">
-                    <i class="fa fa-bullhorn"/> <t t-esc="state.ctx.campaign_name"/>
-                </span>
-            </div>
-            <t t-if="state.status === 'ringing' and state.manual">
-                <button class="btn btn-success o_dialer_sp_accept"
-                        t-on-click="() => this.accept()" title="Accept">
-                    <i class="fa fa-phone"/> Accept
-                </button>
-                <button class="btn btn-danger o_dialer_sp_decline"
-                        t-on-click="() => this.decline()" title="Decline">
-                    <i class="fa fa-times"/> Decline
-                </button>
-            </t>
-            <t t-else="">
-                <button class="btn o_dialer_sp_mic"
-                        t-att-class="state.muted ? 'btn-warning' : 'btn-light'"
-                        t-on-click="() => this.toggleMute()"
-                        t-att-title="state.muted ? 'Unmute' : 'Mute'">
-                    <i t-att-class="state.muted ? 'fa fa-microphone-slash' : 'fa fa-microphone'"/>
-                </button>
-                <button class="btn o_dialer_sp_rec"
-                        t-if="state.status === 'incall'"
-                        t-att-class="state.recording ? 'btn-danger' : 'btn-light'"
-                        t-on-click="() => this.toggleRecord()"
-                        t-att-title="state.recording ? 'Stop recording' : 'Record'">
-                    <i class="fa fa-circle"/>
-                </button>
-                <button class="btn o_dialer_sp_script"
-                        t-if="state.status === 'incall'"
-                        t-att-class="state.script ? 'btn-primary' : 'btn-light'"
-                        t-on-click="() => this.openPicker('script')"
-                        t-att-title="state.script ? 'Change call script' : 'Start call script'">
-                    <i class="fa fa-list-alt"/>
-                </button>
-                <button class="btn btn-light o_dialer_sp_campaign"
-                        t-if="state.status === 'incall'"
-                        t-on-click="() => this.openPicker('campaign')" title="Add to campaign">
-                    <i class="fa fa-bullhorn"/>
-                </button>
-                <button class="btn btn-light o_dialer_sp_xfer"
-                        t-if="state.status === 'incall'"
-                        t-on-click="() => this.transfer()" title="Transfer call">
-                    <i class="fa fa-share"/>
-                </button>
-                <button class="btn btn-danger o_dialer_sp_end"
-                        t-on-click="() => this.hangup()" title="Hang up">
-                    <i class="fa fa-phone"/> End
-                </button>
-            </t>
-        </div>
+    <t t-name="comm_dialer.SoftphoneCard">
+        <!-- Minimised during a call: a pill that brings the card back. -->
+        <button t-if="state.enabled and live and !state.dialerOpen" type="button"
+                class="o_phone_pill" t-att-class="state.status === 'ringing' ? 'ring' : ''"
+                t-on-click="() => this.reopen()" title="Open the phone">
+            <i class="fa fa-phone"/>
+            <span t-esc="callState"/>
+            <span class="text-truncate" style="max-width:140px" t-esc="who.name"/>
+        </button>
 
-        <!-- Script / campaign picker (sits above the bar) -->
-        <div class="o_dialer_sp_picker" t-if="active and ui.picker">
-            <div class="o_dialer_sp_panel_head">
-                <span>
-                    <i t-att-class="ui.picker === 'script' ? 'fa fa-list-alt' : 'fa fa-bullhorn'"/>
-                    <t t-esc="ui.picker === 'script' ? (state.script ? ' Change call script' : ' Start call script') : ' Add to campaign'"/>
-                </span>
-                <button class="btn btn-sm btn-link" t-on-click="() => this.closePicker()" title="Close">
-                    <i class="fa fa-times"/>
+        <div t-if="state.enabled and state.dialerOpen" class="o_phone_card o_phone_voip" role="dialog" aria-label="Phone">
+            <div class="o_phone_head">
+                <span class="o_phone_dot" t-att-class="head.dot"/>
+                <span t-esc="head.label"/>
+                <small t-if="head.sub" t-esc="head.sub"/>
+                <span class="o_phone_line">Phone</span>
+                <button type="button" class="o_phone_hbtn" t-on-click="() => this.expand()" title="All calls">
+                    <i class="fa fa-external-link"/>
+                </button>
+                <button type="button" class="o_phone_hbtn" t-on-click="() => this.minimise()" title="Minimise">
+                    <i class="fa fa-minus"/>
                 </button>
             </div>
-            <div class="o_dialer_sp_picker_list">
-                <div t-if="ui.loading" class="text-muted small p-2">Loading…</div>
-                <div t-elif="!ui.items.length" class="text-muted small p-2"
-                     t-esc="ui.picker === 'script' ? 'No published voice scripts.' : 'No open dialer campaigns.'"/>
-                <button t-foreach="ui.items" t-as="item" t-key="item.id"
-                        class="o_dialer_sp_picker_item"
-                        t-att-disabled="item.already"
-                        t-on-click="() => this.pick(item)">
-                    <span t-esc="item.name"/>
-                    <small t-if="item.already" class="text-muted"> (on list)</small>
-                    <small t-elif="item.has_script" class="text-muted" title="Has a call script">
-                        <i class="fa fa-list-alt"/>
-                    </small>
-                    <small t-if="state.script and ui.picker === 'script' and state.script.chatbotId === item.id"
-                           class="text-muted"> (current)</small>
-                </button>
-            </div>
-        </div>
 
-        <!-- Call script follower (same /voice/* engine as WhatsApp calls) -->
-        <div class="o_dialer_sp_script_panel" t-if="active and state.script and !ui.picker">
-            <div class="o_dialer_sp_panel_head">
-                <span class="text-truncate"><i class="fa fa-list-alt"/> <t t-esc="state.script.name"/></span>
-                <span class="d-flex">
-                    <button class="btn btn-sm btn-link" t-on-click="() => this.openPicker('script')"
-                            title="Change script"><i class="fa fa-exchange"/></button>
-                    <button class="btn btn-sm btn-link" t-on-click="() => this.closeScript()"
-                            title="Close script"><i class="fa fa-times"/></button>
-                </span>
-            </div>
-            <div class="o_dialer_sp_script_body">
-                <div class="o_dialer_sp_bubble" t-foreach="state.script.bubbles" t-as="b" t-key="b_index">
-                    <div t-if="b.coaching_notes" class="small text-muted fst-italic mb-1" t-esc="b.coaching_notes"/>
-                    <div class="o_dialer_sp_bubble_text" t-esc="b.body or b.text"/>
-                    <div t-if="b.buttons and b.buttons.length and !state.script.terminated" class="d-flex flex-wrap gap-1 mt-2">
-                        <button class="btn btn-sm btn-outline-primary" t-foreach="b.buttons" t-as="opt" t-key="opt"
-                                t-on-click="() => this.scriptAnswer(opt)" t-esc="opt"/>
+            <div class="o_phone_body">
+                <!-- ═══ A call is live ═══ -->
+                <t t-if="live">
+                    <!-- Incoming, waiting for Accept / Decline -->
+                    <div t-if="incoming" class="o_phone_scr">
+                        <div class="o_phone_who">
+                            <span class="o_phone_state ring">Incoming call</span>
+                            <span class="o_phone_av" t-att-class="who.av.cls" t-esc="who.av.text"/>
+                            <b t-esc="who.name"/>
+                            <span t-if="who.number" t-esc="who.number"/>
+                        </div>
+                        <div class="o_phone_callrow o_phone_end">
+                            <button type="button" class="o_phone_big end" t-on-click="() => this.hangup()" title="Decline">
+                                <i class="fa fa-phone"/>
+                            </button>
+                            <button type="button" class="o_phone_big o_phone_accept" t-on-click="() => this.accept()" title="Accept">
+                                <i class="fa fa-phone"/>
+                            </button>
+                        </div>
                     </div>
-                    <div t-if="b.list_rows and b.list_rows.length and !state.script.terminated" class="mt-2">
-                        <button class="o_dialer_sp_picker_item" t-foreach="b.list_rows" t-as="row" t-key="row"
-                                t-on-click="() => this.scriptAnswer(row)" t-esc="row"/>
-                    </div>
-                </div>
-                <div t-if="state.script.loading" class="text-muted small">Loading next step…</div>
-            </div>
-            <div t-if="state.script.terminated" class="o_dialer_sp_script_done">Script complete.</div>
-            <div t-else="" class="o_dialer_sp_script_input">
-                <input type="text" t-model="ui.answer" placeholder="Customer's answer…"
-                       t-on-keydown="(ev) => this.onScriptKeydown(ev)"/>
-                <button class="btn btn-sm btn-primary" t-on-click="() => this.scriptAnswer(ui.answer)">Send</button>
-            </div>
-        </div>
 
-        <!-- Click-to-dial keypad (idle only) -->
-        <div class="o_dialer_sp_dialpad" t-if="state.dialerOpen and !active">
-            <div class="o_dialer_sp_dp_head">
-                <span>Dial</span>
-                <button class="btn btn-sm btn-light" t-on-click="() => this.closeDialer()" title="Close">
-                    <i class="fa fa-times"/>
+                    <!-- Attended transfer: talking to the other agent -->
+                    <div t-elif="state.transfer" class="o_phone_scr">
+                        <div class="o_phone_sheet">
+                            <h4>Asking <t t-esc="state.transfer.target"/></h4>
+                            <p><t t-esc="who.name"/> is on hold while you talk to
+                                <t t-esc="state.transfer.target"/>. Hand the call over, or take the caller back.</p>
+                            <p t-if="state.transfer.state === 'requested' or state.transfer.state === 'active'">Connecting…</p>
+                            <p t-elif="state.transfer.state === 'completing'">Handing over…</p>
+                            <p t-elif="state.transfer.state === 'cancelling'">Bringing the caller back…</p>
+                            <div class="o_phone_btns">
+                                <button type="button" t-on-click="() => this.transferDecide(false)">Take caller back</button>
+                                <button type="button" class="pri" t-on-click="() => this.transferDecide(true)">Hand over</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Keypad during the call -->
+                    <div t-elif="ui.sub === 'keypad'" class="o_phone_scr">
+                        <div class="o_phone_num"><input type="text" readonly="readonly" t-att-value="ui.tones" placeholder="Tones sent" aria-label="Tones sent"/></div>
+                        <div class="o_phone_pad">
+                            <button type="button" t-foreach="keys" t-as="k" t-key="k[0]" t-on-click="() => this.tone(k[0])">
+                                <b t-esc="k[0]"/><small t-if="k[1]" t-esc="k[1]"/>
+                            </button>
+                        </div>
+                        <div class="o_phone_links" style="padding-bottom:14px">
+                            <button type="button" t-on-click="() => this.showSub('call')">Back to call</button>
+                        </div>
+                    </div>
+
+                    <!-- Transfer -->
+                    <div t-elif="ui.sub === 'transfer'" class="o_phone_scr">
+                        <div class="o_phone_sheet">
+                            <h4>Transfer call</h4>
+                            <p><t t-esc="who.name"/> · <t t-esc="callState"/></p>
+                            <div class="o_phone_opts">
+                                <div t-if="ui.loading" class="o_phone_empty">Loading…</div>
+                                <div t-elif="!ui.targets.length" class="o_phone_empty">No other agent has a softphone set up.</div>
+                                <button type="button" class="o_phone_opt o_phone_target" t-foreach="ui.targets" t-as="t" t-key="t.id"
+                                        t-att-class="ui.target === t.id ? 'on' : ''" t-on-click="() => this.ui.target = t.id">
+                                    <b t-esc="t.name"/><span><t t-esc="t.ext"/> · <t t-esc="t.state_label"/></span>
+                                </button>
+                            </div>
+                            <button type="button" class="o_phone_opt" t-att-class="ui.mode === 'blind' ? 'on' : ''"
+                                    t-on-click="() => this.ui.mode = 'blind'">
+                                <b>Send now</b><span>Hand over at once</span>
+                            </button>
+                            <button type="button" class="o_phone_opt" t-att-class="ui.mode === 'attended' ? 'on' : ''"
+                                    t-on-click="() => this.ui.mode = 'attended'">
+                                <b>Ask first</b><span>Talk to them, then hand over</span>
+                            </button>
+                            <div class="o_phone_btns">
+                                <button type="button" t-on-click="() => this.showSub('call')">Back to call</button>
+                                <button type="button" class="pri" t-att-disabled="!ui.target or ui.busy"
+                                        t-on-click="() => this.doTransfer()">Transfer</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Script / campaign picker -->
+                    <div t-elif="ui.sub === 'picker'" class="o_phone_scr">
+                        <div class="o_phone_sheet">
+                            <h4 t-esc="ui.picker === 'script' ? (state.script ? 'Change call script' : 'Start a call script') : 'Add to campaign'"/>
+                            <div class="o_phone_opts">
+                                <div t-if="ui.loading" class="o_phone_empty">Loading…</div>
+                                <div t-elif="!ui.items.length" class="o_phone_empty"
+                                     t-esc="ui.picker === 'script' ? 'No published voice scripts.' : 'No open dialer campaigns.'"/>
+                                <button type="button" class="o_phone_opt" t-foreach="ui.items" t-as="item" t-key="item.id"
+                                        t-att-disabled="item.already" t-on-click="() => this.pick(item)">
+                                    <b t-esc="item.name"/>
+                                    <span t-if="item.already">On the list</span>
+                                    <span t-elif="state.script and ui.picker === 'script' and state.script.chatbotId === item.id">Current</span>
+                                    <span t-elif="item.has_script">Has a script</span>
+                                </button>
+                            </div>
+                            <div class="o_phone_btns">
+                                <button type="button" t-on-click="() => this.showSub('call')">Back to call</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Call script follower (same /voice/* engine as WhatsApp calls) -->
+                    <div t-elif="ui.sub === 'script' and state.script" class="o_phone_scr">
+                        <div class="o_phone_sheet">
+                            <button type="button" class="o_phone_back" t-on-click="() => this.showSub('call')">
+                                <i class="fa fa-angle-left"/> Back to call · <t t-esc="callState"/>
+                            </button>
+                            <h4 t-esc="state.script.name"/>
+                            <div class="o_phone_bubbles">
+                                <div class="o_phone_bubble" t-foreach="state.script.bubbles" t-as="b" t-key="b_index">
+                                    <em t-if="b.coaching_notes" t-esc="b.coaching_notes"/>
+                                    <t t-esc="b.body or b.text"/>
+                                    <div t-if="b.buttons and b.buttons.length and !state.script.terminated" class="o_phone_answers">
+                                        <button type="button" t-foreach="b.buttons" t-as="opt" t-key="opt"
+                                                t-on-click="() => this.scriptAnswer(opt)" t-esc="opt"/>
+                                    </div>
+                                    <div t-if="b.list_rows and b.list_rows.length and !state.script.terminated" class="o_phone_answers">
+                                        <button type="button" t-foreach="b.list_rows" t-as="row" t-key="row"
+                                                t-on-click="() => this.scriptAnswer(row)" t-esc="row"/>
+                                    </div>
+                                </div>
+                                <p t-if="state.script.loading">Loading the next step…</p>
+                                <p t-if="state.script.terminated">Script complete.</p>
+                            </div>
+                            <div t-if="!state.script.terminated" class="o_phone_send">
+                                <input type="text" t-model="ui.answer" placeholder="Customer's answer…"
+                                       t-on-keydown="(ev) => this.onScriptKeydown(ev)"/>
+                                <button type="button" t-on-click="() => this.scriptAnswer(ui.answer)">Send</button>
+                            </div>
+                            <div class="o_phone_btns">
+                                <button type="button" t-on-click="() => this.openPicker('script')">Change script</button>
+                                <button type="button" t-on-click="() => this.closeScript()">Close script</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- The call itself -->
+                    <div t-else="" class="o_phone_scr">
+                        <div class="o_phone_who">
+                            <span class="o_phone_state" t-esc="callState"/>
+                            <span class="o_phone_av" t-att-class="who.av.cls" t-esc="who.av.text"/>
+                            <b t-esc="who.name"/>
+                            <span t-if="who.number" t-esc="who.number"/>
+                            <div class="o_phone_tags">
+                                <span t-if="state.ctx and state.ctx.campaign_name" class="o_phone_chip warn"
+                                      t-att-title="'Campaign: ' + state.ctx.campaign_name">Campaign: <t t-esc="state.ctx.campaign_name"/></span>
+                                <span t-if="state.script" class="o_phone_chip" t-att-title="'Script: ' + state.script.name">Script: <t t-esc="state.script.name"/></span>
+                            </div>
+                        </div>
+                        <div class="o_phone_ctl" t-if="state.status === 'incall'">
+                            <button type="button" class="o_phone_mute" t-att-class="state.muted ? 'on' : ''" t-on-click="() => this.toggleMute()">
+                                <i t-att-class="state.muted ? 'fa fa-microphone-slash' : 'fa fa-microphone'"/>
+                                <t t-esc="state.muted ? 'Muted' : 'Mute'"/>
+                            </button>
+                            <button type="button" class="o_phone_tones" t-on-click="() => this.showSub('keypad')">
+                                <i class="fa fa-th"/>Keypad
+                            </button>
+                            <button type="button" class="o_phone_hold" t-att-class="state.held ? 'on' : ''" t-on-click="() => this.toggleHold()">
+                                <i class="fa fa-pause"/>
+                                <t t-esc="state.held ? 'On hold' : 'Hold'"/>
+                            </button>
+                            <button type="button" class="rec o_phone_rec" t-att-class="state.recording ? 'on' : ''" t-on-click="() => this.toggleRecord()">
+                                <i class="fa fa-circle"/>
+                                <t t-esc="state.recording ? 'Recording' : 'Record'"/>
+                            </button>
+                            <button type="button" class="o_phone_xfer" t-on-click="() => this.openTransfer()">
+                                <i class="fa fa-exchange"/>Transfer
+                            </button>
+                            <button type="button" class="o_phone_script" t-att-class="state.script ? 'on' : ''" t-on-click="() => this.script()">
+                                <i class="fa fa-list-alt"/>Script
+                            </button>
+                        </div>
+                        <div class="o_phone_links" t-if="state.status === 'incall'">
+                            <button type="button" t-on-click="() => this.openPicker('campaign')">Add to campaign</button>
+                            <button type="button" t-if="state.partnerId" t-on-click="() => this.openContact(state.partnerId)">Open contact</button>
+                        </div>
+                        <div class="o_phone_callrow" t-att-class="state.status === 'incall' ? '' : 'o_phone_end'" style="padding-top:10px">
+                            <button type="button" class="o_phone_big end o_phone_hangup" t-on-click="() => this.hangup()" title="End call">
+                                <i class="fa fa-phone"/>
+                            </button>
+                        </div>
+                    </div>
+                </t>
+
+                <!-- ═══ Idle: the three tabs ═══ -->
+                <t t-else="">
+                    <div t-if="ui.tab === 'recent'" class="o_phone_scr">
+                        <label class="o_phone_search">
+                            <i class="fa fa-search"/>
+                            <input type="text" placeholder="Search contacts…" t-att-value="ui.search"
+                                   t-on-input="(ev) => this.onSearch(ev)"/>
+                        </label>
+                        <div class="o_phone_scroll">
+                            <t t-if="ui.contacts.length">
+                                <div class="o_phone_day">Contacts</div>
+                                <div class="o_phone_row" t-foreach="ui.contacts" t-as="p" t-key="'p' + p.id">
+                                    <t t-set="pav" t-value="avatar(p.name)"/>
+                                    <span class="o_phone_av" t-att-class="pav.cls" t-esc="pav.text"/>
+                                    <button type="button" class="o_phone_t" t-on-click="() => this.openContact(p.id)">
+                                        <b t-esc="p.name"/><span t-esc="p.number"/>
+                                    </button>
+                                    <button type="button" class="o_phone_go" title="Call" t-on-click="() => this.call(p.number, p.name)">
+                                        <i class="fa fa-phone"/>
+                                    </button>
+                                </div>
+                            </t>
+                            <t t-foreach="days" t-as="day" t-key="day.label">
+                                <div class="o_phone_day" t-esc="day.label"/>
+                                <div class="o_phone_row" t-foreach="day.rows" t-as="c" t-key="c.id">
+                                    <span class="o_phone_av" t-att-class="c.av.cls" t-esc="c.av.text"/>
+                                    <button type="button" class="o_phone_t" t-on-click="() => this.openContact(c.partner_id)">
+                                        <b t-esc="c.name"/>
+                                        <span t-att-class="c.line.miss ? 'miss' : ''"><t t-esc="c.line.text"/>
+                                            <span t-if="c.campaign" class="o_phone_chip" t-esc="c.campaign"/></span>
+                                    </button>
+                                    <time t-esc="c.time"/>
+                                    <button type="button" class="o_phone_go" title="Call" t-att-disabled="!c.number"
+                                            t-on-click="() => this.call(c.number, c.partner_id ? c.name : '')">
+                                        <i class="fa fa-phone"/>
+                                    </button>
+                                </div>
+                            </t>
+                            <div t-if="!ui.calls.length and !ui.contacts.length" class="o_phone_empty">
+                                <t t-if="ui.loading">Loading…</t>
+                                <t t-elif="ui.search">Nothing matches "<t t-esc="ui.search"/>".</t>
+                                <t t-else="">No calls yet. Calls you make and take here will be listed.</t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div t-elif="ui.tab === 'activities'" class="o_phone_scr">
+                        <div class="o_phone_scroll">
+                            <div class="o_phone_row" t-foreach="ui.activities" t-as="a" t-key="a.id">
+                                <t t-set="aav" t-value="avatar(a.name)"/>
+                                <span class="o_phone_av" t-att-class="aav.cls" t-esc="aav.text"/>
+                                <button type="button" class="o_phone_t" t-on-click="() => this.openRecord(a.res_model, a.res_id)">
+                                    <b t-esc="a.name"/>
+                                    <span t-att-class="a.late ? 'miss' : ''">
+                                        <t t-esc="a.summary"/> ·
+                                        <t t-if="a.late">overdue since <t t-esc="a.due"/></t>
+                                        <t t-elif="a.today">today</t>
+                                        <t t-else="">due <t t-esc="a.due"/></t>
+                                    </span>
+                                </button>
+                                <button type="button" class="o_phone_go" title="Call" t-att-disabled="!a.number"
+                                        t-on-click="() => this.call(a.number, a.name)">
+                                    <i class="fa fa-phone"/>
+                                </button>
+                            </div>
+                            <div t-if="!ui.activities.length" class="o_phone_empty">
+                                <t t-if="ui.loading">Loading…</t>
+                                <t t-else="">No call activities assigned to you.</t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div t-else="" class="o_phone_scr">
+                        <div class="o_phone_num">
+                            <input type="text" inputmode="tel" t-model="ui.number" placeholder="Number or extension"
+                                   aria-label="Number or extension" t-on-keydown="(ev) => this.onNumberKeydown(ev)"/>
+                            <button type="button" t-if="ui.number" t-on-click="() => this.backspace()" title="Delete">
+                                <i class="fa fa-long-arrow-left"/>
+                            </button>
+                        </div>
+                        <div t-if="banner" class="o_phone_banner" t-att-class="banner.bad ? 'bad' : ''" role="status">
+                            <t t-esc="banner.text"/>
+                            <button type="button" t-if="banner.retry" t-on-click="() => this.retry()">Try again</button>
+                        </div>
+                        <div class="o_phone_pad">
+                            <button type="button" t-foreach="keys" t-as="k" t-key="k[0]" t-on-click="() => this.press(k[0])">
+                                <b t-esc="k[0]"/><small t-if="k[1]" t-esc="k[1]"/>
+                            </button>
+                        </div>
+                        <div class="o_phone_callrow">
+                            <button type="button" class="o_phone_big o_phone_dial" title="Call"
+                                    t-att-disabled="!canCall or !ui.number.trim()" t-on-click="() => this.callNow()">
+                                <i class="fa fa-phone"/>
+                            </button>
+                        </div>
+                    </div>
+                </t>
+            </div>
+
+            <div class="o_phone_foot" t-if="!live">
+                <button type="button" t-foreach="tabs" t-as="tab" t-key="tab[0]"
+                        t-att-class="ui.tab === tab[0] ? 'on' : ''" t-on-click="() => this.setTab(tab[0])">
+                    <i t-attf-class="fa {{tab[2]}}"/><t t-esc="tab[1]"/>
                 </button>
             </div>
-            <div class="o_dialer_sp_dp_status alert alert-warning py-1 px-2 mb-2"
-                 t-if="!canCall" role="status" t-esc="connLabel"/>
-            <div class="o_dialer_sp_dp_input">
-                <input type="text" t-model="dial.value" placeholder="Number or extension"
-                       t-on-keydown="(ev) => this.onKeydown(ev)"/>
-                <button class="btn btn-sm btn-light" t-on-click="() => this.backspace()" title="Backspace">
-                    <i class="fa fa-long-arrow-left"/>
-                </button>
-            </div>
-            <div class="o_dialer_sp_dp_keys">
-                <button class="btn btn-light o_dp_key" t-foreach="keypad" t-as="k" t-key="k"
-                        t-on-click="() => this.press(k)" t-esc="k"/>
-            </div>
-            <button class="btn btn-success o_dialer_sp_dp_call" t-on-click="() => this.callNow()"
-                    t-att-disabled="!canCall">
-                <i class="fa fa-phone"/> Call
-            </button>
         </div>
     </t>
 

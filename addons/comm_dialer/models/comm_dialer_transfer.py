@@ -42,6 +42,22 @@ class CommDialerTransfer(models.Model):
     ], default='requested', index=True)
     error = fields.Char('Error')
 
+    @api.model
+    def _request(self, call, target, mode='blind'):
+        """Create the transfer request the dialer_ari service acts on. Shared by
+        the wizard and the softphone card."""
+        if call.state != 'in_progress':
+            raise UserError(_("Only a call in progress can be transferred."))
+        if not target.sip_ext:
+            raise UserError(_("The chosen agent has no SIP endpoint."))
+        return self.create({
+            'call_id': call.id,
+            'mode': 'attended' if mode == 'attended' else 'blind',
+            'target_agent_session_id': target.id,
+            'target_endpoint': 'PJSIP/%s' % target.sip_ext,
+            'target_session_id': target.id,
+        })
+
     # ── Attended-transfer decisions (the service acts on the state change) ──
     def action_complete(self):
         for t in self:
@@ -81,18 +97,9 @@ class CommDialerTransferWizard(models.TransientModel):
 
     def action_transfer(self):
         self.ensure_one()
-        if self.call_id.state != 'in_progress':
-            raise UserError(_("Only a call in progress can be transferred."))
+        xfer = self.env['comm.dialer.transfer']._request(
+            self.call_id, self.target_agent_session_id, self.mode)
         tgt = self.target_agent_session_id
-        if not tgt.sip_ext:
-            raise UserError(_("The chosen agent has no SIP endpoint."))
-        xfer = self.env['comm.dialer.transfer'].create({
-            'call_id': self.call_id.id,
-            'mode': self.mode,
-            'target_agent_session_id': tgt.id,
-            'target_endpoint': 'PJSIP/%s' % tgt.sip_ext,
-            'target_session_id': tgt.id,
-        })
         if self.mode == 'attended':
             # Open the consult control panel — the caller goes on hold while the
             # agent talks to the target, then Complete or Cancel from here.

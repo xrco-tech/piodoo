@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Comm Dialer — Progressive / Predictive',
-    'version': '18.0.1.2.0',
+    'version': '18.0.1.3.0',
     'category': 'Communications',
     'summary': 'Outbound dialer: campaigns, call lists, agent pacing (preview / progressive / predictive)',
     'description': """
@@ -53,7 +53,7 @@ provider is wired into comm.voip.account.originate/bridge).
             'comm_dialer/static/src/softphone/softphone.scss',
             'comm_dialer/static/src/softphone/softphone_service.js',
             'comm_dialer/static/src/softphone/softphone_systray.js',
-            'comm_dialer/static/src/softphone/softphone_bar.js',
+            'comm_dialer/static/src/softphone/softphone_card.js',
             'comm_dialer/static/src/softphone/softphone.xml',
         ],
     },

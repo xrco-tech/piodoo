@@ -1,0 +1,22 @@
+// Dark bundle: the phone card only redefines its tokens.
+.o_phone_card, .o_phone_pill {
+    --pc-card: #22252c;
+    --pc-line: #363b46;
+    --pc-fg: #e7e9ee;
+    --pc-muted: #9aa2b1;
+    --pc-soft: #2a2e37;
+    --pc-hover: #2d313b;
+    --pc-accent: #4fc3c9;
+    --pc-accent-soft: #1d3a3d;
+    --pc-green: #22b25a;
+    --pc-green2: #3fca75;
+    --pc-red: #ef6b6b;
+    --pc-red-soft: #40201f;
+    --pc-amber: #f2c66b;
+    --pc-amber-soft: #3d3115;
+    --pc-shadow: 0 8px 28px rgba(0, 0, 0, .5);
+}
+.o_phone_card.o_phone_wa, .o_phone_pill.o_phone_wa {
+    --pc-accent: #3fcf7a;
+    --pc-accent-soft: #1b3a28;
+}
