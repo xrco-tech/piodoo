@@ -65,7 +65,8 @@
                                 </b>
                                 <p t-if="state.view === 'inbox'">
                                     <em><t t-if="row.preview_out">You: </t><t t-esc="row.preview or row.phone"/></em>
-                                    <span t-if="row.needs_reply" class="o_c2w_cnt" title="Needs a reply">!</span>
+                                    <span t-if="row.help" class="o_c2w_tag help" t-att-title="row.help">Needs help</span>
+                                    <span t-elif="row.needs_reply" class="o_c2w_cnt" title="Needs a reply">!</span>
                                     <span t-elif="row.callback" class="o_c2w_tag warn">Callback</span>
                                     <span t-else="" t-attf-class="o_c2w_tag {{ tagClass(row.stage) }}" t-esc="row.stage_label"/>
                                 </p>
@@ -164,6 +165,17 @@
                             </b>
                             <p>Everything this candidate has done with Chat2Work, across every channel</p>
                         </div>
+                        <div t-if="state.boot.ai and timeline.length" class="o_c2w_sum">
+                            <t t-if="ai.summary">
+                                <b><i class="fa fa-magic"/> Catch-up</b>
+                                <p t-esc="ai.summary"/>
+                                <span>Written by the assistant from this timeline. Check the thread before relying on it.</span>
+                            </t>
+                            <button t-else="" type="button" t-att-disabled="ai.busy" t-on-click="catchUp">
+                                <i t-attf-class="fa {{ ai.busy === 'summary' ? 'fa-circle-o-notch fa-spin' : 'fa-magic' }}"/>
+                                <t t-esc="ai.busy === 'summary' ? 'Reading the thread…' : 'Catch me up'"/>
+                            </button>
+                        </div>
                         <t t-foreach="timeline" t-as="m" t-key="m.key">
                             <div t-if="m.kind === 'day'" class="o_c2w_day" t-esc="m.label"/>
                             <div t-elif="m.kind === 'event'" class="o_c2w_evt">
@@ -216,6 +228,11 @@
                                 <button type="button" t-att-class="channel === 'sms' ? 'on' : ''" t-on-click="() => this.setChannel('sms')"><i class="fa fa-commenting-o"/> SMS</button>
                             </t>
                             <span t-else="">Sends by SMS</span>
+                            <button t-if="state.boot.ai and !composerLock" class="o_c2w_draft" type="button" t-att-disabled="ai.busy" t-on-click="draftReply"
+                                    title="Writes a reply for you to edit. Nothing is sent until you send it.">
+                                <i t-attf-class="fa {{ ai.busy === 'draft' ? 'fa-circle-o-notch fa-spin' : 'fa-magic' }}"/>
+                                <t t-esc="ai.busy === 'draft' ? 'Drafting…' : 'Draft reply'"/>
+                            </button>
                             <button t-if="!composerLock" class="o_c2w_tpl" type="button" t-on-click="openTemplates">
                                 <i class="fa fa-file-text-o"/> <t t-esc="channel === 'sms' ? 'SMS templates' : 'Templates'"/>
                             </button>
@@ -227,7 +244,7 @@
                         </t>
                         <t t-else="">
                             <div class="o_c2w_box">
-                                <textarea rows="1" t-att-placeholder="composerPlaceholder" t-att-value="state.composer"
+                                <textarea rows="1" t-ref="composer" t-att-placeholder="composerPlaceholder" t-att-value="state.composer"
                                           t-on-input="onComposerInput" t-on-keydown="onComposerKeydown"/>
                                 <button type="button" title="Send" t-att-disabled="state.sending or !state.composer.trim()" t-on-click="send">
                                     <i t-attf-class="fa {{ state.sending ? 'fa-circle-o-notch fa-spin' : 'fa-paper-plane' }}"/>
@@ -399,6 +416,12 @@
                 <t t-if="state.view === 'inbox'">
                     <t t-set="c" t-value="state.detail"/>
                     <h4><i class="fa fa-info-circle"/> Candidate</h4>
+                    <div t-if="c.next_step" class="o_c2w_next">
+                        <h5>Next step</h5>
+                        <p t-esc="c.next_step.text"/>
+                        <p t-if="c.help" class="o_c2w_why"><i class="fa fa-life-ring"/> Needs help: <t t-esc="c.help"/></p>
+                        <button t-if="c.next_step.action" class="o_c2w_wide" type="button" t-att-disabled="ai.busy" t-on-click="nextStep" t-esc="c.next_step.label"/>
+                    </div>
                     <div>
                         <h5>Stage</h5>
                         <t t-call="chat2work_workspace.Radio">
@@ -438,6 +461,21 @@
                     <button class="o_c2w_wide" type="button" t-on-click="helpBuildCv"><i class="fa fa-pencil-square-o"/> Help build CV</button>
                     <button class="o_c2w_wide" type="button" t-on-click="() => this.candidateAction('action_resend_cv_link', c.id, 'CV link queued')"><i class="fa fa-file-text-o"/> Send CV link again</button>
                     <button class="o_c2w_wide" type="button" t-on-click="() => this.candidateAction('action_c2w_send_jobs')"><i class="fa fa-briefcase"/> Send jobs</button>
+                    <div t-if="state.boot.ai" class="o_c2w_ask">
+                        <h5>Ask about this candidate</h5>
+                        <div t-foreach="ai.chat" t-as="item" t-key="item_index" class="o_c2w_qa">
+                            <b t-esc="item.q"/>
+                            <p t-esc="item.a"/>
+                        </div>
+                        <div class="o_c2w_askbox">
+                            <input type="text" maxlength="500" placeholder="e.g. Have they sent a CV?" t-att-value="ai.question"
+                                   t-att-disabled="ai.busy === 'ask'" t-on-input="onAskInput" t-on-keydown="onAskKeydown"/>
+                            <button type="button" title="Ask" t-att-disabled="ai.busy or !ai.question.trim()" t-on-click="ask">
+                                <i t-attf-class="fa {{ ai.busy === 'ask' ? 'fa-circle-o-notch fa-spin' : 'fa-arrow-up' }}"/>
+                            </button>
+                        </div>
+                        <span>Answers come only from this candidate's record and timeline.</span>
+                    </div>
                 </t>
 
                 <t t-elif="state.view === 'cand'">

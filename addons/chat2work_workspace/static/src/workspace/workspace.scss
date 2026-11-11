@@ -270,6 +270,7 @@
         white-space: nowrap;
 
         &.warn { background: var(--c2w-warn-bg); color: var(--c2w-warn-fg); border: 1px solid var(--c2w-warn-line); }
+        &.help { background: var(--c2w-red); color: #fff; }
         &.ok { background: var(--c2w-ok-bg); color: var(--c2w-ok-fg); border: 1px solid var(--c2w-ok-line); }
         &.plain { background: var(--c2w-sel); color: var(--c2w-muted); border: 1px solid var(--c2w-line); }
     }
@@ -714,6 +715,61 @@
 
         dt { color: var(--c2w-muted); font-weight: 400; }
         dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+    }
+    // The assistant: catch-up in the thread, next step and questions in the information card.
+    .o_c2w_sum {
+        flex: none;
+        max-width: 560px;
+
+        button, &:has(> b) {
+            border: 1px solid var(--c2w-line);
+            border-radius: 12px;
+            background: var(--c2w-card);
+        }
+        button { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px; font-size: 13px; }
+        &:has(> b) { padding: 9px 12px; }
+        b { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+        p { margin: 4px 0; white-space: pre-line; }
+        span { color: var(--c2w-muted); font-size: 11.5px; }
+    }
+    .o_c2w_draft { margin-left: auto; }
+    .o_c2w_via .o_c2w_draft + .o_c2w_tpl { margin-left: 0; }
+    .o_c2w_next {
+        padding: 9px 10px;
+        border: 1px solid var(--c2w-hiline);
+        border-radius: 10px;
+        background: var(--c2w-accent-soft);
+
+        p { margin: 2px 0 0; font-size: 13px; }
+        .o_c2w_why { color: var(--c2w-warn-fg); font-weight: 600; }
+        .o_c2w_wide { margin-top: 8px; background: var(--c2w-card); }
+    }
+    .o_c2w_ask {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+
+        > span { color: var(--c2w-muted); font-size: 11.5px; }
+    }
+    .o_c2w_qa {
+        font-size: 13px;
+
+        b { display: block; font-weight: 600; }
+        p { margin: 1px 0 0; white-space: pre-line; }
+    }
+    .o_c2w_askbox {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 4px 3px 11px;
+        border: 1px solid var(--c2w-line);
+        border-radius: 999px;
+        background: var(--c2w-card);
+
+        input { flex: 1; min-width: 0; border: 0; background: none; color: var(--c2w-fg); outline: none; font-size: 13px; }
+        button { flex: none; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--c2w-brand); color: var(--c2w-on-brand); }
+        button:disabled { opacity: .4; }
+        &:focus-within { border-color: var(--c2w-accent); }
     }
     .o_c2w_wide {
         display: flex;
