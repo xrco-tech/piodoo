@@ -188,6 +188,15 @@
   .step p{color:var(--muted);font-size:.92rem;margin:8px 0 0}
 
   /* contact */
+  .product{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:32px;box-shadow:var(--shadow)}
+  .product img{width:72px;height:72px;border-radius:16px}
+  .product h3{font-size:22px;margin:0 0 6px}
+  .product .by{color:var(--muted);font-size:14px;margin:0 0 14px}
+  .product p{margin:0 0 12px}
+  .product ul{margin:0 0 18px;padding-left:20px;color:var(--muted)}
+  .product li{margin:4px 0}
+  .product .links{display:flex;gap:12px;flex-wrap:wrap}
+  @media (max-width:640px){.product{grid-template-columns:1fr;padding:24px}}
   .contact{
     background:linear-gradient(180deg,var(--surface),var(--surface-2));
     border:1px solid var(--line);border-radius:20px;padding:52px 48px;
@@ -237,6 +246,7 @@
     <nav class="nav-links">
       <a href="#capabilities">Capabilities</a>
       <a href="#work">What we build</a>
+      <a href="#chat2work">Chat2Work</a>
       <a href="#approach">Approach</a>
       <a href="#contact">Contact</a>
     </nav>
@@ -398,6 +408,35 @@
     </div>
   </section>
 
+  <!-- PRODUCTS -->
+  <section id="chat2work">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Our products</span>
+        <h2>Chat2Work by XR Co.</h2>
+        <p>Products we build, own and run ourselves.</p>
+      </div>
+      <div class="product">
+        <img src="chat2work_icon.png" alt="Chat2Work logo" width="72" height="72">
+        <div>
+          <h3>Chat2Work</h3>
+          <p class="by">A product of XR Co. (Pty) Ltd (Xolani Radebe Co.), Johannesburg, South Africa</p>
+          <p>Chat2Work connects South African job seekers with work. Candidates sign up, build a CV and book interviews from their phone over chat, USSD or SMS, with no app or data-heavy website needed.</p>
+          <ul>
+            <li>Create a profile and a CV in a few messages</li>
+            <li>Browse open roles and book interview slots</li>
+            <li>Get confirmations, reminders and updates by message</li>
+            <li>Ask for a call back from the Chat2Work team</li>
+          </ul>
+          <div class="links">
+            <a class="btn btn-ghost" href="/c2w-terms">Chat2Work terms &amp; privacy</a>
+            <a class="btn btn-ghost" href="mailto:hello@xrco.tech?subject=Chat2Work">Contact the Chat2Work team</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- CONTACT -->
   <section id="contact">
     <div class="wrap">
@@ -419,7 +458,7 @@
   <div class="wrap foot">
     <a class="brand" href="#top"><img class="mark" src="xrco_logo.png" alt="XRCO logo" width="32" height="32"><span class="word">XRCO<span class="dot">.</span></span></a>
     <p>Software · Odoo · AI automation — Johannesburg, ZA</p>
-    <p>© 2026 XRCO</p>
+    <p>© 2026 XR Co. (Pty) Ltd · Chat2Work is a product of XR Co.</p>
   </div>
 </footer>
 
