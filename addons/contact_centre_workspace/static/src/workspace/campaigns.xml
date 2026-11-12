@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="contact_centre_workspace.Campaigns">
+
+        <!-- ── List ─────────────────────────────────────────────────── -->
+        <section class="o_ccw_card o_ccw_list">
+            <div class="o_ccw_searchrow">
+                <label class="o_ccw_search">
+                    <i class="fa fa-search"/>
+                    <input type="text" placeholder="Search campaigns" aria-label="Search campaigns"
+                           t-att-value="state.search" t-on-input="onSearch"/>
+                </label>
+                <button t-if="state.canManage" type="button" class="o_ccw_ib" title="New campaign" aria-label="New campaign" t-on-click="newCampaign"><i class="fa fa-plus"/></button>
+            </div>
+            <div class="o_ccw_pills">
+                <button t-foreach="pills" t-as="p" t-key="p.key" type="button"
+                        t-att-class="{ on: state.pill === p.key }" t-on-click="() => this.setPill(p.key)" t-esc="p.label"/>
+            </div>
+            <div class="o_ccw_rows">
+                <button t-foreach="state.rows" t-as="row" t-key="row.id" type="button" class="o_ccw_row"
+                        t-att-class="{ on: row.id === state.sel }" t-on-click="() => this.open(row.id)">
+                    <span class="o_ccw_av o_ccw_sys"><i t-attf-class="fa {{icon(row.channel)}}"/></span>
+                    <span class="o_ccw_rt">
+                        <b><em t-esc="row.name"/><time t-esc="when(row.at)"/></b>
+                        <span class="o_ccw_prev">
+                            <em class="o_ccw_cstat" t-att-title="row.type_label">
+                                <i t-attf-class="fa {{row.type === 'inbound' ? 'fa-arrow-down' : 'fa-arrow-up'}}"/> <t t-esc="line(row)"/>
+                            </em>
+                            <span class="o_ccw_tag" t-att-class="stateClass(row.state)" t-esc="row.state_label"/>
+                        </span>
+                    </span>
+                </button>
+                <button t-if="state.more" type="button" class="o_ccw_more" t-on-click="loadMore">Show more</button>
+                <div t-if="!state.rows.length and !state.loading" class="o_ccw_empty">No campaigns here.</div>
+            </div>
+            <div t-if="state.rows.length" class="o_ccw_total" t-esc="totalText"/>
+        </section>
+
+        <!-- ── One campaign ─────────────────────────────────────────── -->
+        <section class="o_ccw_main">
+            <div t-if="!state.campaign" class="o_ccw_none">
+                <t t-if="state.loadingCampaign">Loading…</t>
+                <t t-else="">Pick a campaign to see it here.</t>
+            </div>
+            <t t-else="">
+                <t t-set="campaign" t-value="state.campaign"/>
+                <div class="o_ccw_mhead">
+                    <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to campaigns" t-on-click="showList"><i class="fa fa-chevron-left"/></button>
+                    <div class="o_ccw_card o_ccw_who">
+                        <span class="o_ccw_av o_ccw_sys"><i t-attf-class="fa {{icon(campaign.channel)}}"/></span>
+                        <b t-esc="campaign.name"/>
+                        <span class="o_ccw_tag" t-att-class="stateClass(campaign.state)" t-esc="campaign.state_label"/>
+                    </div>
+                    <div class="o_ccw_acts">
+                        <button type="button" class="o_ccw_tpl" title="Conversations with this campaign's contacts" aria-label="Conversations" t-on-click="openInbox"><i class="fa fa-comments-o"/> <span>Conversations</span></button>
+                        <button type="button" class="o_ccw_ib o_ccw_keep" t-att-class="{ on: state.infoOpen }" title="Set-up and actions" aria-label="Set-up and actions"
+                                t-on-click="toggleInfo"><i class="fa fa-info-circle"/></button>
+                    </div>
+                </div>
+
+                <div class="o_ccw_calldetail">
+                    <div class="o_ccw_stats" t-att-class="{ two: campaign.stats.length === 2 }">
+                        <div t-foreach="campaign.stats" t-as="stat" t-key="stat.label" class="o_ccw_card" t-att-class="{ bad: stat.bad }">
+                            <b t-esc="stat.value"/><span t-esc="stat.label"/>
+                        </div>
+                    </div>
+
+                    <div t-if="campaign.progress" class="o_ccw_card o_ccw_csec">
+                        <div class="o_ccw_shead">
+                            <h5>Sending</h5>
+                            <span class="o_ccw_muted"><t t-esc="campaign.progress.done"/> of <t t-esc="campaign.progress.total"/> contacts</span>
+                        </div>
+                        <div class="o_ccw_bar" role="progressbar" aria-valuemin="0" t-att-aria-valuemax="campaign.progress.total" t-att-aria-valuenow="campaign.progress.done">
+                            <i t-att-style="'width:' + progressWidth"/>
+                        </div>
+                    </div>
+
+                    <div t-if="campaign.outbound or campaign.description" class="o_ccw_card o_ccw_csec">
+                        <t t-if="campaign.outbound">
+                            <div class="o_ccw_shead">
+                                <h5>Message</h5>
+                                <span t-if="campaign.template" class="o_ccw_muted" t-esc="campaign.template.name"/>
+                            </div>
+                            <div t-if="campaign.template" class="o_ccw_suggest" t-esc="campaign.template.body"/>
+                            <p t-else="" class="o_ccw_bad">No template chosen yet. The campaign cannot start without one.</p>
+                        </t>
+                        <p t-if="campaign.description" class="o_ccw_ctext" t-esc="campaign.description"/>
+                    </div>
+
+                    <div class="o_ccw_card o_ccw_csec">
+                        <div class="o_ccw_shead">
+                            <h5>Contacts</h5>
+                            <span t-if="campaign.people_more > 0" class="o_ccw_muted">First <t t-esc="campaign.people.length"/> shown, <t t-esc="campaign.people_more"/> more</span>
+                        </div>
+                        <p t-if="!campaign.people.length" class="o_ccw_muted">No contacts in this campaign yet.</p>
+                        <div class="o_ccw_chist">
+                            <button t-foreach="campaign.people" t-as="person" t-key="person.id" type="button" class="o_ccw_row"
+                                    title="Open the conversation" t-on-click="() => props.openConversation(person.id)">
+                                <span class="o_ccw_av" t-esc="person.initials"/>
+                                <span class="o_ccw_rt">
+                                    <b><em t-esc="person.name"/></b>
+                                    <span class="o_ccw_prev">
+                                        <em><t t-if="person.failure" t-esc="person.failure"/><t t-else="" t-esc="person.phone"/></em>
+                                        <span t-if="person.status" class="o_ccw_tag" t-att-class="statusClass(person.status)" t-esc="person.status_label"/>
+                                        <span t-elif="campaign.outbound and campaign.state !== 'draft'" class="o_ccw_tag plain">Not sent</span>
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div t-if="campaign.log.length" class="o_ccw_card o_ccw_csec">
+                        <h5>Latest messages</h5>
+                        <div t-foreach="campaign.log" t-as="m" t-key="m.id" class="o_ccw_act">
+                            <span class="o_ccw_tag" t-att-class="statusClass(m.status)" t-esc="m.status_label || badge(m.channel)"/>
+                            <em t-att-class="{ fail: m.status === 'failed' }">
+                                <i t-attf-class="fa {{m.out ? 'fa-arrow-up' : 'fa-arrow-down'}}"/> <b t-esc="m.name"/> <t t-esc="m.failure || m.preview"/>
+                            </em>
+                            <time t-esc="when(m.at)"/>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </section>
+
+        <!-- ── Actions and set-up ───────────────────────────────────── -->
+        <aside t-if="state.campaign and state.infoOpen" class="o_ccw_card o_ccw_info">
+            <t t-set="campaign" t-value="state.campaign"/>
+            <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to the campaign" t-on-click="showCampaign"><i class="fa fa-chevron-left"/></button>
+
+            <div t-if="campaign.actions.length" class="o_ccw_cactions">
+                <t t-if="state.confirm">
+                    <p class="o_ccw_confirm" t-esc="confirmText"/>
+                    <button type="button" t-att-class="state.confirm === 'cancel' ? 'o_ccw_wide danger' : 'o_ccw_primary'" t-att-disabled="state.working" t-on-click="run">
+                        <t t-if="state.working">Working…</t><t t-else="" t-esc="actionLabel(state.confirm)"/>
+                    </button>
+                    <button type="button" class="o_ccw_wide" t-att-disabled="state.working" t-on-click="back">Go back</button>
+                </t>
+                <t t-else="">
+                    <button t-foreach="campaign.actions" t-as="action" t-key="action" type="button"
+                            t-att-class="action === 'start' ? 'o_ccw_primary' : (action === 'cancel' ? 'o_ccw_wide danger' : 'o_ccw_wide')"
+                            t-on-click="() => this.ask(action)" t-esc="actionLabel(action)"/>
+                </t>
+                <p t-if="state.error" class="o_ccw_bad" t-esc="state.error"/>
+            </div>
+            <p t-elif="!campaign.can_manage" class="o_ccw_muted">Only managers can start or stop a campaign.</p>
+
+            <div>
+                <h5>Set-up</h5>
+                <dl class="o_ccw_kv">
+                    <t t-foreach="facts" t-as="d" t-key="d.label"><dt t-esc="d.label"/><dd t-esc="d.value"/></t>
+                    <t t-foreach="campaign.rules" t-as="d" t-key="d.label"><dt t-esc="d.label"/><dd t-esc="d.value"/></t>
+                </dl>
+            </div>
+            <div>
+                <h5>Automated replies</h5>
+                <p t-if="!campaign.automations.length" class="o_ccw_muted">None.</p>
+                <div t-foreach="campaign.automations" t-as="automation" t-key="automation.id" class="o_ccw_camp">
+                    <span><b t-esc="automation.name"/><small><t t-esc="automation.trigger"/><t t-if="automation.keyword">: <t t-esc="automation.keyword"/></t></small></span>
+                    <span t-if="!automation.active" class="o_ccw_tag plain">Off</span>
+                </div>
+            </div>
+            <button type="button" class="o_ccw_link" t-on-click="openRecord">
+                <t t-if="campaign.can_manage">Edit the campaign</t><t t-else="">Open the full record</t>
+            </button>
+        </aside>
+    </t>
+
+</templates>

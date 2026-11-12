@@ -20,6 +20,10 @@
                     <span class="o_ccw_pill"><i class="fa fa-address-book-o"/></span>
                     Contacts
                 </button>
+                <button type="button" t-att-class="{ on: state.section === 'campaigns' }" t-on-click="() => this.showSection('campaigns')">
+                    <span class="o_ccw_pill"><i class="fa fa-bullhorn"/></span>
+                    Campaigns
+                </button>
                 <button t-foreach="state.boot.rail" t-as="entry" t-key="entry.key" type="button" t-on-click="() => this.openRail(entry)">
                     <span class="o_ccw_pill"><i t-attf-class="fa {{entry.icon}}"/></span>
                     <t t-esc="entry.label"/>
@@ -30,10 +34,15 @@
                                 setPane.bind="setSectionPane" openConversation.bind="openConversation"/>
             <ContactCentreContacts t-elif="state.section === 'contacts'" boot="state.boot"
                                    setPane.bind="setSectionPane" openConversation.bind="openConversation"/>
+            <ContactCentreCampaigns t-elif="state.section === 'campaigns'" boot="state.boot" setPane.bind="setSectionPane"
+                                    openConversation.bind="openConversation" openCampaignInbox.bind="openCampaignInbox"/>
             <t t-else="">
             <!-- ── List ─────────────────────────────────────────────── -->
             <section class="o_ccw_card o_ccw_list">
-                <div t-if="campaignId" class="o_ccw_scope"><i class="fa fa-bullhorn"/> <t t-esc="campaignName"/></div>
+                <div t-if="state.campaign" class="o_ccw_scope">
+                    <i class="fa fa-bullhorn"/> <span t-esc="state.campaign.name"/>
+                    <button type="button" title="Show all conversations" aria-label="Show all conversations" t-on-click="clearCampaign"><i class="fa fa-times"/></button>
+                </div>
                 <label class="o_ccw_search">
                     <i class="fa fa-search"/>
                     <input type="text" placeholder="Search name, phone, email" aria-label="Search conversations"

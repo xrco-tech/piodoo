@@ -123,7 +123,19 @@
         padding: 8px;
         overflow: hidden;
     }
-    .o_ccw_scope { padding: 2px 4px; font-weight: 600; }
+    .o_ccw_scope {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 6px 4px 10px;
+        border: 1px solid var(--ccw-hiline);
+        border-radius: 8px;
+        background: var(--ccw-accent-soft);
+        font-weight: 600;
+
+        span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        button { flex: none; padding: 2px 6px; border: 0; background: none; }
+    }
     .o_ccw_search {
         display: flex;
         align-items: center;
@@ -941,8 +953,43 @@
         small { color: var(--ccw-muted); }
     }
 }
+
+// ── Campaigns section ───────────────────────────────────────────────────
+.o_ccw {
+    .o_ccw_stats.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_ccw_stats .bad b { color: var(--ccw-red); }
+    .o_ccw_who .o_ccw_tag { color: inherit; }
+    .o_ccw_who .o_ccw_tag.ok { color: var(--ccw-ok-fg); }
+    .o_ccw_who .o_ccw_tag.warn { color: var(--ccw-warn-fg); }
+    .o_ccw_bar {
+        height: 8px;
+        border-radius: 999px;
+        background: var(--ccw-sel);
+        overflow: hidden;
+
+        i { display: block; height: 100%; border-radius: 999px; background: var(--ccw-green); }
+    }
+    .o_ccw_act em b { font-weight: 600; }
+    .o_ccw_cactions {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+
+        .o_ccw_primary { width: 100%; }
+    }
+    .o_ccw_confirm {
+        padding: 8px 10px;
+        border: 1px solid var(--ccw-warn-line);
+        border-radius: 8px;
+        background: var(--ccw-warn-bg);
+        color: var(--ccw-warn-fg);
+        font-size: 13px;
+    }
+}
 @media (max-width: 767.98px) {
     .o_ccw .o_ccw_stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_ccw .o_ccw_acts .o_ccw_tpl { padding: 10px 14px; }
+    .o_ccw .o_ccw_acts .o_ccw_tpl span { display: none; }
 }
 
 // The web client lays an action out as a column; the workspace is a row of panes.
