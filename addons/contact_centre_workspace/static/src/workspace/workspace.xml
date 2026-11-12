@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="contact_centre_workspace.Workspace">
+        <div class="o_action o_ccw" t-att-class="{ o_ccw_oncall: phone.call }" t-att-data-pane="state.thread ? state.pane : 'list'">
+
+            <!-- ── Rail ─────────────────────────────────────────────── -->
+            <nav class="o_ccw_rail" aria-label="Workspace sections">
+                <button type="button" class="on" t-on-click="showList">
+                    <span class="o_ccw_pill"><i class="fa fa-comments-o"/></span>
+                    Inbox
+                    <span t-if="state.boot.counts.unread" class="o_ccw_cnt" t-esc="state.boot.counts.unread > 99 ? '99+' : state.boot.counts.unread"/>
+                </button>
+                <button t-foreach="state.boot.rail" t-as="entry" t-key="entry.key" type="button" t-on-click="() => this.openRail(entry)">
+                    <span class="o_ccw_pill"><i t-attf-class="fa {{entry.icon}}"/></span>
+                    <t t-esc="entry.label"/>
+                    <span t-if="entry.key === 'calls' and phone.missed" class="o_ccw_cnt" t-esc="phone.missed"/>
+                </button>
+            </nav>
+
+            <!-- ── List ─────────────────────────────────────────────── -->
+            <section class="o_ccw_card o_ccw_list">
+                <div t-if="campaignId" class="o_ccw_scope"><i class="fa fa-bullhorn"/> <t t-esc="campaignName"/></div>
+                <label class="o_ccw_search">
+                    <i class="fa fa-search"/>
+                    <input type="text" placeholder="Search name, phone, email" aria-label="Search conversations"
+                           t-att-value="state.search" t-on-input="onSearch"/>
+                </label>
+                <div class="o_ccw_pills">
+                    <button t-foreach="pills" t-as="p" t-key="p.key" type="button"
+                            t-att-class="{ on: state.pill === p.key }" t-on-click="() => this.setPill(p.key)">
+                        <t t-esc="p.label"/><b t-if="p.count" t-esc="p.count"/>
+                    </button>
+                </div>
+                <div class="o_ccw_rows">
+                    <button t-foreach="state.rows" t-as="row" t-key="row.id" type="button" class="o_ccw_row"
+                            t-att-class="{ on: row.id === state.sel, unread: row.unread }" t-on-click="() => this.open(row.id)">
+                        <span class="o_ccw_av" t-att-style="'background:' + row.colour">
+                            <t t-esc="row.initials"/>
+                            <small t-if="row.channel" t-esc="badge(row.channel)"/>
+                        </span>
+                        <span class="o_ccw_rt">
+                            <b><em t-esc="row.name"/><time t-esc="when(row.at)"/></b>
+                            <span class="o_ccw_prev">
+                                <em><t t-if="row.out">You: </t><t t-esc="row.preview"/></em>
+                                <span t-if="row.unread" class="o_ccw_cnt" t-esc="row.unread > 99 ? '99+' : row.unread"/>
+                                <span t-elif="row.state !== 'open'" class="o_ccw_tag" t-att-class="stateClass(row.state)" t-esc="stateLabel(row.state)"/>
+                            </span>
+                        </span>
+                    </button>
+                    <button t-if="state.more" type="button" class="o_ccw_more" t-on-click="loadMore">Show more</button>
+                    <div t-if="!state.rows.length and !state.loadingList" class="o_ccw_empty">No conversations here.</div>
+                </div>
+            </section>
+
+            <!-- ── Thread ───────────────────────────────────────────── -->
+            <section class="o_ccw_main">
+                <div t-if="!state.thread" class="o_ccw_none">
+                    <t t-if="state.loadingThread">Loading…</t>
+                    <t t-else="">Pick a conversation to see it here.</t>
+                </div>
+                <t t-else="">
+                    <t t-set="thread" t-value="state.thread"/>
+                    <div class="o_ccw_mhead">
+                        <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to conversations" t-on-click="showList"><i class="fa fa-chevron-left"/></button>
+                        <div class="o_ccw_card o_ccw_who">
+                            <span class="o_ccw_av" t-att-style="'background:' + thread.colour" t-esc="thread.initials"/>
+                            <b t-esc="thread.name"/>
+                            <span t-esc="thread.phone"/>
+                        </div>
+                        <div class="o_ccw_acts">
+                            <div class="o_ccw_pop">
+                                <button type="button" class="o_ccw_call" title="WhatsApp call" aria-label="WhatsApp call" t-on-click="toggleCallMenu"><i class="fa fa-whatsapp"/></button>
+                                <div t-if="state.menu === 'call'" class="o_ccw_card o_ccw_menu">
+                                    <h4>Call on WhatsApp</h4>
+                                    <button type="button" t-on-click="() => this.callWhatsApp(null)">No script</button>
+                                    <button t-foreach="state.voiceBots || []" t-as="bot" t-key="bot.id" type="button" t-on-click="() => this.callWhatsApp(bot)">
+                                        <i class="fa fa-list-ol"/> <t t-esc="bot.name"/>
+                                    </button>
+                                    <p t-if="state.voiceBots and !state.voiceBots.length">No published call scripts.</p>
+                                </div>
+                            </div>
+                            <button t-if="state.boot.voip" type="button" class="o_ccw_call" title="VoIP call" aria-label="VoIP call" t-on-click="callVoip"><i class="fa fa-phone"/></button>
+                            <button type="button" class="o_ccw_ib o_ccw_keep" t-att-class="{ on: state.infoOpen }" title="Information" aria-label="Information"
+                                    t-on-click="toggleInfo"><i class="fa fa-info-circle"/></button>
+                        </div>
+                    </div>
+
+                    <div t-if="phone.call" class="o_ccw_callstrip">
+                        <i class="fa fa-phone"/>
+                        <span>On a call with <t t-esc="phone.call.name"/></span>
+                        <b t-esc="callTime"/>
+                        <span t-if="phone.call.recording" class="o_ccw_rec"><i/>Recording</span>
+                        <span class="o_ccw_sp">
+                            <button type="button" t-on-click="callMute"><t t-if="phone.call.muted">Unmute</t><t t-else="">Mute</t></button>
+                            <button type="button" t-on-click="callTransfer">Transfer</button>
+                            <button type="button" class="end" t-on-click="callEnd">End call</button>
+                        </span>
+                    </div>
+
+                    <div t-if="waitingText" class="o_ccw_banner warn">
+                        <span t-esc="waitingText"/>
+                        <button t-if="thread.state === 'open'" type="button" t-on-click="() => this.setState('pending')">Mark as pending ›</button>
+                    </div>
+
+                    <div class="o_ccw_thread" t-ref="thread">
+                        <div t-if="!thread.messages.length" class="o_ccw_evt">No messages yet.</div>
+                        <t t-foreach="items" t-as="item" t-key="item.key">
+                            <div t-if="item.day" class="o_ccw_day" t-esc="item.day"/>
+                            <t t-else="">
+                                <t t-set="m" t-value="item.m"/>
+                                <div class="o_ccw_msg" t-att-class="{ out: m.out, auto: m.auto, fail: m.status === 'failed' }">
+                                    <span t-if="m.call" class="o_ccw_av o_ccw_sys"><i class="fa fa-phone"/></span>
+                                    <span t-elif="m.auto" class="o_ccw_av o_ccw_sys"><i class="fa fa-cogs"/></span>
+                                    <span t-elif="m.out" class="o_ccw_av o_ccw_me" t-esc="state.boot.me.initials"/>
+                                    <span t-else="" class="o_ccw_av" t-att-style="'background:' + thread.colour" t-esc="thread.initials"/>
+                                    <div class="o_ccw_mb">
+                                        <span class="o_ccw_meta"><b t-esc="sender(m)"/><t t-esc="item.time"/> · <t t-esc="channelLabel(m.channel)"/></span>
+                                        <div t-if="m.call" class="o_ccw_callcard">
+                                            <div class="o_ccw_body" t-esc="m.body"/>
+                                            <audio t-if="m.recording_url" controls="controls" preload="none" t-att-src="m.recording_url"/>
+                                            <div t-if="m.transcript" class="o_ccw_transcript" t-esc="m.transcript"/>
+                                            <div t-if="m.disposition" class="o_ccw_outcome">
+                                                <span class="o_ccw_tag ok" t-esc="m.disposition"/>
+                                                <span t-esc="m.disposition_note"/>
+                                            </div>
+                                        </div>
+                                        <div t-else="" class="o_ccw_bub">
+                                            <t t-esc="m.body"/>
+                                            <audio t-if="m.recording_url" controls="controls" preload="none" t-att-src="m.recording_url"/>
+                                            <div t-if="m.transcript" class="o_ccw_transcript" t-esc="m.transcript"/>
+                                            <button t-if="m.wa_message_id and m.recording_url and !m.transcript" type="button" class="o_ccw_link"
+                                                    t-att-disabled="state.transcribing" t-on-click="() => this.transcribe(m)">
+                                                <t t-if="state.transcribing === m.key">Transcribing…</t><t t-else="">Transcribe now</t>
+                                            </button>
+                                        </div>
+                                        <span t-if="m.status === 'failed'" class="o_ccw_note">Not sent<t t-if="m.failure">: <t t-esc="m.failure"/></t></span>
+                                    </div>
+                                </div>
+                            </t>
+                        </t>
+                    </div>
+
+                    <div class="o_ccw_comp">
+                        <span class="o_ccw_av o_ccw_me" t-esc="state.boot.me.initials"/>
+                        <div class="o_ccw_box" t-att-class="{ lock: composerLock }">
+                            <button type="button" class="o_ccw_chan" title="Switch between WhatsApp and SMS" t-on-click="toggleChannel">
+                                <t t-if="state.channel === 'whatsapp'">WhatsApp</t><t t-else="">SMS</t> <i class="fa fa-exchange"/>
+                            </button>
+                            <span t-if="composerLock" class="o_ccw_lock"><i class="fa fa-lock"/> <t t-esc="composerLock"/></span>
+                            <textarea t-else="" rows="1" t-ref="composer" aria-label="Reply" t-att-placeholder="'Reply to ' + thread.name + '…'"
+                                      t-att-value="state.text" t-on-input="onText" t-on-keydown="onKey"/>
+                            <button t-if="!composerLock" type="button" class="o_ccw_send" aria-label="Send" t-att-disabled="state.sending or !state.text.trim()" t-on-click="send"><i class="fa fa-paper-plane"/></button>
+                        </div>
+                        <div class="o_ccw_pop up">
+                            <button type="button" class="o_ccw_tpl" t-on-click="toggleTemplates">Send a template</button>
+                            <div t-if="state.menu === 'template'" class="o_ccw_card o_ccw_menu wide">
+                                <h4>Send a template</h4>
+                                <label>Channel
+                                    <select t-on-change="onTemplateChannel">
+                                        <option value="whatsapp" t-att-selected="state.tpl.channel === 'whatsapp'">WhatsApp</option>
+                                        <option value="sms" t-att-selected="state.tpl.channel === 'sms'">SMS</option>
+                                        <option value="email" t-att-selected="state.tpl.channel === 'email'">Email</option>
+                                    </select>
+                                </label>
+                                <label>Template
+                                    <select t-on-change="onTemplate">
+                                        <option value="">Choose a template</option>
+                                        <option t-foreach="state.tpl.list" t-as="tpl" t-key="tpl.id" t-att-value="tpl.id" t-att-selected="tpl.id === state.tpl.id" t-esc="tpl.name"/>
+                                    </select>
+                                </label>
+                                <p t-if="!state.tpl.list.length">No templates for this channel.</p>
+                                <p t-if="state.tpl.error" class="bad" t-esc="state.tpl.error"/>
+                                <button type="button" class="o_ccw_primary" t-att-disabled="!state.tpl.id or state.tpl.sending" t-on-click="sendTemplate">
+                                    <t t-if="state.tpl.sending">Sending…</t><t t-else="">Send</t>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </section>
+
+            <!-- ── Information card ─────────────────────────────────── -->
+            <aside t-if="state.thread and state.infoOpen" class="o_ccw_card o_ccw_info" t-att-class="{ wide: state.tab !== 'conversation' }">
+                <t t-set="thread" t-value="state.thread"/>
+                <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to the conversation" t-on-click="showThread"><i class="fa fa-chevron-left"/></button>
+                <div class="o_ccw_pills">
+                    <button t-foreach="tabs" t-as="tab" t-key="tab.key" type="button" t-att-class="{ on: state.tab === tab.key }"
+                            t-on-click="() => this.setTab(tab.key)" t-esc="tab.label"/>
+                </div>
+
+                <t t-if="state.tab === 'script' and phone.script">
+                    <div class="o_ccw_shead"><b t-esc="phone.script.name"/><span class="o_ccw_tag ok">On call</span></div>
+                    <div class="o_ccw_script">
+                        <div t-foreach="phone.script.bubbles" t-as="bubble" t-key="bubble_index" class="o_ccw_step" t-att-class="{ last: bubble_last }">
+                            <i t-if="bubble.coaching_notes" t-esc="bubble.coaching_notes"/>
+                            <div t-esc="bubble.body"/>
+                            <div t-if="bubble_last and !phone.script.terminated" class="o_ccw_opts">
+                                <button t-foreach="(bubble.buttons || []).concat(bubble.list_rows || [])" t-as="option" t-key="option_index"
+                                        type="button" t-on-click="() => this.scriptAnswer(option)" t-esc="option"/>
+                            </div>
+                        </div>
+                        <div t-if="phone.script.loading" class="o_ccw_muted">Loading the next step…</div>
+                    </div>
+                    <div t-if="phone.script.terminated" class="o_ccw_banner ok"><span>Script complete.</span></div>
+                    <label t-else="" class="o_ccw_answer">Or type the customer's answer
+                        <span>
+                            <input type="text" placeholder="What they said…" t-att-value="state.scriptText" t-on-input="onScriptText"
+                                   t-on-keydown="onScriptKey"/>
+                            <button type="button" t-on-click="scriptSubmit">Next</button>
+                        </span>
+                    </label>
+                    <button type="button" class="o_ccw_wide danger" t-on-click="scriptEnd">End call and script</button>
+                </t>
+
+                <t t-elif="state.tab === 'notes'">
+                    <div class="o_ccw_notes">
+                        <Chatter threadModel="'contact.centre.contact'" threadId="thread.id"/>
+                    </div>
+                </t>
+
+                <t t-else="">
+                    <div>
+                        <h5>Status</h5>
+                        <div class="o_ccw_radio">
+                            <button t-foreach="states" t-as="s" t-key="s.key" type="button" t-att-class="{ on: thread.state === s.key }"
+                                    t-on-click="() => this.setState(s.key)"><i/><t t-esc="s.label"/></button>
+                        </div>
+                    </div>
+                    <div>
+                        <h5>Wrap-up</h5>
+                        <select class="o_ccw_select" aria-label="Disposition" t-on-change="onDisposition">
+                            <option value="">No disposition</option>
+                            <option t-foreach="state.boot.dispositions" t-as="d" t-key="d.id" t-att-value="d.id"
+                                    t-att-selected="d.id === thread.disposition_id" t-esc="d.name"/>
+                        </select>
+                        <textarea rows="2" placeholder="Wrap-up note…" aria-label="Wrap-up note" t-att-value="thread.disposition_note"
+                                  t-on-input="onNote" t-on-change="saveWrapUp"/>
+                    </div>
+                    <div t-if="thread.ai" class="o_ccw_copilot">
+                        <div class="o_ccw_shead">
+                            <h5><i class="fa fa-magic"/> Copilot</h5>
+                            <span t-if="thread.ai.sentiment" class="o_ccw_tag" t-att-class="sentimentClass(thread.ai.sentiment)" t-esc="sentimentLabel(thread.ai.sentiment)"/>
+                        </div>
+                        <p t-if="thread.ai.summary" t-esc="thread.ai.summary"/>
+                        <p t-else="" class="o_ccw_muted">Not analysed yet.</p>
+                        <t t-if="thread.ai.reply">
+                            <div class="o_ccw_suggest" t-esc="thread.ai.reply"/>
+                            <button type="button" class="o_ccw_wide" t-on-click="insertReply">Insert as reply</button>
+                        </t>
+                        <button type="button" class="o_ccw_link" t-att-disabled="state.analysing" t-on-click="analyse">
+                            <t t-if="state.analysing">Analysing…</t><t t-else="">Analyse now</t>
+                        </button>
+                    </div>
+                    <div t-if="details.length">
+                        <h5>Details</h5>
+                        <dl class="o_ccw_kv">
+                            <t t-foreach="details" t-as="d" t-key="d.label"><dt t-esc="d.label"/><dd t-esc="d.value"/></t>
+                        </dl>
+                    </div>
+                </t>
+            </aside>
+        </div>
+    </t>
+
+</templates>

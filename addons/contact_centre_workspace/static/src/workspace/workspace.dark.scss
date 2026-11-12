@@ -1,0 +1,27 @@
+// Dark mode: same layout, the colours redefined. Primary buttons turn hi-vis yellow.
+.o_ccw {
+    --ccw-bg: #1b1d21;
+    --ccw-card: #262a31;
+    --ccw-line: #3c404a;
+    --ccw-fg: #e4e6ea;
+    --ccw-muted: #a3a9b3;
+    --ccw-sel: #343841;
+    --ccw-brand: #ffc414;
+    --ccw-on-brand: #16202e;
+    --ccw-accent: #ffc414;
+    --ccw-accent-soft: rgba(255, 196, 20, .16);
+    --ccw-hiline: #ffc414;
+    --ccw-bub-in: #30343c;
+    --ccw-bub-in-line: #454a55;
+    --ccw-bub-out: #4a3f17;
+    --ccw-bub-out-line: #6b5a1e;
+    --ccw-red: #e0586a;
+    --ccw-green: #2aa860;
+    --ccw-warn-bg: #3d3320;
+    --ccw-warn-line: #5c4c2a;
+    --ccw-warn-fg: #f1d9a0;
+    --ccw-ok-bg: #1d3529;
+    --ccw-ok-line: #2f5240;
+    --ccw-ok-fg: #a5dcbd;
+    --ccw-soft: #332d1c;
+}
