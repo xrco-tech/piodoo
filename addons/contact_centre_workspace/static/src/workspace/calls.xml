@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- One call as a list row: who, when, and how it went. -->
+    <t t-name="contact_centre_workspace.CallRow">
+        <span class="o_ccw_av" t-att-style="'background:' + row.colour">
+            <t t-esc="row.initials"/>
+            <small t-esc="badge(row.line)"/>
+        </span>
+        <span class="o_ccw_rt">
+            <b><em t-esc="row.name"/><time t-esc="when(row.at)"/></b>
+            <span class="o_ccw_prev">
+                <em class="o_ccw_cstat" t-att-class="{ missed: row.kind === 'missed' }">
+                    <i t-attf-class="fa {{row.incoming ? 'fa-arrow-down' : 'fa-arrow-up'}}"/> <t t-esc="summary(row)"/>
+                    <i t-if="row.recorded" class="fa fa-microphone" title="Recorded"/>
+                </em>
+                <span t-if="row.disposition" class="o_ccw_tag ok" t-esc="row.disposition"/>
+            </span>
+        </span>
+    </t>
+
+    <t t-name="contact_centre_workspace.Calls">
+
+        <!-- ── List ─────────────────────────────────────────────────── -->
+        <section class="o_ccw_card o_ccw_list">
+            <label class="o_ccw_search">
+                <i class="fa fa-search"/>
+                <input type="text" placeholder="Search name or number" aria-label="Search calls"
+                       t-att-value="state.search" t-on-input="onSearch"/>
+            </label>
+            <div class="o_ccw_pills">
+                <button t-foreach="pills" t-as="p" t-key="p.key" type="button"
+                        t-att-class="{ on: state.pill === p.key }" t-on-click="() => this.setPill(p.key)" t-esc="p.label"/>
+            </div>
+            <div class="o_ccw_rows">
+                <button t-foreach="state.rows" t-as="row" t-key="row.key" type="button" class="o_ccw_row"
+                        t-att-class="{ on: row.key === state.sel, unread: row.kind === 'missed' }" t-on-click="() => this.open(row.key)">
+                    <t t-call="contact_centre_workspace.CallRow"/>
+                </button>
+                <button t-if="state.more" type="button" class="o_ccw_more" t-on-click="loadMore">Show more</button>
+                <div t-if="!state.rows.length and !state.loading" class="o_ccw_empty">No calls here.</div>
+            </div>
+        </section>
+
+        <!-- ── One call ─────────────────────────────────────────────── -->
+        <section class="o_ccw_main">
+            <div t-if="!state.call" class="o_ccw_none">
+                <t t-if="state.loadingCall">Loading…</t>
+                <t t-else="">Pick a call to see it here.</t>
+            </div>
+            <t t-else="">
+                <t t-set="call" t-value="state.call"/>
+                <div class="o_ccw_mhead">
+                    <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to calls" t-on-click="showList"><i class="fa fa-chevron-left"/></button>
+                    <div class="o_ccw_card o_ccw_who">
+                        <span class="o_ccw_av" t-att-style="'background:' + call.colour" t-esc="call.initials"/>
+                        <b t-esc="call.name"/>
+                        <span t-if="call.number !== call.name" t-esc="call.number"/>
+                    </div>
+                    <div class="o_ccw_acts">
+                        <button t-if="call.number" type="button" class="o_ccw_call" title="Call back on WhatsApp" aria-label="Call back on WhatsApp" t-on-click="callWhatsApp"><i class="fa fa-whatsapp"/></button>
+                        <button t-if="call.number and props.boot.voip" type="button" class="o_ccw_call" title="Call back on VoIP" aria-label="Call back on VoIP" t-on-click="callVoip"><i class="fa fa-phone"/></button>
+                        <button type="button" class="o_ccw_ib o_ccw_keep" t-att-class="{ on: state.infoOpen }" title="Outcome and details" aria-label="Outcome and details"
+                                t-on-click="toggleInfo"><i class="fa fa-info-circle"/></button>
+                    </div>
+                </div>
+
+                <div class="o_ccw_calldetail">
+                    <div class="o_ccw_card o_ccw_csum">
+                        <span class="o_ccw_cdir" t-att-class="call.kind"><i t-attf-class="fa {{call.incoming ? 'fa-arrow-down' : 'fa-arrow-up'}}"/></span>
+                        <div>
+                            <b t-esc="title"/>
+                            <span t-esc="full(call.at)"/>
+                        </div>
+                        <span class="o_ccw_cend">
+                            <b t-if="call.duration" t-esc="call.duration"/>
+                            <span class="o_ccw_tag" t-att-class="kindClass(call.kind)" t-esc="call.status"/>
+                        </span>
+                    </div>
+
+                    <div t-if="call.recordings.length" class="o_ccw_card o_ccw_csec">
+                        <h5>Recording</h5>
+                        <div t-foreach="call.recordings" t-as="rec" t-key="rec.id" class="o_ccw_crec">
+                            <audio controls="controls" preload="none" t-att-src="rec.url"/>
+                            <span t-if="rec.duration" class="o_ccw_muted" t-esc="rec.duration"/>
+                        </div>
+                    </div>
+
+                    <div t-if="call.transcript or call.can_transcribe" class="o_ccw_card o_ccw_csec">
+                        <h5>Transcript</h5>
+                        <div t-if="call.transcript" class="o_ccw_ctext" t-esc="call.transcript"/>
+                        <t t-else="">
+                            <p class="o_ccw_muted">
+                                <t t-if="state.transcribing">Transcribing. A long call takes a few minutes…</t>
+                                <t t-elif="call.transcript_state === 'pending'">Queued. It will be transcribed shortly.</t>
+                                <t t-elif="call.transcript_state === 'failed'">The last attempt to transcribe this call failed.</t>
+                                <t t-else="">Not transcribed yet.</t>
+                            </p>
+                            <button type="button" class="o_ccw_link" t-att-disabled="state.transcribing" t-on-click="transcribe">
+                                <t t-if="call.transcript_state === 'failed'">Try again</t><t t-else="">Transcribe now</t>
+                            </button>
+                        </t>
+                    </div>
+
+                    <div t-if="call.ai and call.ai.summary" class="o_ccw_copilot">
+                        <div class="o_ccw_shead">
+                            <h5><i class="fa fa-magic"/> Summary</h5>
+                            <span t-if="call.ai.sentiment" class="o_ccw_tag" t-att-class="sentimentClass(call.ai.sentiment)" t-esc="sentimentLabel(call.ai.sentiment)"/>
+                        </div>
+                        <p t-esc="call.ai.summary"/>
+                    </div>
+
+                    <div t-if="call.history.length" class="o_ccw_csec">
+                        <h5>Other calls with <t t-esc="call.name"/></h5>
+                        <div class="o_ccw_chist">
+                            <button t-foreach="call.history" t-as="row" t-key="row.key" type="button" class="o_ccw_row" t-on-click="() => this.open(row.key)">
+                                <t t-call="contact_centre_workspace.CallRow"/>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </section>
+
+        <!-- ── Outcome and details ──────────────────────────────────── -->
+        <aside t-if="state.call and state.infoOpen" class="o_ccw_card o_ccw_info">
+            <t t-set="call" t-value="state.call"/>
+            <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to the call" t-on-click="showCall"><i class="fa fa-chevron-left"/></button>
+            <div>
+                <h5><t t-if="call.has_outcome">Outcome</t><t t-else="">Note</t></h5>
+                <t t-if="call.has_outcome">
+                    <select class="o_ccw_select" aria-label="Outcome" t-on-change="onDisposition">
+                        <option value="">No outcome</option>
+                        <option t-foreach="props.boot.dispositions" t-as="d" t-key="d.id" t-att-value="d.id"
+                                t-att-selected="d.id === call.disposition_id" t-esc="d.name"/>
+                    </select>
+                    <button t-if="suggested" type="button" class="o_ccw_csuggest" t-on-click="useSuggested">
+                        <i class="fa fa-magic"/> Suggested: <b t-esc="suggested.name"/>
+                    </button>
+                </t>
+                <textarea rows="3" placeholder="What happened on this call…" aria-label="Note" t-att-value="call.note"
+                          t-on-input="onNote" t-on-change="saveOutcome"/>
+            </div>
+            <button t-if="call.contact_id" type="button" class="o_ccw_wide" t-on-click="openConversation">
+                <i class="fa fa-comments-o"/> Open the conversation
+            </button>
+            <div t-if="details.length">
+                <h5>Details</h5>
+                <dl class="o_ccw_kv">
+                    <t t-foreach="details" t-as="d" t-key="d.label"><dt t-esc="d.label"/><dd t-esc="d.value"/></t>
+                </dl>
+            </div>
+        </aside>
+    </t>
+
+</templates>

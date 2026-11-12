@@ -763,6 +763,90 @@
             font-weight: 600;
         }
     }
+
+    // ── Calls section ───────────────────────────────────────────────────
+    .o_ccw_cstat {
+        .fa { font-size: 11px; }
+        .fa-microphone { margin-left: 4px; }
+        &.missed { color: var(--ccw-red); font-weight: 600; }
+    }
+    .o_ccw_calldetail {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 720px;
+        padding: 4px 2px 10px;
+        overflow: auto;
+
+        > * { flex: none; }
+    }
+    .o_ccw_csum {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+
+        > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        > div b { font-size: 15px; font-weight: 600; }
+        > div span { color: var(--ccw-muted); font-size: 13px; }
+    }
+    .o_ccw_cdir {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--ccw-sel);
+        color: var(--ccw-muted);
+        font-size: 15px;
+
+        &.answered { background: var(--ccw-ok-bg); color: var(--ccw-ok-fg); }
+        &.missed { background: var(--ccw-warn-bg); color: var(--ccw-red); }
+    }
+    .o_ccw_cend {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        b { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    }
+    .o_ccw_csec {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+
+        &.o_ccw_card { padding: 12px 14px; }
+        h5 { margin: 0; }
+        .o_ccw_link { margin-top: 0; text-align: left; }
+    }
+    .o_ccw_crec {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        audio { flex: 1; min-width: 0; max-width: 460px; height: 36px; }
+    }
+    .o_ccw_ctext { font-size: 13.5px; white-space: pre-line; overflow-wrap: anywhere; }
+    .o_ccw_chist {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .o_ccw_csuggest {
+        display: block;
+        width: 100%;
+        margin-bottom: 6px;
+        padding: 6px 10px;
+        border: 1px dashed var(--ccw-hiline);
+        border-radius: 8px;
+        background: var(--ccw-soft);
+        font-size: 13px;
+        text-align: left;
+    }
 }
 
 // The web client lays an action out as a column; the workspace is a row of panes.
@@ -814,6 +898,7 @@ html .o_web_client > .o_action_manager > .o_action.o_ccw { flex-direction: row; 
         .o_ccw_ib.o_ccw_keep { min-width: 44px; height: 44px; }
         .o_ccw_banner, .o_ccw_callstrip { margin: 0 8px; }
         .o_ccw_thread { padding: 10px; }
+        .o_ccw_calldetail { max-width: none; padding: 4px 8px 10px; }
         .o_ccw_bub, .o_ccw_callcard { max-width: 100%; }
         .o_ccw_comp { flex-wrap: wrap; padding: 0 8px 8px; }
         .o_ccw_comp > .o_ccw_av { display: none; }
