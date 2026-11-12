@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Name, channel, message and notes, for a new template and for correcting one. -->
+    <t t-name="contact_centre_workspace.TemplateForm">
+        <t t-set="form" t-value="state.form"/>
+        <div class="o_ccw_card o_ccw_csec o_ccw_form">
+            <h5><t t-if="state.adding">New template</t><t t-else="">Edit template</t></h5>
+            <label>Name
+                <input type="text" name="name" autocomplete="off" t-att-value="form.name" t-on-input="onField"/>
+            </label>
+            <label>Channel
+                <select name="channel" t-on-change="onField">
+                    <option value="whatsapp" t-att-selected="form.channel === 'whatsapp'">WhatsApp</option>
+                    <option value="sms" t-att-selected="form.channel === 'sms'">SMS</option>
+                    <option value="email" t-att-selected="form.channel === 'email'">Email</option>
+                </select>
+            </label>
+            <label>Message
+                <textarea name="body" rows="6" t-att-value="form.body" t-on-input="onField"/>
+                <span t-esc="size(form.channel, form.body)"/>
+            </label>
+            <label>Notes for the team (never sent)
+                <textarea name="notes" rows="2" t-att-value="form.notes" t-on-input="onField"/>
+            </label>
+            <p t-if="form.error" class="o_ccw_bad" t-esc="form.error"/>
+            <p t-elif="!state.adding" class="o_ccw_muted">A change applies the next time the template is sent, including by a campaign that is already running.</p>
+            <div class="o_ccw_formacts">
+                <button type="button" class="o_ccw_primary" t-att-disabled="form.saving" t-on-click="save">
+                    <t t-if="form.saving">Saving…</t><t t-elif="state.adding">Add template</t><t t-else="">Save</t>
+                </button>
+                <button type="button" class="o_ccw_plainbtn" t-on-click="cancel">Cancel</button>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="contact_centre_workspace.Templates">
+
+        <!-- ── List ─────────────────────────────────────────────────── -->
+        <section class="o_ccw_card o_ccw_list">
+            <div class="o_ccw_searchrow">
+                <label class="o_ccw_search">
+                    <i class="fa fa-search"/>
+                    <input type="text" placeholder="Search name or wording" aria-label="Search templates"
+                           t-att-value="state.search" t-on-input="onSearch"/>
+                </label>
+                <button t-if="state.canManage" type="button" class="o_ccw_ib" title="New template" aria-label="New template" t-on-click="add"><i class="fa fa-plus"/></button>
+            </div>
+            <div class="o_ccw_pills">
+                <button t-foreach="pills" t-as="p" t-key="p.key" type="button"
+                        t-att-class="{ on: state.pill === p.key }" t-on-click="() => this.setPill(p.key)" t-esc="p.label"/>
+            </div>
+            <div class="o_ccw_rows">
+                <button t-foreach="state.rows" t-as="row" t-key="row.id" type="button" class="o_ccw_row"
+                        t-att-class="{ on: row.id === state.sel and !state.adding }" t-on-click="() => this.open(row.id)">
+                    <span class="o_ccw_av o_ccw_sys" t-att-title="row.channel_label"><i t-attf-class="fa {{icon(row.channel)}}"/></span>
+                    <span class="o_ccw_rt">
+                        <b><em t-esc="row.name"/></b>
+                        <span class="o_ccw_prev">
+                            <em t-esc="row.preview"/>
+                            <span t-if="!row.active" class="o_ccw_tag plain">Archived</span>
+                        </span>
+                    </span>
+                </button>
+                <button t-if="state.more" type="button" class="o_ccw_more" t-on-click="loadMore">Show more</button>
+                <div t-if="!state.rows.length and !state.loading" class="o_ccw_empty">No templates here.</div>
+            </div>
+            <div t-if="state.rows.length" class="o_ccw_total" t-esc="totalText"/>
+        </section>
+
+        <!-- ── One template ─────────────────────────────────────────── -->
+        <section class="o_ccw_main">
+            <t t-if="state.adding">
+                <div class="o_ccw_mhead">
+                    <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to templates" t-on-click="cancel"><i class="fa fa-chevron-left"/></button>
+                </div>
+                <div class="o_ccw_calldetail"><t t-call="contact_centre_workspace.TemplateForm"/></div>
+            </t>
+            <div t-elif="!state.tpl" class="o_ccw_none">
+                <t t-if="state.loadingTpl">Loading…</t>
+                <t t-else="">Pick a template to see it here.</t>
+            </div>
+            <t t-else="">
+                <t t-set="tpl" t-value="state.tpl"/>
+                <div class="o_ccw_mhead">
+                    <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to templates" t-on-click="showList"><i class="fa fa-chevron-left"/></button>
+                    <div class="o_ccw_card o_ccw_who">
+                        <span class="o_ccw_av o_ccw_sys"><i t-attf-class="fa {{icon(tpl.channel)}}"/></span>
+                        <b t-esc="tpl.name"/>
+                        <span t-esc="tpl.channel_label"/>
+                        <span t-if="!tpl.active" class="o_ccw_tag plain">Archived</span>
+                    </div>
+                    <div class="o_ccw_acts">
+                        <button type="button" class="o_ccw_ib o_ccw_keep" t-att-class="{ on: state.infoOpen }" title="Where it is used" aria-label="Where it is used"
+                                t-on-click="toggleInfo"><i class="fa fa-info-circle"/></button>
+                    </div>
+                </div>
+
+                <div class="o_ccw_calldetail">
+                    <t t-if="state.form" t-call="contact_centre_workspace.TemplateForm"/>
+                    <t t-else="">
+                        <div class="o_ccw_card o_ccw_csec">
+                            <div class="o_ccw_shead">
+                                <h5>Message</h5>
+                                <button t-if="tpl.can_manage" type="button" class="o_ccw_link" t-on-click="edit">Edit</button>
+                            </div>
+                            <div class="o_ccw_tplbub" t-esc="tpl.body"/>
+                            <span class="o_ccw_muted" t-esc="size(tpl.channel, tpl.body)"/>
+                        </div>
+                        <div t-if="tpl.notes" class="o_ccw_card o_ccw_csec">
+                            <h5>Notes for the team</h5>
+                            <p class="o_ccw_ctext" t-esc="tpl.notes"/>
+                        </div>
+                        <div t-if="tpl.native" class="o_ccw_card o_ccw_csec">
+                            <div class="o_ccw_shead">
+                                <h5>Approved WhatsApp template</h5>
+                                <span t-if="tpl.native.status" class="o_ccw_tag" t-att-class="tpl.native.approved ? 'ok' : 'warn'" t-esc="tpl.native.status"/>
+                            </div>
+                            <p t-esc="tpl.native.name"/>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </section>
+
+        <!-- ── Where it is used ─────────────────────────────────────── -->
+        <aside t-if="state.tpl and state.infoOpen and !state.adding" class="o_ccw_card o_ccw_info">
+            <t t-set="tpl" t-value="state.tpl"/>
+            <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to the template" t-on-click="showTemplate"><i class="fa fa-chevron-left"/></button>
+            <div>
+                <h5>Use</h5>
+                <dl class="o_ccw_kv">
+                    <t t-foreach="facts" t-as="d" t-key="d.label"><dt t-esc="d.label"/><dd t-esc="d.value"/></t>
+                </dl>
+            </div>
+            <div>
+                <h5>Campaigns</h5>
+                <p t-if="!tpl.campaigns.length" class="o_ccw_muted">Not used by any campaign.</p>
+                <div t-foreach="tpl.campaigns" t-as="campaign" t-key="campaign.id" class="o_ccw_camp">
+                    <span><b t-esc="campaign.name"/></span>
+                    <span class="o_ccw_tag" t-att-class="campaign.running ? 'ok' : 'plain'" t-esc="campaign.state"/>
+                </div>
+            </div>
+            <div>
+                <h5>Automated replies</h5>
+                <p t-if="!tpl.automations.length" class="o_ccw_muted">Not used by any automated reply.</p>
+                <div t-foreach="tpl.automations" t-as="automation" t-key="automation.id" class="o_ccw_camp">
+                    <span><b t-esc="automation.name"/><small t-if="automation.campaign" t-esc="automation.campaign"/></span>
+                    <span t-if="!automation.active" class="o_ccw_tag plain">Off</span>
+                </div>
+            </div>
+            <t t-if="tpl.can_manage">
+                <button t-if="tpl.active" type="button" class="o_ccw_wide" t-att-disabled="state.working" title="It is no longer offered when sending" t-on-click="() => this.archive(true)">Archive</button>
+                <button t-else="" type="button" class="o_ccw_wide" t-att-disabled="state.working" t-on-click="() => this.archive(false)">Bring back</button>
+            </t>
+            <p t-else="" class="o_ccw_muted">Only managers can change a template.</p>
+            <button type="button" class="o_ccw_link" t-on-click="openRecord">Open the full record</button>
+        </aside>
+    </t>
+
+</templates>
