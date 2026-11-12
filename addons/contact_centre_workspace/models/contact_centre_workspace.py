@@ -14,9 +14,8 @@ STATES = ('open', 'pending', 'resolved')
 CHANNELS = ('whatsapp', 'sms', 'voice', 'email')
 LONG_AGO = datetime(1970, 1, 1)
 COLOURS = ['#b5651d', '#2f6f8f', '#7a4fa3', '#8a5a44', '#2e7d5b', '#a3466b', '#3f7f6a', '#5a6fb0']
-# Rail entries after Inbox and Calls: (key, label, icon, the screen that exists today).
+# Rail entries after Inbox, Calls and Contacts: (key, label, icon, the screen that exists today).
 RAIL = [
-    ('contacts', 'Contacts', 'fa-address-book-o', 'contact_centre.action_contact_centre_contact'),
     ('campaigns', 'Campaigns', 'fa-bullhorn', 'contact_centre.action_contact_centre_campaign_overview'),
     ('templates', 'Templates', 'fa-file-text-o', 'contact_centre.action_whatsapp_template'),
     ('ai', 'AI Ops', 'fa-magic', 'contact_centre_ai_ops.action_contact_centre_ai_ops'),

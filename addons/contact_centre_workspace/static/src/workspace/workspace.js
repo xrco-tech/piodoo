@@ -9,6 +9,7 @@ import { deserializeDateTime } from "@web/core/l10n/dates";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { Chatter } from "@mail/chatter/web_portal/chatter";
 import { ContactCentreCalls } from "./calls";
+import { ContactCentreContacts } from "./contacts";
 import { when, dialWhatsApp, dialVoip } from "./util";
 
 const { DateTime } = luxon;
@@ -21,7 +22,7 @@ const CHANNEL = { whatsapp: "WhatsApp", sms: "SMS", voice: _t("Call"), email: _t
 /** The Contact Centre inbox as a workspace: rail, list card, thread, information card. */
 export class ContactCentreWorkspace extends Component {
     static template = "contact_centre_workspace.Workspace";
-    static components = { Chatter, ContactCentreCalls };
+    static components = { Chatter, ContactCentreCalls, ContactCentreContacts };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -39,8 +40,9 @@ export class ContactCentreWorkspace extends Component {
 
         this.state = useState({
             boot: { rail: [], dispositions: [], counts: { unread: 0 }, ai: false, voip: false, me: { name: "", initials: "" } },
-            section: params.section === "calls" || params.call_key ? "calls" : "inbox",
-            callsPane: "list",
+            // inbox | calls | contacts
+            section: params.call_key ? "calls" : ["calls", "contacts"].includes(params.section) ? params.section : "inbox",
+            sectionPane: "list",   // the pane a phone shows in Calls and Contacts
             pill: "all",
             search: "",
             rows: [],
@@ -226,8 +228,8 @@ export class ContactCentreWorkspace extends Component {
     // ── Sections ─────────────────────────────────────────────────────────
     /** Which pane a phone shows: each section keeps its own. */
     get pane() {
-        if (this.state.section === "calls") {
-            return this.state.callsPane;
+        if (this.state.section !== "inbox") {
+            return this.state.sectionPane;
         }
         return this.state.thread ? this.state.pane : "list";
     }
@@ -237,17 +239,17 @@ export class ContactCentreWorkspace extends Component {
         this.state.pane = "list";
     }
 
-    showCalls() {
-        this.state.section = "calls";
-        this.state.callsPane = "list";
+    showSection(section) {
+        this.state.section = section;
+        this.state.sectionPane = "list";
         this.state.menu = null;
     }
 
-    setCallsPane(pane) {
-        this.state.callsPane = pane;
+    setSectionPane(pane) {
+        this.state.sectionPane = pane;
     }
 
-    /** From a call to the conversation it belongs to. */
+    /** From a call or a contact to that person's conversation. */
     async openConversation(contactId) {
         this.state.section = "inbox";
         await this.open(contactId);

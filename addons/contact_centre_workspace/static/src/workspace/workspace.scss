@@ -849,6 +849,102 @@
     }
 }
 
+// ── Contacts section ────────────────────────────────────────────────────
+.o_ccw {
+    .o_ccw_searchrow {
+        display: flex;
+        gap: 6px;
+
+        .o_ccw_search { flex: 1; min-width: 0; }
+        .o_ccw_ib { flex: none; border-radius: 999px; }
+    }
+    .o_ccw_list > .o_ccw_select {
+        flex: none;
+        padding: 5px 8px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        background: var(--ccw-card);
+        color: var(--ccw-fg);
+        font-size: 13px;
+    }
+    .o_ccw_rows { flex: 1; min-height: 0; }
+    .o_ccw_total { flex: none; padding: 0 4px; color: var(--ccw-muted); font-size: 12px; }
+    .o_ccw_kv.left dd { text-align: left; }
+    .o_ccw_csec .o_ccw_shead .o_ccw_link { width: auto; }
+    .o_ccw_form {
+        gap: 9px;
+
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            margin: 0;
+            color: var(--ccw-muted);
+            font-size: 12px;
+        }
+        input {
+            padding: 7px 10px;
+            border: 1px solid var(--ccw-line);
+            border-radius: 8px;
+            background: var(--ccw-card);
+            color: var(--ccw-fg);
+            font-size: 14px;
+        }
+    }
+    .o_ccw_bad { color: var(--ccw-red); font-size: 13px; font-weight: 600; }
+    .o_ccw_formacts { display: flex; gap: 8px; }
+    .o_ccw_plainbtn {
+        padding: 7px 14px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        background: var(--ccw-card);
+    }
+    .o_ccw_stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+
+        > div { display: flex; flex-direction: column; padding: 9px 12px; }
+        b { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        span { color: var(--ccw-muted); font-size: 12px; }
+    }
+    .o_ccw_act {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+
+        .o_ccw_tag { min-width: 34px; text-align: center; }
+        em {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            font-style: normal;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+
+            .fa { color: var(--ccw-muted); font-size: 11px; }
+            &.fail { color: var(--ccw-red); }
+        }
+        time { flex: none; color: var(--ccw-muted); font-size: 11px; }
+    }
+    .o_ccw_camp {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 5px 0;
+        font-size: 13px;
+
+        > span:first-child { min-width: 0; display: flex; flex-direction: column; }
+        b { font-weight: 500; overflow-wrap: anywhere; }
+        small { color: var(--ccw-muted); }
+    }
+}
+@media (max-width: 767.98px) {
+    .o_ccw .o_ccw_stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 // The web client lays an action out as a column; the workspace is a row of panes.
 html .o_web_client > .o_action_manager > .o_action.o_ccw { flex-direction: row; }
 
