@@ -1,0 +1,822 @@
+// Contact Centre workspace: laid out like the Chat2Work workspace (rail, list card,
+// thread, information card), in the same navy and hi-vis yellow. Colours are custom
+// properties so the dark bundle only has to redefine them (workspace.dark.scss).
+
+.o_ccw {
+    --ccw-bg: #f8f9fa;
+    --ccw-card: #ffffff;
+    --ccw-line: #dee2e6;
+    --ccw-fg: #212529;
+    --ccw-muted: #5f6770;
+    --ccw-sel: #ececef;
+    --ccw-navy: #1b2a41;
+    --ccw-hivis: #ffc414;
+    --ccw-on-hivis: #16202e;
+    --ccw-brand: #1b2a41;
+    --ccw-on-brand: #ffffff;
+    --ccw-accent: #1b2a41;
+    --ccw-accent-soft: rgba(255, 196, 20, .3);
+    --ccw-hiline: #d9a400;
+    --ccw-bub-in: #f1f3f5;
+    --ccw-bub-in-line: #dee2e6;
+    --ccw-bub-out: #fff3c4;
+    --ccw-bub-out-line: #f0dc8c;
+    --ccw-red: #c8364a;
+    --ccw-green: #18794a;
+    --ccw-warn-bg: #fdf0d5;
+    --ccw-warn-line: #f1d9a0;
+    --ccw-warn-fg: #6b4a00;
+    --ccw-ok-bg: #e3f3ea;
+    --ccw-ok-line: #bfe0cd;
+    --ccw-ok-fg: #14603d;
+    --ccw-soft: #fffaf0;
+
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+    padding: 8px 10px 10px;
+    overflow: hidden;
+    background: var(--ccw-bg);
+    color: var(--ccw-fg);
+    font-size: 14px;
+    line-height: 1.45;
+
+    button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+    }
+    button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible {
+        outline: 2px solid var(--ccw-accent);
+        outline-offset: 2px;
+    }
+    button:disabled { opacity: .5; cursor: default; }
+    h4, h5 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+    p { margin: 0; }
+
+    // ── Rail ────────────────────────────────────────────────────────────
+    .o_ccw_rail {
+        width: 74px;
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-top: 10px;
+
+        button {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 0;
+            border: 0;
+            background: none;
+            font-size: 11.5px;
+        }
+        .o_ccw_pill {
+            display: grid;
+            place-items: center;
+            width: 48px;
+            height: 30px;
+            border-radius: 999px;
+            font-size: 16px;
+        }
+        button:hover .o_ccw_pill { background: var(--ccw-sel); }
+        button.on { font-weight: 600; }
+        button.on .o_ccw_pill { background: var(--ccw-hivis); color: var(--ccw-on-hivis); }
+        .o_ccw_cnt { position: absolute; top: -4px; right: 8px; }
+    }
+
+    .o_ccw_cnt {
+        flex: none;
+        display: inline-grid;
+        place-items: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 999px;
+        background: var(--ccw-red);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .o_ccw_card {
+        background: var(--ccw-card);
+        border: 1px solid var(--ccw-line);
+        border-radius: 12px;
+    }
+    .o_ccw_muted { color: var(--ccw-muted); font-size: 13px; }
+
+    // ── List ────────────────────────────────────────────────────────────
+    .o_ccw_list {
+        width: 276px;
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        padding: 8px;
+        overflow: hidden;
+    }
+    .o_ccw_scope { padding: 2px 4px; font-weight: 600; }
+    .o_ccw_search {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        padding: 5px 10px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 999px;
+        color: var(--ccw-muted);
+        font-size: 13px;
+
+        input {
+            flex: 1;
+            min-width: 0;
+            border: 0;
+            background: none;
+            color: var(--ccw-fg);
+            outline: none;
+        }
+    }
+    .o_ccw_pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+
+        button {
+            padding: 2px 10px;
+            border: 1px solid var(--ccw-line);
+            border-radius: 999px;
+            background: none;
+            color: var(--ccw-muted);
+            font-size: 12.5px;
+        }
+        button.on {
+            background: var(--ccw-accent-soft);
+            border-color: var(--ccw-hiline);
+            color: var(--ccw-accent);
+            font-weight: 600;
+        }
+        button b { margin-left: 4px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    }
+    .o_ccw_rows {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow: auto;
+    }
+    .o_ccw_row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 8px 6px;
+        border: 0;
+        border-radius: 9px;
+        background: none;
+        text-align: left;
+
+        &:hover, &.on { background: var(--ccw-sel); }
+        &.unread .o_ccw_rt b em { font-weight: 700; }
+        &.unread .o_ccw_prev { color: var(--ccw-fg); }
+    }
+    .o_ccw_more {
+        flex: none;
+        margin: 6px 0 2px;
+        padding: 6px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        background: var(--ccw-sel);
+        font-size: 13px;
+    }
+    .o_ccw_empty {
+        padding: 22px 8px;
+        color: var(--ccw-muted);
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .o_ccw_av {
+        position: relative;
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 7px;
+        background: var(--ccw-navy);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+
+        small {
+            position: absolute;
+            right: -6px;
+            bottom: -5px;
+            display: grid;
+            place-items: center;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 2px;
+            border: 1px solid var(--ccw-line);
+            border-radius: 999px;
+            background: var(--ccw-card);
+            color: var(--ccw-fg);
+            font-size: 8px;
+            font-weight: 700;
+        }
+    }
+    .o_ccw_rt {
+        flex: 1;
+        min-width: 0;
+
+        b {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+            font-weight: 500;
+        }
+        em {
+            overflow: hidden;
+            font-style: normal;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        time {
+            flex: none;
+            color: var(--ccw-muted);
+            font-size: 11px;
+            font-weight: 400;
+        }
+    }
+    .o_ccw_prev {
+        display: flex;
+        justify-content: space-between;
+        gap: 6px;
+        margin-top: 1px;
+        color: var(--ccw-muted);
+        font-size: 13px;
+    }
+    .o_ccw_tag {
+        flex: none;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+
+        &.warn { background: var(--ccw-warn-bg); color: var(--ccw-warn-fg); border: 1px solid var(--ccw-warn-line); }
+        &.ok { background: var(--ccw-ok-bg); color: var(--ccw-ok-fg); border: 1px solid var(--ccw-ok-line); }
+        &.plain { background: var(--ccw-sel); color: var(--ccw-muted); border: 1px solid var(--ccw-line); }
+    }
+
+    // ── Thread ──────────────────────────────────────────────────────────
+    .o_ccw_main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .o_ccw_none {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        color: var(--ccw-muted);
+        font-size: 16px;
+        font-style: italic;
+        font-weight: 600;
+    }
+    .o_ccw_mhead { display: flex; align-items: center; gap: 8px; }
+    .o_ccw_who {
+        flex: 0 1 auto;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 12px;
+
+        .o_ccw_av { width: 26px; height: 26px; font-size: 11px; }
+        b { overflow: hidden; font-size: 16px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+        span:not(.o_ccw_av) { color: var(--ccw-muted); font-size: 13px; white-space: nowrap; }
+    }
+    .o_ccw_acts {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-left: auto;
+    }
+    .o_ccw_call {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 50%;
+        background: var(--ccw-green);
+        color: #fff !important;
+        font-size: 16px;
+    }
+    .o_ccw_ib {
+        display: grid;
+        place-items: center;
+        min-width: 36px;
+        height: 32px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        background: var(--ccw-card);
+
+        &.on { border-color: var(--ccw-hiline); background: var(--ccw-accent-soft); color: var(--ccw-accent); }
+    }
+    .o_ccw_back { display: none; }
+
+    // Menus that drop from a button (call scripts, templates).
+    .o_ccw_pop {
+        position: relative;
+
+        .o_ccw_menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 240px;
+            padding: 10px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, .14);
+
+            &.wide { width: 300px; gap: 8px; }
+            > button:not(.o_ccw_primary) {
+                padding: 7px 8px;
+                border: 0;
+                border-radius: 7px;
+                background: none;
+                text-align: left;
+
+                &:hover { background: var(--ccw-sel); }
+            }
+            label { display: flex; flex-direction: column; gap: 3px; margin: 0; color: var(--ccw-muted); font-size: 12px; }
+            select {
+                padding: 6px 8px;
+                border: 1px solid var(--ccw-line);
+                border-radius: 8px;
+                background: var(--ccw-card);
+                color: var(--ccw-fg);
+                font-size: 13px;
+            }
+            p { color: var(--ccw-muted); font-size: 13px; }
+            p.bad { color: var(--ccw-red); font-weight: 600; }
+        }
+        &.up .o_ccw_menu { top: auto; bottom: calc(100% + 6px); }
+    }
+    .o_ccw_primary {
+        padding: 7px 14px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--ccw-brand);
+        color: var(--ccw-on-brand) !important;
+        font-weight: 600;
+    }
+
+    .o_ccw_banner {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 5px 14px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 9px;
+        background: var(--ccw-card);
+        font-size: 13px;
+        font-weight: 600;
+
+        &.warn { background: var(--ccw-warn-bg); border-color: var(--ccw-warn-line); color: var(--ccw-warn-fg); }
+        &.ok { background: var(--ccw-ok-bg); border-color: var(--ccw-ok-line); color: var(--ccw-ok-fg); }
+        button { padding: 0; border: 0; background: none; font-weight: 600; }
+    }
+    .o_ccw_callstrip {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 9px;
+        background: var(--ccw-navy);
+        color: #fff;
+        font-size: 13px;
+
+        b { font-variant-numeric: tabular-nums; }
+        .o_ccw_rec {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #ffd75e;
+
+            i { width: 8px; height: 8px; border-radius: 50%; background: #ff6b7d; }
+        }
+        .o_ccw_sp { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+        button {
+            padding: 4px 12px;
+            border: 1px solid rgba(255, 255, 255, .4);
+            border-radius: 999px;
+            background: transparent;
+            color: #fff;
+            font-size: 12px;
+
+            &.end { border-color: var(--ccw-red); background: var(--ccw-red); font-weight: 600; }
+        }
+    }
+
+    .o_ccw_thread {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px 14px;
+        overflow: auto;
+
+        > :first-child { margin-top: auto; }
+    }
+    .o_ccw_day {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ccw-muted);
+        font-size: 12px;
+
+        &::before, &::after { content: ""; flex: 1; border-top: 1px solid var(--ccw-line); }
+    }
+    .o_ccw_evt {
+        align-self: center;
+        padding: 2px 12px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 999px;
+        background: var(--ccw-card);
+        color: var(--ccw-muted);
+        font-size: 12px;
+    }
+    .o_ccw_msg {
+        display: flex;
+        gap: 9px;
+
+        .o_ccw_mb { min-width: 0; }
+        .o_ccw_meta {
+            display: block;
+            color: var(--ccw-muted);
+            font-size: 12px;
+
+            b { margin-right: 5px; color: var(--ccw-fg); font-size: 13px; }
+        }
+        .o_ccw_sys { font-size: 14px; }
+        &.auto .o_ccw_sys { background: var(--ccw-muted); }
+    }
+    .o_ccw_bub, .o_ccw_callcard {
+        display: inline-block;
+        max-width: 520px;
+        margin-top: 3px;
+        padding: 8px 12px;
+        border: 1px solid var(--ccw-bub-in-line);
+        border-radius: 0 12px 12px 12px;
+        background: var(--ccw-bub-in);
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+
+        audio { display: block; max-width: 100%; height: 34px; margin-top: 6px; }
+    }
+    .o_ccw_msg.out .o_ccw_bub { background: var(--ccw-bub-out); border-color: var(--ccw-bub-out-line); }
+    .o_ccw_msg.auto .o_ccw_bub { background: var(--ccw-card); border-style: dashed; }
+    .o_ccw_msg.fail .o_ccw_bub { border-color: var(--ccw-red); }
+    .o_ccw_callcard {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        background: var(--ccw-card);
+        border-color: var(--ccw-line);
+
+        audio { margin-top: 0; }
+    }
+    .o_ccw_transcript {
+        margin-top: 6px;
+        color: var(--ccw-muted);
+        font-size: 13px;
+        font-style: italic;
+    }
+    .o_ccw_outcome {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        color: var(--ccw-muted);
+        font-size: 12px;
+    }
+    .o_ccw_note {
+        display: block;
+        margin-top: 2px;
+        color: var(--ccw-red);
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .o_ccw_link {
+        display: block;
+        margin-top: 6px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--ccw-accent);
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    // ── Reply box ───────────────────────────────────────────────────────
+    .o_ccw_comp {
+        display: flex;
+        align-items: flex-end;
+        gap: 9px;
+        padding: 0 14px 4px;
+    }
+    .o_ccw_box {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: flex-end;
+        gap: 9px;
+        padding: 5px 12px 5px 5px;
+        border: 1px solid var(--ccw-accent);
+        border-radius: 18px;
+        background: var(--ccw-card);
+
+        &.lock { border-color: var(--ccw-line); background: var(--ccw-sel); align-items: center; }
+        textarea {
+            flex: 1;
+            min-width: 0;
+            max-height: 140px;
+            padding: 3px 0;
+            border: 0;
+            background: none;
+            color: var(--ccw-fg);
+            outline: none;
+            resize: none;
+        }
+    }
+    .o_ccw_chan {
+        flex: none;
+        padding: 3px 10px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 999px;
+        background: var(--ccw-sel);
+        font-size: 12.5px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .o_ccw_lock { flex: 1; min-width: 0; color: var(--ccw-muted); font-size: 13px; }
+    .o_ccw_send {
+        flex: none;
+        padding: 3px 4px;
+        border: 0;
+        background: none;
+        color: var(--ccw-accent);
+        font-size: 16px;
+    }
+    .o_ccw_tpl {
+        padding: 7px 13px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 999px;
+        background: var(--ccw-card);
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    // ── Information card ────────────────────────────────────────────────
+    .o_ccw_info {
+        width: 292px;
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 12px;
+        overflow: auto;
+
+        &.wide { width: 360px; }
+        textarea, .o_ccw_select, .o_ccw_answer input {
+            width: 100%;
+            padding: 7px 10px;
+            border: 1px solid var(--ccw-line);
+            border-radius: 8px;
+            background: var(--ccw-card);
+            color: var(--ccw-fg);
+            font: inherit;
+        }
+        textarea { min-height: 52px; resize: vertical; }
+        .o_ccw_select { margin-bottom: 6px; }
+    }
+    // The phone card's "On call" chip sits in the bottom right corner during a call.
+    &.o_ccw_oncall .o_ccw_info { padding-bottom: 60px; }
+    .o_ccw_radio {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        overflow: hidden;
+
+        button {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 7px 11px;
+            border: 0;
+            background: var(--ccw-sel);
+            text-align: left;
+        }
+        button + button { border-top: 1px solid var(--ccw-line); }
+        i {
+            flex: none;
+            width: 13px;
+            height: 13px;
+            border: 1.5px solid var(--ccw-muted);
+            border-radius: 50%;
+            background: var(--ccw-card);
+        }
+        button.on { background: var(--ccw-accent-soft); box-shadow: inset 0 0 0 1px var(--ccw-hiline); font-weight: 600; }
+        button.on i { border: 4px solid var(--ccw-accent); }
+    }
+    .o_ccw_shead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+
+        h5 { margin: 0; }
+        b { font-size: 15px; font-weight: 600; }
+    }
+    .o_ccw_copilot {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 10px;
+        border: 1px solid var(--ccw-bub-out-line);
+        border-radius: 10px;
+        background: var(--ccw-soft);
+        font-size: 13px;
+
+        .o_ccw_link { margin-top: 0; text-align: left; }
+    }
+    .o_ccw_suggest {
+        padding: 8px 10px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        background: var(--ccw-card);
+        white-space: pre-line;
+    }
+    .o_ccw_wide {
+        width: 100%;
+        padding: 7px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        background: var(--ccw-sel);
+        font-size: 13px;
+        font-weight: 600;
+
+        &.danger { background: var(--ccw-card); border-color: var(--ccw-red); color: var(--ccw-red); }
+    }
+    .o_ccw_kv {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 5px 12px;
+        margin: 0;
+        font-size: 13px;
+
+        dt { color: var(--ccw-muted); font-weight: 400; }
+        dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+    }
+    .o_ccw_notes { min-height: 0; margin: 0 -12px; }
+
+    // Call script
+    .o_ccw_script {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow: auto;
+    }
+    .o_ccw_step {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px 10px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 10px;
+        background: var(--ccw-bub-in);
+        font-size: 13px;
+        white-space: pre-line;
+        opacity: .75;
+
+        &.last {
+            border-color: var(--ccw-bub-out-line);
+            background: var(--ccw-soft);
+            font-size: 14px;
+            opacity: 1;
+        }
+        > i { color: var(--ccw-warn-fg); font-size: 12px; }
+    }
+    .o_ccw_opts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+
+        button {
+            padding: 7px 12px;
+            border: 1px solid var(--ccw-line);
+            border-radius: 8px;
+            background: var(--ccw-card);
+            font-size: 13px;
+
+            &:hover { border-color: var(--ccw-accent); }
+        }
+    }
+    .o_ccw_answer {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 0;
+        color: var(--ccw-muted);
+        font-size: 12px;
+
+        span { display: flex; gap: 6px; }
+        input { flex: 1; min-width: 0; font-size: 13px; }
+        button {
+            padding: 7px 12px;
+            border: 1px solid var(--ccw-line);
+            border-radius: 8px;
+            background: var(--ccw-sel);
+            color: var(--ccw-fg);
+            font-size: 13px;
+            font-weight: 600;
+        }
+    }
+}
+
+// The web client lays an action out as a column; the workspace is a row of panes.
+html .o_web_client > .o_action_manager > .o_action.o_ccw { flex-direction: row; }
+
+// ── Phone: one pane at a time, the rail becomes a bottom tab bar ────────────
+@media (max-width: 767.98px) {
+    html .o_web_client > .o_action_manager > .o_action.o_ccw { flex-direction: column; }
+    .o_ccw {
+        flex-direction: column;
+        gap: 0;
+        padding: 0;
+
+        .o_ccw_rail {
+            order: 9;
+            width: auto;
+            flex-direction: row;
+            gap: 0;
+            padding: 9px 4px 7px;
+            border-top: 1px solid var(--ccw-line);
+            background: var(--ccw-card);
+
+            button { flex: 1 1 0; min-width: 0; font-size: 10.5px; }
+            .o_ccw_pill { width: 44px; }
+            .o_ccw_cnt { right: calc(50% - 26px); }
+        }
+        .o_ccw_list, .o_ccw_main, .o_ccw_info, .o_ccw_info.wide {
+            flex: 1;
+            width: auto;
+            min-height: 0;
+            border: 0;
+            border-radius: 0;
+        }
+        .o_ccw_main { padding-top: 6px; }
+        &[data-pane="list"] .o_ccw_main, &[data-pane="list"] .o_ccw_info,
+        &[data-pane="thread"] .o_ccw_list, &[data-pane="thread"] .o_ccw_info,
+        &[data-pane="info"] .o_ccw_list, &[data-pane="info"] .o_ccw_main { display: none; }
+
+        .o_ccw_back { flex: none; display: grid; min-width: 44px; height: 44px; }
+        .o_ccw_info .o_ccw_back { align-self: flex-start; }
+        .o_ccw_mhead { gap: 6px; padding: 0 8px; }
+        .o_ccw_who {
+            padding: 6px 9px;
+
+            span:not(.o_ccw_av) { display: none; }
+            b { font-size: 15px; }
+        }
+        .o_ccw_call { width: 44px; height: 44px; font-size: 20px; }
+        .o_ccw_ib.o_ccw_keep { min-width: 44px; height: 44px; }
+        .o_ccw_banner, .o_ccw_callstrip { margin: 0 8px; }
+        .o_ccw_thread { padding: 10px; }
+        .o_ccw_bub, .o_ccw_callcard { max-width: 100%; }
+        .o_ccw_comp { flex-wrap: wrap; padding: 0 8px 8px; }
+        .o_ccw_comp > .o_ccw_av { display: none; }
+        .o_ccw_pop .o_ccw_menu { max-width: calc(100vw - 16px); }
+    }
+}
