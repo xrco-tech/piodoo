@@ -18,6 +18,7 @@ export class ContactCentreCampaigns extends Component {
     static template = "contact_centre_workspace.Campaigns";
     static props = {
         boot: Object,
+        openId: { type: [Number, Boolean], optional: true },
         setPane: Function,
         openConversation: Function,
         openCampaignInbox: Function,
@@ -44,7 +45,12 @@ export class ContactCentreCampaigns extends Component {
         });
         this.when = when;
         this.searchLater = useDebounced(() => this.loadList(), 300);
-        onWillStart(() => this.loadList());
+        onWillStart(async () => {
+            await this.loadList();
+            if (this.props.openId) {
+                await this.open(this.props.openId);
+            }
+        });
     }
 
     // ── Loading ──────────────────────────────────────────────────────────

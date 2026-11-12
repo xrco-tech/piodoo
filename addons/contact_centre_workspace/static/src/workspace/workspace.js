@@ -12,6 +12,7 @@ import { ContactCentreCalls } from "./calls";
 import { ContactCentreContacts } from "./contacts";
 import { ContactCentreCampaigns } from "./campaigns";
 import { ContactCentreTemplates } from "./templates";
+import { ContactCentreAiOps } from "./ai_ops";
 import { when, dialWhatsApp, dialVoip } from "./util";
 
 const { DateTime } = luxon;
@@ -24,7 +25,7 @@ const CHANNEL = { whatsapp: "WhatsApp", sms: "SMS", voice: _t("Call"), email: _t
 /** The Contact Centre inbox as a workspace: rail, list card, thread, information card. */
 export class ContactCentreWorkspace extends Component {
     static template = "contact_centre_workspace.Workspace";
-    static components = { Chatter, ContactCentreCalls, ContactCentreContacts, ContactCentreCampaigns, ContactCentreTemplates };
+    static components = { Chatter, ContactCentreCalls, ContactCentreContacts, ContactCentreCampaigns, ContactCentreTemplates, ContactCentreAiOps };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -39,10 +40,11 @@ export class ContactCentreWorkspace extends Component {
         const params = this.props.action.params || {};
 
         this.state = useState({
-            boot: { rail: [], dispositions: [], counts: { unread: 0 }, ai: false, voip: false, me: { name: "", initials: "" } },
-            // inbox | calls | contacts | campaigns | templates
+            boot: { ai_ops: false, dispositions: [], counts: { unread: 0 }, ai: false, voip: false, me: { name: "", initials: "" } },
+            // inbox | calls | contacts | campaigns | templates | ai
             section: params.call_key ? "calls"
-                : ["calls", "contacts", "campaigns", "templates"].includes(params.section) ? params.section : "inbox",
+                : ["calls", "contacts", "campaigns", "templates", "ai"].includes(params.section) ? params.section : "inbox",
+            sectionOpen: false,    // the record a section opens on, when it was reached from another one
             sectionPane: "list",   // the pane a phone shows outside the inbox
             // The inbox narrowed to one campaign's contacts: { id, name } or null.
             campaign: params.campaign_id ? { id: params.campaign_id, name: params.campaign_name || "" } : null,
@@ -224,10 +226,6 @@ export class ContactCentreWorkspace extends Component {
         return { open: "plain", pending: "warn", resolved: "ok" }[state] || "plain";
     }
 
-    openRail(entry) {
-        this.action.doAction(entry.action);
-    }
-
     // ── Sections ─────────────────────────────────────────────────────────
     /** Which pane a phone shows: each section keeps its own. */
     get pane() {
@@ -244,8 +242,16 @@ export class ContactCentreWorkspace extends Component {
 
     showSection(section) {
         this.state.section = section;
+        this.state.sectionOpen = false;
         this.state.sectionPane = "list";
         this.state.menu = null;
+    }
+
+    /** To another section, opened on one record (a campaign the copilot made, say). */
+    goTo(section, id) {
+        this.state.sectionOpen = id;
+        this.state.sectionPane = "list";
+        this.state.section = section;
     }
 
     setSectionPane(pane) {

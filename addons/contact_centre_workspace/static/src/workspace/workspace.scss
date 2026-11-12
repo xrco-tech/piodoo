@@ -954,6 +954,105 @@
     }
 }
 
+// ── AI Ops section ──────────────────────────────────────────────────────
+.o_ccw {
+    .o_ccw_who .o_ccw_pencil { flex: none; padding: 0 2px; border: 0; background: none; color: var(--ccw-muted); }
+    .o_ccw_rename {
+        min-width: 180px;
+        padding: 2px 8px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 6px;
+        background: var(--ccw-card);
+        color: var(--ccw-fg);
+        font-size: 15px;
+    }
+    .o_ccw_aihello {
+        align-self: center;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-width: 440px;
+        margin: auto;
+        color: var(--ccw-muted);
+        text-align: center;
+
+        b { color: var(--ccw-fg); font-size: 16px; font-weight: 600; }
+    }
+    .o_ccw_chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 0 14px;
+
+        button {
+            padding: 5px 13px;
+            border: 1px solid var(--ccw-hiline);
+            border-radius: 999px;
+            background: var(--ccw-accent-soft);
+            font-size: 13px;
+        }
+    }
+    // The copilot's replies are markdown.
+    .o_ccw_md {
+        max-width: 640px;
+        white-space: normal;
+
+        > :first-child { margin-top: 0; }
+        > :last-child { margin-bottom: 0; }
+        p, ul, ol { margin: 0 0 8px; }
+        ul, ol { padding-left: 20px; }
+        h3, h4, h5, h6 { margin: 10px 0 4px; font-size: 14px; font-weight: 600; }
+        code { padding: 1px 4px; border-radius: 4px; background: var(--ccw-sel); font-size: 12.5px; }
+        .o_ccw_md_code { margin: 0 0 8px; padding: 8px; border-radius: 6px; background: var(--ccw-sel); white-space: pre-wrap; }
+        .o_ccw_md_code code { padding: 0; background: none; }
+        .o_ccw_md_tablewrap { max-width: 100%; margin-bottom: 8px; overflow-x: auto; }
+        .o_ccw_md_table {
+            border-collapse: collapse;
+            font-size: 13px;
+            white-space: nowrap;
+
+            th, td { padding: 4px 9px; border: 1px solid var(--ccw-line); text-align: left; }
+            th { background: var(--ccw-sel); font-weight: 600; }
+        }
+    }
+    .o_ccw_aiact {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 9px 10px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 10px;
+        font-size: 13px;
+
+        &.lookup { background: var(--ccw-bg); }
+        .o_ccw_link { margin-top: 0; text-align: left; }
+        pre {
+            margin: 0;
+            padding: 6px 8px;
+            border-radius: 6px;
+            background: var(--ccw-sel);
+            color: var(--ccw-fg);
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    }
+    .o_ccw_aihead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .o_ccw_aitoggle {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0;
+        border: 0;
+        background: none;
+        text-align: left;
+
+        b { font-weight: 600; }
+    }
+    .o_ccw_info > .o_ccw_shead .o_ccw_link { width: auto; margin-top: 0; }
+}
+
 // ── Templates section ───────────────────────────────────────────────────
 .o_ccw {
     .o_ccw_form select, .o_ccw_form textarea {

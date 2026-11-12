@@ -28,19 +28,20 @@
                     <span class="o_ccw_pill"><i class="fa fa-file-text-o"/></span>
                     Templates
                 </button>
-                <button t-foreach="state.boot.rail" t-as="entry" t-key="entry.key" type="button" t-on-click="() => this.openRail(entry)">
-                    <span class="o_ccw_pill"><i t-attf-class="fa {{entry.icon}}"/></span>
-                    <t t-esc="entry.label"/>
+                <button t-if="state.boot.ai_ops" type="button" t-att-class="{ on: state.section === 'ai' }" t-on-click="() => this.showSection('ai')">
+                    <span class="o_ccw_pill"><i class="fa fa-magic"/></span>
+                    AI Ops
                 </button>
             </nav>
 
             <ContactCentreCalls t-if="state.section === 'calls'" boot="state.boot" callKey="callKey"
                                 setPane.bind="setSectionPane" openConversation.bind="openConversation"/>
-            <ContactCentreContacts t-elif="state.section === 'contacts'" boot="state.boot"
+            <ContactCentreContacts t-elif="state.section === 'contacts'" boot="state.boot" openId="state.sectionOpen"
                                    setPane.bind="setSectionPane" openConversation.bind="openConversation"/>
-            <ContactCentreCampaigns t-elif="state.section === 'campaigns'" boot="state.boot" setPane.bind="setSectionPane"
+            <ContactCentreCampaigns t-elif="state.section === 'campaigns'" boot="state.boot" openId="state.sectionOpen" setPane.bind="setSectionPane"
                                     openConversation.bind="openConversation" openCampaignInbox.bind="openCampaignInbox"/>
-            <ContactCentreTemplates t-elif="state.section === 'templates'" boot="state.boot" setPane.bind="setSectionPane"/>
+            <ContactCentreTemplates t-elif="state.section === 'templates'" boot="state.boot" openId="state.sectionOpen" setPane.bind="setSectionPane"/>
+            <ContactCentreAiOps t-elif="state.section === 'ai'" boot="state.boot" setPane.bind="setSectionPane" goTo.bind="goTo"/>
             <t t-else="">
             <!-- ── List ─────────────────────────────────────────────── -->
             <section class="o_ccw_card o_ccw_list">

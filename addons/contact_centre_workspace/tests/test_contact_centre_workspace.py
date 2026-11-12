@@ -64,11 +64,9 @@ class TestContactCentreWorkspace(TransactionCase):
         boot = self.Ws.ws_boot()
         self.assertEqual(boot['counts'], {'unread': 0})
         self.assertTrue(boot['me']['initials'])
-        keys = [entry['key'] for entry in boot['rail']]
-        # Calls, Contacts, Campaigns and Templates are sections of the workspace now.
-        self.assertFalse({'calls', 'contacts', 'campaigns', 'templates'} & set(keys))
-        for entry in boot['rail']:
-            self.assertTrue(self.env['ir.actions.actions'].browse(entry['action']).exists())
+        # Every rail entry is a section of the workspace now; the copilot's is for managers.
+        self.assertNotIn('rail', boot)
+        self.assertFalse(boot['ai_ops'])
 
     def test_list_rows_filters_and_search(self):
         self._msg(self.nokuthula, 'I was told my cover lapsed', minutes_ago=30)

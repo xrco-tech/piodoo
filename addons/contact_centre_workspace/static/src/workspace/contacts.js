@@ -16,6 +16,7 @@ export class ContactCentreContacts extends Component {
     static template = "contact_centre_workspace.Contacts";
     static props = {
         boot: Object,
+        openId: { type: [Number, Boolean], optional: true },
         setPane: Function,
         openConversation: Function,
     };
@@ -45,6 +46,9 @@ export class ContactCentreContacts extends Component {
         onWillStart(async () => {
             const [tags] = await Promise.all([this.orm.call(WS, "ws_contact_tags", []), this.loadList()]);
             this.state.tags = tags;
+            if (this.props.openId) {
+                await this.open(this.props.openId);
+            }
         });
     }
 

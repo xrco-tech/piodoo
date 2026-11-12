@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="contact_centre_workspace.AiOps">
+
+        <!-- ── Chats ────────────────────────────────────────────────── -->
+        <section class="o_ccw_card o_ccw_list">
+            <div class="o_ccw_searchrow">
+                <label class="o_ccw_search">
+                    <i class="fa fa-search"/>
+                    <input type="text" placeholder="Search chats" aria-label="Search chats"
+                           t-att-value="state.search" t-on-input="onSearch"/>
+                </label>
+                <button type="button" class="o_ccw_ib" title="New chat" aria-label="New chat" t-on-click="newChat"><i class="fa fa-plus"/></button>
+            </div>
+            <div class="o_ccw_rows">
+                <button t-foreach="state.rows" t-as="row" t-key="row.id" type="button" class="o_ccw_row"
+                        t-att-class="{ on: row.id === state.sel, unread: row.waiting }" t-on-click="() => this.open(row.id)">
+                    <span class="o_ccw_av o_ccw_sys"><i class="fa fa-magic"/></span>
+                    <span class="o_ccw_rt">
+                        <b><em t-esc="row.name"/><time t-esc="when(row.at)"/></b>
+                        <span class="o_ccw_prev">
+                            <em><t t-if="row.mine_last">You: </t><t t-esc="row.preview || 'No messages yet'"/></em>
+                            <span t-if="row.waiting" class="o_ccw_tag warn">Needs your yes</span>
+                            <span t-elif="row.by" class="o_ccw_tag plain" t-esc="row.by"/>
+                        </span>
+                    </span>
+                </button>
+                <button t-if="state.more" type="button" class="o_ccw_more" t-on-click="loadMore">Show more</button>
+                <div t-if="!state.rows.length and !state.loading" class="o_ccw_empty">
+                    <t t-if="state.search">No chats match.</t><t t-else="">No chats yet. Start one with +.</t>
+                </div>
+            </div>
+            <div t-if="state.rows.length" class="o_ccw_total" t-esc="totalText"/>
+        </section>
+
+        <!-- ── One chat ─────────────────────────────────────────────── -->
+        <section class="o_ccw_main">
+            <div t-if="!state.chat" class="o_ccw_none">
+                <t t-if="state.loadingChat">Loading…</t>
+                <t t-else="">Pick a chat, or start a new one, to work with the copilot.</t>
+            </div>
+            <t t-else="">
+                <t t-set="chat" t-value="state.chat"/>
+                <div class="o_ccw_mhead">
+                    <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to chats" t-on-click="showList"><i class="fa fa-chevron-left"/></button>
+                    <div class="o_ccw_card o_ccw_who">
+                        <span class="o_ccw_av o_ccw_sys"><i class="fa fa-magic"/></span>
+                        <t t-if="state.renaming">
+                            <input type="text" class="o_ccw_rename" aria-label="Chat name" t-att-value="state.renameText"
+                                   t-on-input="onRenameText" t-on-keydown="onRenameKey" t-on-blur="saveName"/>
+                        </t>
+                        <t t-else="">
+                            <b t-esc="chat.name"/>
+                            <span t-if="chat.by">Started by <t t-esc="chat.by"/></span>
+                            <button type="button" class="o_ccw_pencil" title="Rename" aria-label="Rename this chat" t-on-click="rename"><i class="fa fa-pencil"/></button>
+                        </t>
+                    </div>
+                    <div class="o_ccw_acts">
+                        <button type="button" class="o_ccw_ib o_ccw_keep" t-att-class="{ on: state.infoOpen }" title="What the copilot did" aria-label="What the copilot did"
+                                t-on-click="toggleInfo"><i class="fa fa-list-ul"/></button>
+                    </div>
+                </div>
+
+                <div t-if="heldText" class="o_ccw_banner warn"><span t-esc="heldText"/></div>
+
+                <div class="o_ccw_thread" t-ref="thread">
+                    <div t-if="!chat.messages.length" class="o_ccw_aihello">
+                        <b>Ask the copilot to set something up.</b>
+                        <span>It can draft campaigns, templates, contacts, chatbot flows, call teams and dashboard cards, and look things up.
+                            It asks before it changes anything, and it never starts a campaign: that stays with you.</span>
+                    </div>
+                    <div t-foreach="chat.messages" t-as="m" t-key="m.id" class="o_ccw_msg" t-att-class="{ out: m.mine }">
+                        <span t-if="m.mine" class="o_ccw_av o_ccw_me" t-esc="props.boot.me.initials"/>
+                        <span t-else="" class="o_ccw_av o_ccw_sys"><i class="fa fa-magic"/></span>
+                        <div class="o_ccw_mb">
+                            <span class="o_ccw_meta"><b><t t-if="m.mine">You</t><t t-else="">Copilot</t></b><t t-esc="when(m.at)"/></span>
+                            <div t-if="m.mine" class="o_ccw_bub" t-esc="m.content"/>
+                            <div t-else="" class="o_ccw_bub o_ccw_md" t-out="html(m.content)"/>
+                        </div>
+                    </div>
+                    <div t-if="state.sending" class="o_ccw_msg">
+                        <span class="o_ccw_av o_ccw_sys"><i class="fa fa-magic"/></span>
+                        <div class="o_ccw_mb"><div class="o_ccw_bub o_ccw_muted">Working on it…</div></div>
+                    </div>
+                </div>
+
+                <div t-if="suggestions.length" class="o_ccw_chips">
+                    <button t-foreach="suggestions" t-as="suggestion" t-key="suggestion_index" type="button"
+                            t-on-click="() => this.suggest(suggestion)" t-esc="suggestion"/>
+                </div>
+                <div class="o_ccw_comp">
+                    <span class="o_ccw_av o_ccw_me" t-esc="props.boot.me.initials"/>
+                    <div class="o_ccw_box">
+                        <textarea rows="1" t-ref="composer" aria-label="Message to the copilot" placeholder="Ask the copilot to draft or change something…"
+                                  t-att-value="state.text" t-on-input="onText" t-on-keydown="onKey"/>
+                        <button type="button" class="o_ccw_send" aria-label="Send" t-att-disabled="state.sending or !state.text.trim()" t-on-click="send"><i class="fa fa-paper-plane"/></button>
+                    </div>
+                </div>
+            </t>
+        </section>
+
+        <!-- ── What the copilot did ─────────────────────────────────── -->
+        <aside t-if="state.chat and state.infoOpen" class="o_ccw_card o_ccw_info wide">
+            <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to the chat" t-on-click="showChat"><i class="fa fa-chevron-left"/></button>
+            <div class="o_ccw_shead">
+                <h5>What the copilot did</h5>
+                <button t-if="lookupCount" type="button" class="o_ccw_link" t-on-click="toggleLookups">
+                    <t t-if="state.lookups">Hide look-ups</t><t t-else="">Show <t t-esc="lookupCount"/> look-ups</t>
+                </button>
+            </div>
+            <p t-if="!actions.length" class="o_ccw_muted">
+                <t t-if="lookupCount">Nothing changed in this chat: the copilot only looked things up.</t>
+                <t t-else="">Nothing yet. Each change the copilot makes in this chat is listed here.</t>
+            </p>
+            <div t-foreach="actions" t-as="action" t-key="action.id" class="o_ccw_aiact" t-att-class="{ lookup: isLookup(action) }">
+                <t t-set="result" t-value="outcome(action)"/>
+                <div class="o_ccw_aihead">
+                    <button type="button" class="o_ccw_aitoggle" t-att-aria-expanded="state.open[action.id] ? 'true' : 'false'" t-on-click="() => this.toggleAction(action)">
+                        <i t-attf-class="fa {{state.open[action.id] ? 'fa-angle-down' : 'fa-angle-right'}}"/>
+                        <b t-esc="toolLabel(action.tool)"/>
+                    </button>
+                    <span class="o_ccw_tag" t-att-class="result.cls" t-esc="result.label"/>
+                </div>
+                <p t-if="reason(action)" class="o_ccw_muted" t-esc="reason(action)"/>
+                <button t-if="target(action)" type="button" class="o_ccw_link" t-on-click="() => this.openTarget(action)">Open it</button>
+                <t t-if="state.open[action.id]">
+                    <span class="o_ccw_muted">Asked for</span>
+                    <pre t-esc="json(action.input)"/>
+                    <span class="o_ccw_muted">Result</span>
+                    <pre t-esc="json(action.result)"/>
+                </t>
+            </div>
+        </aside>
+    </t>
+
+</templates>

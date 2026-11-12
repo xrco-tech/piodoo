@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contact Centre Workspace',
-    'version': '18.0.1.4.0',
+    'version': '18.0.1.5.0',
     'category': 'Communications',
     'summary': 'The Contact Centre inbox as a Discuss-style workspace: rail, list, thread, information card',
     'description': """
 One screen for Contact Centre agents, laid out like the Chat2Work workspace.
 
 * A rail on the left (Inbox, Calls, Contacts, Campaigns, Templates, AI Ops).
-  All but AI Ops are sections of this screen; AI Ops opens the screen that
-  already exists.
+  Each is a section of this screen.
 * Calls: WhatsApp and VoIP calls in one list, newest first. One call shows
   its recording, transcript, summary, the other calls with that person, and
   its outcome; from there, call back or open the conversation.
@@ -23,6 +22,9 @@ One screen for Contact Centre agents, laid out like the Chat2Work workspace.
 * Templates: the message templates of every channel, with where each is
   used and how often it has been sent. Managers write, correct and archive
   them there.
+* AI Ops (managers, when the AI copilot addon is installed): the copilot
+  chats, with what the copilot did in each chat beside it. A change it made
+  to a campaign, contact or template opens in that section.
 * A conversation list with unread counts, the channel of the last message
   and filters by status and channel.
 * One thread per contact: WhatsApp, SMS, email and calls together, with call
@@ -53,6 +55,9 @@ Centre Inbox's own methods, so the two screens behave the same.
             'contact_centre_workspace/static/src/workspace/campaigns.xml',
             'contact_centre_workspace/static/src/workspace/templates.js',
             'contact_centre_workspace/static/src/workspace/templates.xml',
+            'contact_centre_workspace/static/src/workspace/markdown.js',
+            'contact_centre_workspace/static/src/workspace/ai_ops.js',
+            'contact_centre_workspace/static/src/workspace/ai_ops.xml',
             'contact_centre_workspace/static/src/workspace/workspace.js',
             'contact_centre_workspace/static/src/workspace/workspace.xml',
         ],

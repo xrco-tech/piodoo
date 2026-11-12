@@ -19,6 +19,7 @@ export class ContactCentreTemplates extends Component {
     static template = "contact_centre_workspace.Templates";
     static props = {
         boot: Object,
+        openId: { type: [Number, Boolean], optional: true },
         setPane: Function,
     };
 
@@ -42,7 +43,12 @@ export class ContactCentreTemplates extends Component {
             working: false,
         });
         this.searchLater = useDebounced(() => this.loadList(), 300);
-        onWillStart(() => this.loadList());
+        onWillStart(async () => {
+            await this.loadList();
+            if (this.props.openId) {
+                await this.open(this.props.openId);
+            }
+        });
     }
 
     // ── Loading ──────────────────────────────────────────────────────────
