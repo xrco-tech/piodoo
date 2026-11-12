@@ -10,6 +10,7 @@ import { standardActionServiceProps } from "@web/webclient/actions/action_servic
 import { Chatter } from "@mail/chatter/web_portal/chatter";
 import { ContactCentreCalls } from "./calls";
 import { ContactCentreContacts } from "./contacts";
+import { ContactCentreCampaigns } from "./campaigns";
 import { when, dialWhatsApp, dialVoip } from "./util";
 
 const { DateTime } = luxon;
@@ -22,7 +23,7 @@ const CHANNEL = { whatsapp: "WhatsApp", sms: "SMS", voice: _t("Call"), email: _t
 /** The Contact Centre inbox as a workspace: rail, list card, thread, information card. */
 export class ContactCentreWorkspace extends Component {
     static template = "contact_centre_workspace.Workspace";
-    static components = { Chatter, ContactCentreCalls, ContactCentreContacts };
+    static components = { Chatter, ContactCentreCalls, ContactCentreContacts, ContactCentreCampaigns };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -35,14 +36,14 @@ export class ContactCentreWorkspace extends Component {
         this.phone = this.calling ? useState(this.calling.state) : { call: null, script: null };
 
         const params = this.props.action.params || {};
-        this.campaignId = params.campaign_id || false;
-        this.campaignName = params.campaign_name || "";
 
         this.state = useState({
             boot: { rail: [], dispositions: [], counts: { unread: 0 }, ai: false, voip: false, me: { name: "", initials: "" } },
-            // inbox | calls | contacts
-            section: params.call_key ? "calls" : ["calls", "contacts"].includes(params.section) ? params.section : "inbox",
-            sectionPane: "list",   // the pane a phone shows in Calls and Contacts
+            // inbox | calls | contacts | campaigns
+            section: params.call_key ? "calls" : ["calls", "contacts", "campaigns"].includes(params.section) ? params.section : "inbox",
+            sectionPane: "list",   // the pane a phone shows outside the inbox
+            // The inbox narrowed to one campaign's contacts: { id, name } or null.
+            campaign: params.campaign_id ? { id: params.campaign_id, name: params.campaign_name || "" } : null,
             pill: "all",
             search: "",
             rows: [],
@@ -247,6 +248,25 @@ export class ContactCentreWorkspace extends Component {
 
     setSectionPane(pane) {
         this.state.sectionPane = pane;
+    }
+
+    get campaignId() {
+        return this.state.campaign ? this.state.campaign.id : false;
+    }
+
+    /** From a campaign to the inbox, showing only that campaign's contacts. */
+    async openCampaignInbox(id, name) {
+        this.state.campaign = { id, name };
+        this.state.section = "inbox";
+        this.state.pill = "all";
+        this.state.search = "";
+        this.state.pane = "list";
+        await this.loadList();
+    }
+
+    async clearCampaign() {
+        this.state.campaign = null;
+        await this.loadList();
     }
 
     /** From a call or a contact to that person's conversation. */
