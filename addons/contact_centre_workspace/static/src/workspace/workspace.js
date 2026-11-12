@@ -11,6 +11,7 @@ import { Chatter } from "@mail/chatter/web_portal/chatter";
 import { ContactCentreCalls } from "./calls";
 import { ContactCentreContacts } from "./contacts";
 import { ContactCentreCampaigns } from "./campaigns";
+import { ContactCentreTemplates } from "./templates";
 import { when, dialWhatsApp, dialVoip } from "./util";
 
 const { DateTime } = luxon;
@@ -23,7 +24,7 @@ const CHANNEL = { whatsapp: "WhatsApp", sms: "SMS", voice: _t("Call"), email: _t
 /** The Contact Centre inbox as a workspace: rail, list card, thread, information card. */
 export class ContactCentreWorkspace extends Component {
     static template = "contact_centre_workspace.Workspace";
-    static components = { Chatter, ContactCentreCalls, ContactCentreContacts, ContactCentreCampaigns };
+    static components = { Chatter, ContactCentreCalls, ContactCentreContacts, ContactCentreCampaigns, ContactCentreTemplates };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -39,8 +40,9 @@ export class ContactCentreWorkspace extends Component {
 
         this.state = useState({
             boot: { rail: [], dispositions: [], counts: { unread: 0 }, ai: false, voip: false, me: { name: "", initials: "" } },
-            // inbox | calls | contacts | campaigns
-            section: params.call_key ? "calls" : ["calls", "contacts", "campaigns"].includes(params.section) ? params.section : "inbox",
+            // inbox | calls | contacts | campaigns | templates
+            section: params.call_key ? "calls"
+                : ["calls", "contacts", "campaigns", "templates"].includes(params.section) ? params.section : "inbox",
             sectionPane: "list",   // the pane a phone shows outside the inbox
             // The inbox narrowed to one campaign's contacts: { id, name } or null.
             campaign: params.campaign_id ? { id: params.campaign_id, name: params.campaign_name || "" } : null,

@@ -954,6 +954,30 @@
     }
 }
 
+// ── Templates section ───────────────────────────────────────────────────
+.o_ccw {
+    .o_ccw_form select, .o_ccw_form textarea {
+        padding: 7px 10px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        background: var(--ccw-card);
+        color: var(--ccw-fg);
+        font: inherit;
+        font-size: 14px;
+    }
+    .o_ccw_form textarea { resize: vertical; }
+    .o_ccw_tplbub {
+        align-self: flex-start;
+        max-width: 520px;
+        padding: 9px 13px;
+        border: 1px solid var(--ccw-bub-out-line);
+        border-radius: 12px 12px 0 12px;
+        background: var(--ccw-bub-out);
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+}
+
 // ── Campaigns section ───────────────────────────────────────────────────
 .o_ccw {
     .o_ccw_stats.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -24,6 +24,10 @@
                     <span class="o_ccw_pill"><i class="fa fa-bullhorn"/></span>
                     Campaigns
                 </button>
+                <button type="button" t-att-class="{ on: state.section === 'templates' }" t-on-click="() => this.showSection('templates')">
+                    <span class="o_ccw_pill"><i class="fa fa-file-text-o"/></span>
+                    Templates
+                </button>
                 <button t-foreach="state.boot.rail" t-as="entry" t-key="entry.key" type="button" t-on-click="() => this.openRail(entry)">
                     <span class="o_ccw_pill"><i t-attf-class="fa {{entry.icon}}"/></span>
                     <t t-esc="entry.label"/>
@@ -36,6 +40,7 @@
                                    setPane.bind="setSectionPane" openConversation.bind="openConversation"/>
             <ContactCentreCampaigns t-elif="state.section === 'campaigns'" boot="state.boot" setPane.bind="setSectionPane"
                                     openConversation.bind="openConversation" openCampaignInbox.bind="openCampaignInbox"/>
+            <ContactCentreTemplates t-elif="state.section === 'templates'" boot="state.boot" setPane.bind="setSectionPane"/>
             <t t-else="">
             <!-- ── List ─────────────────────────────────────────────── -->
             <section class="o_ccw_card o_ccw_list">
