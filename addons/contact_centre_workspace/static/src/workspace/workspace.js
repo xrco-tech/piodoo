@@ -8,6 +8,8 @@ import { _t } from "@web/core/l10n/translation";
 import { deserializeDateTime } from "@web/core/l10n/dates";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { Chatter } from "@mail/chatter/web_portal/chatter";
+import { ContactCentreCalls } from "./calls";
+import { when, dialWhatsApp, dialVoip } from "./util";
 
 const { DateTime } = luxon;
 const WS = "contact.centre.workspace";
@@ -19,7 +21,7 @@ const CHANNEL = { whatsapp: "WhatsApp", sms: "SMS", voice: _t("Call"), email: _t
 /** The Contact Centre inbox as a workspace: rail, list card, thread, information card. */
 export class ContactCentreWorkspace extends Component {
     static template = "contact_centre_workspace.Workspace";
-    static components = { Chatter };
+    static components = { Chatter, ContactCentreCalls };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -27,10 +29,8 @@ export class ContactCentreWorkspace extends Component {
         this.action = useService("action");
         this.bus = useService("bus_service");
         this.notification = useService("notification");
-        // Both are optional: the phone card owns WhatsApp calls and their
-        // script, the softphone owns VoIP calls.
+        // Optional: the phone card owns WhatsApp calls and their script.
         this.calling = this.env.services.comm_whatsapp_calling || null;
-        this.softphone = this.env.services.dialer_softphone || null;
         this.phone = this.calling ? useState(this.calling.state) : { call: null, script: null };
 
         const params = this.props.action.params || {};
@@ -39,6 +39,8 @@ export class ContactCentreWorkspace extends Component {
 
         this.state = useState({
             boot: { rail: [], dispositions: [], counts: { unread: 0 }, ai: false, voip: false, me: { name: "", initials: "" } },
+            section: params.section === "calls" || params.call_key ? "calls" : "inbox",
+            callsPane: "list",
             pill: "all",
             search: "",
             rows: [],
@@ -62,6 +64,8 @@ export class ContactCentreWorkspace extends Component {
             now: Date.now(),
         });
 
+        this.callKey = params.call_key || false;
+        this.when = when;
         this.threadRef = useRef("thread");
         this.composerRef = useRef("composer");
         useEffect(() => this.scrollToEnd(), () => [this.state.thread && this.state.thread.messages]);
@@ -215,23 +219,38 @@ export class ContactCentreWorkspace extends Component {
         return { open: "plain", pending: "warn", resolved: "ok" }[state] || "plain";
     }
 
-    when(value) {
-        if (!value) {
-            return "";
-        }
-        const dt = deserializeDateTime(value);
-        const now = DateTime.local();
-        if (dt.hasSame(now, "day")) {
-            return dt.toFormat("HH:mm");
-        }
-        if (dt.hasSame(now.minus({ days: 1 }), "day")) {
-            return _t("Yesterday");
-        }
-        return dt.toFormat(dt.hasSame(now, "year") ? "d MMM" : "d MMM yyyy");
-    }
-
     openRail(entry) {
         this.action.doAction(entry.action);
+    }
+
+    // ── Sections ─────────────────────────────────────────────────────────
+    /** Which pane a phone shows: each section keeps its own. */
+    get pane() {
+        if (this.state.section === "calls") {
+            return this.state.callsPane;
+        }
+        return this.state.thread ? this.state.pane : "list";
+    }
+
+    showInbox() {
+        this.state.section = "inbox";
+        this.state.pane = "list";
+    }
+
+    showCalls() {
+        this.state.section = "calls";
+        this.state.callsPane = "list";
+        this.state.menu = null;
+    }
+
+    setCallsPane(pane) {
+        this.state.callsPane = pane;
+    }
+
+    /** From a call to the conversation it belongs to. */
+    async openConversation(contactId) {
+        this.state.section = "inbox";
+        await this.open(contactId);
     }
 
     // ── Thread ───────────────────────────────────────────────────────────
@@ -445,44 +464,11 @@ export class ContactCentreWorkspace extends Component {
     callWhatsApp(bot) {
         this.state.menu = null;
         const thread = this.state.thread;
-        if (!thread.phone) {
-            this.notification.add(_t("This contact has no phone number."), { type: "warning" });
-            return;
-        }
-        if (!this.calling) {
-            this.notification.add(_t("WhatsApp calling isn't available."), { type: "danger" });
-            return;
-        }
-        this.calling.dialCall({
-            toNumber: thread.phone,
-            partnerId: thread.partner_id || undefined,
-            partnerName: thread.name,
-            chatbotId: bot ? bot.id : undefined,
-            chatbotName: bot ? bot.name : undefined,
-        });
+        dialWhatsApp(this.env.services, { phone: thread.phone, name: thread.name, partnerId: thread.partner_id, bot });
     }
 
     callVoip() {
-        const softphone = this.softphone;
-        const thread = this.state.thread;
-        if (!softphone || !thread.phone) {
-            this.notification.add(_t("The softphone isn't ready, or this contact has no phone number."), { type: "warning" });
-            return;
-        }
-        const status = softphone.state.status;
-        if (["ringing", "calling", "incall"].includes(status)) {
-            this.notification.add(_t("You're already on a call."), { type: "warning" });
-            return;
-        }
-        if (status !== "registered") {
-            // Opening the pad retries the connection and shows what's wrong.
-            if (!softphone.state.dialerOpen) {
-                softphone.toggleDialer();
-            }
-            this.notification.add(_t("The softphone isn't connected yet. Check the pad, then try again."), { type: "warning" });
-            return;
-        }
-        softphone.dial(thread.phone);
+        dialVoip(this.env.services, this.state.thread.phone);
     }
 
     get callTime() {
