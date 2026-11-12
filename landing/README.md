@@ -44,3 +44,12 @@ cd /home/ubuntu/odoo-stack && git pull
 ```
 
 Then verify: `curl -s https://xrco.tech | grep -o '<title>.*</title>'`
+
+## Chat2Work page (chat2work.co.za)
+
+`chat2work/` is the page for **chat2work.co.za** / **www.chat2work.co.za**
+(`index.html`, `logo.svg`, `whatsapp-qr.svg`). It rides the same bind mount, so
+nginx serves it from `/var/www/xrco/chat2work`. On that host nginx also serves
+`/terms` (this folder's `c2w-terms.html`) and passes `/cv/…`, `/j/…` and the
+`chat2work*` addons' static files to Odoo; nothing else in Odoo is reachable
+there. Preview: `cd landing/chat2work && python3 -m http.server 8898`.
