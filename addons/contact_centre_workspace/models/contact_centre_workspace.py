@@ -14,10 +14,6 @@ STATES = ('open', 'pending', 'resolved')
 CHANNELS = ('whatsapp', 'sms', 'voice', 'email')
 LONG_AGO = datetime(1970, 1, 1)
 COLOURS = ['#b5651d', '#2f6f8f', '#7a4fa3', '#8a5a44', '#2e7d5b', '#a3466b', '#3f7f6a', '#5a6fb0']
-# Rail entries after the workspace's own sections: (key, label, icon, the screen that exists today).
-RAIL = [
-    ('ai', 'AI Ops', 'fa-magic', 'contact_centre_ai_ops.action_contact_centre_ai_ops'),
-]
 
 
 class ContactCentreContact(models.Model):
@@ -152,17 +148,11 @@ class ContactCentreWorkspace(models.AbstractModel):
     @api.model
     def ws_boot(self):
         self._agent()
-        rail = []
-        for key, label, icon, xmlid in RAIL:
-            action = self.env.ref(xmlid, raise_if_not_found=False)
-            if action:
-                rail.append({'key': key, 'label': label, 'icon': icon, 'action': action.id})
         dispositions = self.env['comm.disposition'].sudo().search_read([], ['name'], order='sequence, name')
         user = self.env.user
         return {
             # The VoIP button shows for agents who have their own extension.
             'voip': 'dialer_sip_ext' in user._fields and bool(user.sudo().dialer_sip_ext),
-            'rail': rail,
             'dispositions': dispositions,
             'counts': self.ws_counts(),
             'ai': 'ai_summary' in self.env['contact.centre.contact']._fields,
