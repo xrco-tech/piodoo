@@ -65,8 +65,9 @@ class TestContactCentreWorkspace(TransactionCase):
         self.assertEqual(boot['counts'], {'unread': 0})
         self.assertTrue(boot['me']['initials'])
         keys = [entry['key'] for entry in boot['rail']]
-        self.assertIn('contacts', keys)
-        self.assertNotIn('calls', keys)       # Calls is a section of the workspace now
+        self.assertIn('campaigns', keys)
+        # Calls and Contacts are sections of the workspace now.
+        self.assertFalse({'calls', 'contacts'} & set(keys))
         for entry in boot['rail']:
             self.assertTrue(self.env['ir.actions.actions'].browse(entry['action']).exists())
 

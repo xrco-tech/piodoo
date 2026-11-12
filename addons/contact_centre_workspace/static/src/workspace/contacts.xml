@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Name, phone and email, for adding a contact and for correcting one. -->
+    <t t-name="contact_centre_workspace.ContactForm">
+        <t t-set="form" t-value="state.form"/>
+        <div class="o_ccw_card o_ccw_csec o_ccw_form">
+            <h5><t t-if="state.adding">New contact</t><t t-else="">Edit contact</t></h5>
+            <label>Name
+                <input type="text" name="name" autocomplete="off" t-att-value="form.name" t-on-input="onField" t-on-keydown="onFormKey"/>
+            </label>
+            <label>Phone number
+                <input type="tel" name="phone" autocomplete="off" placeholder="27821234567" t-att-value="form.phone" t-on-input="onField" t-on-keydown="onFormKey"/>
+            </label>
+            <label>Email
+                <input type="email" name="email" autocomplete="off" t-att-value="form.email" t-on-input="onField" t-on-keydown="onFormKey"/>
+            </label>
+            <p t-if="form.error" class="o_ccw_bad" t-esc="form.error"/>
+            <p t-elif="!state.adding" class="o_ccw_muted">These are the person's own details: a change shows everywhere they appear.</p>
+            <div class="o_ccw_formacts">
+                <button type="button" class="o_ccw_primary" t-att-disabled="form.saving" t-on-click="save">
+                    <t t-if="form.saving">Saving…</t><t t-elif="state.adding">Add contact</t><t t-else="">Save</t>
+                </button>
+                <button type="button" class="o_ccw_plainbtn" t-on-click="cancel">Cancel</button>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="contact_centre_workspace.Contacts">
+
+        <!-- ── Directory ────────────────────────────────────────────── -->
+        <section class="o_ccw_card o_ccw_list">
+            <div class="o_ccw_searchrow">
+                <label class="o_ccw_search">
+                    <i class="fa fa-search"/>
+                    <input type="text" placeholder="Search name, phone, email" aria-label="Search contacts"
+                           t-att-value="state.search" t-on-input="onSearch"/>
+                </label>
+                <button type="button" class="o_ccw_ib" title="New contact" aria-label="New contact" t-on-click="add"><i class="fa fa-plus"/></button>
+            </div>
+            <div class="o_ccw_pills">
+                <button t-foreach="pills" t-as="p" t-key="p.key" type="button"
+                        t-att-class="{ on: state.pill === p.key }" t-on-click="() => this.setPill(p.key)" t-esc="p.label"/>
+            </div>
+            <select t-if="state.tags.length" class="o_ccw_select" aria-label="Tag" t-on-change="onTag">
+                <option value="">Any tag</option>
+                <option t-foreach="state.tags" t-as="tag" t-key="tag.id" t-att-value="tag.id" t-att-selected="tag.id === state.tagId" t-esc="tag.name"/>
+            </select>
+            <div class="o_ccw_rows">
+                <button t-foreach="state.rows" t-as="row" t-key="row.id" type="button" class="o_ccw_row"
+                        t-att-class="{ on: row.id === state.sel and !state.adding }" t-on-click="() => this.open(row.id)">
+                    <span class="o_ccw_av" t-att-style="'background:' + row.colour" t-esc="row.initials"/>
+                    <span class="o_ccw_rt">
+                        <b><em t-esc="row.name"/><time t-esc="when(row.at)"/></b>
+                        <span class="o_ccw_prev">
+                            <em t-esc="line(row)"/>
+                            <span t-if="row.tags.length" class="o_ccw_tag plain" t-esc="row.tags.length > 1 ? row.tags[0] + ' +' + (row.tags.length - 1) : row.tags[0]"/>
+                        </span>
+                    </span>
+                </button>
+                <button t-if="state.more" type="button" class="o_ccw_more" t-on-click="loadMore">Show more</button>
+                <div t-if="!state.rows.length and !state.loading" class="o_ccw_empty">No contacts here.</div>
+            </div>
+            <div t-if="state.rows.length" class="o_ccw_total" t-esc="totalText"/>
+        </section>
+
+        <!-- ── One contact ──────────────────────────────────────────── -->
+        <section class="o_ccw_main">
+            <t t-if="state.adding">
+                <div class="o_ccw_mhead">
+                    <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to contacts" t-on-click="cancel"><i class="fa fa-chevron-left"/></button>
+                </div>
+                <div class="o_ccw_calldetail"><t t-call="contact_centre_workspace.ContactForm"/></div>
+            </t>
+            <div t-elif="!state.contact" class="o_ccw_none">
+                <t t-if="state.loadingContact">Loading…</t>
+                <t t-else="">Pick a contact to see them here.</t>
+            </div>
+            <t t-else="">
+                <t t-set="contact" t-value="state.contact"/>
+                <div class="o_ccw_mhead">
+                    <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to contacts" t-on-click="showList"><i class="fa fa-chevron-left"/></button>
+                    <div class="o_ccw_card o_ccw_who">
+                        <span class="o_ccw_av" t-att-style="'background:' + contact.colour" t-esc="contact.initials"/>
+                        <b t-esc="contact.name || contact.phone"/>
+                        <span t-if="contact.name" t-esc="contact.phone"/>
+                    </div>
+                    <div class="o_ccw_acts">
+                        <button t-if="contact.phone" type="button" class="o_ccw_call" title="WhatsApp call" aria-label="WhatsApp call" t-on-click="callWhatsApp"><i class="fa fa-whatsapp"/></button>
+                        <button t-if="contact.phone and props.boot.voip" type="button" class="o_ccw_call" title="VoIP call" aria-label="VoIP call" t-on-click="callVoip"><i class="fa fa-phone"/></button>
+                        <button type="button" class="o_ccw_ib o_ccw_keep" t-att-class="{ on: state.infoOpen }" title="Tags and campaigns" aria-label="Tags and campaigns"
+                                t-on-click="toggleInfo"><i class="fa fa-info-circle"/></button>
+                    </div>
+                </div>
+
+                <div class="o_ccw_calldetail">
+                    <t t-if="state.form" t-call="contact_centre_workspace.ContactForm"/>
+                    <div t-else="" class="o_ccw_card o_ccw_csec">
+                        <div class="o_ccw_shead">
+                            <h5>Details</h5>
+                            <button type="button" class="o_ccw_link" t-on-click="edit">Edit</button>
+                        </div>
+                        <dl class="o_ccw_kv left">
+                            <dt>Name</dt><dd t-esc="contact.name || '—'"/>
+                            <dt>Phone number</dt><dd t-esc="contact.phone || '—'"/>
+                            <dt>Email</dt><dd t-esc="contact.email || '—'"/>
+                        </dl>
+                    </div>
+
+                    <div class="o_ccw_stats">
+                        <div t-foreach="contact.stats" t-as="stat" t-key="stat.label" class="o_ccw_card">
+                            <b t-esc="stat.value"/><span t-esc="stat.label"/>
+                        </div>
+                    </div>
+
+                    <div class="o_ccw_card o_ccw_csec">
+                        <div class="o_ccw_shead">
+                            <h5>Latest activity</h5>
+                            <span class="o_ccw_tag" t-att-class="contact.waiting ? 'warn' : stateClass(contact.state)">
+                                <t t-if="contact.waiting">Waiting for a reply</t><t t-else="" t-esc="stateLabel(contact.state)"/>
+                            </span>
+                        </div>
+                        <p t-if="!contact.recent.length" class="o_ccw_muted">Nothing yet: no messages or calls with this contact.</p>
+                        <div t-foreach="contact.recent" t-as="m" t-key="m.id" class="o_ccw_act">
+                            <span class="o_ccw_tag plain" t-esc="badge(m.channel)"/>
+                            <em t-att-class="{ fail: m.failed }"><i t-attf-class="fa {{m.out ? 'fa-arrow-up' : 'fa-arrow-down'}}"/> <t t-esc="m.preview || '—'"/></em>
+                            <time t-esc="when(m.at)"/>
+                        </div>
+                        <button type="button" class="o_ccw_wide" t-on-click="openConversation">
+                            <i class="fa fa-comments-o"/> Open the conversation
+                        </button>
+                    </div>
+                </div>
+            </t>
+        </section>
+
+        <!-- ── Tags, campaigns, dates ───────────────────────────────── -->
+        <aside t-if="state.contact and state.infoOpen and !state.adding" class="o_ccw_card o_ccw_info">
+            <t t-set="contact" t-value="state.contact"/>
+            <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to the contact" t-on-click="showContact"><i class="fa fa-chevron-left"/></button>
+            <div>
+                <h5>Tags</h5>
+                <div t-if="state.tags.length" class="o_ccw_pills">
+                    <button t-foreach="state.tags" t-as="tag" t-key="tag.id" type="button" t-att-class="{ on: hasTag(tag) }"
+                            t-att-aria-pressed="hasTag(tag) ? 'true' : 'false'" t-on-click="() => this.toggleTag(tag)" t-esc="tag.name"/>
+                </div>
+                <p t-else="" class="o_ccw_muted">No tags have been set up yet.</p>
+            </div>
+            <div>
+                <h5>Campaigns</h5>
+                <p t-if="!contact.campaigns.length" class="o_ccw_muted">Not in any campaign.</p>
+                <div t-foreach="contact.campaigns" t-as="campaign" t-key="campaign.id" class="o_ccw_camp">
+                    <span><b t-esc="campaign.name"/><small t-esc="campaign.channel"/></span>
+                    <span class="o_ccw_tag" t-att-class="campaign.running ? 'ok' : 'plain'" t-esc="campaign.state"/>
+                </div>
+            </div>
+            <div t-if="details.length">
+                <h5>History</h5>
+                <dl class="o_ccw_kv">
+                    <t t-foreach="details" t-as="d" t-key="d.label"><dt t-esc="d.label"/><dd t-esc="d.value"/></t>
+                </dl>
+            </div>
+            <button type="button" class="o_ccw_link" t-on-click="openRecord">Open the full record</button>
+        </aside>
+    </t>
+
+</templates>

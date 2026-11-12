@@ -11,10 +11,14 @@
                     Inbox
                     <span t-if="state.boot.counts.unread" class="o_ccw_cnt" t-esc="state.boot.counts.unread > 99 ? '99+' : state.boot.counts.unread"/>
                 </button>
-                <button type="button" t-att-class="{ on: state.section === 'calls' }" t-on-click="showCalls">
+                <button type="button" t-att-class="{ on: state.section === 'calls' }" t-on-click="() => this.showSection('calls')">
                     <span class="o_ccw_pill"><i class="fa fa-phone"/></span>
                     Calls
                     <span t-if="phone.missed" class="o_ccw_cnt" title="Missed today" t-esc="phone.missed > 99 ? '99+' : phone.missed"/>
+                </button>
+                <button type="button" t-att-class="{ on: state.section === 'contacts' }" t-on-click="() => this.showSection('contacts')">
+                    <span class="o_ccw_pill"><i class="fa fa-address-book-o"/></span>
+                    Contacts
                 </button>
                 <button t-foreach="state.boot.rail" t-as="entry" t-key="entry.key" type="button" t-on-click="() => this.openRail(entry)">
                     <span class="o_ccw_pill"><i t-attf-class="fa {{entry.icon}}"/></span>
@@ -23,7 +27,9 @@
             </nav>
 
             <ContactCentreCalls t-if="state.section === 'calls'" boot="state.boot" callKey="callKey"
-                                setPane.bind="setCallsPane" openConversation.bind="openConversation"/>
+                                setPane.bind="setSectionPane" openConversation.bind="openConversation"/>
+            <ContactCentreContacts t-elif="state.section === 'contacts'" boot="state.boot"
+                                   setPane.bind="setSectionPane" openConversation.bind="openConversation"/>
             <t t-else="">
             <!-- ── List ─────────────────────────────────────────────── -->
             <section class="o_ccw_card o_ccw_list">
