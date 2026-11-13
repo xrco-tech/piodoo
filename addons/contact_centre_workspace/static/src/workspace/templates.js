@@ -42,9 +42,11 @@ export class ContactCentreTemplates extends Component {
             adding: false,
             working: false,
         });
-        this.searchLater = useDebounced(() => this.loadList(), 300);
+        this.searchLater = useDebounced(() => this.loadAndLand(), 300);
         onWillStart(async () => {
-            await this.loadList();
+            // A record it was asked to open stays open; otherwise it lands on the first one.
+            this.pinned = this.state.sel = this.props.openId || false;
+            await this.loadAndLand();
             if (this.props.openId) {
                 await this.open(this.props.openId);
             }
@@ -67,6 +69,26 @@ export class ContactCentreTemplates extends Component {
         }
     }
 
+    /** Nothing open, or what was open is not in the list any more: show the
+     *  first row. A phone stays on the list. */
+    async land() {
+        const ids = this.state.rows.map((row) => row.id);
+        if (this.state.form || ids.includes(this.state.sel) || (this.state.sel && this.state.sel === this.pinned)) {
+            return;
+        }
+        if (ids.length) {
+            await this.open(ids[0], true);
+        } else {
+            this.state.sel = false;
+            this.state.tpl = null;
+        }
+    }
+
+    async loadAndLand() {
+        await this.loadList();
+        await this.land();
+    }
+
     async loadMore() {
         const result = await this.orm.call(WS, "ws_templates", [], {
             pill: this.state.pill, search: this.state.search, offset: this.state.rows.length, limit: PAGE,
@@ -75,11 +97,13 @@ export class ContactCentreTemplates extends Component {
         this.state.more = result.more;
     }
 
-    async open(id) {
+    async open(id, stay = false) {
         this.state.sel = id;
         this.state.form = null;
         this.state.adding = false;
-        this.props.setPane("thread");
+        if (!stay) {
+            this.props.setPane("thread");
+        }
         this.state.loadingTpl = !this.state.tpl;
         try {
             const tpl = await this.orm.call(WS, "ws_template", [id]);
@@ -109,7 +133,7 @@ export class ContactCentreTemplates extends Component {
 
     setPill(key) {
         this.state.pill = key;
-        this.loadList();
+        this.loadAndLand();
     }
 
     onSearch(ev) {

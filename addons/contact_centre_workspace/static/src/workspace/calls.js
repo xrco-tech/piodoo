@@ -36,14 +36,16 @@ export class ContactCentreCalls extends Component {
             transcribing: false,
         });
         this.when = when;
-        this.searchLater = useDebounced(() => this.loadList(), 300);
+        this.searchLater = useDebounced(() => this.loadAndLand(), 300);
         // A call that ends is copied into its conversation: that is the cue to refresh.
         this.refresh = useDebounced(() => this.reload(), 600);
         this.bus.subscribe("contact_centre_new_message", this.refresh);
         onWillDestroy(() => this.bus.unsubscribe("contact_centre_new_message", this.refresh));
 
         onWillStart(async () => {
-            await this.loadList();
+            // A call it was asked to open stays open; otherwise it lands on the first one.
+            this.pinned = this.state.sel = this.props.callKey || false;
+            await this.loadAndLand();
             if (this.props.callKey) {
                 await this.open(this.props.callKey);
             }
@@ -79,6 +81,26 @@ export class ContactCentreCalls extends Component {
         }
     }
 
+    /** Nothing open, or what was open is not in the list any more: show the
+     *  first row. A phone stays on the list. */
+    async land() {
+        const ids = this.state.rows.map((row) => row.key);
+        if (this.typing || ids.includes(this.state.sel) || (this.state.sel && this.state.sel === this.pinned)) {
+            return;
+        }
+        if (ids.length) {
+            await this.open(ids[0], true);
+        } else {
+            this.state.sel = false;
+            this.state.call = null;
+        }
+    }
+
+    async loadAndLand() {
+        await this.loadList();
+        await this.land();
+    }
+
     async reload() {
         await this.loadList(Math.max(PAGE, this.state.rows.length));
         // Not while a note is being typed: the reload would wipe it.
@@ -87,10 +109,12 @@ export class ContactCentreCalls extends Component {
         }
     }
 
-    async open(key) {
+    async open(key, stay = false) {
         this.state.sel = key;
         this.typing = false;
-        this.props.setPane("thread");
+        if (!stay) {
+            this.props.setPane("thread");
+        }
         this.state.loadingCall = !this.state.call;
         try {
             await this.loadCall(key);
@@ -114,7 +138,7 @@ export class ContactCentreCalls extends Component {
 
     setPill(key) {
         this.state.pill = key;
-        this.loadList();
+        this.loadAndLand();
     }
 
     onSearch(ev) {
