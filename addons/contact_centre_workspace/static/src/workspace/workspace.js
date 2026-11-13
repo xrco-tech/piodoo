@@ -400,7 +400,7 @@ export class ContactCentreWorkspace extends Component {
                 return _t("This contact has no WhatsApp number.");
             }
             if (!thread.window_open) {
-                return _t("WhatsApp only allows a typed message within 24 hours of their last one. Send a template, or switch to SMS.");
+                return _t("WhatsApp only allows a template now: their last message was more than 24 hours ago.");
             }
         } else if (!thread.phone) {
             return _t("This contact has no phone number for an SMS.");
@@ -408,8 +408,18 @@ export class ContactCentreWorkspace extends Component {
         return "";
     }
 
-    toggleChannel() {
-        this.state.channel = this.state.channel === "whatsapp" ? "sms" : "whatsapp";
+    get composerPlaceholder() {
+        const thread = this.state.thread;
+        const first = (thread.name || "").split(" ")[0];
+        if (this.state.channel === "whatsapp") {
+            return _t("Message %s on WhatsApp…", first);
+        }
+        return thread.has_whatsapp ? _t("Message %s by SMS…", first) : _t("Message %s by SMS (no WhatsApp)…", first);
+    }
+
+    setChannel(channel) {
+        this.state.channel = channel;
+        this.state.menu = null;
     }
 
     onText(ev) {
