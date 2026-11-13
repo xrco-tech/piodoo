@@ -169,38 +169,34 @@
                         </t>
                     </div>
 
-                    <div class="o_ccw_comp">
-                        <span class="o_ccw_av o_ccw_me" t-esc="state.boot.me.initials"/>
-                        <div class="o_ccw_box" t-att-class="{ lock: composerLock }">
-                            <button type="button" class="o_ccw_chan" title="Switch between WhatsApp and SMS" t-on-click="toggleChannel">
-                                <t t-if="state.channel === 'whatsapp'">WhatsApp</t><t t-else="">SMS</t> <i class="fa fa-exchange"/>
-                            </button>
-                            <span t-if="composerLock" class="o_ccw_lock"><i class="fa fa-lock"/> <t t-esc="composerLock"/></span>
-                            <textarea t-else="" rows="1" t-ref="composer" aria-label="Reply" t-att-placeholder="'Reply to ' + thread.name + '…'"
-                                      t-att-value="state.text" t-on-input="onText" t-on-keydown="onKey"/>
-                            <button t-if="!composerLock" type="button" class="o_ccw_send" aria-label="Send" t-att-disabled="state.sending or !state.text.trim()" t-on-click="send"><i class="fa fa-paper-plane"/></button>
+                    <div class="o_ccw_comp stack">
+                        <div class="o_ccw_via">
+                            <t t-if="thread.has_whatsapp">
+                                <span>Send by</span>
+                                <button type="button" t-att-class="{ on: state.channel === 'whatsapp' }" t-att-aria-pressed="state.channel === 'whatsapp' ? 'true' : 'false'"
+                                        t-on-click="() => this.setChannel('whatsapp')"><i class="fa fa-whatsapp"/> WhatsApp</button>
+                                <button type="button" t-att-class="{ on: state.channel === 'sms' }" t-att-aria-pressed="state.channel === 'sms' ? 'true' : 'false'"
+                                        t-on-click="() => this.setChannel('sms')"><i class="fa fa-commenting-o"/> SMS</button>
+                            </t>
+                            <span t-else="">Sends by SMS</span>
+                            <div t-if="!composerLock" class="o_ccw_pop up">
+                                <button type="button" class="o_ccw_tpl" t-on-click="toggleTemplates"><i class="fa fa-file-text-o"/> Templates</button>
+                                <t t-call="contact_centre_workspace.TemplateMenu"/>
+                            </div>
                         </div>
-                        <div class="o_ccw_pop up">
-                            <button type="button" class="o_ccw_tpl" t-on-click="toggleTemplates">Send a template</button>
-                            <div t-if="state.menu === 'template'" class="o_ccw_card o_ccw_menu wide">
-                                <h4>Send a template</h4>
-                                <label>Channel
-                                    <select t-on-change="onTemplateChannel">
-                                        <option value="whatsapp" t-att-selected="state.tpl.channel === 'whatsapp'">WhatsApp</option>
-                                        <option value="sms" t-att-selected="state.tpl.channel === 'sms'">SMS</option>
-                                        <option value="email" t-att-selected="state.tpl.channel === 'email'">Email</option>
-                                    </select>
-                                </label>
-                                <label>Template
-                                    <select t-on-change="onTemplate">
-                                        <option value="">Choose a template</option>
-                                        <option t-foreach="state.tpl.list" t-as="tpl" t-key="tpl.id" t-att-value="tpl.id" t-att-selected="tpl.id === state.tpl.id" t-esc="tpl.name"/>
-                                    </select>
-                                </label>
-                                <p t-if="!state.tpl.list.length">No templates for this channel.</p>
-                                <p t-if="state.tpl.error" class="bad" t-esc="state.tpl.error"/>
-                                <button type="button" class="o_ccw_primary" t-att-disabled="!state.tpl.id or state.tpl.sending" t-on-click="sendTemplate">
-                                    <t t-if="state.tpl.sending">Sending…</t><t t-else="">Send</t>
+                        <div class="o_ccw_line">
+                            <t t-if="composerLock">
+                                <div class="o_ccw_box lock"><i class="fa fa-lock"/><span t-esc="composerLock"/></div>
+                                <div class="o_ccw_pop up">
+                                    <button type="button" class="o_ccw_primary" t-on-click="toggleTemplates">Send a template</button>
+                                    <t t-call="contact_centre_workspace.TemplateMenu"/>
+                                </div>
+                            </t>
+                            <div t-else="" class="o_ccw_box">
+                                <textarea rows="1" t-ref="composer" aria-label="Reply" t-att-placeholder="composerPlaceholder"
+                                          t-att-value="state.text" t-on-input="onText" t-on-keydown="onKey"/>
+                                <button type="button" class="o_ccw_send" aria-label="Send" t-att-disabled="state.sending or !state.text.trim()" t-on-click="send">
+                                    <i t-attf-class="fa {{ state.sending ? 'fa-circle-o-notch fa-spin' : 'fa-paper-plane' }}"/>
                                 </button>
                             </div>
                         </div>
@@ -289,6 +285,31 @@
                 </t>
             </aside>
             </t>
+        </div>
+    </t>
+
+    <!-- The "send a template" card; opens from the Templates button, or from "Send a template" when typing is locked. -->
+    <t t-name="contact_centre_workspace.TemplateMenu">
+        <div t-if="state.menu === 'template'" class="o_ccw_card o_ccw_menu wide">
+            <h4>Send a template</h4>
+            <label>Channel
+                <select t-on-change="onTemplateChannel">
+                    <option value="whatsapp" t-att-selected="state.tpl.channel === 'whatsapp'">WhatsApp</option>
+                    <option value="sms" t-att-selected="state.tpl.channel === 'sms'">SMS</option>
+                    <option value="email" t-att-selected="state.tpl.channel === 'email'">Email</option>
+                </select>
+            </label>
+            <label>Template
+                <select t-on-change="onTemplate">
+                    <option value="">Choose a template</option>
+                    <option t-foreach="state.tpl.list" t-as="tpl" t-key="tpl.id" t-att-value="tpl.id" t-att-selected="tpl.id === state.tpl.id" t-esc="tpl.name"/>
+                </select>
+            </label>
+            <p t-if="!state.tpl.list.length">No templates for this channel.</p>
+            <p t-if="state.tpl.error" class="bad" t-esc="state.tpl.error"/>
+            <button type="button" class="o_ccw_primary" t-att-disabled="!state.tpl.id or state.tpl.sending" t-on-click="sendTemplate">
+                <t t-if="state.tpl.sending">Sending…</t><t t-else="">Send</t>
+            </button>
         </div>
     </t>
 

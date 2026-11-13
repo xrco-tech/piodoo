@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contact Centre Workspace',
-    'version': '18.0.2.0.0',
+    'version': '18.0.2.0.1',
     'category': 'Communications',
     'summary': 'The Contact Centre inbox as a Discuss-style workspace: rail, list, thread, information card',
     'description': """
