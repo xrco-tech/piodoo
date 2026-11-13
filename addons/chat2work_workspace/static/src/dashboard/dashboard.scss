@@ -242,7 +242,14 @@
 }
 
 // The web client lays an action out as a column; so is this page (the workspace beside it is a row).
-html .o_web_client > .o_action_manager > .o_action.o_c2w_ws.o_c2w_dash { flex-direction: column; }
+// On a desktop it also stops an action scrolling and hides its scrollbar, for views that scroll
+// inside themselves. This page is the thing that scrolls, so both are put back here, where the
+// rule is strong enough to win.
+html .o_web_client > .o_action_manager > .o_action.o_c2w_ws.o_c2w_dash {
+    flex-direction: column;
+    overflow: auto;
+    scrollbar-width: thin;
+}
 
 @media (max-width: 767.98px) {
     .o_c2w_ws.o_c2w_dash { padding: 10px 12px 20px; }
