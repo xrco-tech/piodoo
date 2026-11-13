@@ -17,6 +17,8 @@ PERIODS = {'today': 0, '7d': 6, '30d': 29}
 CHART_DAYS = 14
 QUICK = 15 * 60                         # "answered within 15 minutes"
 JOBS_TO_CHECK = ('to_verify', 'to_review')
+PROCESSES = ('signup', 'update', 'callback')      # sessions that ended with something done
+FLOW_CHANNELS = ('ussd', 'whatsapp')
 
 
 class Chat2workWorkspace(models.AbstractModel):
@@ -122,6 +124,39 @@ class Chat2workWorkspace(models.AbstractModel):
         }
 
     @api.model
+    def _dash_times(self, since):
+        """How long people take to finish something on USSD and on WhatsApp.
+
+        A session's time is from its first screen or message to its last
+        (chat2work.flow.run, kept from version 18.0.1.23.0 of chat2work on).
+        The CV time is from the link being sent to the CV arriving, by how
+        the candidate signed up."""
+        summary = lambda values: {'n': len(values), 'median': round(median(values)) if values else False}
+        runs = self.env['chat2work.flow.run'].sudo().search_read(
+            [('started_at', '>=', since)], ['channel', 'outcome', 'seconds'])
+        times = {}
+        for run in runs:
+            times.setdefault((run['outcome'], run['channel']), []).append(run['seconds'])
+        rows = [dict({'key': key}, **{channel: summary(times.get((key, channel), [])) for channel in FLOW_CHANNELS})
+                for key in PROCESSES]
+        sessions = lambda channel: sum(len(v) for (_outcome, ch), v in times.items() if ch == channel)
+        left = {channel: {'n': len(times.get(('abandoned', channel), [])), 'of': sessions(channel)}
+                for channel in FLOW_CHANNELS}
+
+        cv_times = {channel: [] for channel in FLOW_CHANNELS}
+        candidates = self.env['chat2work.candidate'].with_context(active_test=False).search_read(
+            [('cv_submitted_at', '>=', since), ('cv_link_sent_at', '!=', False), ('cv_state', 'in', CV_DONE)],
+            ['cv_submitted_at', 'cv_link_sent_at', 'registered_via'])
+        for row in candidates:
+            channel = (row['registered_via'] or '').lower()
+            wait = (row['cv_submitted_at'] - row['cv_link_sent_at']).total_seconds()
+            # A reminder sent after the CV came in moves the "sent" time past it.
+            if channel in cv_times and wait >= 0:
+                cv_times[channel].append(wait)
+        rows.append(dict({'key': 'cv'}, **{channel: summary(cv_times[channel]) for channel in FLOW_CHANNELS}))
+        return {'rows': rows, 'left': left, 'sessions': len(runs)}
+
+    @api.model
     def _dash_cvs(self):
         states = dict(self.env['chat2work.candidate']._read_group([], ['cv_state'], ['__count']))
         done = sum(states.get(state, 0) for state in CV_DONE)
@@ -199,6 +234,7 @@ class Chat2workWorkspace(models.AbstractModel):
             'stages': self.ws_pipeline(),
             'new': self._dash_new_candidates(tz, since),
             'cvs': self._dash_cvs(),
+            'times': self._dash_times(since),
             'replies': self._dash_replies(since),
             'ids': self._dash_id_checks(),
             'jobs': self._dash_jobs(),

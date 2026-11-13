@@ -317,7 +317,7 @@ class Chat2workWaSession(models.Model):
             candidate = self.env['chat2work.candidate'].browse((self.data or {}).get('created_candidate_id')).exists()
             if candidate:
                 self._send_cv_link(candidate)
-            self.unlink()
+            self.with_context(c2w_flow_finished=True).unlink()
             return
         prompt, options = self._screen(self.screen)
         if body.startswith("Invalid choice"):
