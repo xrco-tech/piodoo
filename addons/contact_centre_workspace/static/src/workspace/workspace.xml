@@ -30,7 +30,7 @@
                 </button>
                 <button t-if="state.boot.ai_ops" type="button" t-att-class="{ on: state.section === 'ai' }" t-on-click="() => this.showSection('ai')">
                     <span class="o_ccw_pill"><i class="fa fa-magic"/></span>
-                    AI Ops
+                    Sidekick
                 </button>
             </nav>
 

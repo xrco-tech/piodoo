@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contact Centre Workspace',
-    'version': '18.0.1.5.0',
+    'version': '18.0.1.5.1',
     'category': 'Communications',
     'summary': 'The Contact Centre inbox as a Discuss-style workspace: rail, list, thread, information card',
     'description': """
 One screen for Contact Centre agents, laid out like the Chat2Work workspace.
 
-* A rail on the left (Inbox, Calls, Contacts, Campaigns, Templates, AI Ops).
+* A rail on the left (Inbox, Calls, Contacts, Campaigns, Templates, Sidekick).
   Each is a section of this screen.
 * Calls: WhatsApp and VoIP calls in one list, newest first. One call shows
   its recording, transcript, summary, the other calls with that person, and
@@ -22,7 +22,8 @@ One screen for Contact Centre agents, laid out like the Chat2Work workspace.
 * Templates: the message templates of every channel, with where each is
   used and how often it has been sent. Managers write, correct and archive
   them there.
-* AI Ops (managers, when the AI copilot addon is installed): the copilot
+* Sidekick (managers, when the AI copilot addon contact_centre_ai_ops is
+  installed; called AI Ops in the code): the copilot
   chats, with what the copilot did in each chat beside it. A change it made
   to a campaign, contact or template opens in that section.
 * A conversation list with unread counts, the channel of the last message
