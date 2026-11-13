@@ -16,6 +16,7 @@ export class ContactCentreCalls extends Component {
     static props = {
         boot: Object,
         callKey: { type: [String, Boolean], optional: true },
+        pill: { type: [String, Boolean], optional: true },
         setPane: Function,
         openConversation: Function,
     };
@@ -24,7 +25,7 @@ export class ContactCentreCalls extends Component {
         this.orm = useService("orm");
         this.bus = useService("bus_service");
         this.state = useState({
-            pill: "all",
+            pill: this.props.pill || "all",
             search: "",
             rows: [],
             more: false,

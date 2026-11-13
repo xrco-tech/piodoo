@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Contact Centre AI Copilot Ops",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.1.0",
     "category": "Communications",
     "summary": "Chat with an AI that can create/update campaigns via tool-calling",
     "description": """

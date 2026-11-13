@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contact Centre Workspace',
-    'version': '18.0.1.6.0',
+    'version': '18.0.2.0.0',
     'category': 'Communications',
     'summary': 'The Contact Centre inbox as a Discuss-style workspace: rail, list, thread, information card',
     'description': """
@@ -35,7 +35,14 @@ One screen for Contact Centre agents, laid out like the Chat2Work workspace.
   details and internal notes. During a call with a script, the script is
   followed there.
 
-The old Inbox stays where it is. Sending still goes through the Contact
+The Dashboard menu shows what needs someone now (unread conversations, missed
+calls, calls with no outcome, messages that did not send) and how the period
+went: messages and calls, reply times, call outcomes, campaigns and the
+busiest hours, with any custom dashboard cards below. The app's menus are
+Workspace, Dashboard and Configuration; the older screens are under
+Configuration.
+
+The old Inbox stays, under Configuration. Sending still goes through the Contact
 Centre Inbox's own methods, so the two screens behave the same.
 """,
     'author': 'Tsela NavTech',
@@ -61,6 +68,9 @@ Centre Inbox's own methods, so the two screens behave the same.
             'contact_centre_workspace/static/src/workspace/ai_ops.xml',
             'contact_centre_workspace/static/src/workspace/workspace.js',
             'contact_centre_workspace/static/src/workspace/workspace.xml',
+            'contact_centre_workspace/static/src/dashboard/dashboard.scss',
+            'contact_centre_workspace/static/src/dashboard/dashboard.js',
+            'contact_centre_workspace/static/src/dashboard/dashboard.xml',
         ],
         'web.assets_web_dark': [
             'contact_centre_workspace/static/src/workspace/workspace.dark.scss',

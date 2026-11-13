@@ -8,9 +8,9 @@
 
         <menuitem id="menu_contact_centre_ai_ops"
                   name="AI Copilot"
-                  parent="contact_centre.menu_contact_centre_main"
+                  parent="contact_centre.menu_contact_centre_config"
                   action="action_contact_centre_ai_ops"
                   groups="contact_centre.group_contact_centre_manager"
-                  sequence="8"/>
+                  sequence="3"/>
     </data>
 </odoo>
