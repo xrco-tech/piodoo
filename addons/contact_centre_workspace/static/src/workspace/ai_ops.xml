@@ -38,7 +38,7 @@
         <section class="o_ccw_main">
             <div t-if="!state.chat" class="o_ccw_none">
                 <t t-if="state.loadingChat">Loading…</t>
-                <t t-else="">Pick a chat, or start a new one, to work with the copilot.</t>
+                <t t-else="">Pick a chat, or start a new one, to work with Sidekick.</t>
             </div>
             <t t-else="">
                 <t t-set="chat" t-value="state.chat"/>
@@ -57,7 +57,7 @@
                         </t>
                     </div>
                     <div class="o_ccw_acts">
-                        <button type="button" class="o_ccw_ib o_ccw_keep" t-att-class="{ on: state.infoOpen }" title="What the copilot did" aria-label="What the copilot did"
+                        <button type="button" class="o_ccw_ib o_ccw_keep" t-att-class="{ on: state.infoOpen }" title="What Sidekick did" aria-label="What Sidekick did"
                                 t-on-click="toggleInfo"><i class="fa fa-list-ul"/></button>
                     </div>
                 </div>
@@ -66,7 +66,7 @@
 
                 <div class="o_ccw_thread" t-ref="thread">
                     <div t-if="!chat.messages.length" class="o_ccw_aihello">
-                        <b>Ask the copilot to set something up.</b>
+                        <b>Ask Sidekick to set something up.</b>
                         <span>It can draft campaigns, templates, contacts, chatbot flows, call teams and dashboard cards, and look things up.
                             It asks before it changes anything, and it never starts a campaign: that stays with you.</span>
                     </div>
@@ -74,7 +74,7 @@
                         <span t-if="m.mine" class="o_ccw_av o_ccw_me" t-esc="props.boot.me.initials"/>
                         <span t-else="" class="o_ccw_av o_ccw_sys"><i class="fa fa-magic"/></span>
                         <div class="o_ccw_mb">
-                            <span class="o_ccw_meta"><b><t t-if="m.mine">You</t><t t-else="">Copilot</t></b><t t-esc="when(m.at)"/></span>
+                            <span class="o_ccw_meta"><b><t t-if="m.mine">You</t><t t-else="">Sidekick</t></b><t t-esc="when(m.at)"/></span>
                             <div t-if="m.mine" class="o_ccw_bub" t-esc="m.content"/>
                             <div t-else="" class="o_ccw_bub o_ccw_md" t-out="html(m.content)"/>
                         </div>
@@ -92,7 +92,7 @@
                 <div class="o_ccw_comp">
                     <span class="o_ccw_av o_ccw_me" t-esc="props.boot.me.initials"/>
                     <div class="o_ccw_box">
-                        <textarea rows="1" t-ref="composer" aria-label="Message to the copilot" placeholder="Ask the copilot to draft or change something…"
+                        <textarea rows="1" t-ref="composer" aria-label="Message to Sidekick" placeholder="Ask Sidekick to draft or change something…"
                                   t-att-value="state.text" t-on-input="onText" t-on-keydown="onKey"/>
                         <button type="button" class="o_ccw_send" aria-label="Send" t-att-disabled="state.sending or !state.text.trim()" t-on-click="send"><i class="fa fa-paper-plane"/></button>
                     </div>
@@ -100,18 +100,18 @@
             </t>
         </section>
 
-        <!-- ── What the copilot did ─────────────────────────────────── -->
+        <!-- ── What Sidekick did ─────────────────────────────────── -->
         <aside t-if="state.chat and state.infoOpen" class="o_ccw_card o_ccw_info wide">
             <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to the chat" t-on-click="showChat"><i class="fa fa-chevron-left"/></button>
             <div class="o_ccw_shead">
-                <h5>What the copilot did</h5>
+                <h5>What Sidekick did</h5>
                 <button t-if="lookupCount" type="button" class="o_ccw_link" t-on-click="toggleLookups">
                     <t t-if="state.lookups">Hide look-ups</t><t t-else="">Show <t t-esc="lookupCount"/> look-ups</t>
                 </button>
             </div>
             <p t-if="!actions.length" class="o_ccw_muted">
-                <t t-if="lookupCount">Nothing changed in this chat: the copilot only looked things up.</t>
-                <t t-else="">Nothing yet. Each change the copilot makes in this chat is listed here.</t>
+                <t t-if="lookupCount">Nothing changed in this chat: Sidekick only looked things up.</t>
+                <t t-else="">Nothing yet. Each change Sidekick makes in this chat is listed here.</t>
             </p>
             <div t-foreach="actions" t-as="action" t-key="action.id" class="o_ccw_aiact" t-att-class="{ lookup: isLookup(action) }">
                 <t t-set="result" t-value="outcome(action)"/>

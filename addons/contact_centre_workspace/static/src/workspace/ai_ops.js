@@ -26,7 +26,7 @@ const RECORDS = {
 };
 const VERBS = { create: _t("Create"), update: _t("Update"), delete: _t("Delete"), list: _t("Look up"), search: _t("Look up") };
 
-/** The AI Ops section: chats with the copilot, and what it did in each. */
+/** The Sidekick section (the AI Ops copilot chats): chats with Sidekick, and what it did in each. */
 export class ContactCentreAiOps extends Component {
     static template = "contact_centre_workspace.AiOps";
     static props = {
@@ -194,7 +194,7 @@ export class ContactCentreAiOps extends Component {
         try {
             await this.orm.silent.call(CHAT, "send_message", [[id], text]);
         } catch {
-            this.notification.add(_t("The copilot did not answer. Your message is in the chat; try again in a moment."), { type: "danger" });
+            this.notification.add(_t("Sidekick did not answer. Your message is in the chat; try again in a moment."), { type: "danger" });
         } finally {
             this.state.sending = false;
             await Promise.all([this.loadChat(id), this.loadList(Math.max(PAGE, this.state.rows.length))]);

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""What the AI Ops section of the workspace reads: the copilot chats and one
+"""What the Sidekick section of the workspace reads (on screen it is called
+Sidekick; in code it keeps the name of the addon behind it, AI Ops): the copilot chats and one
 chat with its messages and the actions the copilot took.
 
 The chat itself (talking to the AI, running its tools, holding changes until
@@ -33,9 +34,9 @@ class ContactCentreWorkspace(models.AbstractModel):
     def _ai_ops(self):
         self._agent()
         if CHAT not in self.env:
-            raise UserError(_("The AI copilot isn't installed."))
+            raise UserError(_("Sidekick isn't installed."))
         if not self.env.user.has_group(MANAGER):
-            raise AccessError(_("Only Contact Centre managers can use the AI copilot."))
+            raise AccessError(_("Only Contact Centre managers can use Sidekick."))
 
     @api.model
     def _ai_chat(self, chat_id):
