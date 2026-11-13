@@ -54,6 +54,7 @@ export class ContactCentreWorkspace extends Component {
             more: false,
             loadingList: true,
             sel: false,
+            peek: false,           // the open conversation was shown on landing, not picked: it does not count as seen
             thread: null,
             loadingThread: false,
             text: "",
@@ -91,7 +92,7 @@ export class ContactCentreWorkspace extends Component {
         );
 
         this.refresh = useDebounced(() => this.reload(), 400);
-        this.searchLater = useDebounced(() => this.loadList(), 300);
+        this.searchLater = useDebounced(() => this.loadAndLand(), 300);
         this.onBus = (payload) => {
             this.lastBusContact = payload && payload.contact_id;
             this.refresh();
@@ -109,7 +110,9 @@ export class ContactCentreWorkspace extends Component {
         });
 
         onWillStart(async () => {
-            const [boot] = await Promise.all([this.orm.call(WS, "ws_boot", []), this.loadList()]);
+            // A conversation it was asked to open stays open; otherwise it lands on the first one.
+            this.pinned = this.state.sel = params.contact_id || false;
+            const [boot] = await Promise.all([this.orm.call(WS, "ws_boot", []), this.loadAndLand()]);
             this.state.boot = boot;
             if (params.contact_id) {
                 await this.open(params.contact_id);
@@ -146,7 +149,7 @@ export class ContactCentreWorkspace extends Component {
             this.state.loadingThread = true;
         }
         try {
-            const thread = await this.orm.call(WS, "ws_thread", [id]);
+            const thread = await this.orm.call(WS, "ws_thread", [id], { seen: !this.state.peek });
             if (this.state.sel !== id) {
                 return; // another conversation was opened meanwhile
             }
@@ -157,6 +160,30 @@ export class ContactCentreWorkspace extends Component {
         } finally {
             this.state.loadingThread = false;
         }
+    }
+
+    /** Nothing open, or what was open is not in the list any more: show the
+     *  first conversation. It was not picked, so it stays unread until the
+     *  agent opens it or replies. A phone stays on the list. */
+    async land() {
+        const ids = this.state.rows.map((row) => row.id);
+        if (this.state.text.trim() || ids.includes(this.state.sel) || (this.state.sel && this.state.sel === this.pinned)) {
+            return;
+        }
+        this.state.menu = null;
+        if (!ids.length) {
+            this.state.sel = false;
+            this.state.thread = null;
+            return;
+        }
+        this.state.sel = ids[0];
+        this.state.peek = true;
+        await this.loadThread(ids[0]);
+    }
+
+    async loadAndLand() {
+        await this.loadList();
+        await this.land();
     }
 
     /** A message came in or went out somewhere: bring the screen up to date quietly. */
@@ -175,6 +202,7 @@ export class ContactCentreWorkspace extends Component {
 
     async open(id) {
         this.state.sel = id;
+        this.state.peek = false;
         this.state.pane = "thread";
         this.state.menu = null;
         this.state.text = "";
@@ -206,7 +234,7 @@ export class ContactCentreWorkspace extends Component {
 
     setPill(key) {
         this.state.pill = key;
-        this.loadList();
+        this.loadAndLand();
     }
 
     onSearch(ev) {
@@ -269,12 +297,12 @@ export class ContactCentreWorkspace extends Component {
         this.state.pill = "all";
         this.state.search = "";
         this.state.pane = "list";
-        await this.loadList();
+        await this.loadAndLand();
     }
 
     async clearCampaign() {
         this.state.campaign = null;
-        await this.loadList();
+        await this.loadAndLand();
     }
 
     /** From a call or a contact to that person's conversation. */
@@ -403,6 +431,7 @@ export class ContactCentreWorkspace extends Component {
         if (!text || this.state.sending || this.composerLock) {
             return;
         }
+        this.state.peek = false;
         this.state.sending = true;
         try {
             const sent = await this.orm.call(CONTACT, "action_send_reply", [[this.state.sel], this.state.channel, text]);
@@ -460,6 +489,7 @@ export class ContactCentreWorkspace extends Component {
         if (!tpl.id || tpl.sending) {
             return;
         }
+        this.state.peek = false;
         tpl.sending = true;
         tpl.error = "";
         try {

@@ -42,9 +42,11 @@ export class ContactCentreContacts extends Component {
             adding: false,
         });
         this.when = when;
-        this.searchLater = useDebounced(() => this.loadList(), 300);
+        this.searchLater = useDebounced(() => this.loadAndLand(), 300);
         onWillStart(async () => {
-            const [tags] = await Promise.all([this.orm.call(WS, "ws_contact_tags", []), this.loadList()]);
+            // A contact it was asked to open stays open; otherwise it lands on the first one.
+            this.pinned = this.state.sel = this.props.openId || false;
+            const [tags] = await Promise.all([this.orm.call(WS, "ws_contact_tags", []), this.loadAndLand()]);
             this.state.tags = tags;
             if (this.props.openId) {
                 await this.open(this.props.openId);
@@ -69,6 +71,26 @@ export class ContactCentreContacts extends Component {
         }
     }
 
+    /** Nothing open, or what was open is not in the list any more: show the
+     *  first row. A phone stays on the list. */
+    async land() {
+        const ids = this.state.rows.map((row) => row.id);
+        if (this.state.form || ids.includes(this.state.sel) || (this.state.sel && this.state.sel === this.pinned)) {
+            return;
+        }
+        if (ids.length) {
+            await this.open(ids[0], true);
+        } else {
+            this.state.sel = false;
+            this.state.contact = null;
+        }
+    }
+
+    async loadAndLand() {
+        await this.loadList();
+        await this.land();
+    }
+
     async loadMore() {
         const result = await this.orm.call(WS, "ws_contacts", [], {
             ...this.filters, offset: this.state.rows.length, limit: PAGE,
@@ -77,11 +99,13 @@ export class ContactCentreContacts extends Component {
         this.state.more = result.more;
     }
 
-    async open(id) {
+    async open(id, stay = false) {
         this.state.sel = id;
         this.state.form = null;
         this.state.adding = false;
-        this.props.setPane("thread");
+        if (!stay) {
+            this.props.setPane("thread");
+        }
         this.state.loadingContact = !this.state.contact;
         try {
             const contact = await this.orm.call(WS, "ws_contact", [id]);
@@ -110,7 +134,7 @@ export class ContactCentreContacts extends Component {
 
     setPill(key) {
         this.state.pill = key;
-        this.loadList();
+        this.loadAndLand();
     }
 
     onSearch(ev) {
@@ -120,7 +144,7 @@ export class ContactCentreContacts extends Component {
 
     onTag(ev) {
         this.state.tagId = parseInt(ev.target.value, 10) || false;
-        this.loadList();
+        this.loadAndLand();
     }
 
     /** Second line of a row: the number, else the email. */

@@ -61,8 +61,8 @@ export class ContactCentreAiOps extends Component {
         this.composerRef = useRef("composer");
         useEffect(() => this.scrollToEnd(), () => [this.state.chat && this.state.chat.messages, this.state.sending]);
         useEffect(() => this.growComposer(), () => [this.state.text]);
-        this.searchLater = useDebounced(() => this.loadList(), 300);
-        onWillStart(() => this.loadList());
+        this.searchLater = useDebounced(() => this.loadAndLand(), 300);
+        onWillStart(() => this.loadAndLand());
     }
 
     // ── Loading ──────────────────────────────────────────────────────────
@@ -76,6 +76,26 @@ export class ContactCentreAiOps extends Component {
         } finally {
             this.state.loading = false;
         }
+    }
+
+    /** Nothing open, or what was open is not in the list any more: show the
+     *  latest chat. A phone stays on the list. */
+    async land() {
+        const ids = this.state.rows.map((row) => row.id);
+        if (this.state.sending || this.state.text.trim() || ids.includes(this.state.sel)) {
+            return;
+        }
+        if (ids.length) {
+            await this.open(ids[0], true);
+        } else {
+            this.state.sel = false;
+            this.state.chat = null;
+        }
+    }
+
+    async loadAndLand() {
+        await this.loadList();
+        await this.land();
     }
 
     async loadMore() {
@@ -93,12 +113,14 @@ export class ContactCentreAiOps extends Component {
         }
     }
 
-    async open(id) {
+    async open(id, stay = false) {
         this.state.sel = id;
         this.state.renaming = false;
         this.state.text = "";
         this.state.open = {};
-        this.props.setPane("thread");
+        if (!stay) {
+            this.props.setPane("thread");
+        }
         this.state.loadingChat = !this.state.chat;
         try {
             await this.loadChat(id);
