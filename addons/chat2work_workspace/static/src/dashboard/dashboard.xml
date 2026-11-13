@@ -101,6 +101,33 @@
                     </section>
                 </div>
 
+                <section class="o_c2w_dbox o_c2w_dcard">
+                    <div class="o_c2w_dshead"><h2>How long it takes</h2>
+                        <span class="o_c2w_dmuted">typical time, <t t-esc="periodWords"/></span></div>
+                    <div class="o_c2w_dscroll">
+                        <table class="o_c2w_dtimes">
+                            <thead><tr><th scope="col"><span class="visually-hidden">What they did</span></th>
+                                <th scope="col">USSD</th><th scope="col">WhatsApp</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="timeRows" t-as="row" t-key="row.key">
+                                    <th scope="row" t-esc="row.label"/>
+                                    <td><b t-esc="row.ussd.time"/> <span class="o_c2w_dmuted" t-esc="row.ussd.count"/></td>
+                                    <td><b t-esc="row.whatsapp.time"/> <span class="o_c2w_dmuted" t-esc="row.whatsapp.count"/></td>
+                                </tr>
+                                <tr class="left">
+                                    <th scope="row">Left before the end</th>
+                                    <td><b t-esc="leftBefore('ussd')"/> <span class="o_c2w_dmuted">sessions</span></td>
+                                    <td><b t-esc="leftBefore('whatsapp')"/> <span class="o_c2w_dmuted">sessions</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="o_c2w_dmuted">
+                        <t t-if="data.times.sessions">A session is timed from its first screen or message to its last.</t>
+                        <t t-else="">No USSD or WhatsApp sessions <t t-esc="periodWords"/>. Sessions are timed from now on, so this fills in as people use them.</t>
+                    </p>
+                </section>
+
                 <div class="o_c2w_dgrid wide">
                     <section class="o_c2w_dbox o_c2w_dcard">
                         <div class="o_c2w_dshead"><h2>Jobs</h2>

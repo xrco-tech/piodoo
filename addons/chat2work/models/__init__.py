@@ -1,5 +1,6 @@
 from . import chat2work
 from . import chat2work_ussd
+from . import chat2work_flow_run
 from . import comm_ussd_account
 from . import chat2work_cv
 from . import chat2work_whatsapp

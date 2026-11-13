@@ -127,6 +127,37 @@ class TestChat2workDashboard(TransactionCase):
         self.assertEqual(stage(after, 'help') - stage(before, 'help'), 1)
         self.assertEqual([s['id'] for s in after['stages']][:2], ['new', 'help'])
 
+    def test_how_long_it_takes(self):
+        before = self.Ws.ws_dashboard('7d')['times']
+        Run = self.env['chat2work.flow.run']
+        now = fields.Datetime.now()
+        for channel, outcome, seconds in (
+                ('ussd', 'signup', 60), ('ussd', 'signup', 100), ('ussd', 'signup', 200), ('ussd', 'abandoned', 20),
+                ('whatsapp', 'signup', 300), ('whatsapp', 'callback', 40)):
+            Run.create({'channel': channel, 'outcome': outcome, 'seconds': seconds, 'started_at': now})
+        Run.create({'channel': 'ussd', 'outcome': 'signup', 'seconds': 5, 'started_at': now - timedelta(days=40)})
+        # A CV that came in two hours after its link; a reminder sent after a CV arrived is not a time.
+        self.thandi.sudo().write({'cv_state': 'built', 'registered_via': 'whatsapp',
+                                  'cv_link_sent_at': now - timedelta(hours=2), 'cv_submitted_at': now})
+        self.lerato.sudo().write({'cv_state': 'built', 'registered_via': 'ussd',
+                                  'cv_link_sent_at': now, 'cv_submitted_at': now - timedelta(hours=1)})
+        times = self.Ws.ws_dashboard('7d')['times']
+
+        row = lambda data, key: next(r for r in data['rows'] if r['key'] == key)
+        self.assertEqual([r['key'] for r in times['rows']], ['signup', 'update', 'callback', 'cv'])
+        self.assertEqual(times['sessions'] - before['sessions'], 6)
+        self.assertEqual(row(times, 'signup')['ussd']['n'] - row(before, 'signup')['ussd']['n'], 3)
+        self.assertEqual(row(times, 'callback')['whatsapp']['n'] - row(before, 'callback')['whatsapp']['n'], 1)
+        self.assertEqual(row(times, 'cv')['whatsapp']['n'] - row(before, 'cv')['whatsapp']['n'], 1)
+        self.assertEqual(row(times, 'cv')['ussd']['n'], row(before, 'cv')['ussd']['n'])
+        self.assertEqual(times['left']['ussd']['n'] - before['left']['ussd']['n'], 1)
+        self.assertEqual(times['left']['ussd']['of'] - before['left']['ussd']['of'], 4)
+        if not before['sessions']:
+            self.assertEqual(row(times, 'signup')['ussd'], {'n': 3, 'median': 100})
+            self.assertEqual(row(times, 'signup')['whatsapp'], {'n': 1, 'median': 300})
+            self.assertEqual(row(times, 'update')['ussd'], {'n': 0, 'median': False})
+            self.assertEqual(row(times, 'cv')['whatsapp']['median'], 7200)
+
     def test_jobs_and_bookings(self):
         data = self.Ws.ws_dashboard()
         self.assertLessEqual(len(data['jobs']['rows']), 4)

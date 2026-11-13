@@ -313,8 +313,44 @@ class Chat2workFlow(models.AbstractModel):
                 candidate._c2w_touch()
                 candidate._c2w_log_session(session._channel, session.transcript)
 
+    def _run_outcome(self, finished):
+        """How the session went, for the dashboard's times."""
+        data = self.data or {}
+        if not finished:
+            return 'abandoned'
+        if data.get('created_candidate_id'):
+            return 'signup'
+        return data.get('outcome') or 'other'
+
+    def _record_run(self):
+        """Keep how long each session took and how it ended. No names, numbers
+        or answers: only the channel, the times and the outcome. Never raises."""
+        if self.env.context.get('chat2work_ussd_simulation'):
+            return
+        finished = bool(self.env.context.get('c2w_flow_finished'))
+        for session in self:
+            try:
+                times = [fields.Datetime.to_datetime(e['at']) for e in session.transcript or [] if e.get('at')]
+                if not times:
+                    continue
+                data = session.data or {}
+                candidate = (self.env['chat2work.candidate'].browse(data.get('created_candidate_id')).exists()
+                             or session.candidate_id)
+                with self.env.cr.savepoint():
+                    self.env['chat2work.flow.run'].sudo().create({
+                        'channel': session._channel,
+                        'outcome': session._run_outcome(finished),
+                        'started_at': min(times),
+                        'seconds': int((max(times) - min(times)).total_seconds()),
+                        'turns': sum(1 for e in session.transcript if e.get('dir') == 'inbound'),
+                        'candidate_id': candidate.id or False,
+                    })
+            except Exception:
+                _logger.exception("chat2work: couldn't record how session %s went", session.id)
+
     def unlink(self):
         self._log_transcript()
+        self._record_run()
         return super().unlink()
 
     # Welcome
@@ -451,6 +487,7 @@ class Chat2workFlow(models.AbstractModel):
     def _end_preferences(self):
         if (self.data or {}).get('created_candidate_id'):
             return self._profile_created_text(self.candidate_id), True
+        self._set(outcome='update')
         return "Status updated. Thank you! We will be in touch soon.", True
 
     def _candidate_extra_vals(self):
@@ -507,6 +544,7 @@ class Chat2workFlow(models.AbstractModel):
             })
             if inp == '1':
                 return self._ask_preferences()
+            self._set(outcome='update')
             return "Status updated. Thank you! We will be in touch soon.", True
         if inp == '0':
             return self._goto('S08')
@@ -514,6 +552,7 @@ class Chat2workFlow(models.AbstractModel):
 
     # Terminal screens
     def _end_callback(self):
+        self._set(outcome='callback')
         self.env['chat2work.callback.request'].request_callback(
             partner=self.candidate_id.partner_id or None, phone=self.msisdn, channel=self._channel)
         return ("Callback requested for %s. A contact centre agent will call you shortly."
@@ -566,7 +605,7 @@ class Chat2workUssdSession(models.Model):
                 _logger.warning("chat2work USSD screen %s is %d chars (>%d)",
                                 session.screen, len(body), SCREEN_MAX)
             if end:
-                session.unlink()
+                session.with_context(c2w_flow_finished=True).unlink()
             else:
                 session.last_response = body
             return ('END ' if end else 'CON ') + body

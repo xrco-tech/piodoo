@@ -25,6 +25,18 @@ function duration(seconds) {
     return _t("%s days", Math.round(hours / 24));
 }
 
+/** "45 s", "1 min 35 s", then as duration(). */
+function span(seconds) {
+    if (seconds < 60) {
+        return _t("%s s", Math.max(1, Math.round(seconds)));
+    }
+    if (seconds < 3600) {
+        const whole = Math.round(seconds);
+        return whole % 60 ? _t("%(m)s min %(s)s s", { m: Math.floor(whole / 60), s: whole % 60 }) : _t("%s min", whole / 60);
+    }
+    return duration(seconds);
+}
+
 /** The Chat2Work dashboard: what needs an agent now, then how things stand. */
 export class Chat2workDashboard extends Component {
     static template = "chat2work_workspace.Dashboard";
@@ -174,6 +186,26 @@ export class Chat2workDashboard extends Component {
         const share = Math.round((100 * whatsapp) / all);
         const rest = whatsapp + ussd === all ? 100 - share : Math.round((100 * ussd) / all);
         return _t("%(wa)s on WhatsApp, %(ussd)s on USSD in 14 days", { wa: `${share}%`, ussd: `${rest}%` });
+    }
+
+    // ── How long it takes ────────────────────────────────────────────────
+    get timeRows() {
+        const labels = {
+            signup: _t("Sign up"),
+            update: _t("Update their status"),
+            callback: _t("Ask for a callback"),
+            cv: _t("Add a CV, from the link being sent"),
+        };
+        const cell = (c) => ({ time: c.n ? span(c.median) : "—", count: c.n ? _t("%s finished", c.n) : "" });
+        return this.state.data.times.rows.map((row) => ({
+            key: row.key, label: labels[row.key], ussd: cell(row.ussd), whatsapp: cell(row.whatsapp),
+        }));
+    }
+
+    /** "3 of 12" sessions that were left before the end. */
+    leftBefore(channel) {
+        const left = this.state.data.times.left[channel];
+        return left.of ? _t("%(n)s of %(of)s", { n: left.n, of: left.of }) : "—";
     }
 
     // ── Smaller cards ────────────────────────────────────────────────────

@@ -196,6 +196,21 @@
         b { font-size: 20px; font-weight: 600; }
         span { color: var(--c2w-muted); font-size: 12.5px; }
     }
+    // How long it takes: what they did down the side, the two channels across.
+    .o_c2w_dscroll { overflow-x: auto; }
+    .o_c2w_dtimes {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+
+        th, td { padding: 6px 12px 6px 0; border-top: 1px solid var(--c2w-sel); text-align: left; vertical-align: baseline; }
+        thead th { border-top: 0; color: var(--c2w-muted); font-size: 12.5px; font-weight: 600; }
+        tbody th { font-weight: 400; }
+        td { white-space: nowrap; }
+        td b { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        tr.left th, tr.left td { color: var(--c2w-muted); }
+        tr.left td b { color: var(--c2w-fg); }
+    }
     // Jobs and bookings: one row each, opening it in the workspace.
     .o_c2w_drow {
         display: flex;
