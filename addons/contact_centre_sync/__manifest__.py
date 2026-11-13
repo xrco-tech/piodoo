@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Contact Centre Live Sync",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.0.1",
     "category": "Communications",
     "summary": "Mirrors live WhatsApp messages and calls into the Contact Centre unified inbox",
     "description": """
