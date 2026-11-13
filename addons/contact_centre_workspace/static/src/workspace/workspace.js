@@ -44,11 +44,14 @@ export class ContactCentreWorkspace extends Component {
             // inbox | calls | contacts | campaigns | templates | ai
             section: params.call_key ? "calls"
                 : ["calls", "contacts", "campaigns", "templates", "ai"].includes(params.section) ? params.section : "inbox",
-            sectionOpen: false,    // the record a section opens on, when it was reached from another one
+            // The record a section opens on, and the filter it starts with, when it was
+            // reached from another section or from a dashboard tile.
+            sectionOpen: params.open_id || false,
+            sectionPill: params.pill || false,
             sectionPane: "list",   // the pane a phone shows outside the inbox
             // The inbox narrowed to one campaign's contacts: { id, name } or null.
             campaign: params.campaign_id ? { id: params.campaign_id, name: params.campaign_name || "" } : null,
-            pill: "all",
+            pill: (!params.section || params.section === "inbox") && params.pill ? params.pill : "all",
             search: "",
             rows: [],
             more: false,
@@ -271,6 +274,7 @@ export class ContactCentreWorkspace extends Component {
     showSection(section) {
         this.state.section = section;
         this.state.sectionOpen = false;
+        this.state.sectionPill = false;
         this.state.sectionPane = "list";
         this.state.menu = null;
     }
@@ -278,6 +282,7 @@ export class ContactCentreWorkspace extends Component {
     /** To another section, opened on one record (a campaign the copilot made, say). */
     goTo(section, id) {
         this.state.sectionOpen = id;
+        this.state.sectionPill = false;
         this.state.sectionPane = "list";
         this.state.section = section;
     }

@@ -5,7 +5,9 @@
         <field name="tag">contact_centre_workspace</field>
     </record>
 
-    <!-- First in the app, ahead of the old Inbox (sequence 5), which stays. -->
+    <!-- The app's menus are Workspace, Dashboard and Configuration. The Dashboard
+         menu belongs to contact_centre; this addon's page takes over its action
+         in the browser (see static/src/dashboard/dashboard.js). -->
     <menuitem id="menu_contact_centre_workspace"
               name="Workspace"
               parent="contact_centre.menu_contact_centre_main"

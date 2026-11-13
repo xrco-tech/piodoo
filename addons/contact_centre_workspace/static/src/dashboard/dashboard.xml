@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="contact_centre_workspace.Dashboard">
+        <div class="o_action o_ccw o_ccw_dash">
+            <div class="o_ccw_dhead">
+                <h1>Dashboard</h1>
+                <span class="o_ccw_muted" t-esc="today"/>
+                <div class="o_ccw_pills" role="group" aria-label="Period">
+                    <button t-foreach="periods" t-as="p" t-key="p.key" type="button" t-att-class="{ on: state.period === p.key }"
+                            t-att-aria-pressed="state.period === p.key ? 'true' : 'false'" t-on-click="() => this.setPeriod(p.key)" t-esc="p.label"/>
+                </div>
+            </div>
+
+            <div t-if="!state.data" class="o_ccw_none">Loading…</div>
+            <t t-else="">
+                <t t-set="data" t-value="state.data"/>
+
+                <section aria-label="Needs you now" class="o_ccw_dsec">
+                    <h2>Needs you now</h2>
+                    <div class="o_ccw_dtiles">
+                        <button t-foreach="todo" t-as="tile" t-key="tile.key" type="button" class="o_ccw_card o_ccw_dtile"
+                                t-att-class="{ hot: tile.hot }" t-on-click="() => this.openTodo(tile.key)">
+                            <span class="o_ccw_dtop"><b t-esc="tile.n"/><span>Open ›</span></span>
+                            <span class="o_ccw_dlabel" t-esc="tile.label"/>
+                            <span class="o_ccw_muted" t-esc="tile.sub"/>
+                        </button>
+                    </div>
+                </section>
+
+                <div class="o_ccw_dgrid wide">
+                    <section class="o_ccw_card o_ccw_dcard">
+                        <div class="o_ccw_shead">
+                            <h2>Messages, last 14 days</h2>
+                            <span class="o_ccw_dlegend"><span><i class="wa"/>WhatsApp</span><span><i class="sms"/>SMS</span><span><i class="mail"/>Email</span></span>
+                        </div>
+                        <div class="o_ccw_dbars" role="img" t-att-aria-label="chartAlt">
+                            <div t-foreach="days" t-as="day" t-key="day.key" t-att-title="day.title">
+                                <span class="mail" t-att-style="'height:' + day.email"/>
+                                <span class="sms" t-att-style="'height:' + day.sms"/>
+                                <span class="wa" t-att-style="'height:' + day.whatsapp"/>
+                            </div>
+                        </div>
+                        <div class="o_ccw_daxis"><span t-foreach="chartEnds" t-as="end" t-key="end_index" t-esc="end"/></div>
+                        <div class="o_ccw_dfacts">
+                            <span><b t-esc="data.messages.total"/> <t t-esc="periodWords"/></span>
+                            <span><b t-esc="data.messages.inbound"/> in, <b t-esc="data.messages.outbound"/> out</span>
+                            <span t-if="data.messages.failed" class="bad"><t t-esc="data.messages.failed"/> did not send</span>
+                        </div>
+                    </section>
+
+                    <section class="o_ccw_card o_ccw_dcard">
+                        <div class="o_ccw_shead"><h2>Calls <t t-esc="periodWords"/></h2><span class="o_ccw_muted" t-esc="callSummary"/></div>
+                        <div class="o_ccw_dmini">
+                            <div t-foreach="callTiles" t-as="tile" t-key="tile.label"><b t-att-class="tile.cls" t-esc="tile.n"/><span t-esc="tile.label"/></div>
+                        </div>
+                        <div t-foreach="lines" t-as="line" t-key="line.line" class="o_ccw_dline">
+                            <span t-esc="line.name"/>
+                            <span class="o_ccw_dstack" role="img" t-att-aria-label="line.alt">
+                                <i class="ok" t-att-style="'flex:' + line.answered"/><i class="bad" t-att-style="'flex:' + line.missed"/>
+                                <i class="navy" t-att-style="'flex:' + line.outgoing"/><i class="grey" t-att-style="'flex:' + line.other"/>
+                                <i t-att-style="'flex:' + line.rest"/>
+                            </span>
+                            <span class="o_ccw_muted" t-esc="line.note"/>
+                        </div>
+                        <span class="o_ccw_dlegend"><span><i class="ok"/>Answered</span><span><i class="bad"/>Missed</span><span><i class="navy"/>Outgoing</span></span>
+                    </section>
+                </div>
+
+                <div class="o_ccw_dgrid">
+                    <section class="o_ccw_card o_ccw_dcard">
+                        <div class="o_ccw_shead"><h2>Conversations</h2><span class="o_ccw_muted" t-esc="conversationTotal"/></div>
+                        <div class="o_ccw_dstack tall" role="img"
+                             t-attf-aria-label="{{data.conversations.open}} open, {{data.conversations.pending}} pending, {{data.conversations.resolved}} resolved">
+                            <i class="navy" t-att-style="'flex:' + data.conversations.open"/><i class="amber" t-att-style="'flex:' + data.conversations.pending"/>
+                            <i class="ok" t-att-style="'flex:' + data.conversations.resolved"/>
+                        </div>
+                        <dl class="o_ccw_dkey">
+                            <dt class="navy"/><dd>Open</dd><dd t-esc="data.conversations.open"/>
+                            <dt class="amber"/><dd>Pending</dd><dd t-esc="data.conversations.pending"/>
+                            <dt class="ok"/><dd>Resolved</dd><dd t-esc="data.conversations.resolved"/>
+                        </dl>
+                    </section>
+
+                    <section class="o_ccw_card o_ccw_dcard">
+                        <h2>Replies</h2>
+                        <div class="o_ccw_dbig"><b t-esc="replyTime"/><span class="o_ccw_muted">typical wait for a first reply <t t-esc="periodWords"/></span></div>
+                        <div class="o_ccw_drows">
+                            <div><span>Answered within 15 minutes</span><b><t t-if="data.replies.waits" t-esc="data.replies.quick + '%'"/><t t-else="">—</t></b></div>
+                            <div><span>Answered automatically</span><b><t t-if="data.replies.waits" t-esc="data.replies.auto + '%'"/><t t-else="">—</t></b></div>
+                            <div><span>First replies counted</span><b t-esc="data.replies.waits"/></div>
+                            <div><span>Longest wait right now</span>
+                                <b t-if="data.todo.waiting_since" class="bad" t-esc="since(data.todo.waiting_since)"/><b t-else="">Nobody</b></div>
+                        </div>
+                    </section>
+
+                    <section class="o_ccw_card o_ccw_dcard">
+                        <div class="o_ccw_shead"><h2>Call outcomes</h2><span class="o_ccw_muted" t-esc="periodWords"/></div>
+                        <p t-if="!outcomes.length" class="o_ccw_muted">No call has been given an outcome <t t-esc="periodWords"/>.</p>
+                        <div t-foreach="outcomes" t-as="outcome" t-key="outcome.name" class="o_ccw_dbar">
+                            <span t-esc="outcome.name"/>
+                            <span><i t-att-class="{ first: outcome.first }" t-att-style="'width:' + outcome.width"/></span>
+                            <b t-esc="outcome.n"/>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="o_ccw_dgrid wide">
+                    <section class="o_ccw_card o_ccw_dcard">
+                        <div class="o_ccw_shead"><h2>Campaigns</h2>
+                            <span class="o_ccw_muted"><t t-esc="data.campaigns.running"/> running · <t t-esc="data.campaigns.draft"/> drafts</span></div>
+                        <p t-if="!campaigns.length" class="o_ccw_muted">No campaign is running or waiting to start.</p>
+                        <button t-foreach="campaigns" t-as="campaign" t-key="campaign.id" type="button" class="o_ccw_dcamp" t-on-click="() => this.openCampaign(campaign.id)">
+                            <span><b t-esc="campaign.name"/><span class="o_ccw_muted" t-esc="campaign.note"/>
+                                <span class="o_ccw_tag" t-att-class="campaign.state === 'running' ? 'ok' : 'plain'" t-esc="campaign.state_label"/></span>
+                            <span class="o_ccw_bar" role="img" t-att-aria-label="campaign.note"><i t-att-style="'width:' + campaign.width"/></span>
+                        </button>
+                    </section>
+
+                    <section class="o_ccw_card o_ccw_dcard">
+                        <div class="o_ccw_shead"><h2>Busiest hours</h2><span class="o_ccw_muted">messages and calls in, last 7 days</span></div>
+                        <div class="o_ccw_dheat" role="img" t-att-aria-label="hourNote">
+                            <span t-foreach="hours" t-as="hour" t-key="hour.hour" t-att-class="'s' + hour.shade" t-attf-title="{{hour.hour}}:00 · {{hour.n}}"/>
+                        </div>
+                        <div class="o_ccw_daxis"><span>06:00</span><span>10:00</span><span>14:00</span><span>18:00</span><span>20:00</span></div>
+                        <p t-esc="hourNote"/>
+                    </section>
+                </div>
+
+                <section t-if="state.cards.length" aria-label="Your own cards" class="o_ccw_dsec">
+                    <h2>Your own cards</h2>
+                    <div class="o_ccw_dtiles">
+                        <button t-foreach="state.cards" t-as="card" t-key="card.id" type="button" class="o_ccw_card o_ccw_dtile" t-on-click="() => this.openCard(card)">
+                            <span class="o_ccw_dtop"><b t-esc="card.value === null ? '—' : card.value"/><span>Open ›</span></span>
+                            <span class="o_ccw_dlabel" t-esc="card.name"/>
+                            <span t-if="card.value === null" class="o_ccw_muted">This card could not be worked out.</span>
+                            <span t-elif="card.breakdown.length" class="o_ccw_muted">
+                                <t t-foreach="card.breakdown" t-as="part" t-key="part_index"><t t-if="part_index"> · </t><t t-esc="part.label"/>: <t t-esc="part.n"/></t>
+                            </span>
+                        </button>
+                    </div>
+                </section>
+            </t>
+        </div>
+    </t>
+
+</templates>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Contact Centre Inbox",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.1.0",
     "category": "Communications",
     "summary": "Unified 3-pane inbox: conversation list, thread, AI copilot + internal notes",
     "description": """

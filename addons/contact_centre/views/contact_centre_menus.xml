@@ -7,6 +7,15 @@
                   sequence="10"
                   web_icon="contact_centre,static/description/icon.png"/>
 
+        <!-- The app has three menus: Workspace (contact_centre_workspace),
+             Dashboard and Configuration. Everything else lives under
+             Configuration, so it is defined here, ahead of its children. -->
+        <!-- Configuration -->
+        <menuitem id="menu_contact_centre_config"
+                  name="Configuration"
+                  parent="menu_contact_centre_main"
+                  sequence="50"/>
+
         <!-- Dashboard -->
         <menuitem id="menu_contact_centre_overview"
                   name="Dashboard"
@@ -17,15 +26,15 @@
         <!-- Contacts -->
         <menuitem id="menu_contact_centre_contacts"
                   name="Contacts"
-                  parent="menu_contact_centre_main"
+                  parent="menu_contact_centre_config"
                   action="action_contact_centre_contact"
-                  sequence="20"/>
+                  sequence="2"/>
 
         <!-- Messages -->
         <menuitem id="menu_contact_centre_messages"
                   name="Messages"
-                  parent="menu_contact_centre_main"
-                  sequence="30"/>
+                  parent="menu_contact_centre_config"
+                  sequence="4"/>
 
         <!-- Messages > Inbound -->
         <menuitem id="menu_contact_centre_messages_inbound"
@@ -90,8 +99,8 @@
         <!-- Campaigns -->
         <menuitem id="menu_contact_centre_campaigns"
                   name="Campaigns"
-                  parent="menu_contact_centre_main"
-                  sequence="40"/>
+                  parent="menu_contact_centre_config"
+                  sequence="6"/>
 
         <menuitem id="menu_contact_centre_campaigns_overview"
                   name="Dashboard"
@@ -162,8 +171,8 @@
         <!-- Chatbots -->
         <menuitem id="menu_contact_centre_chatbots"
                   name="Chatbots"
-                  parent="menu_contact_centre_main"
-                  sequence="45"/>
+                  parent="menu_contact_centre_config"
+                  sequence="8"/>
 
         <menuitem id="menu_contact_centre_chatbots_list"
                   name="Manage Chatbots"
@@ -194,11 +203,6 @@
                   action="action_contact_centre_chatbot_session_human"
                   sequence="30"/>
 
-        <!-- Configuration -->
-        <menuitem id="menu_contact_centre_config"
-                  name="Configuration"
-                  parent="menu_contact_centre_main"
-                  sequence="50"/>
 
         <menuitem id="menu_contact_centre_config_scripts"
                   name="Dynamic Scripts"

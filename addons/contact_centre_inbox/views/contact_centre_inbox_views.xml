@@ -8,9 +8,9 @@
 
         <menuitem id="menu_contact_centre_inbox"
                   name="Inbox"
-                  parent="contact_centre.menu_contact_centre_main"
+                  parent="contact_centre.menu_contact_centre_config"
                   action="action_contact_centre_inbox"
                   groups="contact_centre.group_contact_centre_agent"
-                  sequence="5"/>
+                  sequence="1"/>
     </data>
 </odoo>

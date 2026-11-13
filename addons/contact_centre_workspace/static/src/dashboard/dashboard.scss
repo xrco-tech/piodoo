@@ -1,0 +1,224 @@
+// The Contact Centre dashboard: a full-width page in the workspace's colours
+// (it carries .o_ccw, so the cards, tags, pills and the dark theme come from
+// workspace.scss). Unlike the workspace it is one scrolling column.
+
+.o_ccw.o_ccw_dash {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px 24px;
+    overflow: auto;
+
+    h1 { margin: 0; font-size: 22px; font-weight: 600; }
+    h2 { margin: 0; font-size: 14px; font-weight: 600; }
+    > * { flex: none; }
+    > .o_ccw_none { flex: 1; }
+    b.bad, .bad { color: var(--ccw-red); }
+    b.ok { color: var(--ccw-green); }
+
+    .o_ccw_dhead {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+
+        .o_ccw_pills { margin-left: auto; }
+        .o_ccw_pills button { padding: 3px 12px; font-size: 13px; background: var(--ccw-card); }
+        .o_ccw_pills button.on { background: var(--ccw-accent-soft); }
+    }
+    .o_ccw_dsec { display: flex; flex-direction: column; gap: 6px; }
+
+    // "Needs you now" and "Your own cards"
+    .o_ccw_dtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+    .o_ccw_dtile {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-height: 104px;
+        padding: 12px 14px;
+        text-align: left;
+
+        &:hover { border-color: var(--ccw-accent); }
+        .o_ccw_dtop {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+
+            b { font-size: 30px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+            span { color: var(--ccw-accent); font-size: 12px; font-weight: 600; }
+        }
+        .o_ccw_dlabel { font-weight: 600; }
+        .o_ccw_muted { font-size: 12.5px; }
+        &.hot { border-color: var(--ccw-red); }
+        &.hot .o_ccw_dtop b { color: var(--ccw-red); }
+    }
+
+    .o_ccw_dgrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 8px;
+
+        &.wide { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+    }
+    .o_ccw_dcard {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px 16px;
+
+        .o_ccw_shead { flex-wrap: wrap; align-items: baseline; }
+        .o_ccw_muted { font-size: 12.5px; }
+    }
+
+    // Colours of the marks, by what they stand for.
+    .wa, .navy { background: var(--ccw-navy); }
+    .sms, .amber { background: var(--ccw-hiline); }
+    .mail, .grey { background: #8b939e; }
+    i.ok, dt.ok { background: var(--ccw-green); }
+    i.bad { background: var(--ccw-red); }
+
+    .o_ccw_dlegend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        color: var(--ccw-muted);
+        font-size: 12.5px;
+
+        span { display: flex; align-items: center; gap: 5px; }
+        i { width: 10px; height: 10px; border-radius: 3px; }
+    }
+    // One stack of bars per day.
+    .o_ccw_dbars {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 150px;
+        padding-top: 4px;
+        border-bottom: 1px solid var(--ccw-line);
+
+        > div { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+        span { display: block; }
+        span:first-child { border-radius: 3px 3px 0 0; }
+    }
+    .o_ccw_daxis { display: flex; justify-content: space-between; color: var(--ccw-muted); font-size: 11.5px; }
+    .o_ccw_dfacts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 22px;
+        font-size: 13px;
+
+        b { font-size: 18px; font-weight: 600; }
+        .bad { font-weight: 600; }
+    }
+    .o_ccw_dmini {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+        gap: 8px;
+
+        > div { display: flex; flex-direction: column; padding: 7px 10px; border: 1px solid var(--ccw-line); border-radius: 9px; }
+        b { font-size: 20px; font-weight: 600; }
+        span { color: var(--ccw-muted); font-size: 12.5px; }
+    }
+    .o_ccw_dline {
+        display: grid;
+        grid-template-columns: 84px minmax(0, 1fr) 72px;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+
+        .o_ccw_muted { text-align: right; }
+    }
+    // A bar split into parts.
+    .o_ccw_dstack {
+        display: flex;
+        gap: 2px;
+        height: 18px;
+        border-radius: 5px;
+        background: var(--ccw-sel);
+        overflow: hidden;
+
+        i { min-width: 0; }
+        &.tall { background: none; }
+    }
+    .o_ccw_dkey {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 5px 8px;
+        margin: 0;
+        font-size: 13px;
+
+        dt { width: 10px; height: 10px; border-radius: 3px; }
+        dd { margin: 0; }
+        dd:nth-of-type(even) { font-weight: 600; }
+    }
+    .o_ccw_dbig {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 8px;
+
+        b { font-size: 30px; font-weight: 600; line-height: 1.1; }
+    }
+    .o_ccw_drows {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 13px;
+
+        > div { display: flex; justify-content: space-between; gap: 10px; }
+        b { font-weight: 600; white-space: nowrap; }
+    }
+    // One bar per row, the longest for the biggest number.
+    .o_ccw_dbar {
+        display: grid;
+        grid-template-columns: 124px minmax(0, 1fr) 28px;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+
+        > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        > span:nth-child(2) { height: 12px; border-radius: 4px; background: var(--ccw-sel); overflow: hidden; }
+        i { display: block; height: 100%; border-radius: 4px; background: #8b939e; }
+        i.first { background: var(--ccw-green); }
+        b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    }
+    .o_ccw_dcamp {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding: 6px 0;
+        border: 0;
+        border-top: 1px solid var(--ccw-sel);
+        background: none;
+        font-size: 13px;
+        text-align: left;
+
+        > span:first-child { display: flex; align-items: center; gap: 10px; }
+        b { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .o_ccw_muted { white-space: nowrap; }
+    }
+    .o_ccw_dheat {
+        display: grid;
+        grid-template-columns: repeat(14, minmax(0, 1fr));
+        gap: 4px;
+
+        span { height: 44px; border-radius: 6px; background: var(--ccw-sel); }
+        .s1 { background: #c3ccda; }
+        .s2 { background: #8497b3; }
+        .s3 { background: #44597a; }
+        .s4 { background: var(--ccw-navy); }
+    }
+}
+
+// The web client lays an action out as a column; so is this page (the workspace beside it is a row).
+html .o_web_client > .o_action_manager > .o_action.o_ccw.o_ccw_dash { flex-direction: column; }
+
+@media (max-width: 767.98px) {
+    .o_ccw.o_ccw_dash { padding: 10px 12px 20px; }
+    .o_ccw.o_ccw_dash .o_ccw_dgrid.wide { grid-template-columns: minmax(0, 1fr); }
+    .o_ccw.o_ccw_dash .o_ccw_dtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_ccw.o_ccw_dash .o_ccw_dtile { padding: 10px 12px; }
+    .o_ccw.o_ccw_dash .o_ccw_dcamp > span:first-child { flex-wrap: wrap; }
+}

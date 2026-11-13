@@ -34,7 +34,7 @@
                 </button>
             </nav>
 
-            <ContactCentreCalls t-if="state.section === 'calls'" boot="state.boot" callKey="callKey"
+            <ContactCentreCalls t-if="state.section === 'calls'" boot="state.boot" callKey="callKey" pill="state.sectionPill"
                                 setPane.bind="setSectionPane" openConversation.bind="openConversation"/>
             <ContactCentreContacts t-elif="state.section === 'contacts'" boot="state.boot" openId="state.sectionOpen"
                                    setPane.bind="setSectionPane" openConversation.bind="openConversation"/>
