@@ -9,7 +9,7 @@ messages), and Chat2Work's log hooks become comm.interaction rows on it.
 import logging
 import re
 
-from odoo import fields, models
+from odoo import SUPERUSER_ID, fields, models
 
 from odoo.addons.chat2work.models.chat2work_ussd import msisdn_variants
 
@@ -116,6 +116,7 @@ class Chat2workCandidateUcx(models.Model):
                     return
                 conversation = self._c2w_ucx_conversation(channel)
                 WaMessage = self.env['whatsapp.message'].sudo()
+                sender = self._c2w_ucx_sender()
                 vals_list = []
                 for entry in entries:
                     source = WaMessage.search([('message_id', '=', entry['wa'])], limit=1) \
@@ -131,10 +132,20 @@ class Chat2workCandidateUcx(models.Model):
                         'source_model': source._name if source else False,
                         'source_id': source.id or False,
                         'c2w_session': entry.get('session') or False,
+                        'c2w_sender': sender if entry['dir'] == 'outbound' else False,
                     })
                 self.env['comm.interaction'].sudo().create(vals_list)
         except Exception:
             _logger.exception("chat2work_ucx: couldn't log %s activity for candidate %s", channel_code, self.id)
+
+    def _c2w_ucx_sender(self):
+        """Who is sending right now: 'agent' when a signed-in Chat2Work agent
+        is doing it (the reply box, the Send a Message form, a button), 'auto'
+        when Chat2Work does it by itself (the bot, a scheduled job, a webhook)."""
+        user = self.env.user
+        if self.env.uid == SUPERUSER_ID or user._is_public() or not user.has_group('chat2work.group_agent'):
+            return 'auto'
+        return 'agent'
 
     def _c2w_log_session(self, channel, transcript):
         super()._c2w_log_session(channel, transcript)
@@ -182,6 +193,9 @@ class Chat2workCandidateUcx(models.Model):
 class CommInteractionChat2work(models.Model):
     _inherit = 'comm.interaction'
 
+    c2w_sender = fields.Selection(
+        [('agent', 'An agent'), ('auto', 'Chat2Work by itself')], 'Sent By', readonly=True,
+        help="Who sent a Chat2Work message. Empty on messages from before this was recorded, and on ones that came in.")
     c2w_session = fields.Json(
         'Chat2Work Session', readonly=True,
         help="The screens shown and the replies given in a Chat2Work USSD session. ID numbers are never kept.")

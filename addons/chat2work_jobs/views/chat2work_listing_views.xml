@@ -437,9 +437,9 @@
         <field name="context">{'search_default_unit_groups': 1}</field>
     </record>
 
-    <menuitem id="menu_chat2work_listings" name="Job Listings" parent="chat2work.menu_chat2work_root"
+    <menuitem id="menu_chat2work_listings" name="Job Listings" parent="chat2work.menu_chat2work_config"
               action="action_chat2work_listing" sequence="7"/>
-    <menuitem id="menu_chat2work_listing_import" name="Import Listings" parent="chat2work.menu_chat2work_root"
+    <menuitem id="menu_chat2work_listing_import" name="Import Listings" parent="chat2work.menu_chat2work_config"
               action="action_chat2work_listing_import" sequence="8"/>
     <record id="view_chat2work_candidate_kanban_jobs" model="ir.ui.view">
         <field name="name">chat2work.candidate.kanban.jobs</field>
@@ -462,8 +462,8 @@
             </xpath>
         </field>
     </record>
-    <menuitem id="menu_chat2work_listing_sources" name="Listing Sources" parent="chat2work.menu_chat2work_root"
+    <menuitem id="menu_chat2work_listing_sources" name="Listing Sources" parent="chat2work.menu_chat2work_config"
               action="action_chat2work_listing_source" sequence="9"/>
-    <menuitem id="menu_chat2work_occupations" name="Occupations" parent="chat2work.menu_chat2work_root"
+    <menuitem id="menu_chat2work_occupations" name="Occupations" parent="chat2work.menu_chat2work_config"
               action="action_chat2work_occupation" sequence="9"/>
 </odoo>

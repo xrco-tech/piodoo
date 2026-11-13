@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="chat2work_workspace.Dashboard">
+        <div class="o_action o_c2w_ws o_c2w_dash">
+            <div class="o_c2w_dhead">
+                <h1>Dashboard</h1>
+                <span class="o_c2w_dmuted" t-esc="today"/>
+                <div class="o_c2w_dperiods" role="group" aria-label="Period">
+                    <button t-foreach="periods" t-as="p" t-key="p.key" type="button" t-att-class="{ on: state.period === p.key }"
+                            t-att-aria-pressed="state.period === p.key ? 'true' : 'false'" t-on-click="() => this.setPeriod(p.key)" t-esc="p.label"/>
+                </div>
+            </div>
+
+            <div t-if="!state.data" class="o_c2w_dnone">Loading…</div>
+            <t t-else="">
+                <t t-set="data" t-value="state.data"/>
+
+                <section aria-label="Needs you now" class="o_c2w_dsec">
+                    <h2>Needs you now</h2>
+                    <div class="o_c2w_dtiles">
+                        <button t-foreach="todo" t-as="tile" t-key="tile.key" type="button" class="o_c2w_dbox o_c2w_dtile"
+                                t-att-class="{ hot: tile.hot }" t-on-click="() => this.open(tile.target)">
+                            <span class="o_c2w_dtop"><b t-esc="tile.n"/><span>Open ›</span></span>
+                            <span class="o_c2w_dlabel" t-esc="tile.label"/>
+                            <span class="o_c2w_dmuted" t-esc="tile.sub"/>
+                        </button>
+                    </div>
+                </section>
+
+                <div class="o_c2w_dgrid wide">
+                    <section class="o_c2w_dbox o_c2w_dcard">
+                        <div class="o_c2w_dshead"><h2>Candidates by stage</h2>
+                            <span class="o_c2w_dmuted"><t t-esc="data.new.all"/> candidates</span></div>
+                        <div class="o_c2w_dstages">
+                            <button t-foreach="stages" t-as="stage" t-key="stage.id" type="button" t-on-click="() => this.openStage(stage)">
+                                <span t-esc="stage.name"/>
+                                <span><i t-att-class="stage.cls" t-att-style="'width:' + stage.width"/></span>
+                                <b t-esc="stage.total"/>
+                            </button>
+                        </div>
+                        <p t-if="stageNote" class="o_c2w_dmuted" t-esc="stageNote"/>
+                    </section>
+
+                    <section class="o_c2w_dbox o_c2w_dcard">
+                        <div class="o_c2w_dshead">
+                            <h2>New candidates, last 14 days</h2>
+                            <span class="o_c2w_dlegend"><span><i class="navy"/>WhatsApp</span><span><i class="amber"/>USSD</span>
+                                <span t-if="hasOther"><i class="grey"/>Other</span></span>
+                        </div>
+                        <div class="o_c2w_dbars" role="img" t-att-aria-label="chartAlt">
+                            <div t-foreach="days" t-as="day" t-key="day.key" t-att-title="day.title">
+                                <span class="grey" t-att-style="'height:' + day.other"/>
+                                <span class="amber" t-att-style="'height:' + day.ussd"/>
+                                <span class="navy" t-att-style="'height:' + day.whatsapp"/>
+                            </div>
+                        </div>
+                        <div class="o_c2w_daxis"><span t-foreach="chartEnds" t-as="end" t-key="end_index" t-esc="end"/></div>
+                        <div class="o_c2w_dfacts">
+                            <span><b t-esc="data.new.total"/> <t t-esc="periodWords"/></span>
+                            <span class="o_c2w_dmuted" t-esc="split"/>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="o_c2w_dgrid">
+                    <section class="o_c2w_dbox o_c2w_dcard">
+                        <div class="o_c2w_dshead"><h2>CVs</h2><span class="o_c2w_dmuted" t-esc="cvTotal"/></div>
+                        <div class="o_c2w_dstack" role="img"
+                             t-attf-aria-label="{{data.cvs.done}} finished, {{data.cvs.started}} started, {{data.cvs.help}} asked for help, {{data.cvs.none}} with no CV">
+                            <i class="ok" t-att-style="'flex:' + data.cvs.done"/><i class="amber" t-att-style="'flex:' + data.cvs.started"/>
+                            <i class="bad" t-att-style="'flex:' + data.cvs.help"/><i class="grey" t-att-style="'flex:' + data.cvs.none"/>
+                        </div>
+                        <dl class="o_c2w_dkey">
+                            <dt class="ok"/><dd>Finished</dd><dd t-esc="data.cvs.done"/>
+                            <dt class="amber"/><dd>Started, not finished</dd><dd t-esc="data.cvs.started"/>
+                            <t t-if="data.cvs.help"><dt class="bad"/><dd>Asked for help</dd><dd t-esc="data.cvs.help"/></t>
+                            <dt class="grey"/><dd>No CV yet</dd><dd t-esc="data.cvs.none"/>
+                        </dl>
+                    </section>
+
+                    <section class="o_c2w_dbox o_c2w_dcard">
+                        <h2>Replies</h2>
+                        <div class="o_c2w_dbig"><b t-esc="replyTime"/><span class="o_c2w_dmuted">typical wait for a reply <t t-esc="periodWords"/></span></div>
+                        <div class="o_c2w_drows">
+                            <div><span>Answered within 15 minutes</span><b><t t-if="data.replies.waits" t-esc="data.replies.quick + '%'"/><t t-else="">—</t></b></div>
+                            <div><span>Answered by Chat2Work alone</span>
+                                <b t-if="data.replies.auto_known" t-esc="data.replies.auto + '%'"/>
+                                <b t-else="" title="Who sent a reply is recorded from now on, so this fills in as replies go out.">—</b></div>
+                            <div><span>Messages in</span><b t-esc="data.replies.inbound"/></div>
+                            <div><span>Longest wait right now</span>
+                                <b t-if="data.todo.reply_since" class="bad" t-esc="since(data.todo.reply_since)"/><b t-else="">Nobody</b></div>
+                        </div>
+                    </section>
+
+                    <section t-if="data.ids" class="o_c2w_dbox o_c2w_dcard">
+                        <div class="o_c2w_dshead"><h2>ID checks</h2><span t-if="credits" class="o_c2w_dmuted" t-esc="credits"/></div>
+                        <div class="o_c2w_dmini">
+                            <div t-foreach="idTiles" t-as="tile" t-key="tile.label"><b t-att-class="tile.cls" t-esc="tile.n"/><span t-esc="tile.label"/></div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="o_c2w_dgrid wide">
+                    <section class="o_c2w_dbox o_c2w_dcard">
+                        <div class="o_c2w_dshead"><h2>Jobs</h2>
+                            <span class="o_c2w_dmuted"><t t-esc="data.jobs.live"/> open · <t t-esc="data.todo.jobs_verify + data.todo.jobs_review"/> to check</span></div>
+                        <p t-if="!data.jobs.rows.length" class="o_c2w_dmuted">No open job listings.</p>
+                        <button t-foreach="data.jobs.rows" t-as="job" t-key="job.id" type="button" class="o_c2w_drow" t-on-click="() => this.openJob(job)">
+                            <span class="o_c2w_dname"><b t-esc="job.name"/><span class="o_c2w_dmuted" t-esc="job.employer"/></span>
+                            <span class="o_c2w_dcount"><b t-esc="job.good"/> <span class="o_c2w_dmuted">good matches</span></span>
+                            <span class="o_c2w_dtag" t-att-class="jobTag(job)" t-esc="job.work_label"/>
+                        </button>
+                    </section>
+
+                    <section class="o_c2w_dbox o_c2w_dcard">
+                        <div class="o_c2w_dshead"><h2>Next bookings</h2><span class="o_c2w_dmuted"><t t-esc="data.bookings.week"/> in the next 7 days</span></div>
+                        <p t-if="!data.bookings.rows.length" class="o_c2w_dmuted">Nobody is booked for an interview.</p>
+                        <button t-foreach="data.bookings.rows" t-as="booking" t-key="booking.id" type="button" class="o_c2w_drow" t-on-click="() => this.openBooking(booking)">
+                            <span class="o_c2w_dwhen" t-esc="bookingWhen(booking.at)"/>
+                            <span class="o_c2w_dname"><b t-esc="booking.who"/><span class="o_c2w_dmuted" t-esc="booking.what"/></span>
+                        </button>
+                    </section>
+                </div>
+
+                <button type="button" class="o_c2w_dside" t-on-click="askSidekick"><i class="fa fa-magic"/> Ask Sidekick about these numbers</button>
+            </t>
+        </div>
+    </t>
+
+</templates>

@@ -34,6 +34,6 @@
         <field name="view_mode">list</field>
         <field name="context">{'active_test': False}</field>
     </record>
-    <menuitem id="menu_chat2work_cv_templates" name="CV Designs" parent="chat2work.menu_chat2work_root"
+    <menuitem id="menu_chat2work_cv_templates" name="CV Designs" parent="chat2work.menu_chat2work_config"
               action="action_chat2work_cv_template" sequence="50"/>
 </odoo>

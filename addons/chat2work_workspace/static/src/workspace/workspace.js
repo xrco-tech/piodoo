@@ -172,6 +172,10 @@ export class Chat2workWorkspace extends Component {
             this.state.counts = this.state.boot.counts;
             // An alert that opened the Workspace says what to show.
             const target = this.alerts.takePending();
+            if (target && target.view === "side") {
+                await this.openSidekick();
+                return;
+            }
             if (target) {
                 this.applyTarget(target);
             }
@@ -686,6 +690,20 @@ export class Chat2workWorkspace extends Component {
 
     /** Point the screen at what an alert is about; the next list load shows it. */
     applyTarget(target) {
+        if (target.view) {
+            // A list, or one record on it, that a dashboard tile points at.
+            if (target.sub) {
+                this.state.idSub = target.sub;
+            }
+            if (target.pill) {
+                this.state.pills[target.view] = target.pill;
+            }
+            Object.assign(this.state, {
+                view: target.view, search: "", detail: false, rows: [], composer: "",
+                selId: target.sel || false, pinnedId: target.sel || false, pane: target.sel ? "thread" : "list",
+            });
+            return;
+        }
         const number = target.unknown;
         Object.assign(this.state, {
             view: "inbox", search: "", detail: false, rows: [], composer: "",
@@ -697,6 +715,9 @@ export class Chat2workWorkspace extends Component {
     }
 
     async openTarget(target) {
+        if (target.view === "side") {
+            return this.openSidekick();
+        }
         this.applyTarget(target);
         await Promise.all([this.loadList(), this.loadCounts()]);
     }

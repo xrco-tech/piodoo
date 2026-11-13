@@ -1,0 +1,252 @@
+// The Chat2Work dashboard: a full-width page in the workspace's colours. It
+// carries .o_c2w_ws for the colour variables (and the dark theme), and lays
+// itself out as one scrolling column instead of the workspace's panes.
+
+.o_c2w_ws.o_c2w_dash {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px 24px;
+    overflow: auto;
+
+    h1 { margin: 0; font-size: 22px; font-weight: 600; }
+    h2 { margin: 0; font-size: 14px; font-weight: 600; }
+    p { margin: 0; }
+    > * { flex: none; }
+    b.bad { color: var(--c2w-red); }
+    b.ok { color: var(--c2w-green); }
+
+    .o_c2w_dmuted { color: var(--c2w-muted); font-size: 12.5px; }
+    .o_c2w_dnone { flex: 1; display: grid; place-items: center; color: var(--c2w-muted); font-weight: 600; }
+    .o_c2w_dbox { background: var(--c2w-card); border: 1px solid var(--c2w-line); border-radius: 12px; }
+    .o_c2w_dshead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+
+    .o_c2w_dhead {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+
+        .o_c2w_dmuted { font-size: 14px; }
+    }
+    .o_c2w_dperiods {
+        display: flex;
+        gap: 6px;
+        margin-left: auto;
+
+        button {
+            padding: 3px 12px;
+            border: 1px solid var(--c2w-line);
+            border-radius: 999px;
+            background: var(--c2w-card);
+            color: var(--c2w-muted);
+            font-size: 13px;
+        }
+        button.on {
+            border-color: var(--c2w-hiline);
+            background: var(--c2w-accent-soft);
+            color: var(--c2w-accent);
+            font-weight: 600;
+        }
+    }
+    .o_c2w_dsec { display: flex; flex-direction: column; gap: 6px; }
+
+    // "Needs you now"
+    .o_c2w_dtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+    .o_c2w_dtile {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-height: 104px;
+        padding: 12px 14px;
+        text-align: left;
+
+        &:hover { border-color: var(--c2w-accent); }
+        .o_c2w_dtop {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+
+            b { font-size: 30px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+            span { color: var(--c2w-accent); font-size: 12px; font-weight: 600; }
+        }
+        .o_c2w_dlabel { font-weight: 600; }
+        &.hot { border-color: var(--c2w-red); }
+        &.hot .o_c2w_dtop b { color: var(--c2w-red); }
+    }
+
+    .o_c2w_dgrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 8px;
+
+        &.wide { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+    }
+    .o_c2w_dcard { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+
+    // Colours of the marks, by what they stand for.
+    i.navy, span.navy { background: var(--c2w-navy); }
+    i.amber, span.amber, dt.amber { background: var(--c2w-hiline); }
+    i.grey, span.grey, dt.grey { background: #8b939e; }
+    i.ok, dt.ok { background: var(--c2w-green); }
+    i.bad, dt.bad { background: var(--c2w-red); }
+
+    // One bar per stage; a row opens that stage in the workspace.
+    .o_c2w_dstages {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+
+        button {
+            display: grid;
+            grid-template-columns: 104px minmax(0, 1fr) 40px;
+            align-items: center;
+            gap: 10px;
+            padding: 3px 4px;
+            border: 0;
+            border-radius: 6px;
+            background: none;
+            font-size: 13px;
+            text-align: left;
+
+            &:hover { background: var(--c2w-sel); }
+        }
+        button > span:nth-child(2) { height: 18px; border-radius: 5px; background: var(--c2w-sel); overflow: hidden; }
+        i { display: block; height: 100%; border-radius: 5px; }
+        b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    }
+    .o_c2w_dlegend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        color: var(--c2w-muted);
+        font-size: 12.5px;
+
+        span { display: flex; align-items: center; gap: 5px; }
+        i { width: 10px; height: 10px; border-radius: 3px; }
+    }
+    // One stack of bars per day.
+    .o_c2w_dbars {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 150px;
+        padding-top: 4px;
+        border-bottom: 1px solid var(--c2w-line);
+
+        > div { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+        span { display: block; }
+        span:first-child { border-radius: 3px 3px 0 0; }
+    }
+    .o_c2w_daxis { display: flex; justify-content: space-between; color: var(--c2w-muted); font-size: 11.5px; }
+    .o_c2w_dfacts {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px 22px;
+        font-size: 13px;
+
+        b { font-size: 18px; font-weight: 600; }
+    }
+    // A bar split into parts.
+    .o_c2w_dstack {
+        display: flex;
+        gap: 2px;
+        height: 18px;
+        border-radius: 5px;
+        overflow: hidden;
+
+        i { min-width: 0; }
+    }
+    .o_c2w_dkey {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 5px 8px;
+        margin: 0;
+        font-size: 13px;
+
+        dt { width: 10px; height: 10px; border-radius: 3px; }
+        dd { margin: 0; }
+        dd:nth-of-type(even) { font-weight: 600; }
+    }
+    .o_c2w_dbig {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 8px;
+
+        b { font-size: 30px; font-weight: 600; line-height: 1.1; }
+    }
+    .o_c2w_drows {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 13px;
+
+        > div { display: flex; justify-content: space-between; gap: 10px; }
+        b { font-weight: 600; white-space: nowrap; }
+    }
+    .o_c2w_dmini {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+
+        > div { display: flex; flex-direction: column; padding: 7px 10px; border: 1px solid var(--c2w-line); border-radius: 9px; }
+        b { font-size: 20px; font-weight: 600; }
+        span { color: var(--c2w-muted); font-size: 12.5px; }
+    }
+    // Jobs and bookings: one row each, opening it in the workspace.
+    .o_c2w_drow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 4px;
+        border: 0;
+        border-top: 1px solid var(--c2w-sel);
+        background: none;
+        font-size: 13px;
+        text-align: left;
+
+        &:hover { background: var(--c2w-sel); }
+        .o_c2w_dname { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .o_c2w_dname b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .o_c2w_dcount { flex: none; text-align: right; }
+        .o_c2w_dcount b { font-weight: 600; }
+        .o_c2w_dwhen { flex: none; width: 92px; font-weight: 600; }
+    }
+    .o_c2w_dtag {
+        flex: none;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+
+        &.ok { background: var(--c2w-ok-bg); color: var(--c2w-ok-fg); border: 1px solid var(--c2w-ok-line); }
+        &.warn { background: var(--c2w-warn-bg); color: var(--c2w-warn-fg); border: 1px solid var(--c2w-warn-line); }
+    }
+    .o_c2w_dside {
+        align-self: flex-start;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 8px 16px;
+        border: 1px solid var(--c2w-bub-out-line);
+        border-radius: 999px;
+        background: var(--c2w-bub-out);
+        font-size: 13px;
+        font-weight: 600;
+    }
+}
+
+// The web client lays an action out as a column; so is this page (the workspace beside it is a row).
+html .o_web_client > .o_action_manager > .o_action.o_c2w_ws.o_c2w_dash { flex-direction: column; }
+
+@media (max-width: 767.98px) {
+    .o_c2w_ws.o_c2w_dash { padding: 10px 12px 20px; }
+    .o_c2w_ws.o_c2w_dash .o_c2w_dgrid.wide { grid-template-columns: minmax(0, 1fr); }
+    .o_c2w_ws.o_c2w_dash .o_c2w_dtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_c2w_ws.o_c2w_dash .o_c2w_dtile { padding: 10px 12px; }
+}
