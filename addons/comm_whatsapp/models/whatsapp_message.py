@@ -46,6 +46,7 @@ class WhatsAppMessage(models.Model):
         ('location', 'Location'),
         ('contacts', 'Contacts'),
         ('interactive', 'Interactive'),
+        ('button', 'Button'),
         ('template', 'Template'),
         ('sticker', 'Sticker'),
         ('reaction', 'Reaction'),
@@ -407,6 +408,35 @@ class WhatsAppMessage(models.Model):
     # Note: No unique constraint on message_id to allow handling of duplicate webhook deliveries
 
     @api.model
+    def _reply_summary(self, webhook_data):
+        """What a person chose when they tapped something instead of typing:
+        the button or menu row they picked, in words an agent can read.
+
+        It starts with what it was ("Button: ...") so it is never mistaken
+        for typed text, by a reader or by a chatbot's trigger words."""
+        if webhook_data.get('type') == 'button':
+            button = webhook_data.get('button') or {}
+            return "Button: %s" % (button.get('text') or button.get('payload') or 'no label')
+        interactive = webhook_data.get('interactive') or {}
+        kind = interactive.get('type')
+        reply = interactive.get(kind) if isinstance(interactive.get(kind), dict) else {}
+        if kind == 'button_reply':
+            return "Button: %s" % (reply.get('title') or reply.get('id') or 'no label')
+        if kind == 'list_reply':
+            body = "Menu choice: %s" % (reply.get('title') or reply.get('id') or 'no label')
+            return "%s (%s)" % (body, reply['description']) if reply.get('description') else body
+        if kind == 'nfm_reply':
+            # The answers stay in the raw data: they can hold personal details.
+            return "Form submitted"
+        if kind == 'call_permission_reply':
+            if reply.get('response') == 'accept':
+                return "Call permission: allowed permanently" if reply.get('is_permanent') else "Call permission: allowed"
+            if reply.get('response_source') == 'automatic':
+                return "Call permission: turned off by WhatsApp"
+            return "Call permission: declined"
+        return "Interactive: %s" % kind
+
+    @api.model
     def create_from_webhook(self, webhook_data, entry_data):
         """
         Create a WhatsApp message record from webhook data.
@@ -535,7 +565,10 @@ class WhatsAppMessage(models.Model):
                 interactive_type = interactive_data_obj.get('type')
                 import json
                 interactive_data = json.dumps(interactive_data_obj, indent=2)
-                message_body = f"Interactive: {interactive_type}"
+                message_body = self._reply_summary(webhook_data)
+            elif message_type == 'button':
+                # A quick-reply button on a template.
+                message_body = self._reply_summary(webhook_data)
             elif message_type == 'template':
                 template_data = webhook_data.get('template', {})
                 template_name = template_data.get('name')
