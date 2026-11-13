@@ -43,5 +43,5 @@
         <field name="target">new</field>
     </record>
     <menuitem id="menu_chat2work_ussd_simulator" name="USSD Simulator"
-              parent="menu_chat2work_root" action="action_chat2work_ussd_simulator" sequence="80"/>
+              parent="menu_chat2work_config" action="action_chat2work_ussd_simulator" sequence="80"/>
 </odoo>

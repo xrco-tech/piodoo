@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work ID Checks',
-    'version': '18.0.1.0.1',
+    'version': '18.0.1.0.2',
     'category': 'Human Resources/Recruitment',
     'summary': 'Check candidates against Home Affairs through VerifyNow, and track credits',
     'description': """

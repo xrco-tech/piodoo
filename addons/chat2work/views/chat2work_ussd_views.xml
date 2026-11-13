@@ -41,6 +41,6 @@
         </field>
     </record>
     <menuitem id="menu_chat2work_ussd_sessions" name="Live USSD Sessions"
-              parent="menu_chat2work_root" action="action_chat2work_ussd_session"
+              parent="menu_chat2work_config" action="action_chat2work_ussd_session"
               groups="base.group_system" sequence="90"/>
 </odoo>

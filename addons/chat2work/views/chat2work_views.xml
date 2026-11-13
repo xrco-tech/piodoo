@@ -345,9 +345,12 @@
     <!-- ── Menus ───────────────────────────────────────────────────────── -->
     <menuitem id="menu_chat2work_root" name="Chat2Work" sequence="45" groups="group_agent"
               web_icon="chat2work,static/description/icon.png"/>
-    <menuitem id="menu_chat2work_candidates" name="Candidates" parent="menu_chat2work_root" action="action_chat2work_candidate" sequence="5"/>
-    <menuitem id="menu_chat2work_jobs" name="Jobs" parent="menu_chat2work_root" action="action_chat2work_job" sequence="10"/>
-    <menuitem id="menu_chat2work_slots" name="Interview Slots" parent="menu_chat2work_root" action="action_chat2work_slot" sequence="20"/>
-    <menuitem id="menu_chat2work_bookings" name="Bookings" parent="menu_chat2work_root" action="action_chat2work_booking" sequence="30"/>
-    <menuitem id="menu_chat2work_callbacks" name="Callback Requests" parent="menu_chat2work_root" action="action_chat2work_callback" sequence="40"/>
+    <!-- The app has three menus: Workspace and Dashboard (chat2work_workspace) and
+         Configuration, which holds every other screen of every Chat2Work module. -->
+    <menuitem id="menu_chat2work_config" name="Configuration" parent="menu_chat2work_root" sequence="100"/>
+    <menuitem id="menu_chat2work_candidates" name="Candidates" parent="menu_chat2work_config" action="action_chat2work_candidate" sequence="5"/>
+    <menuitem id="menu_chat2work_jobs" name="Jobs" parent="menu_chat2work_config" action="action_chat2work_job" sequence="10"/>
+    <menuitem id="menu_chat2work_slots" name="Interview Slots" parent="menu_chat2work_config" action="action_chat2work_slot" sequence="20"/>
+    <menuitem id="menu_chat2work_bookings" name="Bookings" parent="menu_chat2work_config" action="action_chat2work_booking" sequence="30"/>
+    <menuitem id="menu_chat2work_callbacks" name="Callback Requests" parent="menu_chat2work_config" action="action_chat2work_callback" sequence="40"/>
 </odoo>

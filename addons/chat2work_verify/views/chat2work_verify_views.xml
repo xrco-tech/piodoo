@@ -149,7 +149,7 @@
         <field name="res_id" ref="chat2work_verify.verify_account"/>
     </record>
 
-    <menuitem id="menu_chat2work_verify_root" name="ID Checks" parent="chat2work.menu_chat2work_root"
+    <menuitem id="menu_chat2work_verify_root" name="ID Checks" parent="chat2work.menu_chat2work_config"
               sequence="45" groups="chat2work_verify.group_id_check"/>
     <menuitem id="menu_chat2work_verify_checks" name="Checks" parent="menu_chat2work_verify_root"
               action="action_chat2work_verify_check" sequence="10"/>

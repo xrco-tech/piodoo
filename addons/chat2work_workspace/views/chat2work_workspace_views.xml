@@ -5,9 +5,17 @@
         <field name="tag">chat2work_workspace</field>
     </record>
 
-    <!-- First in the app, so Chat2Work opens on the workspace. -->
+    <record id="action_chat2work_dashboard" model="ir.actions.client">
+        <field name="name">Dashboard</field>
+        <field name="tag">chat2work_dashboard</field>
+    </record>
+
+    <!-- First in the app, so Chat2Work opens on the workspace; the dashboard is next.
+         Everything else is under Configuration (defined in chat2work). -->
     <menuitem id="menu_chat2work_workspace" name="Workspace" parent="chat2work.menu_chat2work_root"
               action="action_chat2work_workspace" sequence="1"/>
+    <menuitem id="menu_chat2work_dashboard" name="Dashboard" parent="chat2work.menu_chat2work_root"
+              action="action_chat2work_dashboard" sequence="2"/>
 
     <!-- The how-to notes the sidekick answers from. -->
     <record id="view_chat2work_agent_note_list" model="ir.ui.view">
@@ -61,6 +69,6 @@
             <p>The sidekick in the Workspace answers "how do I…" questions from these notes.</p>
         </field>
     </record>
-    <menuitem id="menu_chat2work_agent_notes" name="Agent Notes" parent="chat2work.menu_chat2work_root"
+    <menuitem id="menu_chat2work_agent_notes" name="Agent Notes" parent="chat2work.menu_chat2work_config"
               action="action_chat2work_agent_note" sequence="90" groups="base.group_system"/>
 </odoo>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work Workspace',
-    'version': '18.0.1.8.0',
+    'version': '18.0.2.0.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'One screen for agents: conversations, candidates, job listings, bookings and an AI sidekick',
     'description': """
@@ -26,6 +26,12 @@ sections, a list, the selected record and an information card.
   and how the Workspace works. Lists are counted by the server, how-to answers
   come from the Agent Notes, and it never sends or changes anything.
 
+The Dashboard menu shows what needs an agent now (replies, callbacks, jobs to
+check, ID checks, numbers that are not candidates) and how things stand:
+candidates by stage, new candidates per day, CVs, reply times, ID checks, jobs
+and the next bookings. The app's menus are Workspace, Dashboard and
+Configuration; every other screen is under Configuration.
+
 Uses the existing Chat2Work models and actions. Its own data is each agent's
 sidekick chats and the agent notes.
     """,
@@ -49,6 +55,9 @@ sidekick chats and the agent notes.
             'chat2work_workspace/static/src/alerts/alerts_systray.js',
             'chat2work_workspace/static/src/alerts/alerts_systray.xml',
             'chat2work_workspace/static/src/alerts/alerts_systray.scss',
+            'chat2work_workspace/static/src/dashboard/dashboard.scss',
+            'chat2work_workspace/static/src/dashboard/dashboard.js',
+            'chat2work_workspace/static/src/dashboard/dashboard.xml',
         ],
         'web.assets_web_dark': [
             'chat2work_workspace/static/src/workspace/workspace.dark.scss',
