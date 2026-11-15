@@ -12,6 +12,12 @@
         <field name="domain_force">[('chat_id.user_id', '=', user.id)]</field>
     </record>
 
+    <record id="rule_chat2work_sidekick_action_own" model="ir.rule">
+        <field name="name">Chat2Work sidekick: look-ups of own chats only</field>
+        <field name="model_id" ref="model_chat2work_sidekick_action"/>
+        <field name="domain_force">[('chat_id.user_id', '=', user.id)]</field>
+    </record>
+
     <!-- Who gets the email when someone has been left waiting. Tick it on a user under Settings > Users. -->
     <record id="group_waiting_email" model="res.groups">
         <field name="name">Chat2Work: emailed when someone is left waiting</field>

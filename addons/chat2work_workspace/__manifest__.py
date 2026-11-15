@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work Workspace',
-    'version': '18.0.2.1.0',
+    'version': '18.0.2.2.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'One screen for agents: conversations, candidates, job listings, bookings and an AI sidekick',
     'description': """
@@ -22,9 +22,12 @@ sections, a list, the selected record and an information card.
   an optional desktop notification for each new one. People in the "emailed when
   someone is left waiting" group get an email after 15 minutes
   (chat2work_workspace.waiting_email_minutes; 0 turns it off).
-- Sidekick: a chat for agents about candidates, callbacks, CVs, jobs, ID checks
-  and how the Workspace works. Lists are counted by the server, how-to answers
-  come from the Agent Notes, and it never sends or changes anything.
+- Sidekick: a chat for agents about candidates, callbacks, CVs, bookings, ID
+  checks and how the Workspace works. It works like the Contact Centre's
+  Sidekick: it answers by calling look-up tools, and what it looked at is
+  listed beside the chat. Every tool only reads: lists are counted by the
+  server, how-to answers come from the Agent Notes, and it never sends or
+  changes anything.
 
 The Dashboard menu shows what needs an agent now (replies, callbacks, jobs to
 check, ID checks, numbers that are not candidates) and how things stand:
@@ -33,7 +36,7 @@ and the next bookings. The app's menus are Workspace, Dashboard and
 Configuration; every other screen is under Configuration.
 
 Uses the existing Chat2Work models and actions. Its own data is each agent's
-sidekick chats and the agent notes.
+sidekick chats (with what the sidekick looked at) and the agent notes.
     """,
     'author': 'XR Co.',
     'website': 'https://github.com/xrco-tech/piodoo',
@@ -49,6 +52,7 @@ sidekick chats and the agent notes.
     'assets': {
         'web.assets_backend': [
             'chat2work_workspace/static/src/workspace/workspace.scss',
+            'chat2work_workspace/static/src/workspace/markdown.js',
             'chat2work_workspace/static/src/workspace/workspace.js',
             'chat2work_workspace/static/src/workspace/workspace.xml',
             'chat2work_workspace/static/src/alerts/alerts_service.js',
