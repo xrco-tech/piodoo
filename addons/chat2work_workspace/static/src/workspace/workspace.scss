@@ -91,7 +91,6 @@
         button.on .o_c2w_pill { background: var(--c2w-hivis); color: var(--c2w-on-hivis); }
         .o_c2w_cnt { position: absolute; top: -4px; right: 8px; }
     }
-    .o_c2w_spark { font-size: 14px; font-weight: 800; line-height: 1; }
 
     .o_c2w_cnt {
         display: inline-grid;
@@ -817,7 +816,7 @@
     }
 
     // ── Sidekick: the chat with the assistant ───────────────────────────
-    .o_c2w_av.o_c2w_sk { background: var(--c2w-navy); color: var(--c2w-hivis); }
+    .o_c2w_av.o_c2w_sk { background: var(--c2w-navy); color: var(--c2w-hivis); font-size: 14px; }
     .o_c2w_skhead {
         flex: none;
         display: flex;

@@ -91,7 +91,7 @@ const RAIL = [
     { id: "cand", icon: "fa-users", label: _t("Candidates"), view: "cand" },
     { id: "jobs", icon: "fa-briefcase", label: _t("Jobs"), view: "jobs", pill: "all", count: "jobs" },
     { id: "book", icon: "fa-calendar", label: _t("Bookings"), view: "book", pill: "upcoming" },
-    { id: "side", spark: true, label: _t("Sidekick"), view: "side" },
+    { id: "side", icon: "fa-magic", label: _t("Sidekick"), view: "side" },
 ];
 
 const FOLLOW_UPS = [

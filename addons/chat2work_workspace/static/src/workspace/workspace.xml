@@ -25,8 +25,7 @@
                 <button t-foreach="rail" t-as="item" t-key="item.id" type="button"
                         t-att-class="{ on: item.id === activeRail }" t-on-click="() => this.onRail(item)">
                     <span class="o_c2w_pill">
-                        <span t-if="item.spark" class="o_c2w_spark">✦</span>
-                        <i t-else="" t-attf-class="fa {{ item.icon }}"/>
+                        <i t-attf-class="fa {{ item.icon }}"/>
                     </span>
                     <t t-esc="item.label"/>
                     <span t-if="item.count and state.counts[item.count]" class="o_c2w_cnt" t-esc="badge(state.counts[item.count])"/>
@@ -64,7 +63,7 @@
                         <button type="button" class="o_c2w_row"
                                 t-att-class="{ on: row.id === state.selId, unread: row.needs_reply }"
                                 t-on-click="() => this.select(row.id)">
-                            <span t-if="state.view === 'side' and !row.candidate_id" class="o_c2w_av o_c2w_sk">✦</span>
+                            <span t-if="state.view === 'side' and !row.candidate_id" class="o_c2w_av o_c2w_sk"><i class="fa fa-magic"/></span>
                             <t t-else="" t-call="chat2work_workspace.Avatar">
                                 <t t-set="colour" t-value="colour(row.name)"/>
                                 <t t-set="initials" t-value="initials(row.name)"/>
@@ -494,7 +493,7 @@
                     <div class="o_c2w_thread o_c2w_side" t-ref="thread">
                         <t t-if="!chat.messages.length and !side.pending">
                             <div class="o_c2w_hello">
-                                <h2><span class="o_c2w_av o_c2w_sk">✦</span>Chat2Work sidekick</h2>
+                                <h2><span class="o_c2w_av o_c2w_sk"><i class="fa fa-magic"/></span>Chat2Work sidekick</h2>
                                 <p t-if="chat.candidate">Ask me about <t t-esc="chat.candidate.first_name"/>: what has happened so far, what to do next, or a message to send. I answer from their Chat2Work record and timeline, and I never send anything myself.</p>
                                 <p t-else="">Ask me about candidates, callbacks, CVs, bookings and how Chat2Work works. I look things up in Chat2Work's own records, show you what I looked at, and never send or change anything myself.</p>
                             </div>
@@ -518,7 +517,7 @@
                                 <p t-esc="m.text"/>
                             </div>
                             <div t-else="" class="o_c2w_a">
-                                <span class="o_c2w_av o_c2w_sk">✦</span>
+                                <span class="o_c2w_av o_c2w_sk"><i class="fa fa-magic"/></span>
                                 <div class="o_c2w_t">
                                     <div t-if="m.cannot" class="o_c2w_cant" t-esc="m.cannot"/>
                                     <div t-if="m.text" class="o_c2w_md" t-out="sideHtml(m.text)"/>
@@ -716,7 +715,7 @@
                     </div>
                     <div>
                         <h5>Assistant</h5>
-                        <button class="o_c2w_wide" type="button" t-on-click="askSidekick"><span class="o_c2w_spark">✦</span> Ask sidekick</button>
+                        <button class="o_c2w_wide" type="button" t-on-click="askSidekick"><i class="fa fa-magic"/> Ask sidekick</button>
                     </div>
                     <div t-if="state.boot.ai" class="o_c2w_ask">
                         <h5>Ask about this candidate</h5>
