@@ -1145,7 +1145,10 @@
 
 // ── My queue and Team queues ────────────────────────────────────────────
 .o_ccw {
-    .o_ccw_list.o_ccw_q { width: 340px; }
+    // Wider than the other lists on a desktop only: a phone gives the list the whole screen.
+    @media (min-width: 768px) {
+        .o_ccw_list.o_ccw_q { width: 340px; }
+    }
     .o_ccw_qhead {
         flex: none;
         display: flex;
