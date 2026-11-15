@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Keeps the call queues up to date when nobody has My queue open. -->
+    <record id="cron_contact_centre_queue_pull" model="ir.cron">
+        <field name="name">Contact Centre: collect calls for the queues</field>
+        <field name="model_id" ref="model_contact_centre_queue_item"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_queue_pull()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

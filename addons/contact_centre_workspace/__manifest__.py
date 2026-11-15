@@ -1,14 +1,23 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contact Centre Workspace',
-    'version': '18.0.2.0.2',
+    'version': '18.0.3.0.0',
     'category': 'Communications',
     'summary': 'The Contact Centre inbox as a Discuss-style workspace: rail, list, thread, information card',
     'description': """
 One screen for Contact Centre agents, laid out like the Chat2Work workspace.
 
-* A rail on the left (Inbox, Calls, Contacts, Campaigns, Templates, Sidekick).
+* A rail on the left (Inbox, My queue, Team queues, Calls, Contacts,
+  Campaigns, Templates, Sidekick).
   Each is a section of this screen.
+* My queue: the calls an agent has to make, in the order they are due:
+  callbacks people asked for (Chat2Work's too, when it is installed),
+  dialler campaign calls, missed calls and follow-ups the agent set. The
+  agent chooses a WhatsApp call or a phone call, then says how it went.
+* Team queues (managers): everyone's queues, and assigning or moving calls.
+  A dialler campaign says who gets its calls (shared out automatically, a
+  shared pool, or by hand) and which agents; calls outside a campaign follow
+  one setting on that screen.
 * Calls: WhatsApp and VoIP calls in one list, newest first. One call shows
   its recording, transcript, summary, the other calls with that person, and
   its outcome; from there, call back or open the conversation.
@@ -47,9 +56,12 @@ Centre Inbox's own methods, so the two screens behave the same.
 """,
     'author': 'Tsela NavTech',
     'license': 'LGPL-3',
-    'depends': ['contact_centre_inbox', 'contact_centre_sync'],
+    'depends': ['contact_centre_inbox', 'contact_centre_sync', 'comm_dialer'],
     'data': [
+        'security/ir.model.access.csv',
+        'data/contact_centre_queue_data.xml',
         'views/contact_centre_workspace_views.xml',
+        'views/contact_centre_queue_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
@@ -63,6 +75,10 @@ Centre Inbox's own methods, so the two screens behave the same.
             'contact_centre_workspace/static/src/workspace/campaigns.xml',
             'contact_centre_workspace/static/src/workspace/templates.js',
             'contact_centre_workspace/static/src/workspace/templates.xml',
+            'contact_centre_workspace/static/src/workspace/queue.js',
+            'contact_centre_workspace/static/src/workspace/queue.xml',
+            'contact_centre_workspace/static/src/workspace/team.js',
+            'contact_centre_workspace/static/src/workspace/team.xml',
             'contact_centre_workspace/static/src/workspace/markdown.js',
             'contact_centre_workspace/static/src/workspace/ai_ops.js',
             'contact_centre_workspace/static/src/workspace/ai_ops.xml',

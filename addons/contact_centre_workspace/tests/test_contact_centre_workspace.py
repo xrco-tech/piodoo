@@ -62,7 +62,7 @@ class TestContactCentreWorkspace(TransactionCase):
 
     def test_boot(self):
         boot = self.Ws.ws_boot()
-        self.assertEqual(boot['counts'], {'unread': 0})
+        self.assertEqual(boot['counts']['unread'], 0)
         self.assertTrue(boot['me']['initials'])
         # Every rail entry is a section of the workspace now; the copilot's is for managers.
         self.assertNotIn('rail', boot)
@@ -87,7 +87,7 @@ class TestContactCentreWorkspace(TransactionCase):
         self.assertFalse(self._ids(pill='pending'))
         self.assertEqual([r['id'] for r in self.Ws.ws_list(search='990000142')['rows']], [self.nokuthula.id])
         self.assertEqual([r['id'] for r in self.Ws.ws_list(search='themba')['rows']], [self.themba.id])
-        self.assertEqual(self.Ws.ws_counts(), {'unread': 1})
+        self.assertEqual(self.Ws.ws_counts()['unread'], 1)
 
         page = self.Ws.ws_list(limit=1, search='27990000')
         self.assertEqual((len(page['rows']), page['more']), (1, True))
@@ -122,11 +122,11 @@ class TestContactCentreWorkspace(TransactionCase):
 
         # And so does an agent opening it, for every agent.
         self._msg(self.nokuthula, 'Agent please', minutes_ago=20)
-        self.assertEqual(self.Ws.ws_counts(), {'unread': 1})
+        self.assertEqual(self.Ws.ws_counts()['unread'], 1)
         thread = self.Ws.ws_thread(self.nokuthula.id)
         self.assertEqual(thread['waiting'], 1)
         self.assertTrue(thread['waiting_since'])
-        self.assertEqual(self.Ws.ws_counts(), {'unread': 0})
+        self.assertEqual(self.Ws.ws_counts()['unread'], 0)
         # Seen is not answered: the thread still says how long they have waited.
         self.assertEqual(self.Ws.ws_thread(self.nokuthula.id)['waiting'], 1)
         self._msg(self.nokuthula, 'Calling you now', out=True, minutes_ago=1)

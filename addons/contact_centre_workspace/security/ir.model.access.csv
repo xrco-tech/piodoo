@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_contact_centre_queue_item_agent,contact.centre.queue.item.agent,model_contact_centre_queue_item,contact_centre.group_contact_centre_agent,1,0,0,0
+access_contact_centre_queue_item_manager,contact.centre.queue.item.manager,model_contact_centre_queue_item,contact_centre.group_contact_centre_manager,1,1,1,1

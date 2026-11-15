@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="contact_centre_workspace.Queue">
+
+        <!-- ── My calls ─────────────────────────────────────────────── -->
+        <section class="o_ccw_card o_ccw_list o_ccw_q">
+            <div class="o_ccw_qhead">
+                <h4>My queue</h4>
+                <button type="button" class="o_ccw_ready" t-att-class="{ on: state.ready }" t-att-aria-pressed="state.ready ? 'true' : 'false'"
+                        title="Calls that are shared out automatically only come to you while you are ready" t-on-click="toggleReady">
+                    <i/><t t-if="state.ready">Ready for calls</t><t t-else="">Not ready</t>
+                </button>
+                <button type="button" class="o_ccw_ib" t-att-class="{ on: state.panel === 'follow' }" title="Set a follow-up call" aria-label="Set a follow-up call"
+                        t-on-click="openFollow"><i class="fa fa-plus"/></button>
+            </div>
+            <div class="o_ccw_qsum">
+                <div><span><b t-esc="summary"/></span><span t-if="progress.total" class="o_ccw_muted"><t t-esc="state.done"/> of <t t-esc="progress.total"/> done today</span></div>
+                <div class="o_ccw_bar"><i t-att-style="'width:' + progress.percent + '%'"/></div>
+            </div>
+
+            <form t-if="state.panel === 'follow'" class="o_ccw_form o_ccw_qpanel" t-on-submit.prevent="saveFollow">
+                <label>Who to call
+                    <input type="text" placeholder="Search name or number" t-att-value="state.follow.term" t-on-input="onFollowTerm"/>
+                </label>
+                <div t-if="state.follow.people.length" class="o_ccw_qpeople">
+                    <button t-foreach="state.follow.people" t-as="p" t-key="p.id" type="button" t-on-click="() => this.pickPerson(p)">
+                        <b t-esc="p.name"/> <span t-esc="p.phone"/>
+                    </button>
+                </div>
+                <label>When
+                    <input type="datetime-local" t-model="state.follow.at"/>
+                </label>
+                <label>What it is about
+                    <input type="text" t-model="state.follow.note"/>
+                </label>
+                <p t-if="state.error" class="o_ccw_bad" t-esc="state.error"/>
+                <div class="o_ccw_formacts">
+                    <button type="submit" class="o_ccw_primary">Add to my queue</button>
+                    <button type="button" class="o_ccw_plainbtn" t-on-click="openFollow">Cancel</button>
+                </div>
+            </form>
+
+            <div t-if="state.pool" class="o_ccw_qpool">
+                <span><b t-esc="state.pool"/> waiting in the shared pool</span>
+                <button type="button" class="o_ccw_primary" t-on-click="takeNext">Take the next one</button>
+            </div>
+
+            <div class="o_ccw_pills">
+                <button t-foreach="pills" t-as="p" t-key="p.key" type="button"
+                        t-att-class="{ on: state.pill === p.key }" t-on-click="() => this.setPill(p.key)">
+                    <t t-esc="p.label"/><b t-if="p.count" t-esc="p.count"/>
+                </button>
+            </div>
+            <div class="o_ccw_rows">
+                <t t-foreach="groups" t-as="group" t-key="group.key">
+                    <h6 class="o_ccw_qgroup" t-att-class="{ late: group.key === 'overdue' }" t-esc="group.name"/>
+                    <button t-foreach="group.rows" t-as="row" t-key="row.id" type="button" class="o_ccw_row"
+                            t-att-class="{ on: row.id === state.sel }" t-on-click="() => this.open(row.id)">
+                        <span class="o_ccw_av" t-att-style="'background:' + row.colour" t-esc="row.initials"/>
+                        <span class="o_ccw_rt">
+                            <b><em t-esc="row.name"/><time t-att-class="{ late: row.late }" t-esc="dueText(row)"/></b>
+                            <span class="o_ccw_prev">
+                                <span class="o_ccw_tag" t-att-class="'k_' + row.kind" t-esc="row.reason"/>
+                                <em t-esc="howText(row)"/>
+                            </span>
+                            <span t-if="row.note" class="o_ccw_qnote" t-esc="row.note"/>
+                        </span>
+                    </button>
+                </t>
+                <div t-if="!state.rows.length and !state.loading" class="o_ccw_empty">
+                    <t t-if="state.pill === 'all'">No calls to make. Nicely done.</t>
+                    <t t-else="">None of these in your queue.</t>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── The next call ────────────────────────────────────────── -->
+        <section class="o_ccw_main">
+            <div t-if="!state.item" class="o_ccw_none">
+                <t t-if="state.loading">Loading…</t>
+                <t t-else="">Your queue is empty.</t>
+            </div>
+            <t t-else="">
+                <t t-set="item" t-value="state.item"/>
+                <div class="o_ccw_mhead">
+                    <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to my queue" t-on-click="showList"><i class="fa fa-chevron-left"/></button>
+                    <div class="o_ccw_card o_ccw_who">
+                        <span class="o_ccw_av" t-att-style="'background:' + item.colour" t-esc="item.initials"/>
+                        <b t-esc="item.name"/>
+                        <span t-if="item.phone !== item.name" t-esc="item.phone"/>
+                    </div>
+                    <div t-if="item.phone and !item.auto" class="o_ccw_acts">
+                        <button type="button" class="o_ccw_call" title="Call on WhatsApp" aria-label="Call on WhatsApp" t-on-click="callWhatsApp"><i class="fa fa-whatsapp"/></button>
+                        <button t-if="props.boot.voip" type="button" class="o_ccw_call" title="Call by phone" aria-label="Call by phone" t-on-click="callVoip"><i class="fa fa-phone"/></button>
+                    </div>
+                </div>
+
+                <div class="o_ccw_calldetail o_ccw_qdetail">
+                    <div class="o_ccw_qcols">
+                        <div class="o_ccw_card o_ccw_csec o_ccw_qwhy" t-att-class="{ late: item.late }">
+                            <div class="o_ccw_shead">
+                                <h5>Why this call is in your queue</h5>
+                                <b t-if="item.late" class="o_ccw_bad">Overdue: <t t-esc="dueText(item)"/></b>
+                                <span t-else="" class="o_ccw_muted">Due <t t-esc="dueText(item).toLowerCase()"/></span>
+                            </div>
+                            <div class="o_ccw_qtags">
+                                <span class="o_ccw_tag" t-att-class="'k_' + item.kind" t-esc="item.reason"/>
+                                <span t-if="item.origin and item.origin !== item.reason" t-esc="item.origin"/>
+                            </div>
+                            <p t-if="item.full_note" class="o_ccw_qsaid" t-esc="item.full_note"/>
+                            <p t-if="item.auto" class="o_ccw_confirm">This campaign dials for you: the dialler rings this person by phone when you are ready, and connects you when they answer.</p>
+                            <dl class="o_ccw_kv left">
+                                <t t-foreach="facts" t-as="f" t-key="f.label"><dt t-esc="f.label"/><dd t-att-class="{ ok: f.ok }" t-esc="f.value"/></t>
+                            </dl>
+                            <ul t-if="item.log.length" class="o_ccw_qlog">
+                                <li t-foreach="item.log" t-as="line" t-key="line_index" t-esc="line"/>
+                            </ul>
+                        </div>
+
+                        <div class="o_ccw_card o_ccw_csec">
+                            <h5>Last contact</h5>
+                            <p t-if="!item.history.length" class="o_ccw_muted">Nothing on record with this number yet.</p>
+                            <div t-foreach="item.history" t-as="h" t-key="h.key" class="o_ccw_qhist">
+                                <time t-esc="when(h.at)"/><span t-esc="h.text"/>
+                            </div>
+                            <button t-if="item.contact_id" type="button" class="o_ccw_link" t-on-click="openConversation">Open the full conversation</button>
+                        </div>
+                    </div>
+
+                    <div class="o_ccw_card o_ccw_csec">
+                        <div class="o_ccw_shead">
+                            <h5>After the call</h5>
+                            <span class="o_ccw_muted">Choosing an outcome opens the next call</span>
+                        </div>
+                        <div class="o_ccw_qouts">
+                            <button type="button" class="ok" t-att-disabled="state.busy" t-on-click="() => this.outcome('done')">Spoke to them, done</button>
+                            <button type="button" t-att-disabled="state.busy" t-on-click="() => this.outcome('no_answer')">No answer, try again later</button>
+                            <button type="button" t-att-class="{ on: state.panel === 'later' }" t-on-click="() => this.showPanel('later')">Call back at a set time…</button>
+                            <button type="button" t-att-class="{ on: state.panel === 'hand' }" t-on-click="() => this.showPanel('hand')">Hand to someone else…</button>
+                            <button type="button" class="bad" t-att-class="{ on: state.panel === 'dnc' }" t-on-click="() => this.showPanel('dnc')">Do not call again…</button>
+                        </div>
+                        <form t-if="state.panel === 'later'" class="o_ccw_form o_ccw_qinline" t-on-submit.prevent="saveLater">
+                            <label>Call back on
+                                <input type="datetime-local" t-model="state.laterAt"/>
+                            </label>
+                            <button type="submit" class="o_ccw_primary" t-att-disabled="state.busy">Set the time</button>
+                        </form>
+                        <form t-if="state.panel === 'hand'" class="o_ccw_form o_ccw_qinline" t-on-submit.prevent="saveHand">
+                            <label>Hand this call to
+                                <select t-model="state.handTo">
+                                    <option value="">Nobody yet (back to unassigned)</option>
+                                    <option t-foreach="others" t-as="a" t-key="a.id" t-att-value="a.id" t-esc="a.name"/>
+                                </select>
+                            </label>
+                            <button type="submit" class="o_ccw_primary" t-att-disabled="state.busy">Hand over</button>
+                        </form>
+                        <div t-if="state.panel === 'dnc'" class="o_ccw_confirm o_ccw_qinline">
+                            <span><b t-esc="item.name"/> goes on the Do-Not-Call list, and no campaign will ring this number again.</span>
+                            <button type="button" class="o_ccw_primary" t-att-disabled="state.busy" t-on-click="() => this.outcome('dnc')">Yes, do not call again</button>
+                        </div>
+                        <p t-if="state.error" class="o_ccw_bad" t-esc="state.error"/>
+                        <label class="o_ccw_qnotebox">Note for the record
+                            <textarea rows="2" placeholder="What was agreed…" t-model="state.note"/>
+                        </label>
+                    </div>
+
+                    <div t-if="next" class="o_ccw_qnext">
+                        <span><b>Next up:</b> <t t-esc="next.name"/> · <t t-esc="next.reason"/> · <t t-esc="dueText(next).toLowerCase()"/></span>
+                        <button type="button" class="o_ccw_primary" t-on-click="skip">Skip to next</button>
+                    </div>
+                </div>
+            </t>
+        </section>
+    </t>
+
+</templates>

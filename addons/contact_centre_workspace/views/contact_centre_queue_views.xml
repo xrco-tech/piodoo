@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Calling settings on a dialler campaign: who gets its calls, and which agents. -->
+    <record id="view_comm_dialer_campaign_form_queue" model="ir.ui.view">
+        <field name="name">comm.dialer.campaign.form.queue</field>
+        <field name="model">comm.dialer.campaign</field>
+        <field name="inherit_id" ref="comm_dialer.view_comm_dialer_campaign_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="before">
+                <group string="Agents' queues">
+                    <group>
+                        <field name="queue_assign" widget="radio"/>
+                    </group>
+                    <group>
+                        <field name="queue_agent_ids" widget="many2many_tags" placeholder="Every Contact Centre agent"/>
+                        <div colspan="2" class="text-muted">
+                            Who dials is the Mode below: Preview means the agent clicks to call,
+                            and chooses a WhatsApp call or a phone call. Progressive and Predictive
+                            ring the next person by phone when the agent is ready.
+                        </div>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_contact_centre_queue_item_list" model="ir.ui.view">
+        <field name="name">contact.centre.queue.item.list</field>
+        <field name="model">contact.centre.queue.item</field>
+        <field name="arch" type="xml">
+            <list string="Queued Calls" create="0">
+                <field name="due_at"/>
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="kind"/>
+                <field name="origin"/>
+                <field name="user_id"/>
+                <field name="attempts"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'"/>
+                <field name="outcome" optional="show"/>
+                <field name="done_by_id" optional="hide"/>
+                <field name="done_at" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_contact_centre_queue_item_search" model="ir.ui.view">
+        <field name="name">contact.centre.queue.item.search</field>
+        <field name="model">contact.centre.queue.item</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="user_id"/>
+                <filter name="open" string="To call" domain="[('state', '=', 'open')]"/>
+                <filter name="unassigned" string="Unassigned" domain="[('state', '=', 'open'), ('user_id', '=', False)]"/>
+                <group>
+                    <filter name="by_user" string="Agent" context="{'group_by': 'user_id'}"/>
+                    <filter name="by_kind" string="Why" context="{'group_by': 'kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_contact_centre_queue_item" model="ir.actions.act_window">
+        <field name="name">Queued Calls</field>
+        <field name="res_model">contact.centre.queue.item</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_open': 1}</field>
+    </record>
+
+    <menuitem id="menu_contact_centre_queue_campaigns"
+              name="Call Campaigns"
+              parent="contact_centre.menu_contact_centre_config"
+              action="comm_dialer.action_comm_dialer_campaign"
+              groups="contact_centre.group_contact_centre_manager"
+              sequence="60"/>
+    <menuitem id="menu_contact_centre_queue_items"
+              name="Queued Calls"
+              parent="contact_centre.menu_contact_centre_config"
+              action="action_contact_centre_queue_item"
+              groups="contact_centre.group_contact_centre_manager"
+              sequence="61"/>
+</odoo>
