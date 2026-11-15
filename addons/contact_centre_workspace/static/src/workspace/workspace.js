@@ -13,6 +13,8 @@ import { ContactCentreContacts } from "./contacts";
 import { ContactCentreCampaigns } from "./campaigns";
 import { ContactCentreTemplates } from "./templates";
 import { ContactCentreAiOps } from "./ai_ops";
+import { ContactCentreQueue } from "./queue";
+import { ContactCentreTeam } from "./team";
 import { when, dialWhatsApp, dialVoip } from "./util";
 
 const { DateTime } = luxon;
@@ -25,7 +27,7 @@ const CHANNEL = { whatsapp: "WhatsApp", sms: "SMS", voice: _t("Call"), email: _t
 /** The Contact Centre inbox as a workspace: rail, list card, thread, information card. */
 export class ContactCentreWorkspace extends Component {
     static template = "contact_centre_workspace.Workspace";
-    static components = { Chatter, ContactCentreCalls, ContactCentreContacts, ContactCentreCampaigns, ContactCentreTemplates, ContactCentreAiOps };
+    static components = { Chatter, ContactCentreCalls, ContactCentreContacts, ContactCentreCampaigns, ContactCentreTemplates, ContactCentreAiOps, ContactCentreQueue, ContactCentreTeam };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -40,10 +42,10 @@ export class ContactCentreWorkspace extends Component {
         const params = this.props.action.params || {};
 
         this.state = useState({
-            boot: { ai_ops: false, dispositions: [], counts: { unread: 0 }, ai: false, voip: false, me: { name: "", initials: "" } },
-            // inbox | calls | contacts | campaigns | templates | ai
+            boot: { ai_ops: false, lead: false, dispositions: [], counts: { unread: 0, queue: 0, unassigned: 0 }, ai: false, voip: false, me: { name: "", initials: "" } },
+            // inbox | queue | team | calls | contacts | campaigns | templates | ai
             section: params.call_key ? "calls"
-                : ["calls", "contacts", "campaigns", "templates", "ai"].includes(params.section) ? params.section : "inbox",
+                : ["queue", "team", "calls", "contacts", "campaigns", "templates", "ai"].includes(params.section) ? params.section : "inbox",
             // The record a section opens on, and the filter it starts with, when it was
             // reached from another section or from a dashboard tile.
             sectionOpen: params.open_id || false,
@@ -101,6 +103,9 @@ export class ContactCentreWorkspace extends Component {
             this.refresh();
         };
         this.bus.subscribe("contact_centre_new_message", this.onBus);
+        // A call given to this agent, or taken away: the rail's count follows.
+        this.onQueue = useDebounced(() => this.refreshCounts(), 400);
+        this.bus.subscribe("contact_centre_queue", this.onQueue);
         this.bus.start();
         const tick = setInterval(() => {
             if (this.phone.call) {
@@ -109,6 +114,7 @@ export class ContactCentreWorkspace extends Component {
         }, 1000);
         onWillDestroy(() => {
             this.bus.unsubscribe("contact_centre_new_message", this.onBus);
+            this.bus.unsubscribe("contact_centre_queue", this.onQueue);
             clearInterval(tick);
         });
 
@@ -285,6 +291,18 @@ export class ContactCentreWorkspace extends Component {
         this.state.sectionPill = false;
         this.state.sectionPane = "list";
         this.state.section = section;
+    }
+
+    /** Only what changed is written: a section calls this while it loads, and
+     *  a write that changes nothing must not redraw the screen under it. */
+    async refreshCounts() {
+        const counts = await this.orm.call(WS, "ws_counts", []);
+        const now = this.state.boot.counts;
+        for (const [key, value] of Object.entries(counts)) {
+            if (now[key] !== value) {
+                now[key] = value;
+            }
+        }
     }
 
     setSectionPane(pane) {

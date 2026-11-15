@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="contact_centre_workspace.Team">
+        <t t-set="data" t-value="state.data"/>
+
+        <!-- ── The team ─────────────────────────────────────────────── -->
+        <section class="o_ccw_card o_ccw_list o_ccw_q">
+            <div class="o_ccw_qhead">
+                <h4>Team queues</h4>
+            </div>
+            <div class="o_ccw_stats two">
+                <div class="o_ccw_card"><b t-esc="data.tiles.waiting"/><span>calls waiting</span></div>
+                <div class="o_ccw_card" t-att-class="{ bad: data.tiles.overdue }"><b t-esc="data.tiles.overdue"/><span>overdue</span></div>
+                <div class="o_ccw_card"><b t-esc="data.tiles.unassigned"/><span>unassigned</span></div>
+                <div class="o_ccw_card"><b t-esc="data.tiles.done"/><span>done today</span></div>
+            </div>
+            <div class="o_ccw_rows">
+                <button t-foreach="data.people" t-as="p" t-key="p.id || 0" type="button" class="o_ccw_row"
+                        t-att-class="{ on: p.id === state.selected }" t-on-click="() => this.pick(p)">
+                    <span class="o_ccw_av" t-att-class="{ none: !p.id }" t-att-style="p.colour ? 'background:' + p.colour : ''" t-esc="p.initials"/>
+                    <span class="o_ccw_rt">
+                        <b><em t-esc="p.name"/><time t-att-class="'s_' + p.state" t-esc="stateText(p)"/></b>
+                        <span class="o_ccw_prev">
+                            <em><strong t-esc="p.todo"/> to make<t t-if="p.late"> · <span class="o_ccw_bad"><t t-esc="p.late"/> overdue</span></t></em>
+                            <span t-if="p.id" class="o_ccw_muted"><t t-esc="p.done"/> of <t t-esc="p.total"/> done</span>
+                        </span>
+                        <span t-if="p.id" class="o_ccw_bar"><i t-att-style="'width:' + percent(p) + '%'"/></span>
+                    </span>
+                </button>
+
+                <div class="o_ccw_csec o_ccw_qset">
+                    <h5>Calls outside a campaign</h5>
+                    <label class="o_ccw_muted">Callback requests and missed calls
+                        <select class="o_ccw_select" aria-label="Who gets calls outside a campaign" t-on-change="onRule">
+                            <option t-foreach="data.rules" t-as="r" t-key="r.key" t-att-value="r.key" t-att-selected="r.key === data.rule" t-esc="r.label"/>
+                        </select>
+                    </label>
+                    <p class="o_ccw_muted">A follow-up stays with the agent who set it.</p>
+                </div>
+                <div t-if="data.campaigns.length" class="o_ccw_csec o_ccw_qset">
+                    <h5>Call campaigns</h5>
+                    <button t-foreach="data.campaigns" t-as="c" t-key="c.id" type="button" class="o_ccw_camp" title="Open this campaign's calling settings"
+                            t-on-click="() => this.openCampaign(c)">
+                        <span><b t-esc="c.name"/><small><t t-esc="c.rule"/> · <t t-esc="c.dials"/></small></span>
+                        <span class="o_ccw_tag" t-att-class="c.running ? 'ok' : 'plain'"><t t-if="c.running">Running</t><t t-else="">Not running</t></span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── One queue ────────────────────────────────────────────── -->
+        <section class="o_ccw_main">
+            <div class="o_ccw_mhead">
+                <button type="button" class="o_ccw_ib o_ccw_back" aria-label="Back to the team" t-on-click="showList"><i class="fa fa-chevron-left"/></button>
+                <div class="o_ccw_card o_ccw_who">
+                    <span class="o_ccw_av" t-att-class="{ none: !person.id }" t-att-style="person.colour ? 'background:' + person.colour : ''" t-esc="person.initials"/>
+                    <b t-esc="person.name"/>
+                    <span t-esc="headline"/>
+                </div>
+                <div t-if="!person.id and person.todo" class="o_ccw_acts">
+                    <button type="button" class="o_ccw_plainbtn" title="Give each unassigned call to the agent with the fewest to make" t-on-click="shareOut">Share out evenly</button>
+                </div>
+            </div>
+
+            <div class="o_ccw_calldetail o_ccw_qteam">
+                <div t-if="checkedIds.length" class="o_ccw_qnext">
+                    <span><b><t t-esc="checkedIds.length"/> selected</b></span>
+                    <label>Give to
+                        <select class="o_ccw_select" t-model="state.giveTo">
+                            <option value="">Nobody (unassigned)</option>
+                            <option t-foreach="data.agents" t-as="a" t-key="a.id" t-att-value="a.id"><t t-esc="a.name"/> (<t t-esc="a.todo"/> to make)</option>
+                        </select>
+                    </label>
+                    <button type="button" class="o_ccw_primary" t-att-disabled="state.busy" t-on-click="assignChecked">Assign</button>
+                </div>
+
+                <div t-if="data.rows.length" class="o_ccw_card o_ccw_qtable">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" aria-label="Select all" t-att-checked="allChecked" t-on-change="toggleAll"/></th>
+                                <th>Person</th>
+                                <th>Why</th>
+                                <th>Due</th>
+                                <th>Tries</th>
+                                <th>Assigned to</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="data.rows" t-as="row" t-key="row.id" t-att-class="{ on: state.checked[row.id] }">
+                                <td><input type="checkbox" t-att-aria-label="'Select ' + row.name" t-att-checked="!!state.checked[row.id]" t-on-change="() => this.toggle(row)"/></td>
+                                <td><b t-esc="row.name"/><small t-if="row.note" t-esc="row.note"/></td>
+                                <td><span class="o_ccw_tag" t-att-class="'k_' + row.kind" t-esc="row.reason"/></td>
+                                <td t-att-class="{ o_ccw_bad: row.late }" t-esc="dueText(row)"/>
+                                <td><t t-if="row.attempts"><t t-esc="row.attempts"/> of <t t-esc="row.max"/></t><t t-else="">None yet</t></td>
+                                <td>
+                                    <select class="o_ccw_select" t-att-aria-label="'Assigned to, for ' + row.name" t-on-change="(ev) => this.onRowAgent(row, ev)">
+                                        <option value="" t-att-selected="!row.user_id">Nobody yet</option>
+                                        <option t-foreach="data.agents" t-as="a" t-key="a.id" t-att-value="a.id" t-att-selected="a.id === row.user_id" t-esc="a.name"/>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div t-else="" class="o_ccw_none">
+                    <t t-if="person.id">Nothing in this queue.</t>
+                    <t t-else="">Every call has an agent.</t>
+                </div>
+            </div>
+        </section>
+    </t>
+
+</templates>

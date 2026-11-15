@@ -22,7 +22,7 @@ class CommDialerCampaign(models.Model):
         ('preview', 'Preview'),
         ('progressive', 'Progressive'),
         ('predictive', 'Predictive'),
-    ], default='progressive', required=True,
+    ], default='preview', required=True,
         help="Preview: the agent triggers each call. "
              "Progressive: one call per free agent. "
              "Predictive: over-dial by a pacing ratio to minimise agent idle time.")

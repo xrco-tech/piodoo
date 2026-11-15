@@ -1143,6 +1143,272 @@
     .o_ccw .o_ccw_acts .o_ccw_tpl span { display: none; }
 }
 
+// ── My queue and Team queues ────────────────────────────────────────────
+.o_ccw {
+    .o_ccw_list.o_ccw_q { width: 340px; }
+    .o_ccw_qhead {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        h4 { flex: 1; margin: 0; font-size: 17px; }
+        .o_ccw_ib { flex: none; border-radius: 999px; }
+    }
+    .o_ccw_ready {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 11px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 999px;
+        background: var(--ccw-card);
+        color: var(--ccw-muted);
+        font-size: 12.5px;
+        font-weight: 600;
+
+        i { width: 8px; height: 8px; border-radius: 50%; background: var(--ccw-muted); }
+        &.on { border-color: var(--ccw-ok-line); background: var(--ccw-ok-bg); color: var(--ccw-ok-fg); }
+        &.on i { background: var(--ccw-green); }
+    }
+    .o_ccw_qsum {
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 13px;
+
+        > div:first-child { display: flex; justify-content: space-between; gap: 8px; }
+        b { font-weight: 600; }
+    }
+    .o_ccw_q .o_ccw_stats { flex: none; }
+    .o_ccw_qpanel {
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+        border: 1px solid var(--ccw-hiline);
+        border-radius: 10px;
+        background: var(--ccw-soft);
+    }
+    .o_ccw_qpeople {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        background: var(--ccw-card);
+        overflow: hidden;
+
+        button { padding: 7px 10px; border: 0; background: none; text-align: left; font-size: 13px; }
+        button:hover { background: var(--ccw-sel); }
+        b { font-weight: 600; }
+        span { color: var(--ccw-muted); }
+    }
+    .o_ccw_qpool {
+        flex: none;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        border: 1px solid var(--ccw-bub-out-line);
+        border-radius: 10px;
+        background: var(--ccw-soft);
+        font-size: 13px;
+    }
+    .o_ccw_qgroup {
+        margin: 8px 0 2px;
+        padding: 0 6px;
+        color: var(--ccw-muted);
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+
+        &.late { color: var(--ccw-red); }
+    }
+    .o_ccw_q .o_ccw_row { align-items: flex-start; }
+    .o_ccw_q .o_ccw_prev { justify-content: flex-start; align-items: center; margin-top: 2px; font-size: 12.5px; }
+    .o_ccw_q .o_ccw_prev em { flex: 1; min-width: 0; }
+    .o_ccw_q .o_ccw_prev em strong { color: var(--ccw-fg); font-weight: 600; }
+    .o_ccw_q .o_ccw_rt .o_ccw_bar { display: block; height: 6px; margin-top: 4px; }
+    .o_ccw_rt time.late, .o_ccw_rt time.s_none { color: var(--ccw-red); font-weight: 600; }
+    .o_ccw_rt time.s_ready { color: var(--ccw-ok-fg); font-weight: 600; }
+    .o_ccw_rt time.s_call { color: var(--ccw-accent); font-weight: 600; }
+    .o_ccw_av.none { background: var(--ccw-muted); }
+    .o_ccw_qnote {
+        display: block;
+        margin-top: 1px;
+        overflow: hidden;
+        color: var(--ccw-muted);
+        font-size: 12.5px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    // Why a call is in the queue, as a tag.
+    .o_ccw_tag.k_callback { background: var(--ccw-warn-bg); color: var(--ccw-warn-fg); border: 1px solid var(--ccw-warn-line); }
+    .o_ccw_tag.k_campaign {
+        background: color-mix(in srgb, var(--ccw-accent) 10%, transparent);
+        color: var(--ccw-accent);
+        border: 1px solid color-mix(in srgb, var(--ccw-accent) 30%, transparent);
+    }
+    .o_ccw_tag.k_missed {
+        background: color-mix(in srgb, var(--ccw-red) 12%, transparent);
+        color: var(--ccw-red);
+        border: 1px solid color-mix(in srgb, var(--ccw-red) 35%, transparent);
+    }
+    .o_ccw_tag.k_follow { background: var(--ccw-sel); color: var(--ccw-fg); border: 1px solid var(--ccw-line); }
+
+    .o_ccw_qdetail { max-width: 980px; }
+    .o_ccw_qcols {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+
+        > * { flex: 1 1 300px; min-width: 0; }
+    }
+    .o_ccw_qwhy.late { border-color: var(--ccw-red); }
+    .o_ccw_shead .o_ccw_bad { font-size: 13px; }
+    .o_ccw_qtags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+    .o_ccw_qsaid {
+        padding: 9px 12px;
+        border-radius: 10px;
+        background: var(--ccw-bub-in);
+        font-size: 13.5px;
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+    .o_ccw_kv dd.ok { color: var(--ccw-ok-fg); font-weight: 600; }
+    .o_ccw_qlog {
+        margin: 0;
+        padding: 6px 0 0 18px;
+        border-top: 1px solid var(--ccw-line);
+        color: var(--ccw-muted);
+        font-size: 12.5px;
+    }
+    .o_ccw_qhist {
+        display: flex;
+        gap: 10px;
+        font-size: 13px;
+
+        time { flex: none; width: 76px; color: var(--ccw-muted); }
+        span { min-width: 0; overflow-wrap: anywhere; }
+    }
+    .o_ccw_qouts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        button {
+            min-height: 40px;
+            padding: 7px 14px;
+            border: 1px solid var(--ccw-line);
+            border-radius: 10px;
+            background: var(--ccw-card);
+            font-weight: 500;
+        }
+        button.ok { border-color: var(--ccw-ok-line); background: var(--ccw-ok-bg); color: var(--ccw-ok-fg); font-weight: 600; }
+        button.bad { color: var(--ccw-red); }
+        button.on { border-color: var(--ccw-hiline); background: var(--ccw-accent-soft); }
+    }
+    .o_ccw_qinline {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 10px;
+
+        label { flex: 1 1 220px; }
+        > span { flex: 1 1 220px; }
+        &.o_ccw_confirm { align-items: center; }
+    }
+    .o_ccw_qnotebox {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 0;
+        color: var(--ccw-muted);
+        font-size: 12.5px;
+
+        textarea {
+            padding: 8px 10px;
+            border: 1px solid var(--ccw-line);
+            border-radius: 10px;
+            background: var(--ccw-card);
+            color: var(--ccw-fg);
+            font: inherit;
+            font-size: 14px;
+            resize: vertical;
+        }
+    }
+    .o_ccw_qnext {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 14px;
+        border: 1px solid var(--ccw-bub-out-line);
+        border-radius: 12px;
+        background: var(--ccw-soft);
+        font-size: 13px;
+
+        > span { flex: 1 1 200px; min-width: 0; }
+        b { font-weight: 600; }
+        label { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ccw-muted); }
+        .o_ccw_primary { border-radius: 999px; }
+    }
+    .o_ccw_q .o_ccw_select, .o_ccw_qteam .o_ccw_select {
+        padding: 5px 8px;
+        border: 1px solid var(--ccw-line);
+        border-radius: 8px;
+        background: var(--ccw-card);
+        color: var(--ccw-fg);
+        font-size: 13px;
+    }
+    .o_ccw_qset {
+        margin-top: 10px;
+        padding: 10px 6px 0;
+        border-top: 1px solid var(--ccw-line);
+
+        label { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 12.5px; }
+        button.o_ccw_camp { width: 100%; border: 0; background: none; text-align: left; }
+        button.o_ccw_camp:hover b { text-decoration: underline; }
+    }
+    .o_ccw_qteam { max-width: none; }
+    .o_ccw_qtable {
+        overflow-x: auto;
+
+        table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px; }
+        th {
+            padding: 10px 8px;
+            color: var(--ccw-muted);
+            font-size: 11.5px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-align: left;
+            text-transform: uppercase;
+        }
+        td { padding: 9px 8px; border-top: 1px solid var(--ccw-sel); vertical-align: middle; }
+        th:first-child, td:first-child { width: 36px; padding-left: 14px; }
+        td b { font-weight: 600; }
+        td small { display: block; color: var(--ccw-muted); font-size: 12.5px; }
+        tr.on td { background: var(--ccw-accent-soft); }
+        input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--ccw-accent); }
+    }
+}
+@media (max-width: 767.98px) {
+    .o_ccw .o_ccw_wideonly { display: none; }
+    // Up to eight tabs: they keep a readable width and the bar scrolls sideways.
+    .o_ccw nav.o_ccw_rail { overflow-x: auto; scrollbar-width: none; }
+    .o_ccw nav.o_ccw_rail button { flex: 1 0 60px; white-space: nowrap; }
+    .o_ccw .o_ccw_qdetail, .o_ccw .o_ccw_qteam { padding: 4px 8px 10px; }
+    .o_ccw .o_ccw_qouts button { flex: 1 1 100%; min-height: 44px; }
+    .o_ccw .o_ccw_ready { min-height: 40px; }
+    .o_ccw .o_ccw_mhead .o_ccw_plainbtn { min-height: 44px; }
+}
+
 // The web client lays an action out as a column; the workspace is a row of panes.
 html .o_web_client > .o_action_manager > .o_action.o_ccw { flex-direction: row; }
 

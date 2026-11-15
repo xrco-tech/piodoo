@@ -6,3 +6,5 @@ from . import contact_centre_workspace_campaigns
 from . import contact_centre_workspace_templates
 from . import contact_centre_workspace_ai_ops
 from . import contact_centre_workspace_dashboard
+from . import contact_centre_queue
+from . import contact_centre_workspace_queue
