@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, onWillDestroy, useEffect, useRef, useState } from "@odoo/owl";
+import { Component, markup, onWillStart, onWillDestroy, useEffect, useRef, useState } from "@odoo/owl";
 import { browser } from "@web/core/browser/browser";
 import { _t } from "@web/core/l10n/translation";
 import { deserializeDateTime } from "@web/core/l10n/dates";
@@ -8,6 +8,7 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
+import { markdownToHtml } from "./markdown";
 
 const WS = "chat2work.workspace";
 const LIVE_CHANNEL = "chat2work_workspace";
@@ -138,7 +139,7 @@ export class Chat2workWorkspace extends Component {
             more: false, // the list has rows beyond the ones loaded
             loadingMore: false,
             // The sidekick: what a new chat offers, the question being typed and the one being answered.
-            side: { start: null, question: "", pending: "", busy: false, error: "" },
+            side: { start: null, question: "", pending: "", busy: false, error: "", card: true, shown: {} },
         });
 
         this.threadRef = useRef("thread");
@@ -910,26 +911,58 @@ export class Chat2workWorkspace extends Component {
                 lastDay = day;
             }
             const answer = message.role === "sidekick";
-            items.push({ ...message, key: "m" + message.id, kind: answer ? "a" : "q",
-                         blocks: answer ? this.textBlocks(message.text) : [] });
+            items.push({ ...message, key: "m" + message.id, kind: answer ? "a" : "q" });
         }
         return items;
     }
 
-    /** Plain text as blocks: lines starting "1." or "-" become a list, the rest paragraphs. */
-    textBlocks(text) {
-        const blocks = [];
-        for (const line of (text || "").split("\n").map((l) => l.trim()).filter(Boolean)) {
-            const item = line.match(/^(\d+[.)]|[-•*])\s+(.*)$/);
-            const kind = !item ? "p" : /\d/.test(item[1]) ? "ol" : "ul";
-            const last = blocks[blocks.length - 1];
-            if (item && last && last.kind === kind) {
-                last.items.push(item[2]);
-            } else {
-                blocks.push(item ? { kind, items: [item[2]] } : { kind, text: line });
-            }
+    /** An answer's markdown as HTML. Safe to render: markdownToHtml escapes the text before adding any tags. */
+    sideHtml(text) {
+        return markup(markdownToHtml(text || ""));
+    }
+
+    // What the sidekick looked at while answering, as the Contact Centre's Sidekick lists it.
+    get sideActions() {
+        return this.state.detail.actions || [];
+    }
+
+    /** "list_people" → "Looked up people". */
+    toolLabel(action) {
+        const labels = {
+            count_lists: _t("Counted the lists"),
+            list_people: _t("Looked up a list"),
+            find_candidate: _t("Searched candidates"),
+            get_candidate: _t("Read a candidate's record"),
+            read_notes: _t("Read the agent notes"),
+            list_bookings: _t("Looked up bookings"),
+            draft_message: _t("Wrote a draft"),
+            suggest_screen: _t("Offered a screen"),
+        };
+        return labels[action.tool] || (action.tool || "").replace(/_/g, " ");
+    }
+
+    /** What it was asked for, in a few words: the list, the name, the screen. */
+    toolAbout(action) {
+        const input = action.input || {};
+        return input.list || input.name || input.screen || input.channel || input.when || "";
+    }
+
+    toggleSideAction(action) {
+        this.state.side.shown[action.id] = !this.state.side.shown[action.id];
+    }
+
+    /** On a phone the card is a pane of its own; on a wide screen it opens and closes. */
+    toggleSideCard() {
+        if (this.env.isSmall) {
+            this.state.side.card = true;
+            this.setPane("info");
+        } else {
+            this.state.side.card = !this.state.side.card;
         }
-        return blocks;
+    }
+
+    json(value) {
+        return JSON.stringify(value, null, 2);
     }
 
     /** How long since `value`: "19 h", "1 d 3 h", "4 d". */

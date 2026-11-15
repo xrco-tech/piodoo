@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-"""The sidekick only answers: its lists are the server's, its chats are the
-agent's own, and nothing personal beyond first names reaches the AI. ID checks
+"""The sidekick only looks things up: its lists are the server's, its chats are
+the agent's own, what it looked at is kept with the chat, and nothing personal
+beyond first names reaches the AI. The AI itself is never called here. ID checks
 on the Candidates filters and the candidate card are for staff who may run them."""
 
+import json
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -11,14 +13,19 @@ from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 WA = 'odoo.addons.comm_whatsapp.models.whatsapp_message.WhatsAppMessage.send_whatsapp_payload'
-AI = 'odoo.addons.chat2work_workspace.models.chat2work_sidekick._ai_json'
+AI = 'odoo.addons.chat2work_workspace.models.chat2work_sidekick.Chat2workWorkspaceSidekick._sidekick_request'
 ID_NO = '9111060123086'
 
 
-def said(**over):
-    """What Claude returns: nothing but the answer unless a test says otherwise."""
-    return dict({'answer': 'Here you go.', 'list': 'none', 'draft_text': '', 'draft_channel': 'none', 'cannot': False,
-                 'open_screen': 'none', 'notes_used': [], 'follow_ups': []}, **over)
+def said(text='Here you go.', *calls, follow_ups=None):
+    """What Claude does: the tools it calls first (name, input), then its answer."""
+    if follow_ups:
+        text += '\n<<suggestions>>%s<<end>>' % json.dumps(follow_ups)
+    script = []
+    if calls:
+        script.append([{'type': 'tool_use', 'id': 'call_%s' % index, 'name': name, 'input': args}
+                       for index, (name, args) in enumerate(calls)])
+    return script + [[{'type': 'text', 'text': text}]]
 
 
 @tagged('post_install', '-at_install', 'chat2work')
@@ -50,16 +57,22 @@ class TestChat2workSidekick(TransactionCase):
             'dir': direction, 'text': text, 'at': fields.Datetime.now() - timedelta(minutes=minutes_ago)}])
 
     def _ask(self, question, answer, ws=None, chat_id=False, candidate=None):
-        """(the chat as the screen gets it, what was sent to the AI)."""
-        with patch(AI, side_effect=lambda env, key, system, content, schema: answer) as ai:
+        """(the chat as the screen gets it, everything that was sent to the AI)."""
+        script, sent = list(answer), []
+
+        def reply(_self, api_key, messages, tools):
+            sent.append(json.dumps(messages, ensure_ascii=False))
+            return script.pop(0)
+
+        with patch(AI, autospec=True, side_effect=reply):
             # `ws or self.Ws` would be wrong: an abstract model's recordset is always empty, so falsy.
             chat = (self.Ws if ws is None else ws).ws_sidekick_ask(chat_id, question, candidate and candidate.id)
-        return chat, ai.call_args.args[3] if ai.called else ''
+        return chat, '\n'.join(sent)
 
     def test_a_candidate_saved_under_their_number_is_not_named_to_the_ai(self):
         nameless = self.env['chat2work.candidate'].create({'name': '0825550199', 'phone': '+27825550199'})
         nameless.cv_state = 'started'
-        _chat, sent = self._ask('Who started a CV?', said(list='cv_started'))
+        _chat, sent = self._ask('Who started a CV?', said('These.', ('list_people', {'list': 'cv_started'})))
         self.assertNotIn('0825550199', sent)
         self.assertIn('no name given', sent)
         _chat, sent = self._ask('What has been tried?', said(), candidate=nameless)
@@ -88,10 +101,10 @@ class TestChat2workSidekick(TransactionCase):
             self.assertFalse(self.env['chat2work.sidekick.message'].with_user(user).search([]))
 
         # A follow-up stays in the same chat, and the model is given the earlier turn.
-        again, sent = self._ask('And callbacks?', said(answer='None open.'), chat_id=chat['id'])
+        again, sent = self._ask('And callbacks?', said('None open.'), chat_id=chat['id'])
         self.assertEqual(again['id'], chat['id'])
         self.assertEqual(len(again['messages']), 4)
-        self.assertIn('Agent asked: Who needs help right now?', sent)
+        self.assertIn('Who needs help right now?', sent)
         self.assertEqual(self.Ws.ws_sidekick_chats()[0]['preview'], 'None open.')
 
     def test_candidate_chat_is_reused_and_titled_by_the_candidate(self):
@@ -172,7 +185,7 @@ class TestChat2workSidekick(TransactionCase):
     def test_answer_rows_come_from_the_servers_list(self):
         self._log(self.thandi, 'whatsapp', 'inbound', 'I am stuck, please help')
         chat, sent = self._ask('Who needs help right now?', said(
-            answer='99 candidates need help: Bogus Person and Made Up.', list='needs_help',
+            '99 candidates need help: Bogus Person and Made Up.', ('list_people', {'list': 'needs_help'}),
             follow_ups=['Tell me about Thandiwe', 'Only CV help', 'a', 'b']))
         answer = chat['messages'][-1]
         self.assertEqual(answer['list']['total'], 1)
@@ -181,11 +194,19 @@ class TestChat2workSidekick(TransactionCase):
         self.assertEqual(answer['list']['open'], {'view': 'inbox', 'pill': 'help', 'label': 'the inbox'})
         self.assertTrue(answer['source'].startswith('From the inbox at '))
         self.assertEqual(len(answer['follow_ups']), 3)
-        self.assertIn('needs_help = candidates who need help: 1. First: Thandiwe (Their last message asks for help)', sent)
+        self.assertNotIn('suggestions', answer['text'])
+        # What the AI was given is the same list: the count, a first name and the reason.
+        self.assertIn('\\"total\\": 1', sent)
+        self.assertIn('Thandiwe', sent)
+        self.assertIn('Their last message asks for help', sent)
+        # What it looked at is kept with the chat.
+        self.assertEqual([(a['tool'], a['input'], a['ok']) for a in chat['actions']],
+                         [('list_people', {'list': 'needs_help'}, True)])
         # A list the model makes up, or one this agent may not see, shows nothing.
         for key in ('everyone', 'id_failed'):
-            chat, _sent = self._ask('Which ID checks failed?', said(list=key))
+            chat, _sent = self._ask('Which ID checks failed?', said('None.', ('list_people', {'list': key})))
             self.assertFalse(chat['messages'][-1]['list'])
+            self.assertFalse(chat['actions'][-1]['ok'])
         # Once the candidate is gone, so is their row: the chat keeps ids, not names.
         first = self.Ws.ws_sidekick_chats()[-1]['id']
         self.thandi.unlink()
@@ -200,30 +221,58 @@ class TestChat2workSidekick(TransactionCase):
         before = (Interaction.search_count(on_record), len(self.thandi.message_ids), self.thandi.stage,
                   self.thandi.write_date)
         with patch(WA, autospec=True) as send:
-            chat, _sent = self._ask('Draft an SMS nudging her', said(
-                answer='', draft_text='Hi Thandiwe,\nyour CV is almost done.', draft_channel='sms'), candidate=self.thandi)
+            chat, _sent = self._ask('Draft an SMS nudging her', said('A nudge about her CV.', (
+                'draft_message', {'channel': 'sms', 'text': 'Hi Thandiwe,\nyour CV is almost done.'})), candidate=self.thandi)
             send.assert_not_called()
         self.assertEqual(chat['messages'][-1]['draft'], {'text': 'Hi Thandiwe, your CV is almost done.', 'channel': 'sms'})
         self.thandi.invalidate_recordset()
         self.assertEqual((Interaction.search_count(on_record), len(self.thandi.message_ids), self.thandi.stage,
                           self.thandi.write_date), before)
         # "Shorter" works on the draft it already wrote.
-        _chat, sent = self._ask('Make that draft shorter', said(draft_text='Hi', draft_channel='sms'), chat_id=chat['id'])
-        self.assertIn('Your draft (sms): Hi Thandiwe, your CV is almost done.', sent)
+        _chat, sent = self._ask('Make that draft shorter', said('Shorter.', (
+            'draft_message', {'channel': 'sms', 'text': 'Hi'})), chat_id=chat['id'])
+        self.assertIn('(Your draft, sms: Hi Thandiwe, your CV is almost done.)', sent)
 
     def test_refusal_says_so_and_offers_the_screen(self):
         chat, _sent = self._ask('Just delete her', said(
-            answer="I can't delete or change records.\nAn administrator can remove a candidate.", cannot=True),
-            candidate=self.thandi)
+            "I can't delete or change records. An administrator can remove a candidate.",
+            ('suggest_screen', {'screen': 'candidate'})), candidate=self.thandi)
         answer = chat['messages'][-1]
-        self.assertEqual(answer['cannot'], "I can't delete or change records.")
-        self.assertEqual(answer['text'], 'An administrator can remove a candidate.')
+        self.assertEqual(answer['text'], "I can't delete or change records. An administrator can remove a candidate.")
         self.assertEqual(answer['open'], {'candidate_id': self.thandi.id, 'label': 'Open candidate'})
         self.assertTrue(self.thandi.exists())
-        chat, _sent = self._ask('Mark all callbacks done', said(answer="I can't change callbacks.", cannot=True,
-                                                               open_screen='callbacks'))
+        chat, _sent = self._ask('Mark all callbacks done', said(
+            "I can't change callbacks.", ('suggest_screen', {'screen': 'callbacks'})))
         self.assertEqual(chat['messages'][-1]['open']['pill'], 'callbacks')
         self.assertFalse(chat['messages'][-1]['source'])
+        # A screen this agent may not open is not offered.
+        chat, _sent = self._ask('Run the ID checks', said("I can't.", ('suggest_screen', {'screen': 'id_checks'})))
+        self.assertFalse(chat['messages'][-1]['open'])
+
+    def test_every_tool_only_looks_things_up(self):
+        """No tool the AI is offered creates, changes or deletes: only reads, a draft and a button."""
+        names = [tool['name'] for tool in self.Ws._sidekick_tools(self.Ws._sidekick_lists())]
+        self.assertEqual(set(names), {'count_lists', 'list_people', 'find_candidate', 'get_candidate', 'read_notes',
+                                      'list_bookings', 'draft_message', 'suggest_screen'})
+        self.thandi.cv_state = 'started'
+        before = self.thandi.write_date
+        chat, sent = self._ask('How are we doing, and who is Thandi?', said(
+            'Here.', ('count_lists', {}), ('find_candidate', {'name': 'Thandi'}),
+            ('get_candidate', {'candidate_id': self.thandi.id}), ('list_bookings', {}), ('made_up', {})))
+        self.assertEqual([a['ok'] for a in chat['actions']], [True, True, True, True, False])
+        self.assertIn('First name: Thandiwe', sent)
+        self.assertNotIn('Mokoena', sent)
+        self.assertNotIn('5550142', sent)
+        self.thandi.invalidate_recordset()
+        self.assertEqual(self.thandi.write_date, before)
+        # Another agent cannot see what this one's sidekick looked at.
+        self.assertFalse(self.env['chat2work.sidekick.action'].with_user(self.other).search([]))
+
+    def test_it_gives_up_after_too_many_rounds(self):
+        loop = [[{'type': 'tool_use', 'id': 'c', 'name': 'count_lists', 'input': {}}]] * 10
+        result, _sent = self._ask('Count for ever', loop)
+        self.assertIn('error', result)
+        self.assertFalse(self.env['chat2work.sidekick.chat'].sudo().search([('user_id', '=', self.agent.id)]))
 
     # ── Notes and privacy ────────────────────────────────────────────────────
 
@@ -231,10 +280,10 @@ class TestChat2workSidekick(TransactionCase):
         notes = self.env['chat2work.agent.note'].search([])
         self.assertTrue(notes, 'the starting notes are installed')
         self.env['chat2work.agent.note'].create({'name': 'Lunch', 'body': 'Lunch is at one.'})
-        chat, sent = self._ask('When is lunch?', said(answer='1. At one.', notes_used=['Lunch', 'Made up']))
-        self.assertIn('## Lunch\nLunch is at one.', sent)
-        self.assertIn('## %s' % notes[0].name, sent)
-        self.assertEqual(chat['messages'][-1]['source'], 'From the agent notes: "Lunch"')
+        chat, sent = self._ask('When is lunch?', said('1. At one.', ('read_notes', {})))
+        self.assertIn('Lunch is at one.', sent)
+        self.assertIn(notes[0].name, sent)
+        self.assertEqual(chat['messages'][-1]['source'], 'From the agent notes')
         with self.assertRaises(AccessError):        # agents read the notes; administrators write them
             self.env['chat2work.agent.note'].with_user(self.agent).create({'name': 'x', 'body': 'y'})
 
@@ -242,7 +291,7 @@ class TestChat2workSidekick(TransactionCase):
         self._log(self.thandi, 'whatsapp', 'inbound', 'Help, my ID is 9001015009087, call 082 555 0142')
         self.env['chat2work.callback.request'].create(
             {'candidate_id': self.lerato.id, 'phone': self.lerato.phone, 'channel': 'ussd'})
-        sent = [self._ask('Who needs help? Her ID is 9001015009087 and number 0825550142', said(list='needs_help'))[1],
+        sent = [self._ask('Who needs help? Her ID is 9001015009087 and number 0825550142', said('Them.', ('list_people', {'list': 'needs_help'})))[1],
                 self._ask('What did she say? 071 555 0107', said(), candidate=self.thandi)[1]]
         for content in sent:
             self.assertIn('Thandiwe', content)
@@ -267,9 +316,10 @@ class TestChat2workSidekick(TransactionCase):
             self.Ws.ws_candidates('idc', 'open')
         self.assertFalse(self.Ws.ws_candidate(self.thandi.id)['id_check'])
         self.assertFalse([key for key in self.Ws._sidekick_lists() if key.startswith('id_')])
-        _chat, sent = self._ask('Which ID checks failed?', said())
+        _chat, sent = self._ask('Which ID checks failed?', said('None.', ('count_lists', {})))
+        self.assertIn('needs_help', sent)
         self.assertNotIn('id_failed', sent)
-        self.assertNotIn('VerifyNow credits left', sent)
+        self.assertNotIn('verifynow_credits_left', sent)
 
         # Staff who may: failed is "not valid", waiting is a check that didn't complete.
         lists = self.CheckerWs.ws_counts()['lists']
@@ -282,8 +332,9 @@ class TestChat2workSidekick(TransactionCase):
         self.assertEqual(self._ids(self.CheckerWs, 'id_failed'), [self.thandi.id])
         self.assertEqual(self._ids(self.CheckerWs, 'id_waiting'), [self.lerato.id])
         self.assertEqual(self._ids(self.CheckerWs, 'id_not_done'), [self.sipho.id])
-        chat, sent = self._ask('Which ID checks failed?', said(list='id_failed'), ws=self.CheckerWs)
-        self.assertIn('VerifyNow credits left', sent)
+        chat, sent = self._ask('Which ID checks failed?', said(
+            'These.', ('count_lists', {}), ('list_people', {'list': 'id_failed'})), ws=self.CheckerWs)
+        self.assertIn('verifynow_credits_left', sent)
         self.assertEqual([row['id'] for row in chat['messages'][-1]['list']['rows']], [self.thandi.id])
         self.assertEqual(chat['messages'][-1]['list']['open']['sub'], 'failed')
 
