@@ -105,6 +105,15 @@ class UssdController(http.Controller):
             _logger.error(f"USSD inbound error: {e}", exc_info=True)
             return self._text_response("END Service error.")
 
+    @staticmethod
+    def _duration_seconds(params):
+        """The session length the gateway reports, in seconds, or None."""
+        try:
+            millis = float(params.get("durationInMillis") or 0)
+        except (TypeError, ValueError):
+            return None
+        return millis / 1000.0 if millis > 0 else None
+
     @http.route(
         ["/ussd/notifications"],
         type="http", auth="public", methods=["POST"], csrf=False,
@@ -121,6 +130,9 @@ class UssdController(http.Controller):
                 Session = request.env["whatsapp.chatbot.ussd.session"].sudo()
                 session = Session.search([("session_id", "=", session_id)], limit=1)
                 if session:
+                    seconds = self._duration_seconds(params)
+                    if seconds:
+                        session = session.with_context(ussd_seconds=seconds)
                     if status in ("timeout", "expired"):
                         session.outcome = "timeout"
                     elif status in ("hangup", "user_hangup", "cancelled"):

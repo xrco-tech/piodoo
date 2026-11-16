@@ -32,6 +32,12 @@ class CommBillingEvent(models.Model):
             provider = (acc.provider or provider).replace('_', ' ').title()
             account_ref = acc.name
 
+        # The gateway charges per 20 seconds. Its own figure for the length
+        # is used when the end-of-session notice carries one.
+        seconds = self.env.context.get('ussd_seconds')
+        if not seconds and session.create_date:
+            seconds = (fields.Datetime.now() - session.create_date).total_seconds()
+
         return self.create({
             'event_date': fields.Datetime.now(),
             'channel': 'ussd',
@@ -39,8 +45,8 @@ class CommBillingEvent(models.Model):
             'account_ref': account_ref,
             'wa_id': session.phone_number,
             'category': 'ussd_session',
-            'unit': 'session',
-            'unit_qty': 1.0,
+            'unit': 'block_20s',
+            'unit_qty': self._blocks_20s(seconds),
             'source_model': 'whatsapp.chatbot.ussd.session',
             'source_id': session.id,
             'ussd_session_id': session.id,

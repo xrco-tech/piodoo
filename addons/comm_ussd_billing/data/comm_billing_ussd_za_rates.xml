@@ -3,9 +3,9 @@
     <data noupdate="1">
 
         <!--
-            Africa's Talking ZA USSD pricing (placeholder).
-            Typical range: R0.20 - R0.50 per completed session, MNO-dependent.
-            Refresh with real values from the Africa's Talking dashboard.
+            Africa's Talking ZA USSD pricing, free to the end user:
+            R0.50 for every 20 seconds of a session (confirmed by Africa's
+            Talking, November 2026). The shared-cost plan is R0.25 per 20 seconds.
         -->
 
         <record id="rate_ussd_za_session" model="comm.billing.rate">
@@ -13,8 +13,10 @@
             <field name="country_id" ref="base.za"/>
             <field name="category">ussd_session</field>
             <field name="direction">any</field>
-            <field name="unit">session</field>
-            <field name="price_usd">0.02</field>
+            <field name="unit">block_20s</field>
+            <field name="price_usd">0.0</field>
+            <field name="price_local">0.5</field>
+            <field name="local_currency_id" ref="base.ZAR"/>
         </record>
 
     </data>

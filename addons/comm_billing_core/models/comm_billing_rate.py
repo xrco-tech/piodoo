@@ -39,6 +39,7 @@ UNIT_SELECTION = [
     ('message',      'per message'),
     ('segment',      'per SMS segment'),
     ('session',      'per USSD session'),
+    ('block_20s',    'per 20 seconds'),
     ('minute',       'per minute'),
     ('kilotoken',    'per 1,000 tokens'),
     ('conversation', 'per conversation (legacy)'),
@@ -70,6 +71,11 @@ class CommBillingRate(models.Model):
     unit = fields.Selection(UNIT_SELECTION, required=True, default='message')
     price_usd = fields.Float(required=True, digits=(12, 6),
         help='Rate in USD per unit.')
+    price_local = fields.Float(string='Fixed price', digits=(12, 6),
+        help='For a provider that charges a fixed amount in another currency '
+             '(e.g. R0.50 per 20 seconds). When set, with its currency, the '
+             'charge is this amount and the USD price is worked out from it.')
+    local_currency_id = fields.Many2one('res.currency', string='Fixed price currency')
     tier_from = fields.Integer(default=0,
         help='Cumulative monthly volume at which this tier starts.')
     tier_to = fields.Integer(default=0,

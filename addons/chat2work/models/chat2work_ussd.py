@@ -16,6 +16,7 @@ import base64
 import hashlib
 import hmac
 import logging
+import math
 import re
 from datetime import date, timedelta
 
@@ -614,8 +615,26 @@ class Chat2workUssdSession(models.Model):
             return 'END Service unavailable. Please try again later.'
 
     @api.model
-    def ussd_session_closed(self, session_id):
-        self.sudo().search([('session_id', '=', session_id)]).unlink()
+    def ussd_session_closed(self, session_id, seconds=None):
+        """The gateway says the session is over (hang-up, timeout). `seconds`
+        is its own figure for the length, when it gives one."""
+        self.sudo().search([('session_id', '=', session_id)]).with_context(
+            c2w_ussd_seconds=seconds, c2w_ussd_ended=fields.Datetime.now()).unlink()
+
+    def _seconds(self):
+        """How long the session ran, for costing: the gateway's own figure if
+        it gave one; else from the first screen to the moment the gateway said
+        it ended; else to the last screen we sent."""
+        self.ensure_one()
+        given = self.env.context.get('c2w_ussd_seconds')
+        if given:
+            return given
+        times = [fields.Datetime.to_datetime(e['at']) for e in self.transcript or [] if e.get('at')]
+        start = min(times + [self.create_date]) if self.create_date else (min(times) if times else None)
+        end = self.env.context.get('c2w_ussd_ended') or (max(times) if times else None)
+        if not start or not end:
+            return 0
+        return max((end - start).total_seconds(), 0)
 
     def _bill(self):
         """Put each session in the billing ledger as it closes: the gateway
@@ -638,8 +657,9 @@ class Chat2workUssdSession(models.Model):
                         'wa_id': session.msisdn,
                         'partner_id': session.candidate_id.partner_id.id or False,
                         'category': 'ussd_session',
-                        'unit': 'session',
-                        'unit_qty': 1.0,
+                        # The gateway charges for every started 20 seconds.
+                        'unit': 'block_20s',
+                        'unit_qty': float(max(1, math.ceil(session._seconds() / 20.0))),
                         'source': 'chat2work',
                         'feature': 'ussd',
                         'source_model': self._name,

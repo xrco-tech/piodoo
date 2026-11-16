@@ -92,3 +92,46 @@ class TestFx(common.TransactionCase):
         house.rate = 17.0
         self.assertAlmostEqual(june_sms.price_local, 34.0)
         self.assertAlmostEqual(june_meta.price_local, 36.0)
+
+    def _fixed_rand_rate(self):
+        """A card whose only rate is R0.50 per 20 seconds, fixed in rand."""
+        card = self.env['comm.billing.rate.card'].create({
+            'name': 'Fixed rand USSD', 'channel': 'ussd', 'provider': 'Fixed Rand Test',
+            'effective_from': date(2026, 1, 1), 'billing_model': 'per_session',
+        })
+        return self.env['comm.billing.rate'].create({
+            'card_id': card.id, 'category': 'ussd_session', 'direction': 'any',
+            'unit': 'block_20s', 'price_usd': 0.0,
+            'price_local': 0.5, 'local_currency_id': self.ZAR.id,
+        })
+
+    def _fixed_rand_event(self, blocks):
+        return self.env['comm.billing.event'].create({
+            'event_date': datetime(2026, 6, 15), 'channel': 'ussd', 'provider': 'Fixed Rand Test',
+            'category': 'ussd_session', 'unit': 'block_20s', 'unit_qty': blocks,
+            'source_model': 'test.fixed.rand', 'source_id': int(blocks),
+        })
+
+    def test_blocks_of_20_seconds(self):
+        blocks = self.env['comm.billing.event']._blocks_20s
+        self.assertEqual([blocks(s) for s in (0, None, 1, 20, 20.5, 45, 60, 61)],
+                         [1, 1, 1, 1, 2, 3, 3, 4])
+
+    def test_price_fixed_in_rand_stands_whatever_the_rate(self):
+        rate = self._fixed_rand_rate()
+        # No exchange rate yet: the rand amount is still right, dollars unknown.
+        event = self._fixed_rand_event(3)
+        self.assertEqual(event.rate_id, rate)
+        self.assertAlmostEqual(event.price_local, 1.5, places=4)
+        self.assertEqual(event.currency_id, self.ZAR)
+        self.assertEqual(event.price_usd, 0.0)
+        # The month's rate arrives: rand is unchanged, dollars follow.
+        self.env['comm.billing.fx.rate'].create({
+            'date': date(2026, 6, 1), 'currency_id': self.ZAR.id, 'provider': False, 'rate': 20.0,
+        })
+        event._reconvert()
+        self.assertAlmostEqual(event.price_local, 1.5, places=4)
+        self.assertAlmostEqual(event.price_usd, 0.075, places=6)
+        later = self._fixed_rand_event(2)
+        self.assertAlmostEqual(later.price_local, 1.0, places=4)
+        self.assertAlmostEqual(later.price_usd, 0.05, places=6)

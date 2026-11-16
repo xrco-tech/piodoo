@@ -8,7 +8,7 @@
             <field name="provider">Africa's Talking</field>
             <field name="effective_from">2025-01-01</field>
             <field name="billing_model">per_session</field>
-            <field name="notes">Placeholder rates. Africa's Talking bills per completed session per MNO. Refresh from your dashboard.</field>
+            <field name="notes">Africa's Talking charges per 20 seconds of a session: R0.50 when the code is free to the end user, R0.25 when the cost is shared.</field>
         </record>
 
     </data>
