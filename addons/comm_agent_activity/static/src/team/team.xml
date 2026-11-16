@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="comm_agent_activity.Team">
+        <div class="o_action o_caa" t-att-class="{ busy: state.busy }">
+            <t t-if="state.view === 'team'" t-call="comm_agent_activity.Team.All"/>
+            <t t-elif="state.view === 'agent'" t-call="comm_agent_activity.Team.One"/>
+            <t t-else="" t-call="comm_agent_activity.Team.Points"/>
+        </div>
+    </t>
+
+    <t t-name="comm_agent_activity.Team.Filters">
+        <div t-if="sources.length" class="o_caa_seg" role="group" aria-label="Workspace">
+            <button t-foreach="sources" t-as="s" t-key="s.key" type="button" t-att-class="{ on: state.source === s.key }"
+                    t-att-aria-pressed="state.source === s.key ? 'true' : 'false'" t-on-click="() => this.setSource(s.key)" t-esc="s.label"/>
+        </div>
+        <div class="o_caa_seg" role="group" aria-label="Period">
+            <button t-foreach="periods" t-as="p" t-key="p.key" type="button" t-att-class="{ on: state.period === p.key }"
+                    t-att-aria-pressed="state.period === p.key ? 'true' : 'false'" t-on-click="() => this.setPeriod(p.key)" t-esc="p.label"/>
+        </div>
+    </t>
+
+    <!-- Everyone, for a supervisor -->
+    <t t-name="comm_agent_activity.Team.All">
+        <div class="o_caa_head">
+            <div class="o_caa_title">
+                <h1>Team</h1>
+                <span class="o_caa_muted">What each agent did, how fast, and how well.<t t-if="state.team"> <t t-esc="state.team.label"/>.</t></span>
+            </div>
+            <t t-call="comm_agent_activity.Team.Filters"/>
+            <button t-if="state.team" type="button" class="btn btn-secondary" t-on-click="download">Download</button>
+            <button type="button" class="btn btn-link" t-on-click="openPoints">Set the points</button>
+        </div>
+
+        <div t-if="!state.team" class="o_caa_none">Loading…</div>
+        <t t-else="">
+            <t t-set="team" t-value="state.team"/>
+            <div class="o_caa_tiles">
+                <div t-foreach="tiles" t-as="tile" t-key="tile.key" class="o_caa_box o_caa_tile">
+                    <span class="o_caa_muted" t-esc="tile.label"/>
+                    <b t-esc="tile.value"/>
+                    <span class="o_caa_muted" t-att-class="{ bad: tile.bad }" t-esc="tile.note"/>
+                </div>
+            </div>
+
+            <div t-if="!team.rows.length" class="o_caa_box o_caa_none">Nobody is set up as an agent yet.</div>
+            <div t-else="" class="o_caa_box o_caa_scroll">
+                <div class="o_caa_table" role="table" aria-label="Agents">
+                    <div class="o_caa_row o_caa_thead" role="row" t-att-style="gridStyle">
+                        <span role="columnheader">Agent</span>
+                        <span role="columnheader">Active time</span>
+                        <span t-foreach="team.columns" t-as="col" t-key="col.key" role="columnheader" t-esc="col.label"/>
+                        <span role="columnheader">Reply wait</span>
+                        <span role="columnheader">Calls, talk time</span>
+                        <span role="columnheader">Reversed later</span>
+                        <span role="columnheader">Score</span>
+                    </div>
+                    <div t-foreach="team.rows" t-as="row" t-key="row.user_id" class="o_caa_row" role="row"
+                         t-att-class="{ idle: !row.actions }" t-att-style="gridStyle">
+                        <span role="cell">
+                            <t t-set="flag" t-value="this.flag(row)"/>
+                            <button type="button" class="o_caa_agent" t-on-click="() => this.openAgent(row.user_id)">
+                                <span class="o_caa_avatar" aria-hidden="true" t-esc="row.initials"/>
+                                <span class="o_caa_who">
+                                    <b t-esc="row.name"/>
+                                    <span class="o_caa_flag" t-att-class="{ warn: flag.warn }" t-esc="flag.text"/>
+                                </span>
+                            </button>
+                        </span>
+                        <span role="cell" t-esc="row.actions ? hm(row.active_seconds) : '–'"/>
+                        <span t-foreach="team.columns" t-as="col" t-key="col.key" role="cell" t-esc="num(row.counts[col.key])"/>
+                        <span role="cell" t-esc="span(row.wait_median)"/>
+                        <span role="cell" t-esc="this.calls(row)"/>
+                        <span role="cell"><span t-att-class="{ o_caa_pill: this.manyReversed(row) }" t-esc="row.reversed"/></span>
+                        <b role="cell" t-esc="num(row.score)"/>
+                    </div>
+                    <div class="o_caa_row o_caa_total" role="row" t-att-style="gridStyle">
+                        <span role="cell">Team</span>
+                        <span role="cell" t-esc="hm(team.total.active_seconds)"/>
+                        <span t-foreach="team.columns" t-as="col" t-key="col.key" role="cell" t-esc="num(team.total.counts[col.key])"/>
+                        <span role="cell" t-esc="span(team.total.wait_median)"/>
+                        <span role="cell" t-esc="this.calls(team.total)"/>
+                        <span role="cell" t-esc="team.total.reversed"/>
+                        <span role="cell" t-esc="num(team.total.score)"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="o_caa_panels">
+                <section t-if="backlog.length" class="o_caa_box o_caa_panel" aria-label="Planning">
+                    <h2>Planning: work waiting against the team's pace</h2>
+                    <div t-foreach="backlog" t-as="item" t-key="item.key" class="o_caa_backlog">
+                        <div class="o_caa_between"><b t-esc="item.title"/><span t-att-class="{ bad: item.behind }" t-esc="item.eta"/></div>
+                        <div class="o_caa_track" aria-hidden="true"><div t-att-style="item.bar"/></div>
+                        <span class="o_caa_muted" t-esc="item.detail"/>
+                    </div>
+                    <span class="o_caa_note">
+                        <t t-if="team.extra_hours">To clear all of it in two weeks the team needs about <b><t t-esc="team.extra_hours"/> more agent hours a week</b> on this work.</t>
+                        <t t-else="">At this pace the team clears what is waiting within two weeks.</t>
+                    </span>
+                </section>
+                <section class="o_caa_box o_caa_panel" aria-label="When people wait longest">
+                    <h2>When people wait longest</h2>
+                    <span class="o_caa_muted">Median wait for an agent's reply, by the hour the person wrote</span>
+                    <div t-if="!hasWaits" class="o_caa_none">No reply with a wait in this period yet.</div>
+                    <div t-else="" class="o_caa_bars">
+                        <div t-foreach="hours" t-as="h" t-key="h.key" class="o_caa_bar">
+                            <span t-esc="h.wait"/>
+                            <div t-att-class="h.tone" t-att-style="h.bar" aria-hidden="true"/>
+                            <span class="o_caa_muted" t-esc="h.label"/>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </t>
+
+    <!-- One agent: for a supervisor, or an agent's own figures -->
+    <t t-name="comm_agent_activity.Team.One">
+        <div t-if="!state.agent" class="o_caa_none">Loading…</div>
+        <t t-else="">
+            <t t-set="a" t-value="state.agent"/>
+            <div class="o_caa_head">
+                <button t-if="a.supervisor" type="button" class="o_caa_back" aria-label="Back to the team" t-on-click="openTeam">
+                    <i class="fa fa-chevron-left" aria-hidden="true"/>
+                </button>
+                <span class="o_caa_avatar big" aria-hidden="true" t-esc="a.me.initials"/>
+                <div class="o_caa_title">
+                    <h1 t-if="a.own and !a.supervisor">My activity</h1>
+                    <h1 t-else="" t-esc="a.me.name"/>
+                    <span class="o_caa_muted"><t t-if="a.own and !a.supervisor"><t t-esc="a.me.name"/> · </t><t t-esc="a.label"/></span>
+                </div>
+                <t t-call="comm_agent_activity.Team.Filters"/>
+            </div>
+
+            <div class="o_caa_one">
+                <div class="o_caa_col">
+                    <div class="o_caa_score">
+                        <div><span>Score</span><b t-esc="num(a.me.score)"/></div>
+                        <div>
+                            <span t-if="a.team.score !== false">Team average is <t t-esc="num(a.team.score)"/></span>
+                            <span class="soft" t-esc="scoreNote"/>
+                        </div>
+                    </div>
+
+                    <div t-if="a.supervisor and !a.own and concerns.length" class="o_caa_concern">
+                        <b>Worth a conversation</b>
+                        <span t-foreach="concerns" t-as="line" t-key="line_index" t-esc="line"/>
+                    </div>
+
+                    <div class="o_caa_box o_caa_compare">
+                        <div class="o_caa_crow head"><span/><span t-esc="a.own ? 'Me' : a.me.name"/><span>Team average</span></div>
+                        <div t-foreach="compare" t-as="row" t-key="row.key" class="o_caa_crow">
+                            <span t-esc="row.label"/>
+                            <b t-att-class="row.tone" t-esc="row.me"/>
+                            <span class="o_caa_muted" t-esc="row.team"/>
+                        </div>
+                    </div>
+                    <span t-if="!a.supervisor" class="o_caa_muted">You see your own figures and the team average. Supervisors see everyone's.</span>
+                    <span t-else="" class="o_caa_muted">The team average is over the <t t-esc="a.agents"/> agents who did something in this period.</span>
+                </div>
+
+                <div class="o_caa_col">
+                    <section class="o_caa_box o_caa_panel" aria-label="Active time each day">
+                        <h2>Active time each day</h2>
+                        <div class="o_caa_bars">
+                            <div t-foreach="days" t-as="d" t-key="d.key" class="o_caa_bar">
+                                <span t-esc="d.time"/>
+                                <div t-att-style="d.bar" aria-hidden="true"/>
+                                <span class="o_caa_muted" t-esc="d.label"/>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section t-if="a.own and a.today.length" class="o_caa_box o_caa_panel" aria-label="Today">
+                        <h2>Today</h2>
+                        <div t-foreach="a.today" t-as="t" t-key="t.label" class="o_caa_between"><span t-esc="t.label"/><b t-esc="t.n"/></div>
+                    </section>
+
+                    <section class="o_caa_box o_caa_panel" aria-label="Latest activity">
+                        <h2>Latest activity</h2>
+                        <div t-if="!log.length" class="o_caa_muted">Nothing in this period.</div>
+                        <div t-foreach="log" t-as="line" t-key="line.id" class="o_caa_log">
+                            <span class="o_caa_muted" t-esc="line.when"/>
+                            <b t-esc="line.action"/>
+                            <span class="name" t-esc="line.name"/>
+                            <span t-att-class="line.tone || 'o_caa_muted'" t-esc="line.result"/>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </t>
+    </t>
+
+    <!-- The points each action is worth -->
+    <t t-name="comm_agent_activity.Team.Points">
+        <div class="o_caa_head">
+            <button type="button" class="o_caa_back" aria-label="Back to the team" t-on-click="openTeam">
+                <i class="fa fa-chevron-left" aria-hidden="true"/>
+            </button>
+            <div class="o_caa_title">
+                <h1>How the score is worked out</h1>
+                <span class="o_caa_muted">Each action earns points. A decision someone has to undo later loses points, so speed alone does not win.</span>
+            </div>
+        </div>
+        <div t-if="!state.points" class="o_caa_none">Loading…</div>
+        <div t-else="" class="o_caa_box o_caa_points">
+            <div class="o_caa_prow head"><span>Action</span><span>Points each</span></div>
+            <div t-foreach="state.points.rows" t-as="row" t-key="row.action" class="o_caa_prow">
+                <label t-att-for="'o_caa_p_' + row.action"><b t-esc="row.label"/><span class="o_caa_muted" t-esc="row.why"/></label>
+                <input t-att-id="'o_caa_p_' + row.action" type="text" inputmode="decimal" class="form-control"
+                       t-att-value="state.edits[row.action]" t-att-disabled="!state.points.can_edit"
+                       t-on-input="(ev) => this.setPoints(row.action, ev)"/>
+            </div>
+            <div class="o_caa_pfoot">
+                <span class="o_caa_muted">Changing the points changes the scores of past periods too, so compare periods only once the points are settled.</span>
+                <button type="button" class="btn btn-secondary" t-on-click="openTeam">Cancel</button>
+                <button t-if="state.points.can_edit" type="button" class="btn btn-primary" t-att-disabled="state.busy" t-on-click="savePoints">Save points</button>
+            </div>
+        </div>
+    </t>
+
+</templates>

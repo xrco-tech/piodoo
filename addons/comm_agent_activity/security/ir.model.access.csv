@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_comm_agent_activity_supervisor,comm.agent.activity.supervisor,model_comm_agent_activity,comm_agent_activity.group_supervisor,1,0,0,0
+access_comm_agent_activity_admin,comm.agent.activity.admin,model_comm_agent_activity,base.group_system,1,1,1,1
+access_comm_agent_activity_points_supervisor,comm.agent.activity.points.supervisor,model_comm_agent_activity_points,comm_agent_activity.group_supervisor,1,1,0,0
+access_comm_agent_activity_points_admin,comm.agent.activity.points.admin,model_comm_agent_activity_points,base.group_system,1,1,1,1

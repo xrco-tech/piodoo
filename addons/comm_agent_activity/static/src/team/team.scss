@@ -1,0 +1,259 @@
+// The Team report. Colours come from the theme's own variables, so the dark
+// theme needs nothing of its own.
+
+.o_caa {
+    --caa-line: var(--bs-border-color, #dee2e6);
+    --caa-card: var(--bs-body-bg, #fff);
+    --caa-muted: var(--bs-secondary-color, #5f6770);
+    --caa-accent: #{$o-brand-primary};
+    --caa-red: #{$danger};
+    --caa-green: #{$success};
+    --caa-amber: #b06a00;
+
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    min-width: 0;
+    padding: 16px 20px 28px;
+    overflow: auto;
+    font-variant-numeric: tabular-nums;
+
+    &.busy { cursor: progress; }
+    > * { flex: none; }
+    h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .bad { color: var(--caa-red); font-weight: 600; }
+    .ok { color: var(--caa-green); font-weight: 600; }
+    .o_caa_muted { color: var(--caa-muted); font-size: 12.5px; }
+    .o_caa_box { background: var(--caa-card); border: 1px solid var(--caa-line); border-radius: 12px; }
+    .o_caa_none { display: grid; place-items: center; min-height: 80px; padding: 16px; color: var(--caa-muted); font-weight: 600; }
+    .o_caa_between { display: flex; justify-content: space-between; gap: 10px; }
+
+    .o_caa_head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 14px;
+
+        .btn { min-height: 40px; }
+    }
+    .o_caa_title {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        margin-right: auto;
+
+        .o_caa_muted { font-size: 14px; }
+    }
+    .o_caa_back {
+        flex: none;
+        width: 44px;
+        height: 44px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: inherit;
+
+        &:hover { background: var(--bs-tertiary-bg, #f1f3f5); }
+    }
+    .o_caa_seg {
+        display: flex;
+        flex-wrap: wrap;
+        border: 1px solid var(--caa-line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--caa-card);
+
+        button {
+            min-height: 40px;
+            padding: 0 14px;
+            border: 0;
+            background: transparent;
+            color: inherit;
+        }
+        button.on { background: var(--caa-accent); color: #fff; font-weight: 600; }
+    }
+
+    .o_caa_tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .o_caa_tile {
+        display: flex;
+        flex-direction: column;
+        padding: 12px 14px;
+
+        b { font-size: 24px; font-weight: 600; line-height: 1.25; }
+    }
+
+    // The agents table: a grid per row, scrolling sideways on a narrow screen.
+    .o_caa_scroll { overflow-x: auto; padding: 4px 16px 6px; }
+    .o_caa_row {
+        display: grid;
+        gap: 10px;
+        align-items: center;
+        min-height: 54px;
+        border-bottom: 1px solid var(--caa-line);
+        text-align: right;
+
+        > :first-child { text-align: left; }
+        &.idle { color: var(--caa-muted); }
+    }
+    .o_caa_thead {
+        align-items: end;
+        min-height: 0;
+        padding: 8px 0;
+        color: var(--caa-muted);
+        font-size: 12.5px;
+        font-weight: 600;
+    }
+    .o_caa_total { min-height: 46px; border-bottom: 0; font-weight: 600; }
+    .o_caa_agent {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 44px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+
+        &:hover b { text-decoration: underline; }
+    }
+    .o_caa_who { display: flex; flex-direction: column; min-width: 0; }
+    .o_caa_flag {
+        color: var(--caa-muted);
+        font-size: 12.5px;
+
+        &.warn { color: var(--caa-amber); font-weight: 600; }
+    }
+    .o_caa_avatar {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--bs-tertiary-bg, #e9ecef);
+        font-size: 12px;
+        font-weight: 600;
+
+        &.big { width: 40px; height: 40px; font-size: 14px; }
+    }
+    .o_caa_pill { padding: 2px 8px; border-radius: 999px; background: rgba($danger, .14); color: var(--caa-red); font-weight: 600; }
+
+    .o_caa_panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(#{"min(100%, 340px)"}, 1fr)); gap: 12px; }
+    .o_caa_panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px 16px; }
+    .o_caa_backlog { display: flex; flex-direction: column; gap: 4px; }
+    .o_caa_track {
+        height: 8px;
+        border-radius: 4px;
+        background: var(--bs-tertiary-bg, #e9ecef);
+        overflow: hidden;
+
+        > div { height: 100%; background: var(--caa-accent); }
+    }
+    .o_caa_note { margin-top: auto; padding: 8px 12px; border-radius: 10px; background: var(--bs-tertiary-bg, #f1f3f5); }
+    .o_caa_bars { display: flex; align-items: flex-end; gap: 8px; min-height: 150px; overflow-x: auto; }
+    .o_caa_bar {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+        min-width: 38px;
+        max-width: 84px;
+        font-size: 12px;
+        white-space: nowrap;
+
+        > div { width: 100%; border-radius: 4px 4px 0 0; background: var(--caa-accent); }
+        > div.warn { background: var(--caa-amber); }
+        > div.bad { background: var(--caa-red); }
+    }
+
+    // One agent
+    .o_caa_one { display: grid; grid-template-columns: repeat(auto-fit, minmax(#{"min(100%, 340px)"}, 1fr)); gap: 14px; align-items: start; }
+    .o_caa_col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .o_caa_score {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        background: var(--caa-accent);
+        color: #fff;
+
+        > div { display: flex; flex-direction: column; }
+        b { font-size: 30px; font-weight: 600; line-height: 1.1; }
+        .soft { opacity: .8; }
+    }
+    .o_caa_concern {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px 14px;
+        border: 1px solid rgba($warning, .7);
+        border-radius: 12px;
+        background: rgba($warning, .14);
+    }
+    .o_caa_compare { padding: 4px 14px; }
+    .o_caa_crow {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 96px 96px;
+        gap: 8px;
+        align-items: center;
+        min-height: 42px;
+        border-bottom: 1px solid var(--caa-line);
+
+        > :not(:first-child) { text-align: right; }
+        &:last-child { border-bottom: 0; }
+        &.head { min-height: 0; padding: 8px 0; color: var(--caa-muted); font-size: 12.5px; font-weight: 600; }
+        .o_caa_muted { font-size: 14px; }
+    }
+    .o_caa_log {
+        display: grid;
+        grid-template-columns: 118px 150px minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: baseline;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--caa-line);
+        font-size: 13.5px;
+
+        &:last-child { border-bottom: 0; }
+        .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+
+    // The points
+    .o_caa_points { max-width: 720px; padding: 4px 16px 14px; }
+    .o_caa_prow {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 110px;
+        gap: 12px;
+        align-items: center;
+        min-height: 54px;
+        border-bottom: 1px solid var(--caa-line);
+
+        label { display: flex; flex-direction: column; margin: 0; }
+        input { min-height: 40px; font-size: 16px; }
+        &.head { min-height: 0; padding: 8px 0; color: var(--caa-muted); font-size: 12.5px; font-weight: 600; }
+    }
+    .o_caa_pfoot {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding-top: 12px;
+
+        .o_caa_muted { flex: 1; min-width: 220px; }
+        .btn { min-height: 44px; }
+    }
+
+    @media (max-width: 575.98px) {
+        padding: 12px 16px 24px;
+
+        .o_caa_crow { grid-template-columns: minmax(0, 1fr) 72px 88px; }
+        .o_caa_log { grid-template-columns: minmax(0, 1fr) auto; }
+        .o_caa_log .name { grid-column: 1 / -1; }
+    }
+}

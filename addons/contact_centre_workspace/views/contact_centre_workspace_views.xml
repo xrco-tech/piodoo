@@ -14,4 +14,21 @@
               action="action_contact_centre_workspace"
               groups="contact_centre.group_contact_centre_agent"
               sequence="4"/>
+
+    <!-- The Team report (comm_agent_activity), opened on the Contact Centre's figures.
+         Managers see every agent; agents see their own beside the team average. -->
+    <record id="contact_centre.group_contact_centre_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('comm_agent_activity.group_supervisor'))]"/>
+    </record>
+    <record id="action_contact_centre_team" model="ir.actions.client">
+        <field name="name">Team</field>
+        <field name="tag">comm_agent_activity.team</field>
+        <field name="params" eval="{'source': 'contact_centre'}"/>
+    </record>
+    <menuitem id="menu_contact_centre_team"
+              name="Team"
+              parent="contact_centre.menu_contact_centre_main"
+              action="action_contact_centre_team"
+              groups="contact_centre.group_contact_centre_agent"
+              sequence="12"/>
 </odoo>
