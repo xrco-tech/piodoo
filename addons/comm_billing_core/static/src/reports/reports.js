@@ -31,6 +31,16 @@ export class CommBillingReports extends Component {
             loading: true,
             error: "",
         });
+        // Another app's dashboard can open the reports on its own spend and dates.
+        const params = this.props.action.params || {};
+        if (params.source) {
+            this.state.source = params.source;
+        }
+        if (params.date_from && params.date_to) {
+            this.state.period = "custom";
+            this.state.dateFrom = params.date_from;
+            this.state.dateTo = params.date_to;
+        }
         onWillStart(() => this.load());
     }
 

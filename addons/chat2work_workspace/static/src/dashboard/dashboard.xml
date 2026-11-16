@@ -28,6 +28,19 @@
                     </div>
                 </section>
 
+                <section t-if="data.cost" class="o_c2w_dbox o_c2w_dcard" aria-label="Comms cost">
+                    <div class="o_c2w_dshead">
+                        <h2>Comms cost <t t-esc="periodWords"/></h2>
+                        <button type="button" class="btn btn-link p-0" t-on-click="openCost">Open in billing ›</button>
+                    </div>
+                    <div class="o_c2w_dmini cost">
+                        <div><b t-esc="money(data.cost.total)"/><span>Total</span></div>
+                        <div t-foreach="data.cost.channels" t-as="channel" t-key="channel.key"><b t-esc="money(channel.cost)"/><span t-esc="channel.label"/></div>
+                    </div>
+                    <span class="o_c2w_dmuted">Messages, calls and AI charged for Chat2Work candidates and features. Only people with billing access see this.
+                        <t t-if="data.cost.unpriced"><t t-esc="data.cost.unpriced"/> charges have no rate yet and count as zero.</t></span>
+                </section>
+
                 <div class="o_c2w_dgrid wide">
                     <section class="o_c2w_dbox o_c2w_dcard">
                         <div class="o_c2w_dshead"><h2>Candidates by stage</h2>

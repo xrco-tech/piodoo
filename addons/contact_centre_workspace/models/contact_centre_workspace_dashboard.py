@@ -201,6 +201,15 @@ class ContactCentreWorkspace(models.AbstractModel):
             return False
         return sum(1 for chat in self.env[CHAT].search([('pending_state', '!=', False)]) if self._ai_held(chat))
 
+    @api.model
+    def _dash_cost(self, since):
+        """What the Contact Centre's messages, calls and AI cost; False when
+        billing is not installed or this user may not see billing."""
+        Report = self.env.get('comm.billing.report')
+        if Report is None or not hasattr(Report, 'dashboard_cost'):
+            return False
+        return Report.dashboard_cost('contact_centre', since)
+
     # ── The call ─────────────────────────────────────────────────────────
     @api.model
     def ws_dashboard(self, period='today'):
@@ -225,6 +234,7 @@ class ContactCentreWorkspace(models.AbstractModel):
             order='__count desc', limit=6)
         return {
             'period': period,
+            'cost': self._dash_cost(since),
             'is_manager': self.env.user.has_group(MANAGER),
             'is_agent': self.env.user.has_group('contact_centre.group_contact_centre_agent'),
             'todo': {
