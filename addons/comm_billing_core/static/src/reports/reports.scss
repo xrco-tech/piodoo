@@ -1,0 +1,164 @@
+// Comm Billing reports. Surfaces and text use Odoo's own theme variables so the
+// screen follows light and dark; only the channel colours and the hi-vis accent are fixed.
+.o_cbr {
+    --cbr-navy: #1b2a41;
+    --cbr-hivis: #d9a400;
+    --cbr-track: #{$o-gray-200};
+    background: $o-webclient-background-color;
+
+    .o_cbr_page {
+        width: 100%;
+        min-width: 0;
+        max-width: 1360px;
+        margin: 0 auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    h1 { margin: 0; font-size: 1.5rem; font-weight: 600; }
+    h2 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+    button:not(.btn) { font: inherit; color: inherit; }
+
+    .o_cbr_card {
+        min-width: 0;
+        padding: 14px 16px;
+        background: $o-view-background-color;
+        border: $border-width solid $border-color;
+        border-radius: 12px;
+    }
+    .o_cbr_stack { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .o_cbr_gap { gap: 12px; }
+    .o_cbr_between { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .o_cbr_wrap { flex-wrap: wrap; }
+    .o_cbr_small { font-size: .875em; }
+    .o_cbr_big { font-size: 1.9rem; font-weight: 600; line-height: 1.2; }
+    .o_cbr_mid { font-size: 1.4rem; font-weight: 600; line-height: 1.2; }
+
+    // ---- header ----
+    .o_cbr_head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .o_cbr_title { flex: 1 1 240px; display: flex; flex-direction: column; }
+    .o_cbr_pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .o_cbr_pill {
+        min-height: 36px;
+        padding: 4px 14px;
+        border: $border-width solid $border-color;
+        border-radius: 999px;
+        background: $o-view-background-color;
+        &.o_cbr_on { border-color: var(--cbr-hivis); background: rgba(255, 196, 20, .3); font-weight: 600; }
+        &.o_cbr_pill_sm { min-height: 30px; padding: 2px 12px; font-size: .9em; }
+    }
+    .o_cbr_dates, .o_cbr_month {
+        display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
+        label, & { margin: 0; }
+        input { width: auto; }
+    }
+    .o_cbr_month { align-items: center; }
+
+    // ---- budget ----
+    .o_cbr_budget { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+    .o_cbr_budget_bar { flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .o_cbr_track {
+        position: relative;
+        display: block;
+        height: 14px;
+        border-radius: 999px;
+        background: var(--cbr-track);
+        &.o_cbr_thin { height: 8px; overflow: hidden; }
+    }
+    .o_cbr_fill {
+        position: absolute; left: 0; top: 0; bottom: 0;
+        border-radius: 999px;
+        background: var(--cbr-hivis);
+        &.o_cbr_fill_over { background: $danger; }
+    }
+    .o_cbr_today { position: absolute; top: -4px; bottom: -4px; width: 2px; background: $body-color; }
+    .o_cbr_verdict {
+        align-self: flex-start;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: rgba($success, .15);
+        color: $success;
+        &.o_cbr_verdict_over { background: rgba($danger, .12); color: $danger; }
+    }
+
+    // ---- tiles ----
+    .o_cbr_tiles { display: flex; flex-wrap: wrap; gap: 12px; }
+    .o_cbr_tile { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+    .o_cbr_warn { background: rgba($warning, .15); border-color: $warning; cursor: pointer; }
+    .o_cbr_two { display: flex; flex-wrap: wrap; gap: 12px; > * { flex: 1 1 380px; } }
+
+    // ---- channels ----
+    .o_cbr_channel {
+        display: flex; flex-direction: column; gap: 5px;
+        padding: 4px 0; border: 0; background: none; text-align: left;
+        &:hover b { text-decoration: underline; }
+    }
+    .o_cbr_dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+    .o_cbr_tag {
+        display: inline-block; padding: 1px 8px; margin-right: 4px;
+        border-radius: 999px; font-size: .85em; font-weight: 600; color: #fff;
+    }
+    .o_cbr_dot, .o_cbr_tag, .o_cbr_fill {
+        &[data-channel="whatsapp"] { background: #18794a; }
+        &[data-channel="voice"] { background: #3d5a80; }
+        &[data-channel="other"] { background: #7a4a9c; }
+        &[data-channel="sms"] { background: #b97a00; }
+        &[data-channel="ussd"], &[data-channel="none"] { background: #6b747d; }
+    }
+
+    // ---- chart ----
+    .o_cbr_chart {
+        flex: 1; min-height: 200px;
+        display: flex; align-items: stretch; gap: 4px;
+        border-bottom: $border-width solid $border-color;
+    }
+    .o_cbr_col {
+        flex: 1; min-width: 0; padding: 0; border: 0; background: none;
+        display: flex; align-items: flex-end; justify-content: center;
+        &:hover .o_cbr_bar, &:focus-visible .o_cbr_bar { opacity: .7; }
+    }
+    .o_cbr_bar {
+        display: block; width: 100%; max-width: 34px; min-height: 1px;
+        border-radius: 5px 5px 0 0;
+        background: #3d5a80;
+        &.o_cbr_peak { background: var(--cbr-hivis); }
+    }
+    .o_cbr_axis {
+        display: flex; gap: 4px; font-size: .8em;
+        span { flex: 1; min-width: 0; text-align: center; overflow: hidden; white-space: nowrap; }
+    }
+    .o_cbr_note { padding: 8px 10px; border-radius: 8px; background: var(--cbr-track); }
+
+    // ---- tables ----
+    .o_cbr_scroll { overflow-x: auto; }
+    .o_cbr_table {
+        width: 100%; min-width: 620px; border-collapse: collapse;
+        th { padding: 6px 8px; font-weight: 500; color: $text-muted; font-size: .9em; border-bottom: $border-width solid $border-color; }
+        td { padding: 8px; border-bottom: $border-width solid rgba($border-color, .6); }
+        tbody tr[role="button"] { cursor: pointer; &:hover, &:focus-visible { background: $o-gray-100; } }
+        .o_cbr_sharecol { width: 150px; }
+    }
+    .o_cbr_share { display: flex; align-items: center; gap: 8px; > .o_cbr_track { flex: 1; } > span:last-child { width: 34px; text-align: right; } }
+    .o_cbr_lines { min-width: 480px; margin-bottom: 4px; th { border-bottom-color: $body-color; } }
+    .o_cbr_section { font-size: 1.1em; font-weight: 600; color: $body-color; }
+
+    // ---- statement ----
+    .o_cbr_sheet { width: 100%; max-width: 860px; margin: 0 auto; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+    .o_cbr_sheet .o_cbr_tile { flex-basis: 150px; }
+    .o_cbr_sheet_head { display: flex; flex-direction: column; gap: 2px; padding-bottom: 14px; border-bottom: 2px solid $body-color; }
+    .o_cbr_sheet_title { font-size: 1.7rem; }
+    .o_cbr_eyebrow { font-size: .85em; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: $text-muted; }
+    .o_cbr_total { padding: 12px 14px; border-radius: 10px; background: var(--cbr-navy); color: #fff; }
+    .o_cbr_outline { padding: 12px 14px; border: $border-width solid $border-color; border-radius: 10px; }
+    .o_cbr_check { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 10px; background: var(--cbr-track); }
+
+    @include media-breakpoint-down(md) {
+        .o_cbr_page { padding: 12px 16px; }
+        .o_cbr_pill { min-height: 44px; }
+        .o_cbr_pill.o_cbr_pill_sm { min-height: 40px; }
+        .o_cbr_big { font-size: 1.6rem; }
+        .o_cbr_sheet { padding: 16px; }
+        .o_cbr_axis span:nth-child(even) { visibility: hidden; }
+    }
+}

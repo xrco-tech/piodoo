@@ -6,8 +6,14 @@
               sequence="80"
               web_icon="comm_billing_core,static/description/icon.png"/>
 
+    <menuitem id="menu_comm_billing_reports"
+              name="Reports"
+              parent="menu_comm_billing_root"
+              action="action_comm_billing_reports"
+              sequence="5"/>
+
     <menuitem id="menu_comm_billing_dashboard"
-              name="Dashboard"
+              name="Analysis"
               parent="menu_comm_billing_root"
               action="action_comm_billing_dashboard"
               sequence="10"/>
@@ -22,6 +28,18 @@
               name="Configuration"
               parent="menu_comm_billing_root"
               sequence="90"/>
+
+    <menuitem id="menu_comm_billing_budget"
+              name="Budget and Warnings"
+              parent="menu_comm_billing_config"
+              action="action_comm_billing_budget"
+              sequence="2"/>
+
+    <menuitem id="menu_comm_billing_invoices"
+              name="Provider Invoices"
+              parent="menu_comm_billing_config"
+              action="action_comm_billing_invoice"
+              sequence="4"/>
 
     <menuitem id="menu_comm_billing_rate_cards"
               name="Rate Cards"

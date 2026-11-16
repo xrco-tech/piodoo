@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_statement" model="ir.actions.report">
+        <field name="name">Communications statement</field>
+        <field name="model">comm.billing.budget</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">comm_billing_core.report_statement</field>
+        <field name="report_file">comm_billing_core.report_statement</field>
+        <field name="print_report_name">'Communications statement'</field>
+    </record>
+
+    <template id="report_statement">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page" style="font-size: 13px">
+                    <div style="border-bottom: 2px solid #1b2a41; padding-bottom: 8px; margin-bottom: 14px">
+                        <div style="text-transform: uppercase; letter-spacing: .06em; color: #5f6770; font-size: 11px">Communications statement</div>
+                        <h2 style="margin: 0"><t t-out="s['month_label']"/></h2>
+                        <div style="color: #5f6770">
+                            <t t-out="s['span']"/> · prepared <t t-out="today"/> · amounts in <t t-out="s['currency']"/>, before VAT
+                            <t t-if="not s['closed']"> · month still running</t>
+                        </div>
+                    </div>
+
+                    <table class="table table-sm" style="margin-bottom: 14px">
+                        <tr>
+                            <td><strong>Total for the month</strong></td>
+                            <td class="text-end"><strong t-out="s['total']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                        </tr>
+                        <tr>
+                            <td><t t-out="s['prev_label']"/></td>
+                            <td class="text-end"><span t-out="s['prev']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                        </tr>
+                        <tr t-if="s['budget']">
+                            <td>Monthly budget</td>
+                            <td class="text-end"><span t-out="s['budget']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                        </tr>
+                    </table>
+
+                    <t t-foreach="s['sections']" t-as="section">
+                        <table class="table table-sm" style="margin-bottom: 10px; page-break-inside: avoid">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #1b2a41">
+                                    <th><t t-out="section['label']"/> <span style="font-weight: normal; color: #5f6770" t-out="section['provider']"/></th>
+                                    <th class="text-end" style="font-weight: normal; color: #5f6770">How many</th>
+                                    <th class="text-end" style="font-weight: normal; color: #5f6770">Rate</th>
+                                    <th class="text-end"><span t-out="section['total']" t-options='{"widget": "monetary", "display_currency": currency}'/></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="section['lines']" t-as="line">
+                                    <td t-out="line['label']"/>
+                                    <td class="text-end"><span t-out="line['qty']" t-options='{"widget": "float", "precision": 0}'/> <t t-out="line['unit']"/></td>
+                                    <td class="text-end" style="color: #5f6770">
+                                        <t t-if="line['free']">Free</t>
+                                        <span t-elif="line['rate']" t-out="line['rate']" t-options='{"widget": "float", "precision": 4}'/>
+                                    </td>
+                                    <td class="text-end"><span t-out="line['cost']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </t>
+                    <p t-if="not s['sections']">Nothing was charged in this month.</p>
+
+                    <h5 style="margin-top: 16px">Checked against the providers' invoices</h5>
+                    <table class="table table-sm" style="page-break-inside: avoid">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th class="text-end">Our records</th>
+                                <th class="text-end">Their invoice</th>
+                                <th class="text-end">Difference</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="s['checks']" t-as="check">
+                                <td t-out="check['provider']"/>
+                                <td class="text-end"><span t-out="check['ours']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                                <td class="text-end">
+                                    <span t-if="check['theirs'] is not None" t-out="check['theirs']" t-options='{"widget": "monetary", "display_currency": currency}'/>
+                                    <t t-else="">Not entered</t>
+                                </td>
+                                <td class="text-end">
+                                    <t t-if="check['diff'] is not None">
+                                        <span t-out="check['diff']" t-options='{"widget": "monetary", "display_currency": currency}'/>
+                                        (<t t-out="check['pct']"/>%)
+                                    </t>
+                                </td>
+                                <td>
+                                    <t t-if="check['result'] == 'match'">Matches</t>
+                                    <t t-elif="check['result'] == 'close'">Close enough</t>
+                                    <t t-elif="check['result'] == 'differs'">Does not match</t>
+                                    <t t-else="">Invoice needed</t>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p style="color: #5f6770; font-size: 11px">
+                        <t t-if="s['fx']">Charges made in US dollars were converted at <t t-foreach="s['fx']" t-as="fx"><t t-out="fx['provider']"/> 1 USD = <t t-out="', '.join('%.4f' % r for r in fx['rates'])"/> <t t-out="s['currency']"/><t t-if="not fx_last">; </t><t t-else="">. </t></t>
+                        </t>
+                        <t t-if="s['unpriced']"><t t-out="s['unpriced']"/> charges had no matching rate and count as zero.</t>
+                        <t t-if="s['unconverted']"><t t-out="s['unconverted']"/> charges could not be converted and are not in these totals.</t>
+                        <t t-if="s['free_qty']"><span t-out="s['free_qty']" t-options='{"widget": "float", "precision": 0}'/> messages went out free of charge.</t>
+                    </p>
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>
