@@ -77,7 +77,11 @@
                                     <time t-elif="state.view === 'book'" t-esc="slotWhen(row.start)"/>
                                     <time t-elif="state.view === 'jobs'" t-esc="closing(row)"/>
                                 </b>
-                                <p t-if="kind === 'unknown'">
+                                <p t-if="state.view === 'emp'">
+                                    <em><t t-if="row.recruiter">Recruiter · </t><t t-esc="employerJobs(row)"/></em>
+                                    <span t-attf-class="o_c2w_tag {{ tagClass(row.state) }}" t-esc="row.state_label"/>
+                                </p>
+                                <p t-elif="kind === 'unknown'">
                                     <em><t t-if="row.preview_out">You: </t><t t-esc="row.preview"/></em>
                                     <span t-if="row.needs_reply" class="o_c2w_cnt" title="Needs a reply">!</span>
                                     <span t-else="" class="o_c2w_tag plain">Not a candidate</span>
@@ -395,6 +399,20 @@
                             <button class="o_c2w_ib on o_c2w_keep" type="button" title="Information" t-on-click="() => this.setPane('info')"><i class="fa fa-info-circle"/></button>
                         </div>
                     </div>
+                    <t t-if="j.employer_check">
+                        <div class="o_c2w_banner ok" t-if="j.employer_check.state === 'verified'">
+                            <span>Employer verified<t t-if="j.employer_check.by"> by <t t-esc="j.employer_check.by"/></t></span>
+                            <button type="button" t-on-click="() => this.openEmployer(j.employer_check.id)">See employer ›</button>
+                        </div>
+                        <div class="o_c2w_banner bad" t-elif="j.employer_check.state === 'invalid'">
+                            <span>Employer marked not genuine. Think twice before sharing this job.</span>
+                            <button type="button" t-on-click="() => this.openEmployer(j.employer_check.id)">See employer ›</button>
+                        </div>
+                        <div class="o_c2w_banner warn" t-else="">
+                            <span>New employer, not checked yet. You can still verify and share this job.</span>
+                            <button type="button" t-on-click="() => this.openEmployer(j.employer_check.id)">Check employer ›</button>
+                        </div>
+                    </t>
                     <div class="o_c2w_banner warn" t-if="j.verification_state === 'unverified'">
                         <span>Verify this listing before sharing it</span>
                         <button type="button" t-on-click="() => this.setVerification('verified')">Mark verified ›</button>
@@ -426,6 +444,78 @@
                     </div>
                     <div class="o_c2w_bar" t-if="j.verification_state === 'verified' and j.state === 'open'">
                         <button class="o_c2w_new" type="button" t-on-click="suggestCandidates">Suggest candidates</button>
+                    </div>
+                </t>
+
+                <t t-elif="state.view === 'emp'">
+                    <t t-set="e" t-value="state.detail"/>
+                    <div class="o_c2w_mhead">
+                        <button class="o_c2w_ib o_c2w_back" type="button" title="Back to the list" t-on-click="() => this.setPane('list')"><i class="fa fa-chevron-left"/></button>
+                        <div class="o_c2w_card o_c2w_who">
+                            <b t-esc="e.name"/>
+                            <span><t t-esc="e.state_label"/><t t-if="e.checked_by"> · <t t-esc="e.checked_by"/>, <t t-esc="when(e.checked_at)"/></t></span>
+                        </div>
+                        <div class="o_c2w_acts">
+                            <button class="o_c2w_ib" type="button" title="Open the employer record" t-on-click="() => this.openRecord('chat2work.employer', e.id)"><i class="fa fa-external-link"/></button>
+                            <button class="o_c2w_ib on o_c2w_keep" type="button" title="Information" t-on-click="() => this.setPane('info')"><i class="fa fa-info-circle"/></button>
+                        </div>
+                    </div>
+                    <div class="o_c2w_thread topped o_c2w_emp">
+                        <div class="o_c2w_stats">
+                            <div><b t-esc="e.stats[0]"/><span>Jobs listed</span></div>
+                            <div><b t-esc="e.stats[1]"/><span>Open jobs</span></div>
+                            <div><b t-esc="e.stats[2]"/><span>Candidates matched</span></div>
+                            <div><b t-esc="e.stats[3]"/><span>Jobs verified</span></div>
+                        </div>
+
+                        <div class="o_c2w_card o_c2w_empbox">
+                            <h5>What the listings say about them</h5>
+                            <dl class="o_c2w_kv">
+                                <dt>Names used</dt><dd t-esc="e.names.join(' · ')"/>
+                                <dt>Apply links go to</dt>
+                                <dd>
+                                    <t t-foreach="e.links" t-as="link" t-key="link.site"><t t-if="!link_first"> · </t><t t-esc="link.site"/> (<t t-esc="link.jobs"/>)</t>
+                                    <t t-if="!e.links.length">No apply links</t>
+                                </dd>
+                                <dt>Contact given</dt><dd t-esc="e.contacts.join(' · ') or 'None'"/>
+                                <dt>Where the jobs are</dt><dd t-esc="e.places.join(', ') or 'Not stated'"/>
+                                <dt>Found on</dt><dd t-esc="e.sources.join(' · ')"/>
+                            </dl>
+                        </div>
+
+                        <div class="o_c2w_card o_c2w_empbox">
+                            <h5>Check this employer</h5>
+                            <label t-foreach="e.checks" t-as="check" t-key="check.key" class="o_c2w_check">
+                                <input type="checkbox" t-att-checked="check.done" t-on-change="() => this.toggleEmployerCheck(check)"/>
+                                <span t-esc="check.label"/>
+                            </label>
+                            <label class="o_c2w_field">Registration number
+                                <input type="text" t-model="e.registration_no" placeholder="From the companies register"/>
+                            </label>
+                            <label class="o_c2w_check">
+                                <input type="checkbox" t-model="e.recruiter"/>
+                                <span>A recruiter advertising jobs at other companies</span>
+                            </label>
+                            <label class="o_c2w_field">How you checked, or who you spoke to
+                                <textarea rows="3" t-model="e.note"/>
+                            </label>
+                            <div class="o_c2w_answers">
+                                <button type="button" class="o_c2w_new" t-att-disabled="state.sending" t-on-click="() => this.saveEmployer('verified')">Verified employer</button>
+                                <button type="button" class="o_c2w_mbtn bad" t-att-disabled="state.sending" t-on-click="() => this.saveEmployer('invalid')">Not genuine</button>
+                                <button type="button" class="o_c2w_mbtn" t-att-disabled="state.sending" t-on-click="() => this.saveEmployer('unsure')">Can't tell yet</button>
+                                <button type="button" class="o_c2w_mbtn" t-att-disabled="state.sending" t-on-click="() => this.saveEmployer()">Save notes only</button>
+                            </div>
+                        </div>
+
+                        <div class="o_c2w_card o_c2w_empbox">
+                            <h5>Their jobs</h5>
+                            <button t-foreach="e.jobs_list" t-as="job" t-key="job.id" type="button" class="o_c2w_empjob" t-on-click="() => this.openListing(job.id)">
+                                <span><b t-esc="job.name"/><em><t t-esc="job.location or 'No location'"/><t t-if="job.closing_on"> · closes <t t-esc="job.closing_on"/></t></em></span>
+                                <span t-attf-class="o_c2w_tag {{ tagClass(job.work_state) }}" t-esc="job.work_label"/>
+                            </button>
+                            <p t-if="e.jobs_more" class="o_c2w_hint">And <t t-esc="e.jobs_more"/> more.</p>
+                            <p t-if="!e.jobs_list.length" class="o_c2w_hint">No jobs under this name any more.</p>
+                        </div>
                     </div>
                 </t>
 
@@ -803,6 +893,34 @@
                             <dt>Apply link</dt><dd t-esc="j.apply_url ? 'Set' : 'No apply link'"/>
                             <dt>Source</dt><dd t-esc="j.source"/>
                         </dl>
+                    </div>
+                </t>
+
+                <t t-elif="state.view === 'emp'">
+                    <t t-set="e" t-value="state.detail"/>
+                    <h4><i class="fa fa-info-circle"/> Employer</h4>
+                    <div t-if="e.similar.length" class="o_c2w_same">
+                        <h5>Possibly the same employer</h5>
+                        <div t-foreach="e.similar" t-as="other" t-key="other.id">
+                            <p><b t-esc="other.name"/><br/><span><t t-esc="other.jobs"/> jobs, <t t-esc="other.open"/> open · <t t-esc="other.state_label"/></span></p>
+                            <div class="o_c2w_two">
+                                <button type="button" class="o_c2w_mbtn good" t-on-click="() => this.joinEmployer(other)">Same employer</button>
+                                <button type="button" class="o_c2w_mbtn" t-on-click="() => this.notSameEmployer(other)">Different</button>
+                            </div>
+                        </div>
+                        <p class="o_c2w_hint">Joining moves the other name's jobs here and remembers it as another spelling.</p>
+                    </div>
+                    <div>
+                        <h5>What your answer does</h5>
+                        <p><b>Verified employer:</b> the "new employer" flag comes off their jobs, and new jobs from them arrive without it. Each job still needs its own check.</p>
+                        <p><b>Not genuine:</b> their jobs carry a red warning. Nothing is blocked: an agent still decides on each job.</p>
+                        <p><b>Can't tell yet:</b> stays on the list with your note, so the next agent starts from it.</p>
+                    </div>
+                    <div>
+                        <h5>History</h5>
+                        <p t-if="e.first_seen">First job came in <t t-esc="when(e.first_seen)"/></p>
+                        <p t-foreach="e.history" t-as="h" t-key="h.id"><b t-esc="when(h.at)"/> <t t-if="h.who"><t t-esc="h.who"/>: </t><t t-esc="h.text"/></p>
+                        <p t-if="!e.history.length" class="o_c2w_hint">Nobody has checked this employer yet.</p>
                     </div>
                 </t>
 
