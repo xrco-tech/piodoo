@@ -103,7 +103,7 @@ class CommBillingReport(models.AbstractModel):
             'message': _('messages'),
             'segment': _('parts'),
             'session': _('sessions'),
-            'block_20s': _('20-second blocks'),
+            'block': _('charged blocks'),
             'minute': _('min'),
             'kilotoken': _('thousand tokens'),
             'conversation': _('conversations'),

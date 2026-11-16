@@ -39,7 +39,7 @@ UNIT_SELECTION = [
     ('message',      'per message'),
     ('segment',      'per SMS segment'),
     ('session',      'per USSD session'),
-    ('block_20s',    'per 20 seconds'),
+    ('block',        'per block of seconds'),
     ('minute',       'per minute'),
     ('kilotoken',    'per 1,000 tokens'),
     ('conversation', 'per conversation (legacy)'),
@@ -71,6 +71,10 @@ class CommBillingRate(models.Model):
     unit = fields.Selection(UNIT_SELECTION, required=True, default='message')
     price_usd = fields.Float(required=True, digits=(12, 6),
         help='Rate in USD per unit.')
+    block_seconds = fields.Integer(string='Seconds per block',
+        help='For a provider that charges by time, e.g. per 20 seconds of a '
+             'USSD session (22 on some networks). Every started block is '
+             'charged. Leave 0 for a price per message, session or minute.')
     price_local = fields.Float(string='Fixed price', digits=(12, 6),
         help='For a provider that charges a fixed amount in another currency '
              '(e.g. R0.50 per 20 seconds). When set, with its currency, the '

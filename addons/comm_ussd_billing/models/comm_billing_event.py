@@ -23,16 +23,13 @@ class CommBillingEvent(models.Model):
         if exists:
             return exists
 
-        # Provider from the linked chatbot's ussd account, if any
-        provider = 'Africa\'s Talking'
-        account_ref = False
-        chatbot = getattr(session, 'chatbot_id', False)
-        if chatbot and 'ussd_account_id' in chatbot._fields and chatbot.ussd_account_id:
-            acc = chatbot.ussd_account_id
-            provider = (acc.provider or provider).replace('_', ' ').title()
-            account_ref = acc.name
+        # The provider is whoever runs the code that was dialled.
+        Account = self.env['comm.ussd.account'].sudo()
+        acc = Account.find_for_service_code(session.service_code or '')
+        provider = dict(Account._fields['provider'].selection).get(acc.provider) if acc else False
+        account_ref = acc.name if acc else session.service_code
 
-        # The gateway charges per 20 seconds. Its own figure for the length
+        # Charged by time. The gateway's own figure for the length
         # is used when the end-of-session notice carries one.
         seconds = self.env.context.get('ussd_seconds')
         if not seconds and session.create_date:
@@ -45,8 +42,10 @@ class CommBillingEvent(models.Model):
             'account_ref': account_ref,
             'wa_id': session.phone_number,
             'category': 'ussd_session',
-            'unit': 'block_20s',
-            'unit_qty': self._blocks_20s(seconds),
+            'unit': 'block',
+            'unit_qty': 1.0,
+            'duration_seconds': seconds or 0.0,
+            'service_code': session.service_code,
             'source_model': 'whatsapp.chatbot.ussd.session',
             'source_id': session.id,
             'ussd_session_id': session.id,

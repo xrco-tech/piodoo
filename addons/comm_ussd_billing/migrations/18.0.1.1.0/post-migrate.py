@@ -13,7 +13,7 @@ def migrate(cr, version):
     if not rate or not zar:
         return
     if rate.unit == 'session' and abs(rate.price_usd - 0.02) < 1e-9 and not rate.price_local:
-        rate.write({'unit': 'block_20s', 'price_usd': 0.0,
+        rate.write({'unit': 'block', 'block_seconds': 20, 'price_usd': 0.0,
                     'price_local': 0.5, 'local_currency_id': zar.id})
         card = rate.card_id
         if card and (card.notes or '').startswith('Placeholder rates'):

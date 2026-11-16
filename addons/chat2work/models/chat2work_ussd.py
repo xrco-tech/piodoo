@@ -16,7 +16,6 @@ import base64
 import hashlib
 import hmac
 import logging
-import math
 import re
 from datetime import date, timedelta
 
@@ -657,9 +656,11 @@ class Chat2workUssdSession(models.Model):
                         'wa_id': session.msisdn,
                         'partner_id': session.candidate_id.partner_id.id or False,
                         'category': 'ussd_session',
-                        # The gateway charges for every started 20 seconds.
-                        'unit': 'block_20s',
-                        'unit_qty': float(max(1, math.ceil(session._seconds() / 20.0))),
+                        # Charged by time, at the rate kept for this code.
+                        'unit': 'block',
+                        'unit_qty': 1.0,
+                        'duration_seconds': session._seconds(),
+                        'service_code': session.service_code,
                         'source': 'chat2work',
                         'feature': 'ussd',
                         'source_model': self._name,

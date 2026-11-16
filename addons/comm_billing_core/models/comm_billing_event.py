@@ -44,6 +44,10 @@ class CommBillingEvent(models.Model):
     category = fields.Selection(CATEGORY_SELECTION, required=True, index=True)
     unit = fields.Selection(UNIT_SELECTION, required=True, default='message')
     unit_qty = fields.Float(required=True, default=1.0)
+    duration_seconds = fields.Float(readonly=True,
+        help='How long a timed charge (a USSD session) ran.')
+    service_code = fields.Char(index=True, readonly=True,
+        help='USSD: the code that was dialled.')
 
     rate_card_id = fields.Many2one('comm.billing.rate.card', readonly=True)
     rate_id = fields.Many2one('comm.billing.rate', readonly=True)
@@ -243,10 +247,10 @@ class CommBillingEvent(models.Model):
         return 1.0, USD or currency
 
     @api.model
-    def _blocks_20s(self, seconds):
-        """How many 20-second blocks a USSD session of this length is charged
-        as: every started block counts, and a session is never free."""
-        return float(max(1, math.ceil(max(seconds or 0, 0) / 20.0)))
+    def _blocks(self, seconds, block_seconds=20):
+        """How many blocks a USSD session of this length is charged as: every
+        started block counts, and a session is never free."""
+        return float(max(1, math.ceil(max(seconds or 0, 0) / float(block_seconds or 20))))
 
     @api.model
     def _fixed_price(self, amount, currency, provider, event_date):
@@ -300,7 +304,8 @@ class CommBillingEvent(models.Model):
         country = self.env['res.country'].browse(vals.get('country_id') or 0)
         wa_id = vals.get('wa_id')
 
-        card = self.env['comm.billing.rate.card'].active_on(channel, event_date, provider=provider)
+        card = self.env['comm.billing.rate.card'].active_on(
+            channel, event_date, provider=provider, service_code=vals.get('service_code'))
         if not card:
             vals.update(price_usd=0.0, price_local=0.0, fx_rate=1.0)
             return vals
@@ -345,6 +350,11 @@ class CommBillingEvent(models.Model):
                             category, vals.get('carrier'), vals.get('direction'))
             vals.update(price_usd=0.0, price_local=0.0, fx_rate=1.0)
             return vals
+
+        if rate.block_seconds and vals.get('duration_seconds') is not None:
+            # Charged by time: every started block of the rate's length.
+            unit_qty = self._blocks(vals['duration_seconds'], rate.block_seconds)
+            vals.update(unit='block', unit_qty=unit_qty)
 
         if rate.price_local and rate.local_currency_id:
             vals.update(rate_id=rate.id, **self._fixed_price(

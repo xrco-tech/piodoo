@@ -78,20 +78,22 @@ class TestChat2workUssd(TransactionCase):
         self.assertEqual(set(events.mapped('feature')), {'ussd'})
         self.assertEqual(sorted(events.mapped('wa_id')), ['+27820000901', '+27820000902'])
         # Charged for every started 20 seconds, never for nothing.
-        self.assertEqual(set(events.mapped('unit')), {'block_20s'})
+        self.assertEqual(set(events.mapped('unit')), {'block'})
+        self.assertEqual(set(events.mapped('service_code')), {CODE})
         self.assertTrue(all(qty >= 1 for qty in events.mapped('unit_qty')))
         # The gateway's own figure for the length wins: 45 seconds is 3 blocks.
         self.Session.ussd_handle('ATUid_bill_45', CODE, '+27820000904', '', '')
         self.Session.ussd_session_closed('ATUid_bill_45', seconds=45)
         timed = Event.search(charged, order='id desc', limit=1)
-        self.assertEqual(timed.unit_qty, 3)
-        if timed.rate_id.price_local:
+        self.assertEqual(timed.duration_seconds, 45)
+        if timed.rate_id.block_seconds == 20:
+            self.assertEqual(timed.unit_qty, 3)
             self.assertAlmostEqual(timed.price_local, 3 * timed.rate_id.price_local, places=4)
         # Without one, the time from the first screen to the hang-up is used.
         self.Session.ussd_handle('ATUid_bill_70', CODE, '+27820000905', '', '')
         left = self.Session.search([('session_id', '=', 'ATUid_bill_70')])
         left.with_context(c2w_ussd_ended=fields.Datetime.now() + timedelta(seconds=70)).unlink()
-        self.assertEqual(Event.search(charged, order='id desc', limit=1).unit_qty, 4)
+        self.assertAlmostEqual(Event.search(charged, order='id desc', limit=1).duration_seconds, 70, delta=2)
         before += 2
         # The simulator costs nothing.
         simulated = self.Session.with_context(chat2work_ussd_simulation=True)

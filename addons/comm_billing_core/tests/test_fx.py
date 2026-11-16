@@ -93,29 +93,65 @@ class TestFx(common.TransactionCase):
         self.assertAlmostEqual(june_sms.price_local, 34.0)
         self.assertAlmostEqual(june_meta.price_local, 36.0)
 
-    def _fixed_rand_rate(self):
-        """A card whose only rate is R0.50 per 20 seconds, fixed in rand."""
-        card = self.env['comm.billing.rate.card'].create({
-            'name': 'Fixed rand USSD', 'channel': 'ussd', 'provider': 'Fixed Rand Test',
+    def _fixed_rand_rate(self, code='*120*777#', price=0.5, seconds=20, carrier=False, card=None):
+        """A card for one dialled code, priced in rand per block of seconds."""
+        card = card or self.env['comm.billing.rate.card'].create({
+            'name': 'Fixed rand USSD %s' % code, 'channel': 'ussd', 'provider': 'Fixed Rand Test',
+            'service_code': code,
             'effective_from': date(2026, 1, 1), 'billing_model': 'per_session',
         })
         return self.env['comm.billing.rate'].create({
             'card_id': card.id, 'category': 'ussd_session', 'direction': 'any',
-            'unit': 'block_20s', 'price_usd': 0.0,
-            'price_local': 0.5, 'local_currency_id': self.ZAR.id,
+            'unit': 'block', 'block_seconds': seconds, 'price_usd': 0.0, 'carrier': carrier,
+            'price_local': price, 'local_currency_id': self.ZAR.id,
         })
 
-    def _fixed_rand_event(self, blocks):
+    def _fixed_rand_event(self, blocks, code='*120*777#', carrier=False):
+        """A session long enough to be charged as `blocks` blocks of 20 s."""
+        self._seq = getattr(self, '_seq', 0) + 1
         return self.env['comm.billing.event'].create({
             'event_date': datetime(2026, 6, 15), 'channel': 'ussd', 'provider': 'Fixed Rand Test',
-            'category': 'ussd_session', 'unit': 'block_20s', 'unit_qty': blocks,
-            'source_model': 'test.fixed.rand', 'source_id': int(blocks),
+            'category': 'ussd_session', 'unit': 'block', 'unit_qty': 1.0,
+            'duration_seconds': blocks * 20 - 5, 'service_code': code, 'carrier': carrier,
+            'source_model': 'test.fixed.rand', 'source_id': self._seq,
         })
 
-    def test_blocks_of_20_seconds(self):
-        blocks = self.env['comm.billing.event']._blocks_20s
+    def test_blocks_of_seconds(self):
+        blocks = self.env['comm.billing.event']._blocks
         self.assertEqual([blocks(s) for s in (0, None, 1, 20, 20.5, 45, 60, 61)],
                          [1, 1, 1, 1, 2, 3, 3, 4])
+        self.assertEqual([blocks(s, 22) for s in (21, 22, 23, 44, 45)], [1, 1, 2, 2, 3])
+
+    def test_a_card_for_one_code_prices_only_that_code(self):
+        Card = self.env['comm.billing.rate.card']
+        Card.search([('channel', '=', 'ussd')]).active = False
+        rate = self._fixed_rand_rate()
+        mine = self._fixed_rand_event(3)
+        self.assertEqual((mine.rate_id, mine.unit_qty), (rate, 3))
+        self.assertAlmostEqual(mine.price_local, 1.5, places=4)
+        # Another code, or no code at all, is not charged from this card.
+        for code in ('*120*999#', False):
+            other = self._fixed_rand_event(3, code=code)
+            self.assertFalse(other.rate_card_id)
+            self.assertEqual((other.price_local, other.price_usd), (0.0, 0.0))
+        # A second provider's code has its own price and its own block length,
+        # longer on one network.
+        cheap = self._fixed_rand_rate(code='*120*888#', price=0.07)
+        mtn = self._fixed_rand_rate(price=0.07, seconds=22, carrier='MTN', card=cheap.card_id)
+        usual = self.env['comm.billing.event'].create({
+            'event_date': datetime(2026, 6, 15), 'channel': 'ussd', 'category': 'ussd_session',
+            'unit': 'block', 'duration_seconds': 21, 'service_code': '*120*888#',
+            'source_model': 'test.fixed.rand', 'source_id': 901,
+        })
+        on_mtn = self.env['comm.billing.event'].create({
+            'event_date': datetime(2026, 6, 15), 'channel': 'ussd', 'category': 'ussd_session',
+            'unit': 'block', 'duration_seconds': 21, 'service_code': '*120*888#', 'carrier': 'MTN',
+            'source_model': 'test.fixed.rand', 'source_id': 902,
+        })
+        self.assertEqual((usual.rate_id, usual.unit_qty), (cheap, 2))
+        self.assertEqual((on_mtn.rate_id, on_mtn.unit_qty), (mtn, 1))
+        self.assertAlmostEqual(usual.price_local, 0.14, places=4)
+        self.assertAlmostEqual(on_mtn.price_local, 0.07, places=4)
 
     def test_price_fixed_in_rand_stands_whatever_the_rate(self):
         rate = self._fixed_rand_rate()

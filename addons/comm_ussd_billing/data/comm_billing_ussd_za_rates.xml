@@ -13,7 +13,8 @@
             <field name="country_id" ref="base.za"/>
             <field name="category">ussd_session</field>
             <field name="direction">any</field>
-            <field name="unit">block_20s</field>
+            <field name="unit">block</field>
+            <field name="block_seconds">20</field>
             <field name="price_usd">0.0</field>
             <field name="price_local">0.5</field>
             <field name="local_currency_id" ref="base.ZAR"/>
