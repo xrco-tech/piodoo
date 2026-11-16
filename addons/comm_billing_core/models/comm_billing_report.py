@@ -95,6 +95,7 @@ class CommBillingReport(models.AbstractModel):
             'chatbot': _('Chatbot (AI)'),
             'job_alert': _('Job alerts'),
             'ussd': _('USSD menu'),
+            'ussd': _('USSD menu'),
         }.get(feature, feature)
 
     @api.model
