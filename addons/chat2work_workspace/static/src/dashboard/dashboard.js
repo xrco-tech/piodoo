@@ -5,6 +5,7 @@ import { useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { deserializeDateTime } from "@web/core/l10n/dates";
+import { formatCurrency } from "@web/core/currency";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 const { DateTime } = luxon;
@@ -44,6 +45,7 @@ export class Chat2workDashboard extends Component {
 
     setup() {
         this.orm = useService("orm");
+        this.action = useService("action");
         this.alerts = useService("chat2work_alerts");
         this.state = useState({ period: "today", data: null });
         onWillStart(() => this.load());
@@ -81,6 +83,19 @@ export class Chat2workDashboard extends Component {
     }
 
     /** Show a list or a record in the Workspace. */
+    // ── Comms cost ───────────────────────────────────────────────────────
+    money(amount) {
+        return formatCurrency(amount || 0, this.state.data.cost.currency_id);
+    }
+
+    openCost() {
+        const { source, date_from, date_to } = this.state.data.cost;
+        this.action.doAction({
+            type: "ir.actions.client", tag: "comm_billing_core.reports", name: _t("Reports"),
+            params: { source, date_from, date_to },
+        });
+    }
+
     open(target) {
         this.alerts.open(target);
     }

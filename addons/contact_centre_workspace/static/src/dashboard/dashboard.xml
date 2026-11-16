@@ -28,6 +28,19 @@
                     </div>
                 </section>
 
+                <section t-if="data.cost" class="o_ccw_card o_ccw_dcard" aria-label="Comms cost">
+                    <div class="o_ccw_shead">
+                        <h2>Comms cost <t t-esc="periodWords"/></h2>
+                        <button type="button" class="btn btn-link p-0" t-on-click="openCost">Open in billing ›</button>
+                    </div>
+                    <div class="o_ccw_dmini cost">
+                        <div><b t-esc="money(data.cost.total)"/><span>Total</span></div>
+                        <div t-foreach="data.cost.channels" t-as="channel" t-key="channel.key"><b t-esc="money(channel.cost)"/><span t-esc="channel.label"/></div>
+                    </div>
+                    <span class="o_ccw_muted">Messages, calls and AI charged for Contact Centre contacts and features. Only people with billing access see this.
+                        <t t-if="data.cost.unpriced"><t t-esc="data.cost.unpriced"/> charges have no rate yet and count as zero.</t></span>
+                </section>
+
                 <div class="o_ccw_dgrid wide">
                     <section class="o_ccw_card o_ccw_dcard">
                         <div class="o_ccw_shead">

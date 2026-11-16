@@ -151,3 +151,20 @@ class TestBillingReports(TransactionCase):
         self.assertFalse(self.Event._log_llm_usage('m', {'input_tokens': 'lots'}))
         rows = self.Report.overview('month', group_by='source')['rows']
         self.assertIn('Chat2Work: Sidekick (AI)', [r['label'] for r in rows])
+
+    def test_dashboard_cost(self):
+        self._event(self.today, 12.0, source='chat2work')
+        self._event(self.today, 3.0, source='chat2work', channel='sms', category='sms_outbound_domestic')
+        self._event(self.today, 99.0, source='contact_centre')
+        self._event(self.today - timedelta(days=10), 50.0, source='chat2work')
+        since = self.Report._utc(self.today)
+        cost = self.Report.dashboard_cost('chat2work', since)
+        self.assertAlmostEqual(cost['total'], 15.0)
+        self.assertEqual([c['key'] for c in cost['channels']], ['whatsapp', 'sms'])
+        self.assertEqual((cost['date_from'], cost['date_to']), (str(self.today), str(self.today)))
+        self.assertAlmostEqual(
+            self.Report.dashboard_cost('chat2work', self.Report._utc(self.today - timedelta(days=29)))['total'], 65.0)
+        self.assertFalse(self.Report.dashboard_cost('nonsense', since))
+        outsider = self.env['res.users'].create({'name': 'No billing', 'login': 'nobilling'})
+        self.assertFalse(self.Report.with_user(outsider).dashboard_cost('chat2work', since),
+                         'people without billing access get no figure')

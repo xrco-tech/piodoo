@@ -195,6 +195,7 @@
         > div { display: flex; flex-direction: column; padding: 7px 10px; border: 1px solid var(--c2w-line); border-radius: 9px; }
         b { font-size: 20px; font-weight: 600; }
         span { color: var(--c2w-muted); font-size: 12.5px; }
+        &.cost { grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); }
     }
     // How long it takes: what they did down the side, the two channels across.
     .o_c2w_dscroll { overflow-x: auto; }

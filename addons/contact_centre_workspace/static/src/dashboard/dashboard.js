@@ -5,6 +5,7 @@ import { useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { deserializeDateTime } from "@web/core/l10n/dates";
+import { formatCurrency } from "@web/core/currency";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 const { DateTime } = luxon;
@@ -66,6 +67,19 @@ export class ContactCentreDashboardPage extends Component {
 
     get today() {
         return DateTime.local().toFormat("cccc d MMMM");
+    }
+
+    // ── Comms cost ───────────────────────────────────────────────────────
+    money(amount) {
+        return formatCurrency(amount || 0, this.state.data.cost.currency_id);
+    }
+
+    openCost() {
+        const { source, date_from, date_to } = this.state.data.cost;
+        this.action.doAction({
+            type: "ir.actions.client", tag: "comm_billing_core.reports", name: _t("Reports"),
+            params: { source, date_from, date_to },
+        });
     }
 
     // ── Needs you now ────────────────────────────────────────────────────

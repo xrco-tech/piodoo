@@ -220,6 +220,15 @@ class Chat2workWorkspace(models.AbstractModel):
             } for booking in bookings[:4]],
         }
 
+    @api.model
+    def _dash_cost(self, since):
+        """What Chat2Work's messages, calls and AI cost; False when billing
+        is not installed or this user may not see billing."""
+        Report = self.env.get('comm.billing.report')
+        if Report is None or not hasattr(Report, 'dashboard_cost'):
+            return False
+        return Report.dashboard_cost('chat2work', since)
+
     # ── The call ─────────────────────────────────────────────────────────
     @api.model
     def ws_dashboard(self, period='today'):
@@ -230,6 +239,7 @@ class Chat2workWorkspace(models.AbstractModel):
         since = self._dash_start(tz, PERIODS[period])
         return {
             'period': period,
+            'cost': self._dash_cost(since),
             'todo': self._dash_todo(),
             'stages': self.ws_pipeline(),
             'new': self._dash_new_candidates(tz, since),

@@ -496,6 +496,35 @@ class CommBillingReport(models.AbstractModel):
         return rows
 
     # ------------------------------------------------------------------
+    # For other apps' dashboards
+    # ------------------------------------------------------------------
+    @api.model
+    def dashboard_cost(self, source, since):
+        """What `source` has cost since `since` (a UTC datetime), for a tile on
+        another app's dashboard. False for a user without billing access, so
+        the tile simply does not show for them."""
+        if source not in SOURCES or not self.env['comm.billing.event'].has_access('read'):
+            return False
+        self = self.with_context(billing_source=source)
+        since = fields.Datetime.to_datetime(since)
+        today = self._today()
+        start = pytz.utc.localize(since).astimezone(self._tz()).date()
+        by_channel = self._by_channel(start, today)
+        channels = sorted(
+            ({'key': channel, 'label': self._channel_label(channel), 'cost': values['cost']}
+             for channel, values in by_channel.items() if values['cost']),
+            key=lambda c: -c['cost'])
+        return {
+            'currency_id': self.env.company.currency_id.id,
+            'source': source,
+            'total': sum(c['cost'] for c in channels),
+            'channels': channels,
+            'unpriced': sum(v['unpriced'] for v in by_channel.values()),
+            'date_from': str(start),
+            'date_to': str(today),
+        }
+
+    # ------------------------------------------------------------------
     # Monthly statement
     # ------------------------------------------------------------------
     @api.model
