@@ -501,6 +501,21 @@ class CommBillingReport(models.AbstractModel):
     # For other apps' dashboards
     # ------------------------------------------------------------------
     @api.model
+    def budget_warnings(self):
+        """This month's budget warnings, newest first, for other apps to show.
+        Empty for a user without billing access."""
+        if not self.env['comm.billing.event'].has_access('read'):
+            return []
+        budget = self.env['comm.billing.budget']._for_company()
+        if not budget:
+            return []
+        alerts = self.env['comm.billing.budget.alert'].sudo().search(
+            [('budget_id', '=', budget.id), ('month', '=', self._today().replace(day=1))],
+            order='id desc')
+        return [{'key': alert.id, 'text': alert.name,
+                 'at': fields.Datetime.to_string(alert.create_date)} for alert in alerts]
+
+    @api.model
     def dashboard_cost(self, source, since):
         """What `source` has cost since `since` (a UTC datetime), for a tile on
         another app's dashboard. False for a user without billing access, so
@@ -535,6 +550,7 @@ class CommBillingReport(models.AbstractModel):
             'channels': channels,
             # What it was spent on, where the sender said: job alerts, the Sidekick...
             'features': features,
+            'warnings': self.budget_warnings(),
             'unpriced': sum(v['unpriced'] for v in by_channel.values()),
             'date_from': str(start),
             'date_to': str(today),

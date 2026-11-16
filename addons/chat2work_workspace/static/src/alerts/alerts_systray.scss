@@ -115,3 +115,16 @@
         }
     }
 }
+
+// A budget warning: a dot on the icon, and the warning in the list.
+.o_c2w_alerts_btn .o_c2w_alerts_dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-left: 3px;
+    border-radius: 50%;
+    background: #f0ad4e;
+    vertical-align: top;
+}
+.o_c2w_alerts .o_c2w_alerts_item.o_c2w_alerts_warn span b { overflow: visible; text-overflow: clip; white-space: normal; }
+

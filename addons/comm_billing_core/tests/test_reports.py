@@ -183,3 +183,19 @@ class TestBillingReports(TransactionCase):
         self.assertEqual([(f['label'], f['cost']) for f in cost['features']],
                          [('Job alerts', 4.0), ('Sidekick (AI)', 1.5)])
         self.assertAlmostEqual(cost['total'], 12.5)
+
+    def test_budget_warnings_for_other_apps(self):
+        self.assertEqual(self.Report.budget_warnings(), [])
+        budget = self.env['comm.billing.budget'].create({'amount': 100.0})
+        self._event(self.first, 90.0, source='chat2work')
+        budget._check_warnings()
+        warnings = self.Report.budget_warnings()
+        self.assertEqual(len(warnings), len(budget.alert_ids))
+        self.assertIn('80%', warnings[-1]['text'])
+        cost = self.Report.dashboard_cost('chat2work', self.Report._utc(self.first))
+        self.assertEqual(cost['warnings'], warnings)
+        # Last month's warnings are over, and outsiders get none.
+        budget.alert_ids.write({'month': self.first - relativedelta(months=1)})
+        self.assertEqual(self.Report.budget_warnings(), [])
+        outsider = self.env['res.users'].create({'name': 'No billing 2', 'login': 'nobilling2'})
+        self.assertEqual(self.Report.with_user(outsider).budget_warnings(), [])

@@ -284,7 +284,10 @@ class Chat2workWorkspaceAlerts(models.AbstractModel):
                 [('state', 'in', OPEN_CALLBACK), ('candidate_id', '!=', False)]),
             'unknown': sum(1 for item in items if item['kind'] == 'unknown'),
         }
+        Report = self.env.get('comm.billing.report')
         return {
+            # This month's budget warnings, for the people who may see billing.
+            'budget': Report.budget_warnings() if Report is not None and hasattr(Report, 'budget_warnings') else [],
             'counts': counts,
             'count': sum(counts.values()),
             'items': [dict(item, since=_dt(item['since']))

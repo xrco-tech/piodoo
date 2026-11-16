@@ -121,6 +121,7 @@
         span { color: var(--ccw-muted); font-size: 12.5px; }
         &.cost { grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); }
     }
+    .o_ccw_dwarn { padding: 7px 10px; border-radius: 9px; background: rgba(240, 173, 78, .18); font-size: 13px; b { font-weight: 600; } }
     .o_ccw_dline {
         display: grid;
         grid-template-columns: 84px minmax(0, 1fr) 72px;
