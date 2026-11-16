@@ -18,6 +18,14 @@
             <div class="o_cbr_title">
                 <h1>Spend overview</h1>
                 <span class="text-muted"><t t-esc="d.span"/> · all channels</span>
+                <div class="o_cbr_pills mt-2" role="group" aria-label="Caused by">
+                    <button type="button" class="o_cbr_pill o_cbr_pill_sm" t-att-class="{ o_cbr_on: !d.source }"
+                            t-att-aria-pressed="d.source ? 'false' : 'true'" t-on-click="() => this.setSource('')">Everything</button>
+                    <button t-foreach="d.sources" t-as="src" t-key="src.key" type="button" class="o_cbr_pill o_cbr_pill_sm"
+                            t-att-class="{ o_cbr_on: d.source === src.key }"
+                            t-att-aria-pressed="d.source === src.key ? 'true' : 'false'"
+                            t-on-click="() => this.setSource(src.key)" t-esc="src.label"/>
+                </div>
             </div>
             <div class="o_cbr_pills" role="group" aria-label="Period">
                 <button t-foreach="periods" t-as="p" t-key="p.key" type="button"
@@ -68,7 +76,7 @@
                 <a t-if="d.can_configure" href="#" t-on-click.prevent="openBudget">Change budget and warnings</a>
             </div>
         </section>
-        <div t-elif="!d.has_budget and d.can_configure" class="o_cbr_card o_cbr_between">
+        <div t-elif="!d.has_budget and d.can_configure and !d.source" class="o_cbr_card o_cbr_between">
             <span>No monthly budget is set, so there is nothing to measure this spend against.</span>
             <a href="#" t-on-click.prevent="openBudget">Set a budget</a>
         </div>

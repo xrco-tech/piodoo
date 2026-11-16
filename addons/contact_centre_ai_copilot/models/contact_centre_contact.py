@@ -129,7 +129,11 @@ class ContactCentreContact(models.Model):
             )
             return
 
-        content = response.json().get('content', [])
+        data = response.json()
+        Event = self.env.get('comm.billing.event')
+        if Event is not None:
+            Event._log_llm_usage(ANTHROPIC_MODEL, data.get('usage'), source='contact_centre', feature='copilot')
+        content = data.get('content', [])
         text = content[0].get('text', '') if content else ''
         summary, sentiment, suggested_reply = self._parse_ai_response(text)
 

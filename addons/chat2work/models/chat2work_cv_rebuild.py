@@ -152,6 +152,9 @@ class Chat2workCandidateCvRebuild(models.Model):
         if response.status_code != 200:
             raise ValueError('Anthropic returned %s' % response.status_code)
         body = response.json()
+        Event = self.env.get('comm.billing.event')
+        if Event is not None:
+            Event._log_llm_usage(model, body.get('usage'), source='chat2work', feature='cv_rebuild')
         if body.get('stop_reason') != 'end_turn':
             raise ValueError('Stopped early: %s' % body.get('stop_reason'))
         return json.loads(''.join(b.get('text', '') for b in body.get('content', []) if b.get('type') == 'text'))

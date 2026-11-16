@@ -43,6 +43,10 @@
                             <field name="carrier"/>
                             <field name="direction"/>
                             <field name="campaign_id"/>
+                <field name="source"/>
+                <field name="feature"/>
+                            <field name="source"/>
+                            <field name="feature"/>
                         </group>
                         <group>
                             <field name="category"/>
@@ -140,6 +144,7 @@
                             context="{'group_by': 'carrier'}"/>
                     <filter string="Campaign" name="group_campaign"
                             context="{'group_by': 'campaign_id'}"/>
+                    <filter name="group_source" string="Caused by" context="{'group_by': 'source'}"/>
                     <filter string="Day" name="group_day"
                             context="{'group_by': 'event_date:day'}"/>
                     <filter string="Month" name="group_month"

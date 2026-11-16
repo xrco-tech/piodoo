@@ -112,6 +112,9 @@ def _ai_json(env, api_key, system, content, schema):
     if response.status_code != 200:
         raise ValueError('Anthropic returned %s' % response.status_code)
     body = response.json()
+    Event = env.get('comm.billing.event')
+    if Event is not None:
+        Event._log_llm_usage(model, body.get('usage'), source='chat2work', feature='occupation')
     if body.get('stop_reason') != 'end_turn':
         raise ValueError('Stopped early: %s' % body.get('stop_reason'))
     return json.loads(''.join(b.get('text', '') for b in body.get('content', []) if b.get('type') == 'text'))

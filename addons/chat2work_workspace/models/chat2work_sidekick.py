@@ -370,7 +370,11 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
         })
         if response.status_code != 200:
             raise ValueError('Anthropic returned %s' % response.status_code)
-        return response.json().get('content') or []
+        body = response.json()
+        Event = self.env.get('comm.billing.event')
+        if Event is not None:
+            Event._log_llm_usage(model, body.get('usage'), source='chat2work', feature='sidekick')
+        return body.get('content') or []
 
     def _sidekick_answer(self, api_key, question, chat, candidate):
         """Let Claude look things up until it can answer, then turn what it
