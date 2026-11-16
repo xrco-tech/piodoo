@@ -168,3 +168,18 @@ class TestBillingReports(TransactionCase):
         outsider = self.env['res.users'].create({'name': 'No billing', 'login': 'nobilling'})
         self.assertFalse(self.Report.with_user(outsider).dashboard_cost('chat2work', since),
                          'people without billing access get no figure')
+
+    def test_sender_can_name_the_feature(self):
+        tagged_event = self.Event.with_context(billing_feature='job_alert').create({
+            'channel': 'sms', 'category': 'sms_outbound_domestic', 'source_model': 'test', 'source_id': 9001})
+        self.assertEqual(tagged_event.feature, 'job_alert')
+        plain = self.Event.create({
+            'channel': 'sms', 'category': 'sms_outbound_domestic', 'source_model': 'test', 'source_id': 9002})
+        self.assertFalse(plain.feature)
+        self._event(self.today, 4.0, source='chat2work', feature='job_alert')
+        self._event(self.today, 1.5, source='chat2work', feature='sidekick', channel='other', category='llm_output')
+        self._event(self.today, 7.0, source='chat2work')
+        cost = self.Report.dashboard_cost('chat2work', self.Report._utc(self.today))
+        self.assertEqual([(f['label'], f['cost']) for f in cost['features']],
+                         [('Job alerts', 4.0), ('Sidekick (AI)', 1.5)])
+        self.assertAlmostEqual(cost['total'], 12.5)
