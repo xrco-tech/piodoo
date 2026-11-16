@@ -72,31 +72,7 @@ class UssdController(http.Controller):
                 _logger.warning(f"No USSD chatbot configured for service_code={service_code!r}")
                 return self._text_response("END Service unavailable.")
 
-            partner = ChatbotMessage._find_or_create_partner(
-                phone_number, {"wa_id": phone_number, "profile": {}},
-            )
-            ChatbotContact = request.env["whatsapp.chatbot.contact"].sudo()
-            contact = ChatbotContact.search([("partner_id", "=", partner.id)], limit=1)
-            if not contact:
-                contact = ChatbotContact.create({"partner_id": partner.id})
-
-            # Treat session start like a trigger restart: clear contact's
-            # variable values and call stack so the flow runs from a clean slate.
-            contact.variable_value_ids.unlink()
-            contact.write({
-                "last_chatbot_id": chatbot.id,
-                "last_step_id": False,
-                "call_stack": [],
-            })
-            ChatbotMessage._mark_contact_entered(contact, chatbot)
-
-            session = Session.find_or_create_for_inbound(
-                session_id=session_id,
-                service_code=service_code,
-                phone_number=phone_number,
-                chatbot=chatbot,
-                contact=contact,
-            )
+            session = self._start_session(session_id, service_code, phone_number, chatbot)
             session.breadcrumb = text
             body, terminate = ChatbotMessage.render_ussd_session(session, user_input=None)
             return self._text_response(self._format_ussd(body, terminate))
@@ -141,6 +117,40 @@ class UssdController(http.Controller):
     # ── Helpers ──────────────────────────────────────────────────────────────
 
     @staticmethod
+    def _start_session(session_id, service_code, phone_number, chatbot, **extra):
+        """Create the session for a first turn, with the dialler's contact
+        reset so the flow runs from a clean slate."""
+        ChatbotMessage = request.env["whatsapp.chatbot.message"].sudo()
+        partner = ChatbotMessage._find_or_create_partner(
+            phone_number, {"wa_id": phone_number, "profile": {}},
+        )
+        ChatbotContact = request.env["whatsapp.chatbot.contact"].sudo()
+        contact = ChatbotContact.search([("partner_id", "=", partner.id)], limit=1)
+        if not contact:
+            contact = ChatbotContact.create({"partner_id": partner.id})
+
+        # Treat session start like a trigger restart: clear contact's
+        # variable values and call stack so the flow runs from a clean slate.
+        contact.variable_value_ids.unlink()
+        contact.write({
+            "last_chatbot_id": chatbot.id,
+            "last_step_id": False,
+            "call_stack": [],
+        })
+        ChatbotMessage._mark_contact_entered(contact, chatbot)
+
+        session = request.env["whatsapp.chatbot.ussd.session"].sudo().find_or_create_for_inbound(
+            session_id=session_id,
+            service_code=service_code,
+            phone_number=phone_number,
+            chatbot=chatbot,
+            contact=contact,
+        )
+        if extra:
+            session.write(extra)
+        return session
+
+    @staticmethod
     def _extract_params(kwargs):
         """Accept either form-encoded fields (kwargs) or JSON body."""
         content_type = request.httprequest.headers.get("Content-Type", "")
@@ -171,18 +181,22 @@ class UssdController(http.Controller):
           2. If no account matches, fall back to a published USSD bot with no
              account configured (the install-wide catch-all).
         """
-        Bot = request.env["whatsapp.chatbot"].sudo()
         Account = request.env["comm.ussd.account"].sudo()
-        if service_code:
-            account = Account.find_for_service_code(service_code)
-            if account:
-                specific = Bot.search([
-                    ("channel", "=", "ussd"),
-                    ("ussd_account_id", "=", account.id),
-                    ("status", "=", "published"),
-                ], limit=1)
-                if specific:
-                    return specific
+        account = Account.find_for_service_code(service_code) if service_code else Account
+        return UssdController._resolve_ussd_chatbot_for_account(account)
+
+    @staticmethod
+    def _resolve_ussd_chatbot_for_account(account):
+        """First published bot wired to `account`, else the catch-all USSD bot."""
+        Bot = request.env["whatsapp.chatbot"].sudo()
+        if account:
+            specific = Bot.search([
+                ("channel", "=", "ussd"),
+                ("ussd_account_id", "=", account.id),
+                ("status", "=", "published"),
+            ], limit=1)
+            if specific:
+                return specific
         return Bot.search([
             ("channel", "=", "ussd"),
             ("status", "=", "published"),

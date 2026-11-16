@@ -7,3 +7,4 @@ from . import test_simulator
 from . import test_voice_and_isset
 from . import test_agent_workspace
 from . import test_sms_inbound_providers
+from . import test_ussd_connect_mobile
