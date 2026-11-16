@@ -57,6 +57,15 @@ const VIEWS = {
         paged: true,
         detail: "ws_listing",
     },
+    emp: {
+        search: true,
+        label: _t("Employers"),
+        what: _t("employers"),
+        pills: [["to_check", _t("To check")], ["verified", _t("Verified")], ["invalid", _t("Not genuine")], ["all", _t("All")]],
+        list: (pill, search, offset, limit) => ["ws_employers", [pill, search, offset, limit]],
+        paged: true,
+        detail: "ws_employer",
+    },
     book: {
         search: false,
         label: _t("Bookings"),
@@ -90,6 +99,7 @@ const RAIL = [
     { id: "callbacks", icon: "fa-phone", label: _t("Callbacks"), view: "inbox", pill: "callbacks", count: "callbacks" },
     { id: "cand", icon: "fa-users", label: _t("Candidates"), view: "cand" },
     { id: "jobs", icon: "fa-briefcase", label: _t("Jobs"), view: "jobs", pill: "all", count: "jobs" },
+    { id: "emp", icon: "fa-building-o", label: _t("Employers"), view: "emp", pill: "to_check", count: "employers" },
     { id: "book", icon: "fa-calendar", label: _t("Bookings"), view: "book", pill: "upcoming" },
     { id: "side", icon: "fa-magic", label: _t("Sidekick"), view: "side" },
 ];
@@ -119,7 +129,7 @@ export class Chat2workWorkspace extends Component {
             boot: null,
             counts: {},
             view: "inbox",
-            pills: { inbox: "all", cand: "stages", jobs: "all", book: "upcoming", side: "all" },
+            pills: { inbox: "all", cand: "stages", jobs: "all", emp: "to_check", book: "upcoming", side: "all" },
             idSub: "open", // the ID check sub-filter on the Candidates screen
             search: "",
             rows: [],
@@ -496,7 +506,7 @@ export class Chat2workWorkspace extends Component {
         if (["verified", "approved", "completed", "ready", "placed", "put_forward", "cv_ready"].includes(state)) {
             return "ok";
         }
-        if (["help", "to_verify", "to_review", "not_valid", "failed", "no_show", "invalid", "new"].includes(state)) {
+        if (["help", "to_verify", "to_review", "not_valid", "failed", "no_show", "invalid", "new", "unsure"].includes(state)) {
             return "warn";
         }
         return "plain";
@@ -834,6 +844,69 @@ export class Chat2workWorkspace extends Component {
         }
         await this.orm.call("chat2work.listing", VERIFY_ACTIONS[state], [[this.state.detail.id]]);
         await this.refresh();
+    }
+
+    // ── Employers ───────────────────────────────────────────────────────
+
+    /** Open one record on another screen, whatever that screen's list holds. */
+    async openOn(view, pill, id) {
+        if (!id) {
+            return;
+        }
+        this.state.view = view;
+        this.state.pills[view] = pill;
+        this.state.search = "";
+        this.state.selId = id;
+        this.state.pinnedId = id;
+        this.state.pane = "thread";
+        this.state.detail = false;
+        this.state.rows = [];
+        await this.loadList();
+    }
+
+    openEmployer(id) {
+        return this.openOn("emp", "all", id);
+    }
+
+    openListing(id) {
+        return this.openOn("jobs", "all", id);
+    }
+
+    employerJobs(row) {
+        if (!row.open) {
+            return row.jobs === 1 ? _t("1 job, none open") : _t("%s jobs, none open", row.jobs);
+        }
+        return row.open === 1 ? _t("1 open job") : _t("%s open jobs", row.open);
+    }
+
+    toggleEmployerCheck(check) {
+        check.done = !check.done;
+    }
+
+    /** Keep the checklist and note; with `state`, record the agent's answer too. */
+    async saveEmployer(state = false) {
+        const e = this.state.detail;
+        const values = { registration_no: e.registration_no, note: e.note, recruiter: e.recruiter };
+        for (const check of e.checks) {
+            values[check.key] = check.done;
+        }
+        this.state.sending = true;
+        try {
+            await this.orm.call(WS, "ws_employer_save", [e.id, values, state]);
+        } finally {
+            this.state.sending = false;
+        }
+        await this.refresh();
+    }
+
+    async joinEmployer(other) {
+        await this.orm.call(WS, "ws_employer_join", [this.state.detail.id, other.id]);
+        await this.refresh();
+    }
+
+    async notSameEmployer(other) {
+        await this.orm.call(WS, "ws_employer_not_same", [this.state.detail.id, other.id]);
+        await this.loadDetail({ quiet: true });
     }
 
     async suggestCandidates() {

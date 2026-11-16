@@ -8,3 +8,5 @@ access_chat2work_province_admin,chat2work.province.admin,model_chat2work_provinc
 access_chat2work_job_send_agent,chat2work.job.send.agent,model_chat2work_job_send,chat2work.group_agent,1,1,1,1
 access_chat2work_occupation_user,chat2work.occupation.user,model_chat2work_occupation,base.group_user,1,0,0,0
 access_chat2work_occupation_admin,chat2work.occupation.admin,model_chat2work_occupation,base.group_system,1,1,1,1
+access_chat2work_employer_user,chat2work.employer.user,model_chat2work_employer,base.group_user,1,1,1,1
+access_chat2work_employer_alias_user,chat2work.employer.alias.user,model_chat2work_employer_alias,base.group_user,1,1,1,1
