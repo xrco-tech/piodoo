@@ -55,6 +55,33 @@ class TestChat2workUssd(TransactionCase):
             out.append(self.Session.ussd_handle(sid, CODE, phone, '*'.join(crumbs), inp))
         return out
 
+    # ── Billing ──────────────────────────────────────────────────────────────
+
+    def test_each_session_is_billed_once_it_closes(self):
+        Event = self.env.get('comm.billing.event')
+        if Event is None:
+            self.skipTest('comm_billing_core is not installed')
+        charged = [('source_model', '=', 'chat2work.ussd.session')]
+        before = Event.search_count(charged)
+        # One session ended from the menu, one simply abandoned and swept up.
+        ended = self.dial('+27820000901', '0')
+        self.assertTrue(ended[-1].startswith('END'))
+        self.Session.ussd_handle('ATUid_bill_left', CODE, '+27820000902', '', '')
+        self.assertEqual(Event.search_count(charged), before + 1, 'an open session is not charged yet')
+        self.Session.ussd_session_closed('ATUid_bill_left')
+        events = Event.search(charged, order='id desc', limit=2)
+        self.assertEqual(Event.search_count(charged), before + 2)
+        self.assertEqual(set(events.mapped('channel')), {'ussd'})
+        self.assertEqual(set(events.mapped('category')), {'ussd_session'})
+        self.assertEqual(set(events.mapped('source')), {'chat2work'})
+        self.assertEqual(set(events.mapped('feature')), {'ussd'})
+        self.assertEqual(sorted(events.mapped('wa_id')), ['+27820000901', '+27820000902'])
+        # The simulator costs nothing.
+        simulated = self.Session.with_context(chat2work_ussd_simulation=True)
+        simulated.ussd_handle('ATUid_bill_sim', CODE, '+27820000903', '', '')
+        simulated.ussd_session_closed('ATUid_bill_sim')
+        self.assertEqual(Event.search_count(charged), before + 2)
+
     # ── Create profile ───────────────────────────────────────────────────────
 
     def test_create_profile_whatsapp(self):

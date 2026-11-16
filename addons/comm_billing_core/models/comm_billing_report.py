@@ -93,6 +93,7 @@ class CommBillingReport(models.AbstractModel):
             'cv_rebuild': _('Reading CVs (AI)'),
             'occupation': _('Matching occupations (AI)'),
             'chatbot': _('Chatbot (AI)'),
+            'ussd': _('USSD menu'),
         }.get(feature, feature)
 
     @api.model
