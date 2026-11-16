@@ -45,6 +45,7 @@ export const chat2workAlertsService = {
             count: 0,
             counts: { reply: 0, callback: 0, unknown: 0 },
             items: [],
+            budget: [],
             sound: stored(SOUND_KEY) !== "off",
             desktop: desktopState(),
         });
@@ -152,7 +153,7 @@ export const chat2workAlertsService = {
             } catch {
                 return; // offline or signed out; the next round tries again
             }
-            Object.assign(state, { count: data.count, counts: data.counts, items: data.items });
+            Object.assign(state, { count: data.count, counts: data.counts, items: data.items, budget: data.budget || [] });
             const first = seen === null;
             seen = seen || new Set();
             const fresh = data.items.filter((item) => !seen.has(item.key));

@@ -197,6 +197,7 @@
         span { color: var(--c2w-muted); font-size: 12.5px; }
         &.cost { grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); }
     }
+    .o_c2w_dwarn { padding: 7px 10px; border-radius: 9px; background: rgba(240, 173, 78, .18); font-size: 13px; b { font-weight: 600; } }
     // How long it takes: what they did down the side, the two channels across.
     .o_c2w_dscroll { overflow-x: auto; }
     .o_c2w_dtimes {

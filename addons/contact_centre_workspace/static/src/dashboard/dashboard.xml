@@ -33,6 +33,9 @@
                         <h2>Comms cost <t t-esc="periodWords"/></h2>
                         <button type="button" class="btn btn-link p-0" t-on-click="openCost">Open in billing ›</button>
                     </div>
+                    <div t-foreach="data.cost.warnings" t-as="warning" t-key="warning.key" class="o_ccw_dwarn" role="alert">
+                        <i class="fa fa-exclamation-triangle"/> <b t-esc="warning.text"/>
+                    </div>
                     <div class="o_ccw_dmini cost">
                         <div><b t-esc="money(data.cost.total)"/><span>Total</span></div>
                         <div t-foreach="data.cost.channels" t-as="channel" t-key="channel.key"><b t-esc="money(channel.cost)"/><span t-esc="channel.label"/></div>

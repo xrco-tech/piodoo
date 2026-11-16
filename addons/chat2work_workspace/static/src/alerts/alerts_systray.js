@@ -18,6 +18,7 @@ export class Chat2workAlertsSystray extends Component {
 
     setup() {
         this.alerts = useService("chat2work_alerts");
+        this.action = useService("action");
         this.state = useState(this.alerts.state);
     }
 
@@ -57,6 +58,10 @@ export class Chat2workAlertsSystray extends Component {
 
     openItem(item) {
         return this.alerts.open(this.alerts.targetOf(item));
+    }
+
+    openBilling() {
+        return this.action.doAction({ type: "ir.actions.client", tag: "comm_billing_core.reports", name: _t("Reports") });
     }
 
     toggleSound() {

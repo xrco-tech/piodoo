@@ -6,6 +6,7 @@
             <button type="button" class="o_c2w_alerts_btn" title="Chat2Work: people waiting" aria-label="Chat2Work: people waiting">
                 <i class="fa fa-comments-o"/>
                 <span t-if="state.count" class="o_c2w_alerts_n" t-esc="badge"/>
+                <span t-if="state.budget.length" class="o_c2w_alerts_dot" title="Budget warning" aria-label="Budget warning"/>
             </button>
             <t t-set-slot="content">
                 <div class="o_c2w_alerts_h">People waiting</div>
@@ -21,6 +22,15 @@
                         <div class="o_c2w_alerts_item">
                             <span><b t-esc="item.name"/><time t-esc="when(item.since)"/></span>
                             <em t-esc="item.text"/>
+                        </div>
+                    </DropdownItem>
+                </t>
+                <t t-if="state.budget.length">
+                    <div class="o_c2w_alerts_h">Spending this month</div>
+                    <DropdownItem t-foreach="state.budget" t-as="warning" t-key="warning.key" onSelected="() => this.openBilling()">
+                        <div class="o_c2w_alerts_item o_c2w_alerts_warn">
+                            <span><b t-esc="warning.text"/></span>
+                            <em><time t-esc="when(warning.at)"/> · Open billing</em>
                         </div>
                     </DropdownItem>
                 </t>
