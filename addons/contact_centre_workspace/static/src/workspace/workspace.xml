@@ -4,6 +4,9 @@
     <t t-name="contact_centre_workspace.Workspace">
         <div class="o_action o_ccw" t-att-class="{ o_ccw_oncall: phone.call }" t-att-data-pane="pane">
 
+            <!-- Today's targets (comm_agent_activity): nothing shows until a manager sets some. -->
+            <AgentTargetStrip source="'contact_centre'" action="'contact_centre_workspace.action_contact_centre_team'"/>
+
             <!-- ── Rail ─────────────────────────────────────────────── -->
             <nav class="o_ccw_rail" aria-label="Workspace sections">
                 <button type="button" t-att-class="{ on: state.section === 'inbox' }" t-on-click="showInbox">

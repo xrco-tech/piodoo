@@ -224,6 +224,95 @@
         .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     }
 
+    // Targets
+    .o_caa_thead2 { align-items: baseline; flex-wrap: wrap; padding: 10px 0 2px; }
+    .o_caa_trow { text-align: left; }
+    .o_caa_tcell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .o_caa_track > span { display: block; height: 100%; background: var(--caa-accent); }
+    .o_caa_track > span.ok { background: var(--caa-green); }
+    .o_caa_track > span.low { background: var(--caa-amber); }
+    span.ok, .o_caa_tnote.ok { color: var(--caa-green); font-weight: 600; }
+    span.low, .o_caa_tnote.low { color: var(--caa-amber); font-weight: 600; }
+    span.none { color: var(--caa-muted); }
+    .o_caa_tpill {
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: var(--bs-tertiary-bg, #f1f3f5);
+        font-weight: 600;
+        white-space: nowrap;
+
+        &.ok { background: rgba($success, .16); color: var(--caa-green); }
+        &.low { background: rgba($warning, .22); color: var(--caa-amber); }
+    }
+    .o_caa_target { display: flex; flex-direction: column; gap: 5px; }
+    .o_caa_tnote { color: var(--caa-muted); font-size: 12.5px; }
+    .o_caa_phead {
+        b { font-size: 17px; line-height: 1.3; }
+    }
+    .o_caa_hist {
+        display: flex;
+        gap: 8px;
+
+        > div {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 8px 0;
+            border-radius: 8px;
+            background: var(--bs-tertiary-bg, #f1f3f5);
+        }
+        b { font-size: 15px; }
+    }
+    .o_caa_tgrid { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+    .o_caa_srow {
+        display: grid;
+        grid-template-columns: 36px minmax(170px, 1.5fr) 110px minmax(120px, .9fr) minmax(140px, 1.1fr);
+        gap: 12px;
+        align-items: center;
+        min-width: 640px;
+        min-height: 58px;
+        border-bottom: 1px solid var(--caa-line);
+
+        &:last-child { border-bottom: 0; }
+        &.head { min-height: 0; padding: 8px 0; color: var(--caa-muted); font-size: 12.5px; font-weight: 600; }
+        label { display: flex; flex-direction: column; margin: 0; }
+        input[type="text"] { min-height: 40px; font-size: 16px; }
+        input[type="checkbox"] { width: 20px; height: 20px; margin: 0; }
+    }
+    .o_caa_person {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        min-height: 54px;
+        padding: 6px 12px;
+        border: 1px solid var(--caa-line);
+        border-radius: 10px;
+
+        .o_caa_who { flex: 1; min-width: 150px; }
+        .btn { min-height: 44px; }
+    }
+    .o_caa_pedit {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--caa-line);
+        border-radius: 10px;
+        background: var(--bs-tertiary-bg, #f8f9fa);
+
+        label { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 13px; }
+        input, select { min-height: 40px; font-size: 16px; }
+    }
+    .o_caa_pfields { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .o_caa_effect { display: flex; flex-direction: column; gap: 2px; margin-top: 0; }
+
+    @media (max-width: 991.98px) {
+        .o_caa_tgrid { grid-template-columns: minmax(0, 1fr); }
+    }
+
     // The points
     .o_caa_points { max-width: 720px; padding: 4px 16px 14px; }
     .o_caa_prow {
@@ -255,5 +344,61 @@
         .o_caa_crow { grid-template-columns: minmax(0, 1fr) 72px 88px; }
         .o_caa_log { grid-template-columns: minmax(0, 1fr) auto; }
         .o_caa_log .name { grid-column: 1 / -1; }
+    }
+}
+
+// Today's targets as a slim line at the top of a workspace. It sits over the
+// workspace's own top padding, so nothing in the workspace's layout changes.
+.o_caa_has_strip { padding-top: 46px !important; }
+.o_caa_strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    height: 38px;
+    padding: 0 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    background: var(--bs-tertiary-bg, #f1f3f5);
+    color: var(--bs-body-color, #212529);
+    font-size: 13.5px;
+    white-space: nowrap;
+    scrollbar-width: none;
+
+    > * { flex: none; }
+    &.all { background: rgba($success, .16); }
+    .o_caa_sitem { display: flex; align-items: center; gap: 8px; }
+    .o_caa_strack {
+        width: 64px;
+        height: 6px;
+        border-radius: 3px;
+        background: rgba(127, 127, 127, .25);
+        overflow: hidden;
+
+        > span { display: block; height: 100%; background: $o-brand-primary; }
+        > span.ok { background: $success; }
+        > span.low { background: #b06a00; }
+    }
+    .o_caa_smark {
+        color: var(--bs-secondary-color, #5f6770);
+        font-size: 12.5px;
+
+        &.ok { color: $success; font-weight: 600; }
+        &.low { color: #b06a00; font-weight: 600; }
+    }
+    .o_caa_slink {
+        margin-left: auto;
+        height: 38px;
+        padding: 0 4px;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-weight: 600;
+        text-decoration: underline;
     }
 }

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Agent Activity',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Communications',
     'summary': 'What each agent did, how fast and how well: one record per action, and the Team report',
     'description': """
@@ -25,6 +25,11 @@ The Team report is built on those lines:
   Supervisors set the points.
 - Planning: work waiting against the team's pace, and the hours of the day
   when people wait longest.
+- Targets: a supervisor sets what each agent should reach (for everyone, or
+  different for one agent). Agents see their progress in My activity and in
+  a slim line at the top of the workspaces; the supervisor sees who is on
+  target today. Daily targets count Monday to Friday. No target is on until
+  a supervisor switches it on.
 
 Active time is worked out from the gaps between an agent's actions (a gap of
 more than 15 minutes ends a stretch), not from logins. Figures start the day
@@ -45,6 +50,8 @@ still record.
             'comm_agent_activity/static/src/team/team.scss',
             'comm_agent_activity/static/src/team/team.js',
             'comm_agent_activity/static/src/team/team.xml',
+            'comm_agent_activity/static/src/team/strip.js',
+            'comm_agent_activity/static/src/team/strip.xml',
         ],
     },
     'installable': True,
