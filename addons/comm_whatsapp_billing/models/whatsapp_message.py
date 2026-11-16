@@ -10,6 +10,10 @@ class WhatsappMessage(models.Model):
 
     billing_event_ids = fields.One2many(
         'comm.billing.event', 'message_id', string='Billing Events')
+    billing_feature = fields.Char(
+        index=True, copy=False,
+        help='What the message was for (e.g. job_alert), set by whoever sent '
+             'it. Copied onto the charge when Meta reports the price.')
 
     def _open_cs_window_if_incoming(self):
         FreeWindow = self.env['comm.billing.free.window']

@@ -129,6 +129,9 @@ class CommBillingEvent(models.Model):
                     vals.setdefault('source', 'contact_centre')
         if not vals.get('source'):
             vals['source'] = self._source_of_person(vals.get('partner_id'), vals.get('wa_id'))
+        # Whoever sends a message can say what it was for (e.g. a job alert).
+        if not vals.get('feature') and self.env.context.get('billing_feature'):
+            vals['feature'] = self.env.context['billing_feature']
         return vals
 
     @api.model

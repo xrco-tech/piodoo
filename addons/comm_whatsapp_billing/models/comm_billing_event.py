@@ -52,6 +52,7 @@ class CommBillingEvent(models.Model):
             'source_model': 'whatsapp.message',
             'source_id': message.id,
             'message_id': message.id,
+            'feature': message.billing_feature or False,
         })
 
     @api.model

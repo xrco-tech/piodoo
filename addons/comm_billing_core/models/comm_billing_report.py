@@ -93,6 +93,7 @@ class CommBillingReport(models.AbstractModel):
             'cv_rebuild': _('Reading CVs (AI)'),
             'occupation': _('Matching occupations (AI)'),
             'chatbot': _('Chatbot (AI)'),
+            'job_alert': _('Job alerts'),
         }.get(feature, feature)
 
     @api.model
@@ -514,11 +515,25 @@ class CommBillingReport(models.AbstractModel):
             ({'key': channel, 'label': self._channel_label(channel), 'cost': values['cost']}
              for channel, values in by_channel.items() if values['cost']),
             key=lambda c: -c['cost'])
+        utc_start, _utc_end = self._bounds(start, today)
+        self.env.cr.execute(f"""
+            SELECT e.feature, {self._cost_sql()}
+              FROM comm_billing_event e
+             WHERE e.event_date >= %(start)s AND e.event_date < %(end)s {self._source_sql()}
+               AND e.feature IS NOT NULL
+             GROUP BY e.feature
+        """, self._params(start, today))
+        features = sorted(
+            ({'key': feature, 'label': self._feature_label(feature), 'cost': cost}
+             for feature, cost in self.env.cr.fetchall() if cost),
+            key=lambda f: -f['cost'])
         return {
             'currency_id': self.env.company.currency_id.id,
             'source': source,
             'total': sum(c['cost'] for c in channels),
             'channels': channels,
+            # What it was spent on, where the sender said: job alerts, the Sidekick...
+            'features': features,
             'unpriced': sum(v['unpriced'] for v in by_channel.values()),
             'date_from': str(start),
             'date_to': str(today),

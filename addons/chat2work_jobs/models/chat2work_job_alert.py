@@ -222,13 +222,14 @@ class Chat2workCandidateJobAlert(models.Model):
                                     res.get('message_id'))
                 if res.get('success'):
                     sent_by = 'whatsapp'
+                    self._c2w_mark_job_alert(res.get('message_id'))
             if not sent_by and channel_given == 'whatsapp':
                 return False
             if res is None and not sms_fallback:
                 return None
         if not sent_by:
             text = match._c2w_sms_text()
-            ok = _send_sms(self.env, self.phone, text)
+            ok = _send_sms(self.env, self.phone, text, feature='job_alert')
             self._c2w_log_event('sms', 'outbound', text, 'sent' if ok else 'failed')
             if not ok:
                 match.sudo().write({'notify_state': 'failed'})
@@ -237,6 +238,13 @@ class Chat2workCandidateJobAlert(models.Model):
         match.sudo().write({'notify_state': 'sent', 'notified_at': fields.Datetime.now(), 'notify_channel': sent_by})
         self.sudo().job_alert_at = fields.Datetime.now()
         return True
+
+    def _c2w_mark_job_alert(self, wa_message_ref):
+        """Note on the WhatsApp message that it was a job alert, so billing can
+        say so when Meta later reports its price. Only when billing is there."""
+        Message = self.env['whatsapp.message'].sudo()
+        if wa_message_ref and 'billing_feature' in Message._fields:
+            Message.search([('message_id', '=', wa_message_ref)], limit=1).billing_feature = 'job_alert'
 
     def _c2w_job_alert_whatsapp(self, match, parts):
         """Meta's answer, or None when there's no way to send (window shut, template not approved)."""
