@@ -26,6 +26,10 @@ class CommBillingRateCard(models.Model):
         default='whatsapp')
     provider = fields.Char(index=True,
         help='Optional provider tag (e.g. "Meta", "Infobip", "Africa\'s Talking").')
+    service_code = fields.Char(string='Only for this code', index=True,
+        help='USSD: the dialled code these rates belong to, e.g. *120*1234#. '
+             'A card with a code never prices a session on another code. '
+             'Leave empty for a card that applies to any code.')
     effective_from = fields.Date(required=True, index=True)
     effective_to = fields.Date(index=True,
         help='Leave empty for the current active card.')
@@ -60,9 +64,10 @@ class CommBillingRateCard(models.Model):
                     'Rate card effective_from must be <= effective_to.')
 
     @api.model
-    def active_on(self, channel, on_date, provider=None):
+    def active_on(self, channel, on_date, provider=None, service_code=None):
         """Active card for `channel` on `on_date`. With `provider`, a card
-        tagged with that provider wins over the others."""
+        tagged with that provider wins over the others. A card kept for one
+        dialled code is used for that code only, and wins there."""
         on_date = fields.Date.to_date(on_date) if on_date else fields.Date.today()
         domain = [
             ('channel', '=', channel),
@@ -70,10 +75,16 @@ class CommBillingRateCard(models.Model):
             ('effective_from', '<=', on_date),
             '|', ('effective_to', '=', False), ('effective_to', '>=', on_date),
         ]
+        code = (service_code or '').strip()
+        scopes = ([[('service_code', '=', code)]] if code else []) + [[('service_code', 'in', [False, ''])]]
         card = self.browse()
-        if provider:
-            card = self.search(domain + [('provider', '=', provider)], order='effective_from desc', limit=1)
-        card = card or self.search(domain, order='effective_from desc', limit=1)
+        for scope in scopes:
+            if provider:
+                card = self.search(domain + scope + [('provider', '=', provider)],
+                                   order='effective_from desc', limit=1)
+            card = card or self.search(domain + scope, order='effective_from desc', limit=1)
+            if card:
+                break
         if not card:
             _logger.warning('No active %s rate card for %s', channel, on_date)
         return card
@@ -96,14 +107,17 @@ class CommBillingRateCard(models.Model):
         if direction:
             base.append(('direction', 'in', [direction, 'any', False]))
 
+        # A rate for the event's own carrier wins; with no carrier known, the
+        # rate kept for any carrier wins over one kept for a single network.
+        order = ('carrier desc nulls last, tier_from desc' if carrier
+                 else 'carrier asc nulls first, tier_from desc')
+
         # 1. Try country-specific
         if country:
             rate = Rate.search(base + [('country_id', '=', country.id)],
-                               order='carrier desc nulls last, tier_from desc',
-                               limit=1)
+                               order=order, limit=1)
             if rate:
                 return rate
         # 2. Fall back to global (country=null)
         return Rate.search(base + [('country_id', '=', False)],
-                           order='carrier desc nulls last, tier_from desc',
-                           limit=1)
+                           order=order, limit=1)

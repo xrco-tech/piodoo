@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Communication Billing Core',
-    'version': '18.0.2.4.0',
+    'version': '18.0.2.5.0',
     'category': 'Communications',
     'summary': 'Shared rate cards, FX and event ledger for all comm channels',
     'description': """

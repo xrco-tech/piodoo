@@ -28,6 +28,7 @@
                             <field name="name"/>
                             <field name="channel"/>
                             <field name="provider"/>
+                            <field name="service_code" invisible="channel != 'ussd'"/>
                             <field name="billing_model"/>
                             <field name="active"/>
                         </group>
@@ -50,6 +51,9 @@
                                     <field name="category"/>
                                     <field name="unit"/>
                                     <field name="price_usd"/>
+                                    <field name="block_seconds" optional="show"/>
+                                    <field name="price_local" optional="show"/>
+                                    <field name="local_currency_id" optional="show"/>
                                     <field name="tier_from"/>
                                     <field name="tier_to"/>
                                 </list>

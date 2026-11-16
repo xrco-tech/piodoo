@@ -36,5 +36,6 @@ class Chat2workUssdController(UssdController):
         params = self._extract_params(kwargs)
         session_id = params.get("sessionId") or params.get("session_id") or ""
         if session_id:
-            request.env["chat2work.ussd.session"].sudo().ussd_session_closed(session_id)
+            request.env["chat2work.ussd.session"].sudo().ussd_session_closed(
+                session_id, seconds=self._duration_seconds(params))
         return super().ussd_notifications(**kwargs)
