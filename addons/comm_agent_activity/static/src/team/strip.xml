@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="comm_agent_activity.Strip">
+        <div t-ref="root" class="o_caa_strip" t-att-class="{ all: all, 'd-none': !shown }" role="status" aria-label="Today's targets">
+            <t t-if="shown">
+                <b t-esc="lead"/>
+                <span t-foreach="items" t-as="item" t-key="item.key" class="o_caa_sitem">
+                    <span t-esc="item.label"/>
+                    <b t-esc="item.text"/>
+                    <span class="o_caa_strack" aria-hidden="true"><span t-att-class="item.tone" t-att-style="item.bar"/></span>
+                    <span t-if="!all" class="o_caa_smark" t-att-class="item.tone" t-esc="item.mark"/>
+                </span>
+                <button type="button" class="o_caa_slink" t-on-click="open">My activity</button>
+            </t>
+        </div>
+    </t>
+
+</templates>

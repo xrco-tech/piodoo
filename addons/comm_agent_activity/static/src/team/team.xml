@@ -5,6 +5,7 @@
         <div class="o_action o_caa" t-att-class="{ busy: state.busy }">
             <t t-if="state.view === 'team'" t-call="comm_agent_activity.Team.All"/>
             <t t-elif="state.view === 'agent'" t-call="comm_agent_activity.Team.One"/>
+            <t t-elif="state.view === 'targets'" t-call="comm_agent_activity.Team.Targets"/>
             <t t-else="" t-call="comm_agent_activity.Team.Points"/>
         </div>
     </t>
@@ -29,6 +30,7 @@
             </div>
             <t t-call="comm_agent_activity.Team.Filters"/>
             <button t-if="state.team" type="button" class="btn btn-secondary" t-on-click="download">Download</button>
+            <button type="button" class="btn btn-link" t-on-click="openTargets">Set targets</button>
             <button type="button" class="btn btn-link" t-on-click="openPoints">Set the points</button>
         </div>
 
@@ -42,6 +44,28 @@
                     <span class="o_caa_muted" t-att-class="{ bad: tile.bad }" t-esc="tile.note"/>
                 </div>
             </div>
+
+            <section t-if="team.targets.rows.length" class="o_caa_box o_caa_scroll" aria-label="Targets today">
+                <div class="o_caa_between o_caa_thead2"><h2>Targets today</h2><span class="o_caa_muted">Each agent against their own targets, whatever period is chosen above</span></div>
+                <div class="o_caa_row o_caa_thead o_caa_trow" t-att-style="targetGrid">
+                    <span>Agent</span>
+                    <span t-foreach="team.targets.columns" t-as="col" t-key="col.key" t-esc="col.label"/>
+                    <span>Reached</span>
+                </div>
+                <div t-foreach="teamTargets" t-as="row" t-key="row.user_id" class="o_caa_row o_caa_trow" t-att-style="targetGrid">
+                    <span>
+                        <button type="button" class="o_caa_agent" t-on-click="() => this.openAgent(row.user_id)">
+                            <span class="o_caa_avatar" aria-hidden="true" t-esc="row.initials"/>
+                            <span class="o_caa_who"><b t-esc="row.name"/><span t-if="row.own" class="o_caa_flag">Own targets</span></span>
+                        </button>
+                    </span>
+                    <span t-foreach="row.cells" t-as="cell" t-key="cell.key" class="o_caa_tcell">
+                        <span t-att-class="cell.tone" t-esc="cell.text"/>
+                        <span class="o_caa_track" aria-hidden="true"><span t-att-class="cell.tone" t-att-style="cell.bar"/></span>
+                    </span>
+                    <span><span class="o_caa_tpill" t-att-class="row.pill"><t t-esc="row.reached"/> of <t t-esc="row.of"/></span></span>
+                </div>
+            </section>
 
             <div t-if="!team.rows.length" class="o_caa_box o_caa_none">Nobody is set up as an agent yet.</div>
             <div t-else="" class="o_caa_box o_caa_scroll">
@@ -135,6 +159,28 @@
 
             <div class="o_caa_one">
                 <div class="o_caa_col">
+                    <t t-if="progress.has">
+                        <t t-set="pr" t-value="progress"/>
+                        <div class="o_caa_score o_caa_phead">
+                            <div><b t-esc="pr.head"/><span class="soft" t-esc="pr.hint"/></div>
+                        </div>
+                        <section t-if="pr.today.length" class="o_caa_box o_caa_panel" aria-label="Today's targets">
+                            <h2>Today</h2>
+                            <t t-foreach="pr.today" t-as="item" t-key="item.key" t-call="comm_agent_activity.Team.Target"/>
+                        </section>
+                        <section t-if="pr.week.length" class="o_caa_box o_caa_panel" aria-label="This week's targets">
+                            <h2>This week</h2>
+                            <t t-foreach="pr.week" t-as="item" t-key="item.key" t-call="comm_agent_activity.Team.Target"/>
+                        </section>
+                        <section t-if="pr.history.length" class="o_caa_box o_caa_panel" aria-label="Last working days">
+                            <h2>Last 5 working days</h2>
+                            <div class="o_caa_hist">
+                                <div t-foreach="pr.history" t-as="day" t-key="day.key"><b t-att-class="{ ok: day.full }" t-esc="day.reached"/><span class="o_caa_muted" t-esc="day.label"/></div>
+                            </div>
+                            <span class="o_caa_muted">Daily targets reached each day, out of <t t-esc="pr.today.length"/></span>
+                        </section>
+                    </t>
+
                     <div class="o_caa_score">
                         <div><span>Score</span><b t-esc="num(a.me.score)"/></div>
                         <div>
@@ -190,6 +236,97 @@
                 </div>
             </div>
         </t>
+    </t>
+
+    <!-- One target with its bar -->
+    <t t-name="comm_agent_activity.Team.Target">
+        <div class="o_caa_target">
+            <div class="o_caa_between"><span t-esc="item.label"/><b t-esc="item.text"/></div>
+            <div class="o_caa_track" aria-hidden="true"><span t-att-class="item.tone" t-att-style="item.bar"/></div>
+            <span class="o_caa_tnote" t-att-class="item.tone" t-esc="item.note"/>
+        </div>
+    </t>
+
+    <!-- Targets: for every agent, and different for one agent -->
+    <t t-name="comm_agent_activity.Team.Targets">
+        <div class="o_caa_head">
+            <button type="button" class="o_caa_back" aria-label="Back to the team" t-on-click="openTeam">
+                <i class="fa fa-chevron-left" aria-hidden="true"/>
+            </button>
+            <div class="o_caa_title">
+                <h1>Targets</h1>
+                <span class="o_caa_muted">What each agent should reach. Agents see their own progress in My activity and while they work.</span>
+            </div>
+            <button type="button" class="btn btn-secondary" t-on-click="openTeam">Cancel</button>
+            <button t-if="state.targets" type="button" class="btn btn-primary" t-att-disabled="state.busy" t-on-click="saveTargets">Save targets</button>
+        </div>
+        <div t-if="!state.targets" class="o_caa_none">Loading…</div>
+        <div t-else="" class="o_caa_tgrid">
+            <t t-set="tg" t-value="state.targets"/>
+            <div class="o_caa_col">
+                <section class="o_caa_box o_caa_scroll" aria-label="Targets for every agent">
+                    <div class="o_caa_between o_caa_thead2"><h2>For every agent</h2><span class="o_caa_muted">Switch one off to leave it without a target. Daily targets count Monday to Friday.</span></div>
+                    <div class="o_caa_srow head"><span>On</span><span>What is measured</span><span>Target</span><span>Counted</span><span>What the team does now</span></div>
+                    <div t-foreach="tg.rows" t-as="row" t-key="row.metric" class="o_caa_srow">
+                        <t t-set="words" t-value="this.targetWords(row)"/>
+                        <t t-set="edit" t-value="state.targetEdits[row.metric]"/>
+                        <input type="checkbox" class="form-check-input" t-att-aria-label="'Use a target for: ' + row.label"
+                               t-att-checked="edit.on" t-on-change="(ev) => edit.on = ev.target.checked"/>
+                        <label t-att-for="'o_caa_t_' + row.metric"><b t-esc="row.label"/><span class="o_caa_muted" t-esc="words.many"/></label>
+                        <input t-att-id="'o_caa_t_' + row.metric" type="text" inputmode="decimal" class="form-control"
+                               t-att-value="edit.value" t-att-disabled="!edit.on" t-on-input="(ev) => edit.value = ev.target.value"/>
+                        <span t-esc="words.per"/>
+                        <span class="o_caa_muted" t-esc="words.now"/>
+                    </div>
+                </section>
+
+                <section class="o_caa_box o_caa_panel" aria-label="Different for one agent">
+                    <div class="o_caa_between">
+                        <div class="o_caa_who"><h2>Different for one agent</h2><span class="o_caa_muted">For part-time agents, new starters, or someone on other duties</span></div>
+                        <button t-if="!state.person and freeAgents.length" type="button" class="btn btn-secondary" t-on-click="() => this.editPerson(null)">Add an agent</button>
+                    </div>
+                    <div t-if="!tg.people.length and !state.person" class="o_caa_muted">Everyone has the same targets.</div>
+                    <div t-foreach="tg.people" t-as="person" t-key="person.user_id" class="o_caa_person">
+                        <span class="o_caa_avatar" aria-hidden="true" t-esc="person.initials"/>
+                        <span class="o_caa_who"><b t-esc="person.name"/><span class="o_caa_muted" t-esc="person.note"/></span>
+                        <span class="o_caa_pwords" t-esc="this.personWords(person)"/>
+                        <button type="button" class="btn btn-link" t-on-click="() => this.editPerson(person)">Change</button>
+                    </div>
+                    <div t-if="state.person" class="o_caa_pedit">
+                        <t t-set="p" t-value="state.person"/>
+                        <label t-if="p.isNew">Agent
+                            <select class="form-select" t-on-change="(ev) => p.user_id = parseInt(ev.target.value)">
+                                <option t-foreach="freeAgents" t-as="agent" t-key="agent.id" t-att-value="agent.id" t-att-selected="agent.id === p.user_id" t-esc="agent.name"/>
+                            </select>
+                        </label>
+                        <b t-else="" t-esc="p.name"/>
+                        <label>Why they are different
+                            <input type="text" class="form-control" placeholder="Part time, 3 days a week" t-att-value="p.note" t-on-input="(ev) => p.note = ev.target.value"/>
+                        </label>
+                        <span class="o_caa_muted">Fill in only what is different. An empty box means the same as everyone.</span>
+                        <div class="o_caa_pfields">
+                            <label t-foreach="tg.rows" t-as="row" t-key="row.metric"><t t-esc="row.label"/>
+                                <input type="text" inputmode="decimal" class="form-control" t-att-placeholder="state.targetEdits[row.metric].on ? state.targetEdits[row.metric].value : 'No target'"
+                                       t-att-value="p.values[row.metric]" t-on-input="(ev) => p.values[row.metric] = ev.target.value"/>
+                            </label>
+                        </div>
+                        <div class="o_caa_pfoot">
+                            <button t-if="!p.isNew" type="button" class="btn btn-link text-danger" t-att-disabled="state.busy" t-on-click="removePerson">Remove their own targets</button>
+                            <span class="o_caa_muted"/>
+                            <button type="button" class="btn btn-secondary" t-on-click="() => state.person = null">Cancel</button>
+                            <button type="button" class="btn btn-primary" t-att-disabled="state.busy" t-on-click="savePerson">Save for this agent</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <section class="o_caa_box o_caa_panel" aria-label="What these targets add up to">
+                <h2>What these targets add up to</h2>
+                <span class="o_caa_muted">With <t t-esc="tg.agent_count"/> agents, 5 days a week, as last saved</span>
+                <div t-if="!tg.effects.length" class="o_caa_muted">Switch on a target for jobs, employers or queued calls to see what it does to the work waiting.</div>
+                <div t-foreach="tg.effects" t-as="effect" t-key="effect.key" class="o_caa_note o_caa_effect"><b t-esc="effect.title"/><span t-esc="effect.text"/></div>
+            </section>
+        </div>
     </t>
 
     <!-- The points each action is worth -->

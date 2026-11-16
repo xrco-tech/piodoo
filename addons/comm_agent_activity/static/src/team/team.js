@@ -6,6 +6,7 @@ import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { deserializeDateTime } from "@web/core/l10n/dates";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
+import { describeTarget } from "./strip";
 
 const REPORT = "comm.agent.activity.report";
 const BAR_HEIGHT = 110; // px
@@ -54,12 +55,15 @@ export class TeamReport extends Component {
             boot: null,
             source: "both",
             period: "week",
-            view: "team", // team | agent | points
+            view: "team", // team | agent | points | targets
             agentId: false,
             team: null,
             agent: null,
             points: null,
             edits: {},
+            targets: null,
+            targetEdits: {},
+            person: null,
             busy: false,
         });
         onWillStart(async () => {
@@ -94,6 +98,8 @@ export class TeamReport extends Component {
                 this.state.team = await this.orm.call(REPORT, "team", [source, period]);
             } else if (view === "agent") {
                 this.state.agent = await this.orm.call(REPORT, "agent", [agentId, source, period]);
+            } else if (view === "targets") {
+                this.setTargets(await this.orm.call(REPORT, "targets", [source]));
             } else {
                 this.state.points = await this.orm.call(REPORT, "points", []);
                 this.state.edits = Object.fromEntries(this.state.points.rows.map((row) => [row.action, String(row.points)]));
@@ -389,6 +395,133 @@ export class TeamReport extends Component {
                 tone: line.reversed_by || line.fast ? "bad" : "",
             };
         });
+    }
+
+    // ── Targets ─────────────────────────────────────────────────────────
+
+    describe(item) {
+        return describeTarget(item);
+    }
+
+    get teamTargets() {
+        const targets = this.state.team.targets;
+        return targets.rows.map((row) => ({
+            ...row,
+            cells: row.cells.map((cell, index) => ({
+                key: targets.columns[index].key,
+                ...(cell ? describeTarget(cell) : { text: "–", tone: "none", bar: "width: 0" }),
+            })),
+            pill: row.reached === row.of ? "ok" : row.reached * 2 < row.of ? "low" : "",
+        }));
+    }
+
+    get targetGrid() {
+        const n = this.state.team.targets.columns.length;
+        return `grid-template-columns: minmax(190px, 1.6fr) repeat(${n}, minmax(110px, 1fr)) 96px; min-width: ${290 + n * 120}px`;
+    }
+
+    get progress() {
+        const p = this.state.agent.progress;
+        const withWords = (item) => ({ key: item.metric, label: item.label, ...describeTarget(item) });
+        const todo = p.today.filter((item) => !item.reached).map((item) => item.label.toLowerCase());
+        return {
+            has: p.today.length + p.week.length > 0,
+            head: p.of ? _t("%(n)s of %(of)s targets reached today", { n: p.reached, of: p.of }) : _t("This week's targets"),
+            hint: !p.of ? "" : todo.length ? _t("Still to reach: %s", todo.join(", ")) : _t("Everything for today is reached"),
+            today: p.today.map(withWords),
+            week: p.week.map(withWords),
+            history: p.history.map((day, index) => ({ key: index, ...day, full: day.of && day.reached === day.of })),
+        };
+    }
+
+    openTargets() {
+        this.state.view = "targets";
+        this.state.targets = null;
+        this.state.person = null;
+        return this.load();
+    }
+
+    setTargets(data) {
+        this.state.targets = data;
+        this.state.targetEdits = Object.fromEntries(
+            data.rows.map((row) => [row.metric, { on: row.on, value: String(row.value) }])
+        );
+        this.state.person = null;
+    }
+
+    /** "At least this many", "each working day", and what the team does now, for one row. */
+    targetWords(row) {
+        const many = row.unit === "minutes" ? _t("No longer than this, in minutes")
+            : row.unit === "percent" ? _t("At least this share, in percent")
+            : row.unit === "points" ? _t("At least this many points")
+            : row.kind === "max" ? _t("No more than this many") : _t("At least this many");
+        const per = row.unit === "minutes" ? _t("median over the day")
+            : row.unit === "percent" ? _t("over the day")
+            : row.period === "week" ? _t("each week") : _t("each working day");
+        let now = _t("Nothing to go on yet");
+        if (row.now !== false) {
+            now = row.unit === "minutes" ? _t("Median %s min", row.now)
+                : row.unit === "percent" ? _t("Average %s%", row.now)
+                : row.period === "week" ? _t("Average %s a week", num(row.now)) : _t("Average %s a day", num(row.now));
+        }
+        return { many, per, now };
+    }
+
+    /** "Jobs checked 12 · Score 300" for an agent with their own targets. */
+    personWords(person) {
+        const labels = Object.fromEntries(this.state.targets.rows.map((row) => [row.metric, row.label]));
+        return Object.entries(person.values).map(([metric, value]) => `${labels[metric] || metric} ${value}`).join(" · ");
+    }
+
+    get freeAgents() {
+        const taken = new Set(this.state.targets.people.map((person) => person.user_id));
+        return this.state.targets.agents.filter((agent) => !taken.has(agent.id));
+    }
+
+    editPerson(person) {
+        const values = Object.fromEntries(this.state.targets.rows.map((row) => [row.metric, ""]));
+        if (person) {
+            for (const [metric, value] of Object.entries(person.values)) {
+                values[metric] = String(value);
+            }
+        }
+        this.state.person = {
+            isNew: !person,
+            user_id: person ? person.user_id : this.freeAgents[0]?.id || false,
+            name: person ? person.name : "",
+            note: person ? person.note : "",
+            values,
+        };
+    }
+
+    async saveTargets() {
+        await this.busy(async () => {
+            this.setTargets(await this.orm.call(REPORT, "targets_save", [{ ...this.state.targetEdits }]));
+            this.notification.add(_t("Targets saved. Agents see them straight away."), { type: "success" });
+        });
+    }
+
+    async savePerson() {
+        const { user_id, note, values } = this.state.person;
+        await this.busy(async () => {
+            this.setTargets(await this.orm.call(REPORT, "target_person_save", [user_id, note, { ...values }]));
+        });
+    }
+
+    async removePerson() {
+        const userId = this.state.person.user_id;
+        await this.busy(async () => {
+            this.setTargets(await this.orm.call(REPORT, "target_person_remove", [userId]));
+        });
+    }
+
+    async busy(work) {
+        this.state.busy = true;
+        try {
+            await work();
+        } finally {
+            this.state.busy = false;
+        }
     }
 
     // ── The points ──────────────────────────────────────────────────────

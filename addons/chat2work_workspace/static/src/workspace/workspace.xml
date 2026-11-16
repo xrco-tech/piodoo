@@ -20,6 +20,9 @@
     <t t-name="chat2work_workspace.Workspace">
         <div class="o_action o_c2w_ws" t-att-data-pane="state.detail ? state.pane : 'list'">
 
+            <!-- Today's targets (comm_agent_activity): nothing shows until a supervisor sets some. -->
+            <AgentTargetStrip source="'chat2work'" action="'chat2work_workspace.action_chat2work_team'"/>
+
             <!-- Rail -->
             <nav class="o_c2w_rail" aria-label="Workspace sections">
                 <button t-foreach="rail" t-as="item" t-key="item.id" type="button"

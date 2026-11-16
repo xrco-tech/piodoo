@@ -8,6 +8,7 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
+import { AgentTargetStrip } from "@comm_agent_activity/team/strip";
 import { markdownToHtml } from "./markdown";
 
 const WS = "chat2work.workspace";
@@ -114,6 +115,7 @@ const FOLLOW_UPS = [
 
 export class Chat2workWorkspace extends Component {
     static template = "chat2work_workspace.Workspace";
+    static components = { AgentTargetStrip };
     static props = { ...standardActionServiceProps };
 
     setup() {

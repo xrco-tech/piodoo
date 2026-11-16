@@ -15,6 +15,7 @@ import { ContactCentreTemplates } from "./templates";
 import { ContactCentreAiOps } from "./ai_ops";
 import { ContactCentreQueue } from "./queue";
 import { ContactCentreTeam } from "./team";
+import { AgentTargetStrip } from "@comm_agent_activity/team/strip";
 import { when, dialWhatsApp, dialVoip } from "./util";
 
 const { DateTime } = luxon;
@@ -27,7 +28,7 @@ const CHANNEL = { whatsapp: "WhatsApp", sms: "SMS", voice: _t("Call"), email: _t
 /** The Contact Centre inbox as a workspace: rail, list card, thread, information card. */
 export class ContactCentreWorkspace extends Component {
     static template = "contact_centre_workspace.Workspace";
-    static components = { Chatter, ContactCentreCalls, ContactCentreContacts, ContactCentreCampaigns, ContactCentreTemplates, ContactCentreAiOps, ContactCentreQueue, ContactCentreTeam };
+    static components = { Chatter, ContactCentreCalls, ContactCentreContacts, ContactCentreCampaigns, ContactCentreTemplates, ContactCentreAiOps, ContactCentreQueue, ContactCentreTeam, AgentTargetStrip };
     static props = { ...standardActionServiceProps };
 
     setup() {

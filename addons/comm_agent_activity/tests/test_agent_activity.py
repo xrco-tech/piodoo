@@ -122,3 +122,81 @@ class TestAgentActivity(TransactionCase):
             team = self.Report.with_user(self.lead).team('chat2work', period)
             self.assertTrue(team['label'])
             self.assertEqual(team['tiles']['actions'], 0, "40 days ago is in none of them")
+
+    # ── Targets ──────────────────────────────────────────────────────────────
+    def _targets(self, **values):
+        return self.Report.with_user(self.lead).targets_save(
+            {key: {'on': True, 'value': value} for key, value in values.items()})
+
+    def test_targets_are_off_until_set(self):
+        self._line(self.thandi, 'job_check')
+        mine = self.Report.with_user(self.thandi).progress()
+        self.assertEqual((mine['today'], mine['week'], mine['of']), ([], [], 0))
+        screen = self.Report.with_user(self.lead).targets()
+        self.assertFalse(any(row['on'] for row in screen['rows']))
+        self.assertEqual({row['metric']: row['value'] for row in screen['rows']}['job_check'], 20, "a suggestion only")
+        self.assertEqual(self.Report.with_user(self.lead).team('chat2work', 'today')['targets']['rows'], [])
+
+    def test_targets_only_supervisors(self):
+        for attempt in (self.Report.with_user(self.thandi).targets,
+                        lambda: self.Report.with_user(self.thandi).targets_save({'job_check': {'on': True, 'value': 1}}),
+                        lambda: self.Report.with_user(self.thandi).target_person_save(self.sipho.id, '', {'job_check': 1}),
+                        lambda: self.Report.with_user(self.thandi).target_person_remove(self.sipho.id),
+                        lambda: self.Report.with_user(self.thandi).progress('both', self.sipho.id)):
+            with self.assertRaises(AccessError):
+                attempt()
+        with self.assertRaises(UserError):
+            self._targets(job_check='many')
+
+    def test_progress(self):
+        self._targets(job_check=3, employer_check=1, wait=10, noted=80, reversed=1, score=100)
+        self._line(self.thandi, 'job_check', 30, has_note=True)
+        self._line(self.thandi, 'job_check', 25)
+        self._line(self.thandi, 'employer_check', 20)
+        self._line(self.thandi, 'reply', 10, wait_seconds=240)
+        mine = self.Report.with_user(self.thandi).progress('chat2work', False, True)
+        today = {item['metric']: item for item in mine['today']}
+        self.assertEqual(list(today), ['job_check', 'employer_check', 'wait', 'noted'])
+        self.assertEqual((today['job_check']['value'], today['job_check']['reached'], today['job_check']['pct']), (2, False, 67))
+        self.assertTrue(today['employer_check']['reached'])
+        self.assertEqual((today['wait']['value'], today['wait']['reached']), (4.0, True))
+        self.assertEqual((today['noted']['value'], today['noted']['reached'], today['noted']['missing']), (50, False, 1))
+        self.assertEqual((mine['reached'], mine['of']), (2, 4))
+        week = {item['metric']: item for item in mine['week']}
+        self.assertEqual((week['reversed']['value'], week['reversed']['reached']), (0, True))
+        self.assertEqual(week['score']['value'], 2 * 2 + 5 + 1)
+        self.assertIn('on_pace', week['score'])
+        self.assertEqual(len(mine['history']), 5)
+        self.assertEqual(mine['history'][-1]['reached'], 2)
+        # Someone who did nothing: limits hold, the rest is still to do.
+        idle = self.Report.with_user(self.sipho).progress('chat2work')
+        self.assertEqual([item['reached'] for item in idle['today']], [False, False, True, False])
+        self.assertIsNone(idle['today'][2]['value'])
+        self.assertIn('progress', self.Report.with_user(self.thandi).agent(False, 'chat2work', 'today'))
+
+    def test_own_targets(self):
+        self._targets(job_check=3, employer_check=2)
+        with self.assertRaises(UserError):
+            self.Report.with_user(self.lead).target_person_save(self.sipho.id, 'Part time', {'job_check': ''})
+        screen = self.Report.with_user(self.lead).target_person_save(
+            self.sipho.id, 'Part time', {'job_check': '1', 'employer_check': '', 'noted': 90})
+        self.assertEqual(screen['people'], [{'user_id': self.sipho.id, 'name': 'Sipho Khumalo', 'initials': 'SK',
+                                             'note': 'Part time', 'values': {'job_check': 1.0, 'noted': 90.0}}])
+        self._line(self.sipho, 'job_check', has_note=True)
+        self._line(self.thandi, 'job_check')
+        sipho = {item['metric']: item for item in self.Report.with_user(self.sipho).progress()['today']}
+        self.assertEqual((sipho['job_check']['target'], sipho['job_check']['reached']), (1.0, True))
+        self.assertEqual(sipho['employer_check']['target'], 2.0, "left empty: the same as everyone")
+        self.assertTrue(sipho['noted']['reached'], "their own target, though nobody else has one for notes")
+        board = self.Report.with_user(self.lead).team('chat2work', 'today')['targets']
+        self.assertEqual([col['key'] for col in board['columns']], ['job_check', 'employer_check', 'noted'])
+        rows = {row['name']: row for row in board['rows']}
+        self.assertEqual((rows['Sipho Khumalo']['own'], rows['Sipho Khumalo']['reached'], rows['Sipho Khumalo']['of']), (True, 2, 3))
+        self.assertEqual((rows['Thandi Mokoena']['own'], rows['Thandi Mokoena']['of']), (False, 2))
+        self.assertFalse(rows['Thandi Mokoena']['cells'][2], "no target for notes for her")
+        self.assertEqual(self.Report.with_user(self.lead).target_person_remove(self.sipho.id)['people'], [])
+
+    def test_reply_target_follows_the_wait_target(self):
+        self.assertEqual(self.Report.with_user(self.lead).team('chat2work', 'today')['tiles']['target_seconds'], 600)
+        self._targets(wait=5)
+        self.assertEqual(self.Report.with_user(self.lead).team('chat2work', 'today')['tiles']['target_seconds'], 300)
