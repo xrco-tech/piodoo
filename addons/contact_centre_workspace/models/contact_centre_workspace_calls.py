@@ -195,6 +195,8 @@ class ContactCentreWorkspace(models.AbstractModel):
             {'label': _("To"), 'value': call.to_number or ''},
             {'label': _("Started"), 'value': fields.Datetime.to_string(call[at]) if call[at] else '', 'time': True},
             {'label': _("Ended"), 'value': fields.Datetime.to_string(end) if end else '', 'time': True},
+            # Empty (and so not drawn) unless this user may see billing.
+            {'label': _("Cost"), 'value': self._call_cost(line, call) or ''},
         ]
         row.update({
             'recordings': recordings,

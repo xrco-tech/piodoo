@@ -66,6 +66,19 @@
                         </div>
                     </div>
 
+                    <div t-if="campaign.cost" class="o_ccw_card o_ccw_csec">
+                        <div class="o_ccw_shead">
+                            <h5>Replies and cost</h5>
+                            <span class="o_ccw_muted">Only people with billing access see this</span>
+                        </div>
+                        <div class="o_ccw_stats">
+                            <div t-foreach="campaign.cost.stats" t-as="stat" t-key="stat.label" class="o_ccw_card">
+                                <b t-esc="stat.value"/><span t-esc="stat.label"/>
+                            </div>
+                        </div>
+                        <span class="o_ccw_muted">Replied counts contacts who wrote back within <t t-esc="campaign.cost.reply_days"/> days of their campaign message. <t t-esc="campaign.cost.note"/></span>
+                    </div>
+
                     <div t-if="campaign.progress" class="o_ccw_card o_ccw_csec">
                         <div class="o_ccw_shead">
                             <h5>Sending</h5>

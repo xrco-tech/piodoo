@@ -163,6 +163,8 @@ class ContactCentreWorkspace(models.AbstractModel):
                 {'label': _("Batches"), 'value': _("%(size)s at a time, %(delay)s s apart", size=campaign.batch_size, delay='%g' % (campaign.batch_delay or 0))
                  if campaign.batch_send else _("All at once")},
             ] if outbound else [],
+            # Replies and what it cost: only for people who may see billing.
+            'cost': self._campaign_cost(campaign) if outbound else False,
             'can_manage': can_manage,
             'actions': list(ALLOWED.get(row['state'], ())) if can_manage else [],
         })
