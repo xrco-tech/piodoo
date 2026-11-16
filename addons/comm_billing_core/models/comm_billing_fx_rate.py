@@ -66,10 +66,45 @@ class CommBillingFxRate(models.Model):
                           order='date desc', limit=1)
         if row:
             return row.rate
-        # 3. Any past rate as last resort
-        row = self.search([
-            ('currency_id', '=', currency.id),
-            ('date', '<=', on_date),
-        ] + ([('provider', '=', provider)] if provider else []),
-            order='date desc', limit=1)
-        return row.rate if row else 0.0
+        # 3. Last resort: carry the most recent earlier rate forward, the
+        #    provider's own first, then the house-wide one.
+        past = [('currency_id', '=', currency.id), ('date', '<=', on_date)]
+        for scope in ([provider] if provider else []) + [False]:
+            row = self.search(past + [('provider', '=', scope)], order='date desc', limit=1)
+            if row:
+                return row.rate
+        return 0.0
+
+    # ---- Keep recorded charges in step with the rates ----
+    def _affected_events(self):
+        """Charges whose conversion may depend on these rates: everything
+        from the earliest month touched, for the provider (or for everyone,
+        when a house-wide rate changed, since it is other providers' fallback
+        and the last resort for later months)."""
+        if not self:
+            return self.env['comm.billing.event']
+        domain = [('event_date', '>=', fields.Datetime.to_datetime(
+            min(self.mapped('date')).replace(day=1)))]
+        providers = self.mapped('provider')
+        if all(providers):
+            domain.append(('provider', 'in', providers))
+        return self.env['comm.billing.event'].sudo().search(domain)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._affected_events()._reconvert()
+        return records
+
+    def write(self, vals):
+        before = self._affected_events()
+        res = super().write(vals)
+        (before | self._affected_events())._reconvert()
+        return res
+
+    def unlink(self):
+        events = self._affected_events()
+        res = super().unlink()
+        events._reconvert()
+        return res
+

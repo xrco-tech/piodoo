@@ -7,6 +7,8 @@ modules (comm_whatsapp_billing, comm_sms_billing, etc.) create rows via
 via inherits.
 """
 import logging
+from datetime import timedelta
+
 import phonenumbers
 from odoo import models, fields, api
 
@@ -15,6 +17,9 @@ from .comm_billing_rate import (CATEGORY_SELECTION, UNIT_SELECTION,
                                  DIRECTION_SELECTION)
 
 _logger = logging.getLogger(__name__)
+
+# An Odoo currency rate older than this is not used to convert a charge.
+ODOO_RATE_MAX_AGE_DAYS = 62
 
 
 class CommBillingEvent(models.Model):
@@ -214,15 +219,42 @@ class CommBillingEvent(models.Model):
         if USD:
             try:
                 as_date = fields.Date.to_date(event_date) if event_date else fields.Date.today()
-                fx = USD._convert(1.0, currency, company, as_date, round=False)
-                if fx and fx != 1.0:
-                    return fx, currency
+                # Odoo ships a sample rate dated 2010 for most currencies. Only
+                # trust its rate when someone has kept it reasonably current.
+                recent = self.env['res.currency.rate'].sudo().search_count([
+                    ('currency_id', '=', currency.id),
+                    ('company_id', 'in', [company.id, False]),
+                    ('name', '<=', as_date),
+                    ('name', '>=', as_date - timedelta(days=ODOO_RATE_MAX_AGE_DAYS)),
+                ], limit=1)
+                if recent:
+                    fx = USD._convert(1.0, currency, company, as_date, round=False)
+                    if fx and fx != 1.0:
+                        return fx, currency
             except Exception as e:
                 _logger.debug('_convert failed: %s', e)
 
         _logger.warning('No FX USD->%s for %s (provider=%s). Storing in USD.',
                         currency.name, event_date, provider or '?')
         return 1.0, USD or currency
+
+    def _reconvert(self):
+        """Convert these charges again from their dollar price, at the rate
+        that applies now. Used when a month's rate is entered or corrected.
+        Returns how many charges changed."""
+        changed = 0
+        for event in self:
+            fx, currency = self._resolve_fx(event.provider, event.event_date)
+            vals = {
+                'fx_rate': fx if event.price_usd else 1.0,
+                'price_local': event.price_usd * fx,
+                'currency_id': currency.id if currency else False,
+            }
+            if (abs(event.price_local - vals['price_local']) > 1e-6
+                    or event.currency_id.id != vals['currency_id']):
+                event.write(vals)
+                changed += 1
+        return changed
 
     # ---- Core pricing engine ----
     @api.model
