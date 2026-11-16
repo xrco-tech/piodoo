@@ -179,13 +179,14 @@ class TestChat2workDashboard(TransactionCase):
             self.assertTrue(row['who'])
 
     def test_menus(self):
-        """The app has Workspace, Dashboard and Configuration; every other screen is under Configuration."""
+        """The app has Workspace, Dashboard, Team and Configuration; every other screen is under Configuration."""
         ref = self.env.ref
         Menu = self.env['ir.ui.menu'].with_context(**{'ir.ui.menu.full_list': True})
         root = ref('chat2work.menu_chat2work_root')
         config = ref('chat2work.menu_chat2work_config')
         top = Menu.search([('parent_id', '=', root.id)]).sorted('sequence')
-        self.assertEqual(top.mapped('name'), ['Workspace', 'Dashboard', 'Configuration'])
+        self.assertEqual(top.mapped('name'), ['Workspace', 'Dashboard', 'Team', 'Configuration'])
+        self.assertEqual(ref('chat2work_workspace.menu_chat2work_team').action.tag, 'comm_agent_activity.team')
         self.assertEqual(ref('chat2work_workspace.menu_chat2work_dashboard').action.tag, 'chat2work_dashboard')
         for xmlid in ('chat2work.menu_chat2work_candidates', 'chat2work.menu_chat2work_bookings',
                       'chat2work.menu_chat2work_ussd_sessions', 'chat2work.menu_chat2work_ussd_simulator',

@@ -17,6 +17,15 @@
     <menuitem id="menu_chat2work_dashboard" name="Dashboard" parent="chat2work.menu_chat2work_root"
               action="action_chat2work_dashboard" sequence="2"/>
 
+    <!-- The Team report (comm_agent_activity), opened on Chat2Work's figures. -->
+    <record id="action_chat2work_team" model="ir.actions.client">
+        <field name="name">Team</field>
+        <field name="tag">comm_agent_activity.team</field>
+        <field name="params" eval="{'source': 'chat2work'}"/>
+    </record>
+    <menuitem id="menu_chat2work_team" name="Team" parent="chat2work.menu_chat2work_root"
+              action="action_chat2work_team" sequence="3"/>
+
     <!-- The how-to notes the sidekick answers from. -->
     <record id="view_chat2work_agent_note_list" model="ir.ui.view">
         <field name="name">chat2work.agent.note.list</field>

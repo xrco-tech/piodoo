@@ -167,15 +167,16 @@ class TestContactCentreWorkspaceDashboard(TransactionCase):
         self.assertEqual([h['hour'] for h in data['hours']], list(range(6, 20)))
 
     def test_menus(self):
-        """The app has Workspace, Dashboard and Configuration; the rest is under Configuration."""
+        """The app has Workspace, Dashboard, Team and Configuration; the rest is under Configuration."""
         ref = self.env.ref
         root = ref('contact_centre.menu_contact_centre_main')
         config = ref('contact_centre.menu_contact_centre_config')
         # Every menu, not only the ones this test's user may see (Workspace is for agents).
         top = self.env['ir.ui.menu'].with_context(**{'ir.ui.menu.full_list': True}).search([('parent_id', '=', root.id)])
-        expected = ref('contact_centre_workspace.menu_contact_centre_workspace') | ref('contact_centre.menu_contact_centre_overview') | config
+        expected = ref('contact_centre_workspace.menu_contact_centre_workspace') | ref('contact_centre.menu_contact_centre_overview') \
+            | ref('contact_centre_workspace.menu_contact_centre_team') | config
         self.assertEqual(top, expected)
-        self.assertEqual(top.sorted('sequence').mapped('name'), ['Workspace', 'Dashboard', 'Configuration'])
+        self.assertEqual(top.sorted('sequence').mapped('name'), ['Workspace', 'Dashboard', 'Team', 'Configuration'])
         for xmlid in ('contact_centre.menu_contact_centre_contacts', 'contact_centre.menu_contact_centre_messages',
                       'contact_centre.menu_contact_centre_campaigns', 'contact_centre.menu_contact_centre_chatbots',
                       'contact_centre_inbox.menu_contact_centre_inbox', 'contact_centre_ai_ops.menu_contact_centre_ai_ops'):

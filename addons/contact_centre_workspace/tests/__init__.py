@@ -8,3 +8,4 @@ from . import test_contact_centre_workspace_costs
 from . import test_contact_centre_workspace_ai_ops
 from . import test_contact_centre_workspace_dashboard
 from . import test_contact_centre_workspace_queue
+from . import test_contact_centre_workspace_activity

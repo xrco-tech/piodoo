@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work Workspace',
-    'version': '18.0.2.5.0',
+    'version': '18.0.2.6.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'One screen for agents: conversations, candidates, job listings, bookings and an AI sidekick',
     'description': """
@@ -32,8 +32,9 @@ sections, a list, the selected record and an information card.
 The Dashboard menu shows what needs an agent now (replies, callbacks, jobs to
 check, ID checks, numbers that are not candidates) and how things stand:
 candidates by stage, new candidates per day, CVs, reply times, ID checks, jobs
-and the next bookings. The app's menus are Workspace, Dashboard and
-Configuration; every other screen is under Configuration.
+and the next bookings. The Team menu is the Team report (comm_agent_activity):
+what each agent did, how fast and how well. The app's menus are Workspace,
+Dashboard, Team and Configuration; every other screen is under Configuration.
 
 Uses the existing Chat2Work models and actions. Its own data is each agent's
 sidekick chats (with what the sidekick looked at) and the agent notes.
@@ -41,7 +42,8 @@ sidekick chats (with what the sidekick looked at) and the agent notes.
     'author': 'XR Co.',
     'website': 'https://github.com/xrco-tech/piodoo',
     'license': 'LGPL-3',
-    'depends': ['chat2work', 'chat2work_contact', 'chat2work_jobs', 'chat2work_verify', 'chat2work_ucx'],
+    'depends': ['chat2work', 'chat2work_contact', 'chat2work_jobs', 'chat2work_verify', 'chat2work_ucx',
+                'comm_agent_activity'],
     'data': [
         'security/ir.model.access.csv',
         'security/chat2work_workspace_security.xml',

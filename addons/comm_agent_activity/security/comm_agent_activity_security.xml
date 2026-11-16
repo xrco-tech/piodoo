@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_supervisor" model="res.groups">
+        <field name="name">Team report: see every agent</field>
+        <field name="category_id" ref="base.module_category_administration"/>
+        <field name="comment">Sees every agent's activity in the Team report and sets the points. Others see only their own figures beside the team average.</field>
+    </record>
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('comm_agent_activity.group_supervisor'))]"/>
+    </record>
+</odoo>

@@ -9,3 +9,4 @@ from . import contact_centre_workspace_dashboard
 from . import contact_centre_queue
 from . import contact_centre_workspace_queue
 from . import contact_centre_workspace_costs
+from . import contact_centre_workspace_activity

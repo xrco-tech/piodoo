@@ -6,3 +6,4 @@ from . import chat2work_sidekick
 from . import chat2work_alerts
 from . import chat2work_dashboard
 from . import chat2work_employers
+from . import chat2work_activity

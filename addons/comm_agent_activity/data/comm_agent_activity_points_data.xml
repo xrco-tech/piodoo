@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="points_employer_check" model="comm.agent.activity.points"><field name="action">employer_check</field><field name="points">5</field></record>
+    <record id="points_employer_join" model="comm.agent.activity.points"><field name="action">employer_join</field><field name="points">2</field></record>
+    <record id="points_job_check" model="comm.agent.activity.points"><field name="action">job_check</field><field name="points">2</field></record>
+    <record id="points_call" model="comm.agent.activity.points"><field name="action">call</field><field name="points">2</field></record>
+    <record id="points_reply" model="comm.agent.activity.points"><field name="action">reply</field><field name="points">1</field></record>
+    <record id="points_close" model="comm.agent.activity.points"><field name="action">close</field><field name="points">1</field></record>
+    <record id="points_queue_call" model="comm.agent.activity.points"><field name="action">queue_call</field><field name="points">1</field></record>
+    <record id="points_match" model="comm.agent.activity.points"><field name="action">match</field><field name="points">0.5</field></record>
+    <record id="points_outreach" model="comm.agent.activity.points"><field name="action">outreach</field><field name="points">0</field></record>
+    <record id="points_reversed" model="comm.agent.activity.points"><field name="action">reversed</field><field name="points">-10</field></record>
+</odoo>
