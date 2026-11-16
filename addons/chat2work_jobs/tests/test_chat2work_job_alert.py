@@ -53,6 +53,8 @@ class TestChat2workJobAlert(JobCommsCase):
         self.assertEqual((sent, failed, waiting), (2, 0, 0))
         self.assertEqual(self.sms_alert.call_count, 2)
         self.assertEqual(set((self.match | self.match2).mapped('notify_channel')), {'sms'})
+        # Each SMS says it is a job alert, so billing can put that on the charge.
+        self.assertEqual({call.kwargs.get('feature') for call in self.sms_alert.call_args_list}, {'job_alert'})
         self.match2.notify_state = 'none'
         self.assertFalse(self.Match._c2w_top_jobs(3), 'nothing more within 24 hours')
 

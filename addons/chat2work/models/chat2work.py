@@ -7,14 +7,15 @@ from odoo import _, api, fields, models
 _logger = logging.getLogger(__name__)
 
 
-def _send_sms(env, number, body):
+def _send_sms(env, number, body, feature=None):
     """Best-effort SMS via core sms.sms. Never raises — a failed/unconfigured
     SMS gateway must not break the booking/callback it confirms. True only when
     the gateway took it: a refusal (e.g. out of credit) leaves the SMS in error."""
     if not number:
         return False
     try:
-        sms = env['sms.sms'].sudo().create({
+        # `feature` says what the SMS is for; billing records it with the charge.
+        sms = env['sms.sms'].sudo().with_context(billing_feature=feature).create({
             'number': number, 'body': body, 'state': 'outgoing',
         })
         sms._send()

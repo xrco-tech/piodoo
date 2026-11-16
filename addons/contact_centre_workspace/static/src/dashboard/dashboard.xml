@@ -37,6 +37,9 @@
                         <div><b t-esc="money(data.cost.total)"/><span>Total</span></div>
                         <div t-foreach="data.cost.channels" t-as="channel" t-key="channel.key"><b t-esc="money(channel.cost)"/><span t-esc="channel.label"/></div>
                     </div>
+                    <div t-if="data.cost.features.length" class="o_ccw_dfacts">
+                        <span t-foreach="data.cost.features" t-as="feature" t-key="feature.key"><b t-esc="money(feature.cost)"/> <t t-esc="feature.label"/></span>
+                    </div>
                     <span class="o_ccw_muted">Messages, calls and AI charged for Contact Centre contacts and features. Only people with billing access see this.
                         <t t-if="data.cost.unpriced"><t t-esc="data.cost.unpriced"/> charges have no rate yet and count as zero.</t></span>
                 </section>
