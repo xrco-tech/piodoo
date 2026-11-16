@@ -110,3 +110,44 @@ class TestBillingReports(TransactionCase):
         lines = statement['sections'][0]['lines']
         self.assertEqual([line['free'] for line in lines], [False, True])
         self.assertEqual(self.Report.statement('not-a-month')['month'], statement['month'])
+
+    def test_source_filter_and_grouping(self):
+        self._event(self.first, 100.0, source='chat2work')
+        self._event(self.first, 30.0, source='contact_centre')
+        self._event(self.first, 5.0)
+        self.assertAlmostEqual(self.Report.overview('month')['spent'], 135.0)
+        only = self.Report.overview('month', source='chat2work')
+        self.assertAlmostEqual(only['spent'], 100.0)
+        self.assertEqual(only['source'], 'chat2work')
+        self.assertIsNone(only['budget'])
+        self.assertAlmostEqual(self.Report.overview('month', source='other')['spent'], 5.0)
+        self.assertAlmostEqual(self.Report.overview('month', source='bogus')['spent'], 135.0)
+        rows = {r['label']: r['cost'] for r in self.Report.overview('month', group_by='source')['rows']}
+        self.assertAlmostEqual(rows['Chat2Work'], 100.0)
+        self.assertAlmostEqual(rows['Contact Centre'], 30.0)
+        self.assertAlmostEqual(rows['Not attributed'], 5.0)
+        found = self.Event.search(only['domain'])
+        self.assertEqual(found.mapped('source'), ['chat2work'])
+
+    def test_unknown_person_is_not_attributed(self):
+        event = self._event(self.first, 1.0, wa_id='27000000001')
+        self.assertEqual(event.source, 'other')
+
+    def test_llm_usage_is_recorded(self):
+        before = self.Event.search_count([])
+        events = self.Event._log_llm_usage(
+            'claude-haiku-4-5-20251001',
+            {'input_tokens': 1500, 'output_tokens': 300, 'cache_read_input_tokens': 0},
+            source='chat2work', feature='sidekick')
+        self.assertEqual(len(events), 2, 'one row per kind of token that was used')
+        self.assertEqual(self.Event.search_count([]), before + 2)
+        self.assertEqual(set(events.mapped('category')), {'llm_input', 'llm_output'})
+        self.assertEqual(set(events.mapped('carrier')), {'claude-haiku-4-5'})
+        self.assertEqual(set(events.mapped('source')), {'chat2work'})
+        self.assertAlmostEqual(events.filtered(lambda e: e.category == 'llm_input').unit_qty, 1.5)
+        # A second call is a second charge, and bad input never raises.
+        self.assertEqual(len(self.Event._log_llm_usage('m', {'input_tokens': 10}, feature='sidekick')), 1)
+        self.assertFalse(self.Event._log_llm_usage('m', None))
+        self.assertFalse(self.Event._log_llm_usage('m', {'input_tokens': 'lots'}))
+        rows = self.Report.overview('month', group_by='source')['rows']
+        self.assertIn('Chat2Work: Sidekick (AI)', [r['label'] for r in rows])

@@ -24,7 +24,9 @@ GROUPS = {
     'account': ['e.channel', 'e.account_ref'],
     'country': ['e.country_id'],
     'contact': ['e.partner_id'],
+    'source': ['e.source', 'e.feature'],
 }
+SOURCES = ('chat2work', 'contact_centre', 'other')
 ROW_LIMIT = 200
 
 
@@ -81,6 +83,17 @@ class CommBillingReport(models.AbstractModel):
             'llm_cache_read': _('Reading again from memory (cache)'),
             'llm_cache_write': _('Saving to memory (cache)'),
         }.get(category, category or _('Other'))
+
+    @api.model
+    def _feature_label(self, feature):
+        return {
+            'sidekick': _('Sidekick (AI)'),
+            'ai_ops': _('Sidekick (AI)'),
+            'copilot': _('Copilot (AI)'),
+            'cv_rebuild': _('Reading CVs (AI)'),
+            'occupation': _('Matching occupations (AI)'),
+            'chatbot': _('Chatbot (AI)'),
+        }.get(feature, feature)
 
     @api.model
     def _unit_label(self, unit):
@@ -162,11 +175,33 @@ class CommBillingReport(models.AbstractModel):
         return ('COALESCE(SUM(e.price_local) FILTER '
                 '(WHERE e.currency_id = %(cur)s), 0)')
 
+    def _source(self):
+        source = self.env.context.get('billing_source')
+        return source if source in SOURCES else None
+
+    def _source_sql(self):
+        """Limits a query to one source when the screen asked for one. Charges
+        recorded before sources existed are NULL and count as 'other'."""
+        return "AND COALESCE(e.source, 'other') = %(src)s" if self._source() else ''
+
+    def _source_domain(self):
+        source = self._source()
+        if not source:
+            return []
+        return [('source', 'in', [False, 'other'])] if source == 'other' else [('source', '=', source)]
+
+    @api.model
+    def _source_label(self, source):
+        return {
+            'chat2work': _('Chat2Work'),
+            'contact_centre': _('Contact Centre'),
+        }.get(source, _('Not attributed'))
+
     def _params(self, start, end, **extra):
         # Every query here is raw SQL: make sure pending ORM writes are in the table.
         self.env['comm.billing.event'].flush_model()
         utc_start, utc_end = self._bounds(start, end)
-        return dict(start=utc_start, end=utc_end,
+        return dict(start=utc_start, end=utc_end, src=self._source(),
                     cur=self.env.company.currency_id.id, **extra)
 
     def _by_channel(self, start, end):
@@ -178,7 +213,7 @@ class CommBillingReport(models.AbstractModel):
                    COUNT(*) FILTER (WHERE e.rate_id IS NULL AND NOT COALESCE(e.is_free, FALSE)),
                    COUNT(*) FILTER (WHERE e.price_usd > 0 AND e.currency_id IS DISTINCT FROM %(cur)s)
               FROM comm_billing_event e
-             WHERE e.event_date >= %(start)s AND e.event_date < %(end)s
+             WHERE e.event_date >= %(start)s AND e.event_date < %(end)s {self._source_sql()}
              GROUP BY e.channel
         """, self._params(start, end))
         return {
@@ -193,7 +228,7 @@ class CommBillingReport(models.AbstractModel):
             SELECT (e.event_date AT TIME ZONE 'UTC' AT TIME ZONE %(tz)s)::date AS day,
                    {self._cost_sql()}
               FROM comm_billing_event e
-             WHERE e.event_date >= %(start)s AND e.event_date < %(end)s
+             WHERE e.event_date >= %(start)s AND e.event_date < %(end)s {self._source_sql()}
              GROUP BY day
         """, self._params(start, end, tz=self._tz().zone))
         return dict(self.env.cr.fetchall())
@@ -208,7 +243,7 @@ class CommBillingReport(models.AbstractModel):
                    {self._cost_sql()},
                    MIN(e.unit), COUNT(DISTINCT e.unit), COUNT(*)
               FROM comm_billing_event e
-             WHERE e.event_date >= %(start)s AND e.event_date < %(end)s
+             WHERE e.event_date >= %(start)s AND e.event_date < %(end)s {self._source_sql()}
              GROUP BY {keys}
              ORDER BY {len(exprs) + 3} DESC, {len(exprs) + 1} DESC
              LIMIT {ROW_LIMIT}
@@ -258,8 +293,10 @@ class CommBillingReport(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def overview(self, period='month', date_from=None, date_to=None,
-                 group_by='category'):
+                 group_by='category', source=None):
         self.env['comm.billing.event'].check_access('read')
+        self = self.with_context(billing_source=source if source in SOURCES else None)
+        source = self._source()
         if group_by not in GROUPS:
             group_by = 'category'
         period, start, end, p_start, p_end = self._period(period, date_from, date_to)
@@ -273,7 +310,8 @@ class CommBillingReport(models.AbstractModel):
 
         budget = self.env['comm.billing.budget']._for_company()
         state = None
-        if period in ('month', 'last_month'):
+        # The budget is for everything together, so it only shows unfiltered.
+        if period in ('month', 'last_month') and not source:
             state = self._budget_state(budget, month=start)
         limits = state['limits'] if state else {}
 
@@ -345,7 +383,9 @@ class CommBillingReport(models.AbstractModel):
             'days': self._days(start, end, today),
             'domain': [('event_date', '>=', fields.Datetime.to_string(self._utc(start))),
                        ('event_date', '<', fields.Datetime.to_string(
-                           self._utc(end + timedelta(days=1))))],
+                           self._utc(end + timedelta(days=1))))] + self._source_domain(),
+            'source': source or '',
+            'sources': [{'key': key, 'label': self._source_label(key)} for key in SOURCES],
             'group_by': group_by,
             'rows': self._table_rows(start, end, group_by, spent),
         }
@@ -385,7 +425,8 @@ class CommBillingReport(models.AbstractModel):
                 ('event_date', '>=', fields.Datetime.to_string(
                     self._utc(fields.Date.to_date(bar.pop('from'))))),
                 ('event_date', '<', fields.Datetime.to_string(
-                    self._utc(fields.Date.to_date(bar.pop('to')) + timedelta(days=1))))]
+                    self._utc(fields.Date.to_date(bar.pop('to')) + timedelta(days=1))))
+            ] + self._source_domain()
             bar['height'] = round(bar['cost'] / top * 100) if top else 0
             bar['peak'] = bool(top) and bar['cost'] == top
         return {
@@ -397,7 +438,7 @@ class CommBillingReport(models.AbstractModel):
     def _table_rows(self, start, end, group_by, spent):
         utc_start, utc_end = self._bounds(start, end)
         base = [('event_date', '>=', fields.Datetime.to_string(utc_start)),
-                ('event_date', '<', fields.Datetime.to_string(utc_end))]
+                ('event_date', '<', fields.Datetime.to_string(utc_end))] + self._source_domain()
         fetched = self._rows(start, end, group_by)
         names = {}
         if group_by == 'country':
@@ -423,6 +464,12 @@ class CommBillingReport(models.AbstractModel):
                 channel = keys[0]
                 label = keys[1] or _('Not recorded')
                 domain = [('channel', '=', channel), ('account_ref', '=', keys[1] or False)]
+            elif group_by == 'source':
+                label = self._source_label(keys[0])
+                if keys[1]:
+                    label = '%s: %s' % (label, self._feature_label(keys[1]))
+                domain = [('source', 'in', [False, 'other']) if keys[0] in (None, 'other')
+                          else ('source', '=', keys[0]), ('feature', '=', keys[1] or False)]
             elif group_by == 'country':
                 label = names.get(keys[0]) or _('Unknown country')
                 domain = [('country_id', '=', keys[0] or False)]

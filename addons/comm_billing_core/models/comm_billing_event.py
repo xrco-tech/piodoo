@@ -52,6 +52,16 @@ class CommBillingEvent(models.Model):
     source_model = fields.Char(index=True, readonly=True)
     source_id = fields.Integer(index=True, readonly=True)
     campaign_id = fields.Char(index=True)
+    source = fields.Selection(
+        selection=[('chat2work', 'Chat2Work'),
+                   ('contact_centre', 'Contact Centre'),
+                   ('other', 'Not attributed')],
+        string='Caused by', index=True,
+        help='Which part of the business the charge belongs to. Worked out '
+             'when the charge is recorded: the feature that made it says so, '
+             'or else the person on the other end decides it.')
+    feature = fields.Char(index=True,
+        help='The feature that caused an AI charge, e.g. sidekick or copilot.')
 
     display_name = fields.Char(compute='_compute_display_name', store=True)
 
@@ -66,6 +76,97 @@ class CommBillingEvent(models.Model):
             rec.display_name = (f'{rec.event_date} [{rec.channel}] '
                                 f'{rec.category} {rec.unit_qty:.2f}{rec.unit or ""} '
                                 f'${rec.price_usd:.4f}')
+
+    # ---- Who caused the charge ----
+    @api.model
+    def _source_of_person(self, partner_id, number):
+        """Chat2Work when the person is one of its candidates, Contact Centre
+        when they are one of its contacts, otherwise 'other'. A person who is
+        both counts as Chat2Work: every WhatsApp sender is mirrored into the
+        Contact Centre, so being a contact there says less.
+
+        Neither app is a dependency of billing, hence the registry checks."""
+        digits = ''.join(ch for ch in str(number or '') if ch.isdigit())
+        numbers = [digits, '+' + digits] if digits else []
+        lookups = (
+            ('chat2work', 'chat2work.candidate', 'phone'),
+            ('contact_centre', 'contact.centre.contact', 'phone_number'),
+        )
+        for source, model, phone_field in lookups:
+            if model not in self.env:
+                continue
+            domain = []
+            if partner_id:
+                domain.append(('partner_id', '=', partner_id))
+            if numbers:
+                domain.append((phone_field, 'in', numbers))
+            if not domain:
+                continue
+            if len(domain) == 2:
+                domain = ['|'] + domain
+            if self.env[model].sudo().search_count(domain, limit=1):
+                return source
+        return 'other'
+
+    @api.model
+    def _attribute(self, vals):
+        """Fill `source` (and the campaign, when one sent the message)."""
+        if (vals.get('source_model') == 'whatsapp.message' and vals.get('source_id')
+                and 'contact.centre.message' in self.env
+                and 'whatsapp.message' in self.env):
+            message = self.env['whatsapp.message'].sudo().browse(vals['source_id']).exists()
+            if message and message.message_id:
+                sent = self.env['contact.centre.message'].sudo().search([
+                    ('provider_message_id', '=', message.message_id),
+                    ('campaign_id', '!=', False)], limit=1)
+                if sent:
+                    vals.setdefault('campaign_id', sent.campaign_id.display_name)
+                    vals.setdefault('source', 'contact_centre')
+        if not vals.get('source'):
+            vals['source'] = self._source_of_person(vals.get('partner_id'), vals.get('wa_id'))
+        return vals
+
+    @api.model
+    def _backfill_source(self):
+        """Attribute the charges recorded before `source` existed."""
+        for event in self.sudo().search([('source', '=', False)]):
+            vals = self._attribute({
+                'source_model': event.source_model, 'source_id': event.source_id,
+                'partner_id': event.partner_id.id, 'wa_id': event.wa_id,
+                **({'campaign_id': event.campaign_id} if event.campaign_id else {}),
+            })
+            event.write({'source': vals['source'],
+                         'campaign_id': vals.get('campaign_id') or False})
+
+    # ---- AI usage ----
+    @api.model
+    def _log_llm_usage(self, model, usage, source=False, feature=False, partner=None):
+        """Record what one call to the AI cost, from the `usage` block of its
+        answer. Never raises: a billing problem must not break the feature."""
+        try:
+            usage = usage or {}
+            # Rates are keyed on the model family: drop a dated suffix (-20251001).
+            parts = (model or '').rsplit('-', 1)
+            carrier = parts[0] if len(parts) == 2 and len(parts[1]) == 8 and parts[1].isdigit() else model
+            buckets = (
+                ('llm_input', usage.get('input_tokens')),
+                ('llm_output', usage.get('output_tokens')),
+                ('llm_cache_read', usage.get('cache_read_input_tokens')),
+                ('llm_cache_write', usage.get('cache_creation_input_tokens')),
+            )
+            vals_list = [{
+                'channel': 'other', 'provider': 'Anthropic', 'carrier': carrier,
+                'category': category, 'unit': 'kilotoken', 'unit_qty': tokens / 1000.0,
+                'source': source or 'other', 'feature': feature or False,
+                'partner_id': partner.id if partner else False,
+            } for category, tokens in buckets if tokens]
+            if not vals_list:
+                return self.browse()
+            with self.env.cr.savepoint():
+                return self.sudo().create(vals_list)
+        except Exception:
+            _logger.exception('Could not record AI usage for %s/%s', source, feature)
+            return self.browse()
 
     # ---- MSISDN → country ----
     @api.model
@@ -199,5 +300,6 @@ class CommBillingEvent(models.Model):
                 country = self._country_from_wa_id(vals['wa_id'])
                 if country:
                     vals['country_id'] = country.id
+            self._attribute(vals)
             self._price(vals)
         return super().create(vals_list)

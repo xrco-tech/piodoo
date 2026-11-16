@@ -718,6 +718,9 @@ class ContactCentreAiChat(models.Model):
             if response.status_code != 200:
                 return None
             data = response.json()
+            Event = self.env.get('comm.billing.event')
+            if Event is not None:
+                Event._log_llm_usage(ANTHROPIC_MODEL, data.get('usage'), source='contact_centre', feature='ai_ops')
             text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
             suggestions = json.loads(text.strip())
         except Exception as e:
@@ -760,6 +763,9 @@ class ContactCentreAiChat(models.Model):
                 return "Sorry, the AI request failed."
 
             data = response.json()
+            Event = self.env.get('comm.billing.event')
+            if Event is not None:
+                Event._log_llm_usage(ANTHROPIC_MODEL, data.get('usage'), source='contact_centre', feature='ai_ops')
             content = data.get("content", [])
             tool_use_blocks = [b for b in content if b.get("type") == "tool_use"]
 

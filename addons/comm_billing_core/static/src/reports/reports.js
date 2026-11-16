@@ -25,6 +25,7 @@ export class CommBillingReports extends Component {
             dateTo: "",
             pickingDates: false,
             groupBy: "category",
+            source: "",
             data: null,
             statement: null,
             loading: true,
@@ -47,13 +48,14 @@ export class CommBillingReports extends Component {
     }
 
     load() {
-        const { period, dateFrom, dateTo, groupBy } = this.state;
+        const { period, dateFrom, dateTo, groupBy, source } = this.state;
         return this.run(async () => {
             this.state.data = await this.orm.call(REPORT, "overview", [], {
                 period,
                 date_from: dateFrom || false,
                 date_to: dateTo || false,
                 group_by: groupBy,
+                source: source || false,
             });
         });
     }
@@ -76,6 +78,7 @@ export class CommBillingReports extends Component {
     get groups() {
         return [
             { key: "category", label: _t("Type of charge") },
+            { key: "source", label: _t("Caused by") },
             { key: "campaign", label: _t("Campaign") },
             { key: "account", label: _t("Our number") },
             { key: "country", label: _t("Country") },
@@ -106,6 +109,13 @@ export class CommBillingReports extends Component {
     applyDates() {
         if (this.state.dateFrom && this.state.dateTo) {
             this.state.period = "custom";
+            this.load();
+        }
+    }
+
+    setSource(source) {
+        if (source !== this.state.source) {
+            this.state.source = source;
             this.load();
         }
     }
