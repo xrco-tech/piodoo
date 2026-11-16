@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="comm_billing_core.Reports">
+        <div class="o_cbr o_action h-100 overflow-auto">
+            <div class="o_cbr_page">
+                <div t-if="state.error" class="alert alert-danger mb-0" role="alert" t-esc="state.error"/>
+                <t t-if="state.view === 'overview' and state.data" t-call="comm_billing_core.Reports.Overview"/>
+                <t t-if="state.view === 'statement' and state.statement" t-call="comm_billing_core.Reports.Statement"/>
+                <div t-if="state.loading and !state.data" class="text-muted">Loading…</div>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="comm_billing_core.Reports.Overview">
+        <t t-set="d" t-value="state.data"/>
+        <div class="o_cbr_head">
+            <div class="o_cbr_title">
+                <h1>Spend overview</h1>
+                <span class="text-muted"><t t-esc="d.span"/> · all channels</span>
+            </div>
+            <div class="o_cbr_pills" role="group" aria-label="Period">
+                <button t-foreach="periods" t-as="p" t-key="p.key" type="button"
+                        class="o_cbr_pill" t-att-class="{ o_cbr_on: d.period === p.key and !state.pickingDates }"
+                        t-att-aria-pressed="d.period === p.key ? 'true' : 'false'"
+                        t-on-click="() => this.setPeriod(p.key)" t-esc="p.label"/>
+                <button type="button" class="o_cbr_pill"
+                        t-att-class="{ o_cbr_on: d.period === 'custom' or state.pickingDates }"
+                        t-att-aria-expanded="state.pickingDates ? 'true' : 'false'"
+                        t-on-click="toggleDates">Pick dates…</button>
+            </div>
+            <button type="button" class="btn btn-primary" t-on-click="showStatement">
+                <i class="fa fa-file-text-o me-1"/> Monthly statement
+            </button>
+        </div>
+
+        <div t-if="state.pickingDates" class="o_cbr_card o_cbr_dates">
+            <label>From <input type="date" class="form-control" t-model="state.dateFrom"/></label>
+            <label>To <input type="date" class="form-control" t-model="state.dateTo"/></label>
+            <button type="button" class="btn btn-secondary" t-on-click="applyDates"
+                    t-att-disabled="!state.dateFrom or !state.dateTo">Show</button>
+        </div>
+
+        <section t-if="d.budget" class="o_cbr_card o_cbr_budget" aria-label="Budget">
+            <div class="o_cbr_stack">
+                <span class="text-muted"><t t-esc="d.budget.month_label"/> budget</span>
+                <b class="o_cbr_mid" t-esc="round(d.budget.amount)"/>
+            </div>
+            <div class="o_cbr_budget_bar">
+                <div class="o_cbr_between">
+                    <span><b t-esc="round(d.budget.spent) + ' spent'"/> <span class="text-muted"><t t-esc="d.budget.pct"/>% of the budget</span></span>
+                    <span t-if="d.budget.left &gt;= 0"><b t-esc="round(d.budget.left) + ' left'"/>
+                        <span t-if="d.budget.current" class="text-muted"> for <t t-esc="d.budget.days_left"/> more days</span></span>
+                    <span t-else=""><b class="text-danger" t-esc="round(-d.budget.left) + ' over'"/></span>
+                </div>
+                <div class="o_cbr_track" role="img"
+                     t-attf-aria-label="{{ d.budget.pct }}% of the budget is spent; {{ d.budget.today_pct }}% of the month has gone.">
+                    <span class="o_cbr_fill" t-att-class="{ o_cbr_fill_over: d.budget.pct &gt; 100 }" t-attf-style="width: {{ d.budget.bar }}%"/>
+                    <span t-if="d.budget.current" class="o_cbr_today" t-attf-style="left: {{ d.budget.today_pct }}%"/>
+                </div>
+                <div t-if="d.budget.current" class="o_cbr_between text-muted o_cbr_small">
+                    <span>The line marks today: <t t-esc="d.budget.today_pct"/>% of the month gone.</span>
+                    <span t-if="d.budget.per_day">To stay inside: about <t t-esc="round(d.budget.per_day)"/> a day</span>
+                </div>
+            </div>
+            <div class="o_cbr_stack">
+                <b class="o_cbr_verdict" t-att-class="{ o_cbr_verdict_over: budgetVerdict.over }" t-esc="budgetVerdict.text"/>
+                <a t-if="d.can_configure" href="#" t-on-click.prevent="openBudget">Change budget and warnings</a>
+            </div>
+        </section>
+        <div t-elif="!d.has_budget and d.can_configure" class="o_cbr_card o_cbr_between">
+            <span>No monthly budget is set, so there is nothing to measure this spend against.</span>
+            <a href="#" t-on-click.prevent="openBudget">Set a budget</a>
+        </div>
+
+        <div class="o_cbr_tiles">
+            <div class="o_cbr_card o_cbr_tile">
+                <span class="text-muted">Spent<t t-if="d.period === 'month'"> so far</t></span>
+                <b class="o_cbr_big" t-esc="round(d.spent)"/>
+                <span t-att-class="d.change_pct &gt; 0 ? 'text-danger' : d.change_pct &lt; 0 ? 'text-success' : 'text-muted'" t-esc="changeText"/>
+            </div>
+            <div t-if="d.forecast !== null" class="o_cbr_card o_cbr_tile">
+                <span class="text-muted">Likely by month end</span>
+                <b class="o_cbr_big" t-esc="round(d.forecast)"/>
+                <span class="text-muted">If the rest of the month goes like the days so far</span>
+            </div>
+            <div class="o_cbr_card o_cbr_tile">
+                <span class="text-muted">Sent for free</span>
+                <b class="o_cbr_big text-success" t-esc="qty(d.free_qty)"/>
+                <span class="text-muted">Messages inside WhatsApp's free windows</span>
+            </div>
+            <button t-if="d.unpriced or d.unconverted" type="button" class="o_cbr_card o_cbr_tile o_cbr_warn" t-on-click="openUnpriced">
+                <span>Needs a look</span>
+                <b class="o_cbr_big"><t t-esc="d.unpriced"/> not priced</b>
+                <span>No rate matched them, so they count as zero.
+                    <t t-if="d.unconverted"><t t-esc="d.unconverted"/> more could not be converted and are left out.</t></span>
+            </button>
+        </div>
+
+        <div class="o_cbr_two">
+            <section class="o_cbr_card o_cbr_stack o_cbr_gap" aria-label="Spend by channel">
+                <div class="o_cbr_between">
+                    <h2>Where the money went</h2>
+                    <span class="text-muted o_cbr_small">Choose a channel to see its charges</span>
+                </div>
+                <p t-if="!d.channels.length" class="text-muted mb-0">Nothing was charged in this period.</p>
+                <button t-foreach="d.channels" t-as="ch" t-key="ch.key" type="button" class="o_cbr_channel" t-on-click="() => this.openChannel(ch)">
+                    <span class="o_cbr_between">
+                        <span><span class="o_cbr_dot" t-att-data-channel="ch.key"/> <b t-esc="ch.label"/> <span class="text-muted o_cbr_small" t-esc="ch.hint"/></span>
+                        <span class="text-nowrap"><b t-esc="money(ch.cost)"/> <span class="text-muted o_cbr_small"><t t-esc="ch.share"/>%</span></span>
+                    </span>
+                    <span class="o_cbr_track o_cbr_thin"><span class="o_cbr_fill" t-att-data-channel="ch.key" t-attf-style="width: {{ ch.bar }}%"/></span>
+                    <span class="o_cbr_small" t-att-class="channelNoteClass(ch)" t-esc="channelNote(ch)"/>
+                </button>
+            </section>
+
+            <section class="o_cbr_card o_cbr_stack o_cbr_gap" aria-label="Spend over time">
+                <div class="o_cbr_between">
+                    <h2>Spend per <t t-if="d.days.weekly">week</t><t t-else="">day</t></h2>
+                    <span class="text-muted o_cbr_small">Average <t t-esc="round(d.days.average)"/></span>
+                </div>
+                <div class="o_cbr_chart">
+                    <button t-foreach="d.days.bars" t-as="bar" t-key="bar.key" type="button" class="o_cbr_col"
+                            t-att-title="bar.label + ': ' + money(bar.cost)"
+                            t-attf-aria-label="{{ bar.label }}: {{ money(bar.cost) }}"
+                            t-on-click="() => this.openDay(bar)">
+                        <span class="o_cbr_bar" t-att-class="{ o_cbr_peak: bar.peak }" t-attf-style="height: {{ bar.height }}%"/>
+                    </button>
+                </div>
+                <div class="o_cbr_axis text-muted">
+                    <span t-foreach="d.days.bars" t-as="bar" t-key="bar.key" t-esc="bar.short"/>
+                </div>
+                <p t-if="peak" class="o_cbr_note mb-0">Highest: <b t-esc="peak.label + ', ' + money(peak.cost)"/></p>
+            </section>
+        </div>
+
+        <section class="o_cbr_card o_cbr_stack o_cbr_gap" aria-label="What we paid for">
+            <div class="o_cbr_between o_cbr_wrap">
+                <h2>What we paid for</h2>
+                <div class="o_cbr_pills" role="group" aria-label="Group by">
+                    <span class="text-muted o_cbr_small align-self-center">Group by</span>
+                    <button t-foreach="groups" t-as="g" t-key="g.key" type="button" class="o_cbr_pill o_cbr_pill_sm"
+                            t-att-class="{ o_cbr_on: d.group_by === g.key }"
+                            t-att-aria-pressed="d.group_by === g.key ? 'true' : 'false'"
+                            t-on-click="() => this.setGroup(g.key)" t-esc="g.label"/>
+                </div>
+            </div>
+            <div class="o_cbr_scroll">
+                <table class="o_cbr_table">
+                    <thead>
+                        <tr>
+                            <th scope="col" t-esc="groupLabel"/>
+                            <th scope="col" class="text-end">How many</th>
+                            <th scope="col" class="text-end">Of which free</th>
+                            <th scope="col" class="text-end">Paid each</th>
+                            <th scope="col" class="text-end">Cost</th>
+                            <th scope="col" class="o_cbr_sharecol">Share of spend</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="d.rows" t-as="row" t-key="row.key" tabindex="0" role="button"
+                            t-on-click="() => this.openRow(row)" t-on-keydown="(ev) => ev.key === 'Enter' and this.openRow(row)">
+                            <td><span t-if="row.channel" class="o_cbr_tag" t-att-data-channel="row.channel" t-esc="row.channel_label"/> <b t-esc="row.label"/></td>
+                            <td class="text-end text-nowrap"><t t-esc="qty(row.qty)"/> <span class="text-muted" t-esc="row.unit"/></td>
+                            <td class="text-end text-nowrap text-success"><t t-if="row.free" t-esc="qty(row.free)"/></td>
+                            <td class="text-end text-nowrap text-muted"><t t-if="row.rate" t-esc="rate(row.rate)"/></td>
+                            <td class="text-end text-nowrap"><b t-esc="money(row.cost)"/></td>
+                            <td><span class="o_cbr_share"><span class="o_cbr_track o_cbr_thin"><span class="o_cbr_fill" t-att-data-channel="row.channel or 'none'" t-attf-style="width: {{ row.bar }}%"/></span><span class="text-muted o_cbr_small"><t t-esc="row.share"/>%</span></span></td>
+                        </tr>
+                        <tr t-if="!d.rows.length"><td colspan="6" class="text-muted">Nothing was charged in this period.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p t-if="d.group_by === 'campaign'" class="text-muted o_cbr_small mb-0">A charge shows under a campaign only when the message or call that caused it recorded which campaign it belonged to.</p>
+        </section>
+    </t>
+
+    <t t-name="comm_billing_core.Reports.Statement">
+        <t t-set="s" t-value="state.statement"/>
+        <div class="o_cbr_head">
+            <div class="o_cbr_title">
+                <a href="#" t-on-click.prevent="showOverview"><i class="fa fa-chevron-left me-1"/>Spend overview</a>
+                <h1>Monthly statement</h1>
+            </div>
+            <label class="o_cbr_month">Month <input type="month" class="form-control" t-att-value="s.month" t-on-change="setMonth"/></label>
+            <button type="button" class="btn btn-primary" t-on-click="downloadStatement">
+                <i class="fa fa-download me-1"/> Download PDF
+            </button>
+        </div>
+
+        <div class="o_cbr_sheet o_cbr_card">
+            <div class="o_cbr_sheet_head">
+                <span class="o_cbr_eyebrow">Communications statement</span>
+                <h2 class="o_cbr_sheet_title" t-esc="s.month_label"/>
+                <span class="text-muted"><t t-esc="s.span"/> · amounts before VAT<t t-if="!s.closed"> · month still running</t></span>
+            </div>
+
+            <div class="o_cbr_tiles">
+                <div class="o_cbr_tile o_cbr_total">
+                    <span>Total for the month</span>
+                    <b class="o_cbr_big" t-esc="money(s.total)"/>
+                </div>
+                <div class="o_cbr_tile o_cbr_outline">
+                    <span class="text-muted" t-esc="s.prev_label"/>
+                    <b class="o_cbr_mid" t-esc="money(s.prev)"/>
+                </div>
+                <div t-if="s.budget" class="o_cbr_tile o_cbr_outline">
+                    <span class="text-muted">Monthly budget</span>
+                    <b class="o_cbr_mid" t-esc="money(s.budget)"/>
+                    <span t-if="s.closed" t-att-class="s.total &gt; s.budget ? 'text-danger' : 'text-success'">
+                        <t t-if="s.total &gt; s.budget"><t t-esc="money(s.total - s.budget)"/> over</t>
+                        <t t-else=""><t t-esc="money(s.budget - s.total)"/> under</t>
+                    </span>
+                </div>
+                <div class="o_cbr_tile o_cbr_outline">
+                    <span class="text-muted">Sent for free</span>
+                    <b class="o_cbr_mid text-success" t-esc="qty(s.free_qty)"/>
+                    <span class="text-muted">messages</span>
+                </div>
+            </div>
+
+            <p t-if="!s.sections.length" class="text-muted mb-0">Nothing was charged in this month.</p>
+            <div t-foreach="s.sections" t-as="section" t-key="section.key" class="o_cbr_scroll">
+                <table class="o_cbr_table o_cbr_lines">
+                    <thead>
+                        <tr>
+                            <th scope="col"><b class="o_cbr_section" t-esc="section.label"/> <span t-esc="section.provider"/></th>
+                            <th scope="col" class="text-end">How many</th>
+                            <th scope="col" class="text-end">Paid each</th>
+                            <th scope="col" class="text-end"><b class="o_cbr_section" t-esc="money(section.total)"/></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="section.lines" t-as="line" t-key="line_index">
+                            <td t-esc="line.label"/>
+                            <td class="text-end text-nowrap"><t t-esc="qty(line.qty)"/> <span class="text-muted" t-esc="line.unit"/></td>
+                            <td class="text-end text-nowrap text-muted"><t t-if="line.free">Free</t><t t-elif="line.rate" t-esc="rate(line.rate)"/></td>
+                            <td class="text-end text-nowrap" t-esc="money(line.cost)"/>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="o_cbr_check">
+                <div class="o_cbr_between o_cbr_wrap">
+                    <h2>Checked against the providers' invoices</h2>
+                    <a t-if="s.can_configure" href="#" t-on-click.prevent="openInvoices">Enter an invoice</a>
+                </div>
+                <div class="o_cbr_scroll">
+                    <table class="o_cbr_table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Provider</th>
+                                <th scope="col" class="text-end">Our records</th>
+                                <th scope="col" class="text-end">Their invoice</th>
+                                <th scope="col" class="text-end">Difference</th>
+                                <th scope="col">Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="s.checks" t-as="check" t-key="check.provider">
+                                <td t-esc="check.provider"/>
+                                <td class="text-end text-nowrap" t-esc="money(check.ours)"/>
+                                <td class="text-end text-nowrap"><t t-if="check.theirs !== null" t-esc="money(check.theirs)"/><span t-else="" class="text-muted">Not entered</span></td>
+                                <td class="text-end text-nowrap"><t t-if="check.diff !== null"><t t-esc="money(check.diff)"/> (<t t-esc="check.pct"/>%)</t></td>
+                                <td><b t-att-class="checkClass(check)" t-esc="checkLabel(check)"/></td>
+                            </tr>
+                            <tr t-if="!s.checks.length"><td colspan="5" class="text-muted">Nothing to check for this month.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <p class="text-muted o_cbr_small mb-0">
+                <t t-if="s.fx.length">Charges made in US dollars were converted at <t t-foreach="s.fx" t-as="fx" t-key="fx.provider"><t t-esc="fx.provider"/> 1 USD = <t t-esc="fx.rates.join(', ')"/> <t t-esc="s.currency"/><t t-if="!fx_last">; </t><t t-else="">. </t></t></t>
+                <t t-if="s.unpriced"><a href="#" t-on-click.prevent="openUnpriced"><t t-esc="s.unpriced"/> charges had no matching rate</a> and count as zero. </t>
+                <t t-if="s.unconverted"><t t-esc="s.unconverted"/> charges could not be converted and are not in these totals.</t>
+            </p>
+        </div>
+    </t>
+
+</templates>

@@ -9,7 +9,9 @@ class TestFx(common.TransactionCase):
 
     def setUp(self):
         super().setUp()
-        self.ZAR = self.env['res.currency'].search([('name', '=', 'ZAR')], limit=1)
+        # ZAR is inactive on a database with no South African company yet.
+        self.ZAR = self.env['res.currency'].with_context(active_test=False).search(
+            [('name', '=', 'ZAR')], limit=1)
 
     def test_provider_specific_wins(self):
         self.env['comm.billing.fx.rate'].create({
