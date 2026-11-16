@@ -617,6 +617,41 @@ class Chat2workUssdSession(models.Model):
     def ussd_session_closed(self, session_id):
         self.sudo().search([('session_id', '=', session_id)]).unlink()
 
+    def _bill(self):
+        """Put each session in the billing ledger as it closes: the gateway
+        charges for a session however it ended. Billing is not a dependency,
+        simulator sessions cost nothing, and a billing problem never stops a
+        session from closing."""
+        Event = self.env.get('comm.billing.event')
+        if Event is None or self.env.context.get('chat2work_ussd_simulation'):
+            return
+        Account = self.env['comm.ussd.account'].sudo()
+        providers = dict(Account._fields['provider'].selection)
+        for session in self:
+            try:
+                account = Account.find_for_service_code(session.service_code or '')
+                with self.env.cr.savepoint():
+                    Event.sudo().create({
+                        'channel': 'ussd',
+                        'provider': providers.get(account.provider) if account else False,
+                        'account_ref': account.name if account else session.service_code,
+                        'wa_id': session.msisdn,
+                        'partner_id': session.candidate_id.partner_id.id or False,
+                        'category': 'ussd_session',
+                        'unit': 'session',
+                        'unit_qty': 1.0,
+                        'source': 'chat2work',
+                        'feature': 'ussd',
+                        'source_model': self._name,
+                        'source_id': session.id,
+                    })
+            except Exception:
+                _logger.exception("chat2work: couldn't bill USSD session %s", session.id)
+
+    def unlink(self):
+        self._bill()
+        return super().unlink()
+
     @api.model
     def _gc_stale_sessions(self):
         """Gateways cap sessions at ~1-3 min; drop anything abandoned."""
