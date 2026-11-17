@@ -13,7 +13,7 @@
         <!-- Keep short: S02 must stay under 160 chars with the "Invalid choice" prefix. -->
         <record id="param_ussd_terms_url" model="ir.config_parameter">
             <field name="key">chat2work.ussd_terms_url</field>
-            <field name="value">xrco.tech/c2w-terms</field>
+            <field name="value">chat2work.co.za/terms</field>
         </record>
     </data>
     <record id="ir_cron_chat2work_ussd_gc" model="ir.cron">
