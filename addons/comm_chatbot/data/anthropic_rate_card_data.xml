@@ -124,5 +124,42 @@
             <field name="price_usd">0.001</field>
         </record>
 
+        <!-- =============== Claude Haiku 5.5 ===============
+             $0.10 / $0.50 per million tokens for prompts of 100K tokens or
+             fewer (longer prompts cost $0.50 / $2.50 and are not modelled
+             here). Cache read 0.1x input, 5-minute cache write 1.25x. -->
+
+        <record id="rate_anthropic_haiku_5_5_input" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-haiku-5-5</field>
+            <field name="category">llm_input</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.0001</field>
+        </record>
+
+        <record id="rate_anthropic_haiku_5_5_output" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-haiku-5-5</field>
+            <field name="category">llm_output</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.0005</field>
+        </record>
+
+        <record id="rate_anthropic_haiku_5_5_cache_read" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-haiku-5-5</field>
+            <field name="category">llm_cache_read</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.00001</field>
+        </record>
+
+        <record id="rate_anthropic_haiku_5_5_cache_write" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-haiku-5-5</field>
+            <field name="category">llm_cache_write</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.000125</field>
+        </record>
+
     </data>
 </odoo>
