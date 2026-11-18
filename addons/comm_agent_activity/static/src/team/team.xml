@@ -10,13 +10,16 @@
         </div>
     </t>
 
-    <t t-name="comm_agent_activity.Team.Filters">
-        <div t-if="sources.length" class="o_caa_seg" role="group" aria-label="Workspace">
-            <button t-foreach="sources" t-as="s" t-key="s.key" type="button" t-att-class="{ on: state.source === s.key }"
+    <!-- The same pills as the spend reports: workspace under the title, period beside it. -->
+    <t t-name="comm_agent_activity.Team.Sources">
+        <div t-if="sources.length" class="o_caa_chips o_caa_chips_sm" role="group" aria-label="Workspace">
+            <button t-foreach="sources" t-as="s" t-key="s.key" type="button" class="o_caa_chip o_caa_chip_sm" t-att-class="{ on: state.source === s.key }"
                     t-att-aria-pressed="state.source === s.key ? 'true' : 'false'" t-on-click="() => this.setSource(s.key)" t-esc="s.label"/>
         </div>
-        <div class="o_caa_seg" role="group" aria-label="Period">
-            <button t-foreach="periods" t-as="p" t-key="p.key" type="button" t-att-class="{ on: state.period === p.key }"
+    </t>
+    <t t-name="comm_agent_activity.Team.Periods">
+        <div class="o_caa_chips" role="group" aria-label="Period">
+            <button t-foreach="periods" t-as="p" t-key="p.key" type="button" class="o_caa_chip" t-att-class="{ on: state.period === p.key }"
                     t-att-aria-pressed="state.period === p.key ? 'true' : 'false'" t-on-click="() => this.setPeriod(p.key)" t-esc="p.label"/>
         </div>
     </t>
@@ -27,11 +30,21 @@
             <div class="o_caa_title">
                 <h1>Team</h1>
                 <span class="o_caa_muted">What each agent did, how fast, and how well.<t t-if="state.team"> <t t-esc="state.team.label"/>.</t></span>
+                <t t-call="comm_agent_activity.Team.Sources"/>
             </div>
-            <t t-call="comm_agent_activity.Team.Filters"/>
-            <button t-if="state.team" type="button" class="btn btn-secondary" t-on-click="download">Download</button>
-            <button type="button" class="btn btn-link" t-on-click="openTargets">Set targets</button>
-            <button type="button" class="btn btn-link" t-on-click="openPoints">Set the points</button>
+            <t t-call="comm_agent_activity.Team.Periods"/>
+            <button t-if="state.team" type="button" class="btn btn-primary" t-on-click="download">
+                <i class="fa fa-download me-1" aria-hidden="true"/> Download
+            </button>
+        </div>
+        <div class="o_caa_box o_caa_setline">
+            <span class="o_caa_muted">
+                <t t-if="state.team" t-esc="targetsNote"/> Points decide the score.
+            </span>
+            <span class="o_caa_setlinks">
+                <button type="button" class="btn btn-link" t-on-click="openTargets">Set targets</button>
+                <button type="button" class="btn btn-link" t-on-click="openPoints">Set the points</button>
+            </span>
         </div>
 
         <div t-if="!state.team" class="o_caa_none">Loading…</div>
@@ -153,8 +166,9 @@
                     <h1 t-if="a.own and !a.supervisor">My activity</h1>
                     <h1 t-else="" t-esc="a.me.name"/>
                     <span class="o_caa_muted"><t t-if="a.own and !a.supervisor"><t t-esc="a.me.name"/> · </t><t t-esc="a.label"/></span>
+                    <t t-call="comm_agent_activity.Team.Sources"/>
                 </div>
-                <t t-call="comm_agent_activity.Team.Filters"/>
+                <t t-call="comm_agent_activity.Team.Periods"/>
             </div>
 
             <div class="o_caa_one">
