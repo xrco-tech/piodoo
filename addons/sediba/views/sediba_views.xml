@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Findings ─────────────────────────────────────────────────────── -->
+
+    <record id="view_sediba_finding_search" model="ir.ui.view">
+        <field name="name">sediba.finding.search</field>
+        <field name="model">sediba.finding</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Finding" filter_domain="['|', ('name', 'ilike', self), ('statement', 'ilike', self)]"/>
+                <field name="topic_id"/>
+                <field name="organisation_ids"/>
+                <filter name="to_review" string="To review" domain="[('needs_review', '=', True)]"/>
+                <separator/>
+                <filter name="verified" string="Verified" domain="[('status', '=', 'verified')]"/>
+                <filter name="leads" string="Leads" domain="[('status', '=', 'lead')]"/>
+                <filter name="unconfirmed" string="Could not confirm" domain="[('status', '=', 'unconfirmed')]"/>
+                <separator/>
+                <filter name="disagree" string="Sources disagree" domain="[('sources_disagree', '=', True)]"/>
+                <filter name="recheck_due" string="Due to check again"
+                        domain="[('recheck_by', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group by">
+                    <filter name="by_topic" string="Topic" context="{'group_by': 'topic_id'}"/>
+                    <filter name="by_status" string="Status" context="{'group_by': 'status'}"/>
+                    <filter name="by_run" string="Last run" context="{'group_by': 'run_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_sediba_finding_kanban" model="ir.ui.view">
+        <field name="name">sediba.finding.kanban</field>
+        <field name="model">sediba.finding</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="status" group_create="false" group_delete="false" group_edit="false"
+                    quick_create="false">
+                <field name="status"/>
+                <field name="sources_disagree"/>
+                <field name="needs_review"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fw-bold fs-5"/>
+                        <field name="statement" class="text-break"/>
+                        <div class="d-flex flex-wrap gap-1">
+                            <span t-if="record.sources_disagree.raw_value" class="badge text-bg-info">Sources disagree</span>
+                            <span t-if="record.needs_review.raw_value" class="badge text-bg-warning">To review</span>
+                        </div>
+                        <field name="organisation_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                        <field name="source_summary" class="text-muted small"/>
+                        <footer class="pt-1">
+                            <field name="topic_id" class="text-muted small"/>
+                            <div class="ms-auto text-muted small" t-if="record.checked_on.raw_value">
+                                Checked <field name="checked_on"/>
+                            </div>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_sediba_finding_list" model="ir.ui.view">
+        <field name="name">sediba.finding.list</field>
+        <field name="model">sediba.finding</field>
+        <field name="arch" type="xml">
+            <list string="Findings">
+                <field name="name"/>
+                <field name="topic_id"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'verified'"
+                       decoration-warning="status == 'lead'"
+                       decoration-muted="status == 'unconfirmed'"/>
+                <field name="sources_disagree" optional="show"/>
+                <field name="needs_review" optional="show"/>
+                <field name="source_summary"/>
+                <field name="checked_on"/>
+                <field name="recheck_by" optional="hide"/>
+                <field name="checked_by" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sediba_finding_form" model="ir.ui.view">
+        <field name="name">sediba.finding.form</field>
+        <field name="model">sediba.finding</field>
+        <field name="arch" type="xml">
+            <form string="Finding">
+                <header>
+                    <field name="status" widget="statusbar" options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="For example: Free and zero-rated"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="topic_id"/>
+                            <field name="organisation_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                            <field name="sources_disagree"/>
+                            <field name="needs_review"/>
+                            <field name="review_note" invisible="not needs_review"/>
+                        </group>
+                        <group>
+                            <field name="checked_on"/>
+                            <field name="checked_by"/>
+                            <field name="recheck_by"/>
+                            <field name="run_id"/>
+                            <field name="used_in"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="statement" placeholder="The claim in plain words, with the figure and the date it refers to."/>
+                        <field name="why_it_matters"/>
+                    </group>
+                    <separator string="What each source says"/>
+                    <field name="source_ids">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="says"/>
+                            <field name="figure_date"/>
+                            <field name="kind"/>
+                            <field name="opened"/>
+                            <field name="url" widget="url"/>
+                            <field name="read_on" optional="hide"/>
+                        </list>
+                    </field>
+                    <group>
+                        <group>
+                            <field name="origin"/>
+                        </group>
+                        <group>
+                            <field name="ref"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sediba_finding" model="ir.actions.act_window">
+        <field name="name">Findings</field>
+        <field name="res_model">sediba.finding</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No findings yet</p>
+            <p>A finding is one claim with its sources. It starts as a lead and becomes verified once a source proves it.</p>
+        </field>
+    </record>
+
+    <record id="action_sediba_finding_review" model="ir.actions.act_window">
+        <field name="name">To review</field>
+        <field name="res_model">sediba.finding</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="context">{'search_default_to_review': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing to review</p>
+            <p>Findings land here when a person should decide something, for example when sources disagree.</p>
+        </field>
+    </record>
+
+    <!-- ── Topics ───────────────────────────────────────────────────────── -->
+
+    <record id="view_sediba_topic_list" model="ir.ui.view">
+        <field name="name">sediba.topic.list</field>
+        <field name="model">sediba.topic</field>
+        <field name="arch" type="xml">
+            <list string="Topics">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="last_researched"/>
+                <field name="verified_count"/>
+                <field name="lead_count"/>
+                <field name="unconfirmed_count" optional="show"/>
+                <field name="due_date"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sediba_topic_form" model="ir.ui.view">
+        <field name="name">sediba.topic.form</field>
+        <field name="model">sediba.topic</field>
+        <field name="arch" type="xml">
+            <form string="Topic">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_findings" type="object" class="oe_stat_button" icon="fa-check">
+                            <field name="verified_count" widget="statinfo" string="Verified"/>
+                        </button>
+                        <button name="action_open_findings" type="object" class="oe_stat_button" icon="fa-question">
+                            <field name="lead_count" widget="statinfo" string="Leads"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="last_researched"/>
+                            <field name="cycle_days"/>
+                            <field name="due_date"/>
+                        </group>
+                        <group>
+                            <field name="scope"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="summary" placeholder="A short summary, drawn only from verified findings."/>
+                        <field name="our_read" placeholder="Interpretation, not a finding."/>
+                    </group>
+                    <separator string="Findings"/>
+                    <field name="finding_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="status" widget="badge"
+                                   decoration-success="status == 'verified'"
+                                   decoration-warning="status == 'lead'"
+                                   decoration-muted="status == 'unconfirmed'"/>
+                            <field name="source_summary"/>
+                            <field name="checked_on"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sediba_topic" model="ir.actions.act_window">
+        <field name="name">Topics</field>
+        <field name="res_model">sediba.topic</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No topics yet</p>
+            <p>A topic is one subject to research, with what is known so far and when it is due again.</p>
+        </field>
+    </record>
+
+    <!-- ── Runs ─────────────────────────────────────────────────────────── -->
+
+    <record id="view_sediba_run_list" model="ir.ui.view">
+        <field name="name">sediba.run.list</field>
+        <field name="model">sediba.run</field>
+        <field name="arch" type="xml">
+            <list string="Runs">
+                <field name="run_date"/>
+                <field name="topic_id"/>
+                <field name="researcher"/>
+                <field name="verified_count"/>
+                <field name="lead_count"/>
+                <field name="unconfirmed_count"/>
+                <field name="summary"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sediba_run_form" model="ir.ui.view">
+        <field name="name">sediba.run.form</field>
+        <field name="model">sediba.run</field>
+        <field name="arch" type="xml">
+            <form string="Run">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="run_date"/>
+                            <field name="topic_id"/>
+                            <field name="researcher"/>
+                        </group>
+                        <group>
+                            <field name="verified_count"/>
+                            <field name="lead_count"/>
+                            <field name="unconfirmed_count"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="summary"/>
+                        <field name="failures"/>
+                    </group>
+                    <separator string="Findings last touched by this run"/>
+                    <field name="finding_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="status" widget="badge"/>
+                            <field name="source_summary"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sediba_run" model="ir.actions.act_window">
+        <field name="name">Runs</field>
+        <field name="res_model">sediba.run</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ── Organisations ────────────────────────────────────────────────── -->
+
+    <record id="view_sediba_organisation_list" model="ir.ui.view">
+        <field name="name">sediba.organisation.list</field>
+        <field name="model">sediba.organisation</field>
+        <field name="arch" type="xml">
+            <list string="Organisations" editable="bottom">
+                <field name="name"/>
+                <field name="color" widget="color_picker"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_sediba_organisation" model="ir.actions.act_window">
+        <field name="name">Organisations</field>
+        <field name="res_model">sediba.organisation</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- ── Menus ────────────────────────────────────────────────────────── -->
+
+    <menuitem id="menu_sediba_root" name="Sediba" sequence="46"
+              web_icon="sediba,static/description/icon.png" groups="group_user"/>
+    <menuitem id="menu_sediba_topics" name="Topics" parent="menu_sediba_root" action="action_sediba_topic" sequence="10"/>
+    <menuitem id="menu_sediba_findings" name="Findings" parent="menu_sediba_root" action="action_sediba_finding" sequence="20"/>
+    <menuitem id="menu_sediba_review" name="To review" parent="menu_sediba_root" action="action_sediba_finding_review" sequence="30"/>
+    <menuitem id="menu_sediba_runs" name="Runs" parent="menu_sediba_root" action="action_sediba_run" sequence="40"/>
+    <menuitem id="menu_sediba_config" name="Configuration" parent="menu_sediba_root" sequence="90"/>
+    <menuitem id="menu_sediba_organisations" name="Organisations" parent="menu_sediba_config" action="action_sediba_organisation" sequence="10"/>
+
+</odoo>

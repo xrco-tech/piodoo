@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sediba_topic,sediba.topic,model_sediba_topic,group_user,1,1,1,0
+access_sediba_finding,sediba.finding,model_sediba_finding,group_user,1,1,1,0
+access_sediba_source,sediba.source,model_sediba_source,group_user,1,1,1,1
+access_sediba_organisation,sediba.organisation,model_sediba_organisation,group_user,1,1,1,0
+access_sediba_run,sediba.run,model_sediba_run,group_user,1,1,1,0
+access_sediba_topic_admin,sediba.topic admin,model_sediba_topic,base.group_system,1,1,1,1
+access_sediba_finding_admin,sediba.finding admin,model_sediba_finding,base.group_system,1,1,1,1
+access_sediba_organisation_admin,sediba.organisation admin,model_sediba_organisation,base.group_system,1,1,1,1
+access_sediba_run_admin,sediba.run admin,model_sediba_run,base.group_system,1,1,1,1
