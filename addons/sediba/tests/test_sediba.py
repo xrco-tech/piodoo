@@ -203,9 +203,9 @@ class TestSedibaWorkspace(TransactionCase):
 
 
 @tagged('post_install', '-at_install')
-class TestSedibaInApps(TransactionCase):
-    """The screen opened from inside another app: only that app's topics,
-    and readers change nothing."""
+class TestSedibaReference(TransactionCase):
+    """The screen opened from inside another app as its Reference: only the
+    verified findings on that app's topics, and nothing can be changed."""
 
     @classmethod
     def setUpClass(cls):
@@ -220,47 +220,86 @@ class TestSedibaInApps(TransactionCase):
         cls.jobs = Space.search([('code', '=', 'test_jobs')]) or Space.create({'name': 'Jobs app', 'code': 'test_jobs'})
         cls.calls = Space.search([('code', '=', 'test_calls')]) or Space.create({'name': 'Calls app', 'code': 'test_calls'})
         Topic = cls.env['sediba.topic']
-        cls.jobs_topic = Topic.create({'name': 'Job seekers', 'sequence': 1, 'space_ids': [(6, 0, cls.jobs.ids)]})
+        cls.jobs_topic = Topic.create({'name': 'Job seekers', 'sequence': 1, 'space_ids': [(6, 0, cls.jobs.ids)],
+                                       'summary': 'Known.', 'our_read': 'We think.'})
         cls.both_topic = Topic.create({'name': 'Regulation', 'sequence': 2, 'space_ids': [(6, 0, (cls.jobs | cls.calls).ids)]})
-        cls.plain_topic = Topic.create({'name': 'Unmarked', 'sequence': 3})
-        Finding = cls.env['sediba.finding']
-        cls.jobs_finding = Finding.create({'name': 'About jobs', 'topic_id': cls.jobs_topic.id, 'needs_review': True})
-        cls.both_finding = Finding.create({'name': 'About rules', 'topic_id': cls.both_topic.id})
-        cls.plain_finding = Finding.create({'name': 'About nothing', 'topic_id': cls.plain_topic.id})
+        cls.leads_topic = Topic.create({'name': 'Only leads', 'sequence': 3, 'space_ids': [(6, 0, cls.jobs.ids)]})
+        cls.plain_topic = Topic.create({'name': 'Unmarked', 'sequence': 4})
+
+        def finding(name, topic, verified=False, **vals):
+            f = cls.env['sediba.finding'].create(dict(vals, name=name, topic_id=topic.id, source_ids=[
+                (0, 0, {'name': 'Own page', 'kind': 'primary', 'says': 'It says so'})]))
+            if verified:
+                f.write({'status': 'verified', 'checked_on': date(2026, 11, 18)})
+            return f
+
+        cls.jobs_proven = finding('Jobs fact', cls.jobs_topic, True, needs_review=True, review_note='Pick one.',
+                                  origin='Pasted notes', used_in='A page')
+        cls.jobs_lead = finding('Jobs rumour', cls.jobs_topic)
+        cls.both_proven = finding('Rule fact', cls.both_topic, True)
+        cls.leads_lead = finding('A rumour', cls.leads_topic)
+        cls.plain_proven = finding('Unmarked fact', cls.plain_topic, True)
         cls.env['sediba.run'].create({'topic_id': cls.jobs_topic.id, 'run_date': date(2026, 11, 18)})
         cls.Ws = cls.env['sediba.workspace'].with_user(cls.reader)
 
-    def test_each_app_sees_its_own_topics(self):
-        self.assertEqual(len(self.Ws.ws_nav()['topics']), 3)
+    def test_sediba_itself_still_shows_everything(self):
+        nav = self.Ws.ws_nav()
+        self.assertEqual((len(nav['topics']), nav['all'], nav['review'], nav['runs'], nav['reference']), (4, 5, 1, 1, False))
+
+    def test_an_app_shows_only_its_verified_findings(self):
         jobs = self.Ws.ws_nav('test_jobs')
+        # 'Only leads' is marked for the app but has nothing verified: it stays out.
         self.assertEqual([t['name'] for t in jobs['topics']], ['Job seekers', 'Regulation'])
-        self.assertEqual((jobs['all'], jobs['review'], jobs['runs'], jobs['space']), (2, 1, 1, 'Jobs app'))
-        calls = self.Ws.ws_nav('test_calls')
-        self.assertEqual([t['name'] for t in calls['topics']], ['Regulation'])
-        self.assertEqual((calls['all'], calls['review'], calls['runs']), (1, 0, 0))
-        # An app nobody has marked anything for shows nothing, not everything.
+        self.assertEqual((jobs['all'], jobs['review'], jobs['runs'], jobs['space'], jobs['reference']),
+                         (2, 0, 0, 'Jobs app', True))
+        self.assertEqual([t['name'] for t in self.Ws.ws_nav('test_calls')['topics']], ['Regulation'])
         self.assertEqual(self.Ws.ws_nav('no_such_app')['topics'], [])
-        self.assertEqual(self.Ws.ws_findings('all', '', 0, 40, 'no_such_app')['total'], 0)
+        rows = self.Ws.ws_findings('all', '', 0, 40, 'test_jobs')['rows']
+        self.assertEqual(sorted(f['name'] for f in rows), ['Jobs fact', 'Rule fact'])
+        # Asking for leads from inside an app still gives verified only.
+        self.assertEqual(self.Ws.ws_findings('lead', '', 0, 40, 'test_jobs')['total'], 2)
+        self.assertEqual(self.Ws.ws_findings('all', 'rumour', 0, 40, 'test_jobs')['total'], 0)
+        self.assertEqual(self.Ws.ws_runs(0, 40, 'test_jobs'), {'total': 0, 'rows': []})
 
-    def test_pages_stay_inside_the_app(self):
-        self.assertEqual(self.Ws.ws_overview('test_calls')['counts'], {'lead': 1, 'verified': 0, 'unconfirmed': 0, 'review': 0})
-        self.assertFalse(self.Ws.ws_overview('test_calls')['last_run'])
-        self.assertEqual(self.Ws.ws_overview('test_calls')['next']['name'], 'Regulation')
+    def test_overview_and_topic_in_an_app(self):
+        overview = self.Ws.ws_overview('test_jobs')
+        self.assertEqual(overview['counts'], {'verified': 2, 'lead': 0, 'unconfirmed': 0, 'review': 0})
+        self.assertFalse(overview['last_run'] or overview['next'] or overview['review'])
+        self.assertEqual([(t['name'], t['next']) for t in overview['topics']], [('Job seekers', False), ('Regulation', False)])
+        topic = self.Ws.ws_topic(self.jobs_topic.id, '', 'test_jobs')
+        self.assertEqual([c['key'] for c in topic['columns']], ['verified'])
+        self.assertEqual([f['name'] for f in topic['columns'][0]['findings']], ['Jobs fact'])
+        self.assertFalse(topic['columns'][0]['findings'][0]['review'])
+        self.assertEqual((topic['summary'], topic['our_read'], topic['runs'], topic['due']), (['Known.'], '', [], False))
         self.assertFalse(self.Ws.ws_topic(self.jobs_topic.id, '', 'test_calls'))
+        self.assertFalse(self.Ws.ws_topic(self.leads_topic.id, '', 'test_jobs'))
         self.assertEqual(self.Ws.ws_topic(self.both_topic.id, '', 'test_calls')['of'], 1)
-        self.assertFalse(self.Ws.ws_finding(self.jobs_finding.id, 'test_calls'))
-        self.assertFalse(self.Ws.ws_finding(self.plain_finding.id, 'test_jobs'))
-        self.assertEqual(self.Ws.ws_finding(self.both_finding.id, 'test_calls')['name'], 'About rules')
-        self.assertEqual([f['name'] for f in self.Ws.ws_findings('all', '', 0, 40, 'test_calls')['rows']], ['About rules'])
-        self.assertEqual(self.Ws.ws_runs(0, 40, 'test_calls')['total'], 0)
-        self.assertEqual(self.Ws.ws_runs(0, 40, 'test_jobs')['total'], 1)
 
-    def test_readers_change_nothing(self):
+    def test_finding_in_an_app(self):
+        data = self.Ws.ws_finding(self.jobs_proven.id, 'test_jobs')
+        self.assertEqual(data['name'], 'Jobs fact')
+        self.assertEqual((data['review'], data['review_note'], data['run'], data['origin'], data['used_in']),
+                         (False, '', False, '', ''))
+        self.assertEqual(len(data['source_rows']), 1)
+        # A lead, a finding on another app's topic and an unmarked one all stay out.
+        self.assertFalse(self.Ws.ws_finding(self.jobs_lead.id, 'test_jobs'))
+        self.assertFalse(self.Ws.ws_finding(self.jobs_proven.id, 'test_calls'))
+        self.assertFalse(self.Ws.ws_finding(self.plain_proven.id, 'test_jobs'))
+        # In Sediba itself the same finding keeps its review flag.
+        self.assertTrue(self.Ws.ws_finding(self.jobs_proven.id)['review'])
+
+    def test_nothing_changes_from_inside_an_app(self):
+        researcher = self.env['sediba.workspace'].with_user(self.researcher)
         self.assertFalse(self.Ws.ws_nav('test_jobs')['can_edit'])
-        self.assertTrue(self.env['sediba.workspace'].with_user(self.researcher).ws_nav('test_jobs')['can_edit'])
+        self.assertFalse(researcher.ws_nav('test_jobs')['can_edit'])
+        self.assertTrue(researcher.ws_nav()['can_edit'])
+        for ws in (self.Ws, researcher):
+            with self.assertRaises(AccessError):
+                ws.ws_set_review(self.jobs_proven.id, False, 'test_jobs')
+            with self.assertRaises(AccessError):
+                ws.ws_set_status(self.jobs_proven.id, 'lead', 'test_jobs')
+        # A reader changes nothing in Sediba itself either.
         with self.assertRaises(AccessError):
-            self.Ws.ws_set_review(self.jobs_finding.id, False, 'test_jobs')
-        with self.assertRaises(AccessError):
-            self.Ws.ws_set_status(self.jobs_finding.id, 'unconfirmed', 'test_jobs')
+            self.Ws.ws_set_review(self.jobs_proven.id, False)
         with self.assertRaises(AccessError):
             self.env['sediba.finding'].with_user(self.reader).create({'name': 'Mine', 'topic_id': self.jobs_topic.id})

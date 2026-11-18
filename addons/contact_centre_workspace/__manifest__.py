@@ -64,7 +64,7 @@ Centre Inbox's own methods, so the two screens behave the same.
         'data/contact_centre_queue_data.xml',
         'views/contact_centre_workspace_views.xml',
         'views/contact_centre_queue_views.xml',
-        'data/contact_centre_research_data.xml',
+        'data/contact_centre_reference_data.xml',
     ],
     'assets': {
         'web.assets_backend': [
