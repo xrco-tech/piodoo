@@ -25,15 +25,25 @@ class SedibaWorkspace(models.AbstractModel):
         return format_date(self.env, value, date_format=DATE_FORMAT) if value else False
 
     @api.model
-    def _next_topic(self):
+    def _topics(self, space=False):
+        """Every topic, or only those shown in one app (by its key)."""
+        domain = [('space_ids.code', '=', space)] if space else []
+        return self.env['sediba.topic'].search(domain)
+
+    @api.model
+    def _in_space(self, space=False):
+        """A domain on findings or runs for one app's topics."""
+        return [('topic_id.space_ids.code', '=', space)] if space else []
+
+    @api.model
+    def _next_topic(self, space=False):
         """The topic to research next: the first never researched, else the
         one due soonest. The scheduled agent follows the same rule."""
-        topics = self.env['sediba.topic'].search([])
+        topics = self._topics(space)
         never = topics.filtered(lambda t: not t.last_researched)
         if never:
             return never[0]
         return topics.sorted(lambda t: (t.due_date or fields.Date.today(), t.sequence, t.id))[:1]
-
     def _topic_row(self, topic, next_topic):
         return {
             'id': topic.id,
@@ -86,25 +96,32 @@ class SedibaWorkspace(models.AbstractModel):
         return {'parts': parts, 'unopened': len(finding.source_ids) - len(opened)}
 
     # ── Reads ────────────────────────────────────────────────────────────────
+    # Each takes `space`: an app's key when the screen is opened from inside
+    # that app, so only that app's topics and their findings show.
 
     @api.model
-    def ws_nav(self):
+    def ws_nav(self, space=False):
         Finding = self.env['sediba.finding']
-        next_topic = self._next_topic()
+        scope = self._in_space(space)
+        next_topic = self._next_topic(space)
+        area = self.env['sediba.space'].search([('code', '=', space)], limit=1) if space else False
         return {
-            'topics': [self._topic_row(t, next_topic) for t in self.env['sediba.topic'].search([])],
-            'all': Finding.search_count([]),
-            'review': Finding.search_count([('needs_review', '=', True)]),
-            'runs': self.env['sediba.run'].search_count([]),
+            'topics': [self._topic_row(t, next_topic) for t in self._topics(space)],
+            'all': Finding.search_count(scope),
+            'review': Finding.search_count(scope + [('needs_review', '=', True)]),
+            'runs': self.env['sediba.run'].search_count(scope),
+            'space': area.name if area else False,
+            'can_edit': self.env.user.has_group('sediba.group_user'),
         }
 
     @api.model
-    def ws_overview(self):
+    def ws_overview(self, space=False):
         Finding = self.env['sediba.finding']
-        next_topic = self._next_topic()
-        last_run = self.env['sediba.run'].search([], limit=1)
-        counts = {key: Finding.search_count([('status', '=', key)]) for key, _label in STATUSES}
-        counts['review'] = Finding.search_count([('needs_review', '=', True)])
+        scope = self._in_space(space)
+        next_topic = self._next_topic(space)
+        last_run = self.env['sediba.run'].search(scope, limit=1)
+        counts = {key: Finding.search_count(scope + [('status', '=', key)]) for key, _label in STATUSES}
+        counts['review'] = Finding.search_count(scope + [('needs_review', '=', True)])
         return {
             'counts': counts,
             'last_run': self._run_row(last_run) if last_run else False,
@@ -115,24 +132,24 @@ class SedibaWorkspace(models.AbstractModel):
                 'due': self._date(next_topic.due_date),
                 'leads': next_topic.lead_count,
             } if next_topic else False,
-            'review': [self._finding_row(f) for f in Finding.search([('needs_review', '=', True)], limit=20)],
-            'topics': [self._topic_row(t, next_topic) for t in self.env['sediba.topic'].search([])],
+            'review': [self._finding_row(f) for f in Finding.search(scope + [('needs_review', '=', True)], limit=20)],
+            'topics': [self._topic_row(t, next_topic) for t in self._topics(space)],
         }
 
     @api.model
-    def ws_topic(self, topic_id, search=''):
-        topic = self.env['sediba.topic'].browse(topic_id).exists()
+    def ws_topic(self, topic_id, search='', space=False):
+        topics = self._topics(space)
+        topic = self.env['sediba.topic'].browse(topic_id).exists() & topics
         if not topic:
             return False
         domain = [('topic_id', '=', topic.id)]
         if search:
             domain += ['|', ('name', 'ilike', search), ('statement', 'ilike', search)]
         findings = self.env['sediba.finding'].search(domain)
-        topics = self.env['sediba.topic'].search([])
         return {
             'id': topic.id,
             'name': topic.name,
-            'position': (topics.ids.index(topic.id) + 1) if topic.id in topics.ids else 0,
+            'position': topics.ids.index(topic.id) + 1,
             'of': len(topics),
             'scope': topic.scope or '',
             'summary': [line.strip() for line in (topic.summary or '').splitlines() if line.strip()],
@@ -148,9 +165,9 @@ class SedibaWorkspace(models.AbstractModel):
         }
 
     @api.model
-    def ws_finding(self, finding_id):
+    def ws_finding(self, finding_id, space=False):
         finding = self.env['sediba.finding'].browse(finding_id).exists()
-        if not finding:
+        if not finding or (space and finding.topic_id not in self._topics(space)):
             return False
         labels = dict(SOURCE_KINDS)
         row = self._finding_row(finding)
@@ -180,8 +197,8 @@ class SedibaWorkspace(models.AbstractModel):
         return row
 
     @api.model
-    def ws_findings(self, pill='all', search='', offset=0, limit=40):
-        domain = []
+    def ws_findings(self, pill='all', search='', offset=0, limit=40, space=False):
+        domain = self._in_space(space)
         if pill == 'review':
             domain.append(('needs_review', '=', True))
         elif pill in ('verified', 'lead', 'unconfirmed'):
@@ -195,17 +212,18 @@ class SedibaWorkspace(models.AbstractModel):
         }
 
     @api.model
-    def ws_runs(self, offset=0, limit=40):
+    def ws_runs(self, offset=0, limit=40, space=False):
         Run = self.env['sediba.run']
+        domain = self._in_space(space)
         return {
-            'total': Run.search_count([]),
-            'rows': [self._run_row(r) for r in Run.search([], offset=offset, limit=limit)],
+            'total': Run.search_count(domain),
+            'rows': [self._run_row(r) for r in Run.search(domain, offset=offset, limit=limit)],
         }
 
     # ── Writes ───────────────────────────────────────────────────────────────
 
     @api.model
-    def ws_set_status(self, finding_id, status):
+    def ws_set_status(self, finding_id, status, space=False):
         """Move a finding between columns. Marking it verified or could not
         confirm records who looked and when; the finding's own rule still
         decides whether verified is allowed."""
@@ -216,12 +234,12 @@ class SedibaWorkspace(models.AbstractModel):
         if status in ('verified', 'unconfirmed'):
             vals.update({'checked_on': fields.Date.context_today(self), 'checked_by': self.env.user.name})
         finding.write(vals)
-        return self.ws_finding(finding.id)
+        return self.ws_finding(finding.id, space)
 
     @api.model
-    def ws_set_review(self, finding_id, needs_review):
+    def ws_set_review(self, finding_id, needs_review, space=False):
         finding = self.env['sediba.finding'].browse(finding_id).exists()
         if not finding:
             return False
         finding.needs_review = bool(needs_review)
-        return self.ws_finding(finding.id)
+        return self.ws_finding(finding.id, space)

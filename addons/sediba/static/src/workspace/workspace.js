@@ -42,12 +42,14 @@ export class SedibaWorkspace extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
+        // Opened from inside another app: only that app's topics show.
+        this.space = (this.props.action.params || {}).space || false;
         this.pills = PILLS;
         this.statusLabels = STATUS_LABELS;
         this.emptyColumn = EMPTY_COLUMN;
         this.state = useState({
             view: "overview", // overview | topic | finding | list | runs
-            nav: { topics: [], all: 0, review: 0, runs: 0 },
+            nav: { topics: [], all: 0, review: 0, runs: 0, space: false, can_edit: false },
             data: null,
             topicId: false,
             findingId: false,
@@ -79,20 +81,20 @@ export class SedibaWorkspace extends Component {
         const s = this.state;
         s.loading = true;
         const calls = {
-            overview: ["ws_overview", []],
-            topic: ["ws_topic", [s.topicId, s.topicSearch]],
-            finding: ["ws_finding", [s.findingId]],
-            list: ["ws_findings", [s.pill, s.search, 0, PAGE]],
-            runs: ["ws_runs", [0, PAGE]],
+            overview: ["ws_overview", [this.space]],
+            topic: ["ws_topic", [s.topicId, s.topicSearch, this.space]],
+            finding: ["ws_finding", [s.findingId, this.space]],
+            list: ["ws_findings", [s.pill, s.search, 0, PAGE, this.space]],
+            runs: ["ws_runs", [0, PAGE, this.space]],
         };
         const [method, args] = calls[s.view];
-        const [nav, data] = await Promise.all([this.orm.call(WS, "ws_nav", []), this.orm.call(WS, method, args)]);
+        const [nav, data] = await Promise.all([this.orm.call(WS, "ws_nav", [this.space]), this.orm.call(WS, method, args)]);
         s.nav = nav;
         if (data === false) {
             // The record is gone: fall back to the overview.
             this.notification.add(_t("That record no longer exists."), { type: "warning" });
             s.view = "overview";
-            s.data = await this.orm.call(WS, "ws_overview", []);
+            s.data = await this.orm.call(WS, "ws_overview", [this.space]);
         } else {
             s.data = data;
         }
@@ -102,7 +104,9 @@ export class SedibaWorkspace extends Component {
     async more() {
         const s = this.state;
         const [method, args] =
-            s.view === "runs" ? ["ws_runs", [s.data.rows.length, PAGE]] : ["ws_findings", [s.pill, s.search, s.data.rows.length, PAGE]];
+            s.view === "runs"
+                ? ["ws_runs", [s.data.rows.length, PAGE, this.space]]
+                : ["ws_findings", [s.pill, s.search, s.data.rows.length, PAGE, this.space]];
         const next = await this.orm.call(WS, method, args);
         s.data.rows.push(...next.rows);
         s.data.total = next.total;
@@ -192,14 +196,14 @@ export class SedibaWorkspace extends Component {
 
     async setStatus(status) {
         // The finding's own rule may refuse "verified"; Odoo shows why.
-        this.state.data = await this.orm.call(WS, "ws_set_status", [this.state.findingId, status]);
-        this.state.nav = await this.orm.call(WS, "ws_nav", []);
+        this.state.data = await this.orm.call(WS, "ws_set_status", [this.state.findingId, status, this.space]);
+        this.state.nav = await this.orm.call(WS, "ws_nav", [this.space]);
     }
 
     async toggleReview() {
         const f = this.state.data;
-        this.state.data = await this.orm.call(WS, "ws_set_review", [f.id, !f.review]);
-        this.state.nav = await this.orm.call(WS, "ws_nav", []);
+        this.state.data = await this.orm.call(WS, "ws_set_review", [f.id, !f.review, this.space]);
+        this.state.nav = await this.orm.call(WS, "ws_nav", [this.space]);
     }
 }
 

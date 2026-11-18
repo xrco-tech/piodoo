@@ -8,3 +8,11 @@ access_sediba_topic_admin,sediba.topic admin,model_sediba_topic,base.group_syste
 access_sediba_finding_admin,sediba.finding admin,model_sediba_finding,base.group_system,1,1,1,1
 access_sediba_organisation_admin,sediba.organisation admin,model_sediba_organisation,base.group_system,1,1,1,1
 access_sediba_run_admin,sediba.run admin,model_sediba_run,base.group_system,1,1,1,1
+access_sediba_space,sediba.space,model_sediba_space,group_user,1,1,1,0
+access_sediba_space_admin,sediba.space admin,model_sediba_space,base.group_system,1,1,1,1
+access_sediba_topic_reader,sediba.topic reader,model_sediba_topic,group_reader,1,0,0,0
+access_sediba_finding_reader,sediba.finding reader,model_sediba_finding,group_reader,1,0,0,0
+access_sediba_source_reader,sediba.source reader,model_sediba_source,group_reader,1,0,0,0
+access_sediba_organisation_reader,sediba.organisation reader,model_sediba_organisation,group_reader,1,0,0,0
+access_sediba_run_reader,sediba.run reader,model_sediba_run,group_reader,1,0,0,0
+access_sediba_space_reader,sediba.space reader,model_sediba_space,group_reader,1,0,0,0

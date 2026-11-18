@@ -32,6 +32,22 @@ STRONG_KINDS = ('primary', 'official')
 RECHECK_DAYS = 90
 
 
+class SedibaSpace(models.Model):
+    """An app that shows part of the research, for example Chat2Work. A topic
+    lists the apps it is relevant to; the workspace opened from inside an app
+    shows only those topics and their findings."""
+    _name = 'sediba.space'
+    _description = 'App that shows research'
+    _order = 'name'
+
+    name = fields.Char(required=True)
+    code = fields.Char(required=True, help="The key the app's menu passes to the workspace.")
+
+    _sql_constraints = [
+        ('code_uniq', 'unique(code)', 'Another app already uses this key.'),
+    ]
+
+
 class SedibaTopic(models.Model):
     _name = 'sediba.topic'
     _description = 'Research topic'
@@ -41,6 +57,9 @@ class SedibaTopic(models.Model):
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     scope = fields.Text(help="What to look for under this topic.")
+    space_ids = fields.Many2many('sediba.space', string="Shown in",
+                                 help="The apps this topic is relevant to. It shows in the research "
+                                      "screen opened from inside each of them. Sediba itself shows every topic.")
     summary = fields.Text(string="What we know",
                           help="A short summary, drawn only from verified findings.")
     our_read = fields.Text(string="Our read",

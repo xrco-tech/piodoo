@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Sediba',
-    'version': '18.0.1.1.0',
+    'version': '18.0.1.2.0',
     'category': 'Productivity',
     'summary': 'Research and learnings in one place: topics, findings with their sources, and the runs that gathered them',
     'description': """
@@ -26,6 +26,8 @@ place, with what is proven kept apart from what is only a lead.
 - Workspace: the topics down the side and one page beside them: an overview,
   a topic with its findings on a board, and a finding with its sources and
   properties. Changing a record opens that record's own form.
+- Other apps can show the same screen with only the topics marked as shown
+  in them, read-only for people who are not researchers.
 
 Nothing here sends messages or keeps a discussion thread, so an automated
 user with no email address can write findings.

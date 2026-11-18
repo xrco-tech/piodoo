@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Research (Sediba) inside Chat2Work: only the topics marked as shown in
+         Chat2Work, read-only for agents. Researchers mark topics in Sediba. -->
+    <record id="sediba_space_chat2work" model="sediba.space">
+        <field name="name">Chat2Work</field>
+        <field name="code">chat2work</field>
+    </record>
+
+    <record id="chat2work.group_agent" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('sediba.group_reader'))]"/>
+    </record>
+
+    <record id="action_chat2work_research" model="ir.actions.client">
+        <field name="name">Research</field>
+        <field name="tag">sediba_workspace</field>
+        <field name="params" eval="{'space': 'chat2work'}"/>
+    </record>
+    <menuitem id="menu_chat2work_research" name="Research" parent="chat2work.menu_chat2work_root"
+              action="action_chat2work_research" sequence="4"/>
+</odoo>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work Workspace',
-    'version': '18.0.2.7.0',
+    'version': '18.0.2.8.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'One screen for agents: conversations, candidates, job listings, bookings and an AI sidekick',
     'description': """
@@ -43,13 +43,14 @@ sidekick chats (with what the sidekick looked at) and the agent notes.
     'website': 'https://github.com/xrco-tech/piodoo',
     'license': 'LGPL-3',
     'depends': ['chat2work', 'chat2work_contact', 'chat2work_jobs', 'chat2work_verify', 'chat2work_ucx',
-                'comm_agent_activity'],
+                'comm_agent_activity', 'sediba'],
     'data': [
         'security/ir.model.access.csv',
         'security/chat2work_workspace_security.xml',
         'views/chat2work_workspace_views.xml',
         'data/chat2work_agent_note_data.xml',
         'data/chat2work_alerts_data.xml',
+        'data/chat2work_research_data.xml',
     ],
     'assets': {
         'web.assets_backend': [
