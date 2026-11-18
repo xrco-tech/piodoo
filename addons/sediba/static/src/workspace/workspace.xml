@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- One finding as a card on a board. -->
+    <t t-name="sediba.Card">
+        <button type="button" class="o_sdb_card" t-att-class="{ lead: f.status !== 'verified' }" t-on-click="() => this.openFinding(f.id)">
+            <span class="o_sdb_card_name" t-esc="f.name"/>
+            <span class="o_sdb_card_text" t-esc="f.statement"/>
+            <span t-if="f.disagree or f.review" class="o_sdb_badges">
+                <span t-if="f.disagree" class="o_sdb_badge disagree">Sources disagree</span>
+                <span t-if="f.review" class="o_sdb_badge review">To review</span>
+            </span>
+            <span t-if="f.sources" class="o_sdb_muted" t-esc="f.sources"/>
+            <span t-if="f.checked" class="o_sdb_muted">Checked <t t-esc="f.checked"/></span>
+        </button>
+    </t>
+
+    <!-- Findings as rows: used by the list page and by a topic in list mode. -->
+    <t t-name="sediba.Rows">
+        <div class="o_sdb_tablebox">
+            <table class="o_sdb_table">
+                <thead>
+                    <tr>
+                        <th scope="col">Finding</th>
+                        <th t-if="withTopic" scope="col">Topic</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Sources</th>
+                        <th scope="col">Checked</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="rows" t-as="f" t-key="f.id">
+                        <td>
+                            <button type="button" class="o_sdb_link" t-on-click="() => this.openFinding(f.id)" t-esc="f.name"/>
+                            <span t-if="f.review" class="o_sdb_badge review">To review</span>
+                        </td>
+                        <td t-if="withTopic" t-esc="f.topic[1]"/>
+                        <td><span class="o_sdb_status" t-att-class="f.status" t-esc="statusLabels[f.status]"/></td>
+                        <td t-esc="f.sources"/>
+                        <td class="o_sdb_nowrap" t-esc="f.checked or ''"/>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </t>
+
+    <t t-name="sediba.Workspace">
+        <div class="o_action o_sdb_ws" t-att-class="{ browsing: state.browsing }">
+
+            <!-- ── Sidebar ──────────────────────────────────────────────── -->
+            <nav class="o_sdb_side" aria-label="Sediba">
+                <div class="o_sdb_side_top">
+                    <input type="search" class="o_sdb_input" placeholder="Search findings" aria-label="Search findings"
+                           t-att-value="state.search" t-on-input="onSearch"/>
+                    <button type="button" class="o_sdb_btn primary square" aria-label="New finding" title="New finding"
+                            t-on-click="newFinding">+</button>
+                </div>
+
+                <div class="o_sdb_group">
+                    <div class="o_sdb_group_name">Research topics</div>
+                    <button t-foreach="state.nav.topics" t-as="t" t-key="t.id" type="button" class="o_sdb_item"
+                            t-att-class="{ on: isTopic(t.id) }" t-att-aria-current="isTopic(t.id) ? 'page' : false"
+                            t-on-click="() => this.openTopic(t.id)">
+                        <span class="o_sdb_item_name" t-esc="t.name"/>
+                        <span t-if="t.next" class="o_sdb_note next">Next</span>
+                        <span t-elif="t.last" class="o_sdb_note" t-esc="t.last"/>
+                    </button>
+                    <p t-if="!state.nav.topics.length" class="o_sdb_muted o_sdb_pad">No topics yet. Add them under Configuration.</p>
+                </div>
+
+                <div class="o_sdb_group">
+                    <div class="o_sdb_group_name">Collections</div>
+                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'overview' }" t-on-click="openOverview">
+                        <span class="o_sdb_item_name">Overview</span>
+                    </button>
+                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'list' and state.pill !== 'review' }"
+                            t-on-click="() => this.openList('all')">
+                        <span class="o_sdb_item_name">All findings</span>
+                        <span class="o_sdb_note" t-esc="state.nav.all"/>
+                    </button>
+                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'list' and state.pill === 'review' }"
+                            t-on-click="() => this.openList('review')">
+                        <span class="o_sdb_item_name">To review</span>
+                        <span t-if="state.nav.review" class="o_sdb_note count" t-esc="state.nav.review"/>
+                    </button>
+                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'runs' }" t-on-click="openRuns">
+                        <span class="o_sdb_item_name">Research runs</span>
+                        <span class="o_sdb_note" t-esc="state.nav.runs"/>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- ── Page ─────────────────────────────────────────────────── -->
+            <div class="o_sdb_main">
+                <button type="button" class="o_sdb_btn o_sdb_browse" t-on-click="() => state.browsing = !state.browsing">
+                    <t t-if="state.browsing">Close</t><t t-else="">Browse topics</t>
+                </button>
+
+                <div t-if="!state.data" class="o_sdb_page"><p class="o_sdb_muted">Loading…</p></div>
+
+                <!-- Overview -->
+                <div t-elif="state.view === 'overview'" class="o_sdb_page">
+                    <t t-set="d" t-value="state.data"/>
+                    <div class="o_sdb_body">
+                        <header>
+                            <h1>Overview</h1>
+                            <p class="o_sdb_lede">Research gathered by topic, with what is proven kept apart from what is only a lead.</p>
+                        </header>
+
+                        <div class="o_sdb_stats">
+                            <button type="button" class="o_sdb_stat verified" t-on-click="() => this.openList('verified')">
+                                <b t-esc="d.counts.verified"/><span>Verified</span>
+                            </button>
+                            <button type="button" class="o_sdb_stat lead" t-on-click="() => this.openList('lead')">
+                                <b t-esc="d.counts.lead"/><span>Leads, not verified</span>
+                            </button>
+                            <button type="button" class="o_sdb_stat unconfirmed" t-on-click="() => this.openList('unconfirmed')">
+                                <b t-esc="d.counts.unconfirmed"/><span>Could not confirm</span>
+                            </button>
+                            <button type="button" class="o_sdb_stat review" t-on-click="() => this.openList('review')">
+                                <b t-esc="d.counts.review"/><span>For you to review</span>
+                            </button>
+                        </div>
+
+                        <div class="o_sdb_pair">
+                            <section class="o_sdb_box">
+                                <h2>Last run</h2>
+                                <t t-if="d.last_run">
+                                    <p><b t-esc="d.last_run.date"/> on
+                                        <button type="button" class="o_sdb_link" t-on-click="() => this.openTopic(d.last_run.topic[0])" t-esc="d.last_run.topic[1]"/></p>
+                                    <p t-if="d.last_run.summary" t-esc="d.last_run.summary"/>
+                                    <p t-if="d.last_run.failures" class="o_sdb_muted">Failed: <t t-esc="d.last_run.failures"/></p>
+                                    <button type="button" class="o_sdb_link" t-on-click="() => this.openRun(d.last_run.id)">Open run</button>
+                                </t>
+                                <p t-else="" class="o_sdb_muted">No run yet.</p>
+                            </section>
+                            <section class="o_sdb_box">
+                                <h2>Next topic</h2>
+                                <t t-if="d.next">
+                                    <p><button type="button" class="o_sdb_link strong" t-on-click="() => this.openTopic(d.next.id)" t-esc="d.next.name"/>
+                                        <t t-if="d.next.due"> · due <t t-esc="d.next.due"/></t>
+                                        <t t-else=""> · not researched yet</t></p>
+                                    <p t-if="d.next.scope" class="o_sdb_muted" t-esc="d.next.scope"/>
+                                    <p t-if="d.next.leads" class="o_sdb_muted">Leads waiting to be checked: <t t-esc="d.next.leads"/></p>
+                                </t>
+                                <p t-else="" class="o_sdb_muted">No topics yet.</p>
+                            </section>
+                        </div>
+
+                        <section t-if="d.review.length">
+                            <h2>For you to review</h2>
+                            <div class="o_sdb_lines">
+                                <div t-foreach="d.review" t-as="f" t-key="f.id" class="o_sdb_line">
+                                    <button type="button" class="o_sdb_link strong" t-on-click="() => this.openFinding(f.id)" t-esc="f.name"/>
+                                    <span t-esc="f.review_note or f.statement"/>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section>
+                            <h2>Topics</h2>
+                            <div class="o_sdb_tablebox">
+                                <table class="o_sdb_table">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Topic</th>
+                                            <th scope="col">Last researched</th>
+                                            <th scope="col" class="num">Verified</th>
+                                            <th scope="col" class="num">Leads</th>
+                                            <th scope="col">Due</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="d.topics" t-as="t" t-key="t.id">
+                                            <td><button type="button" class="o_sdb_link" t-on-click="() => this.openTopic(t.id)" t-esc="t.name"/></td>
+                                            <td t-esc="t.last or 'Not yet'"/>
+                                            <td class="num" t-esc="t.verified"/>
+                                            <td class="num" t-esc="t.leads"/>
+                                            <td class="o_sdb_nowrap"><t t-if="t.next">Next</t><t t-else="" t-esc="t.due or ''"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- A topic -->
+                <div t-elif="state.view === 'topic'" class="o_sdb_page">
+                    <t t-set="d" t-value="state.data"/>
+                    <div class="o_sdb_bar">
+                        <div class="o_sdb_crumbs"><span class="o_sdb_muted">Research topics</span><span class="o_sdb_muted">/</span><b t-esc="d.name"/></div>
+                        <button type="button" class="o_sdb_btn" t-on-click="editTopic">Edit topic</button>
+                    </div>
+                    <div class="o_sdb_body">
+                        <header>
+                            <h1 t-esc="d.name"/>
+                            <dl class="o_sdb_meta">
+                                <div><dt>Topic</dt><dd><t t-esc="d.position"/> of <t t-esc="d.of"/></dd></div>
+                                <div><dt>Last researched</dt><dd t-esc="d.last or 'Not yet'"/></div>
+                                <div t-if="d.due"><dt>Due again</dt><dd t-esc="d.due"/></div>
+                            </dl>
+                            <p t-if="d.scope" class="o_sdb_muted" t-esc="d.scope"/>
+                        </header>
+
+                        <div t-if="d.summary.length or d.our_read" class="o_sdb_pair wide">
+                            <section t-if="d.summary.length">
+                                <h2>What we know</h2>
+                                <ul class="o_sdb_known">
+                                    <li t-foreach="d.summary" t-as="line" t-key="line_index" t-esc="line"/>
+                                </ul>
+                            </section>
+                            <section t-if="d.our_read" class="o_sdb_read">
+                                <h2>Our read</h2>
+                                <p class="o_sdb_tag">Interpretation, not a finding</p>
+                                <p t-esc="d.our_read"/>
+                            </section>
+                        </div>
+
+                        <section>
+                            <div class="o_sdb_toolbar">
+                                <button type="button" class="o_sdb_btn primary" t-on-click="newFinding">New</button>
+                                <h2>Findings</h2>
+                                <input type="search" class="o_sdb_input" placeholder="Search this topic" aria-label="Search this topic"
+                                       t-att-value="state.topicSearch" t-on-input="onTopicSearch"/>
+                                <div class="o_sdb_switch" role="group" aria-label="View">
+                                    <button type="button" t-att-class="{ on: state.board }" t-att-aria-pressed="state.board ? 'true' : 'false'"
+                                            t-on-click="() => state.board = true">Board</button>
+                                    <button type="button" t-att-class="{ on: !state.board }" t-att-aria-pressed="state.board ? 'false' : 'true'"
+                                            t-on-click="() => state.board = false">List</button>
+                                </div>
+                            </div>
+
+                            <div t-if="state.board" class="o_sdb_board">
+                                <div t-foreach="d.columns" t-as="col" t-key="col.key" class="o_sdb_col">
+                                    <div class="o_sdb_col_head">
+                                        <span class="o_sdb_status" t-att-class="col.key" t-esc="statusLabels[col.key]"/>
+                                        <span class="o_sdb_muted" t-esc="col.findings.length"/>
+                                    </div>
+                                    <t t-foreach="col.findings" t-as="f" t-key="f.id">
+                                        <t t-call="sediba.Card"/>
+                                    </t>
+                                    <p t-if="!col.findings.length" class="o_sdb_empty" t-esc="emptyColumn[col.key]"/>
+                                </div>
+                            </div>
+                            <t t-else="">
+                                <t t-set="rows" t-value="d.columns.flatMap((c) => c.findings)"/>
+                                <t t-set="withTopic" t-value="false"/>
+                                <t t-call="sediba.Rows"/>
+                            </t>
+                        </section>
+
+                        <section>
+                            <h2>Research log</h2>
+                            <div t-if="d.runs.length" class="o_sdb_lines">
+                                <div t-foreach="d.runs" t-as="r" t-key="r.id" class="o_sdb_line">
+                                    <b class="o_sdb_nowrap" t-esc="r.date"/>
+                                    <span><t t-esc="r.summary"/><t t-if="r.failures"> Failed: <t t-esc="r.failures"/></t></span>
+                                    <button type="button" class="o_sdb_link" t-on-click="() => this.openRun(r.id)">Open run</button>
+                                </div>
+                            </div>
+                            <p t-else="" class="o_sdb_muted">Not researched yet.</p>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- One finding, with its properties beside it -->
+                <div t-elif="state.view === 'finding'" class="o_sdb_split">
+                    <t t-set="f" t-value="state.data"/>
+                    <div class="o_sdb_page">
+                        <div class="o_sdb_bar">
+                            <div class="o_sdb_crumbs">
+                                <button type="button" class="o_sdb_link" t-on-click="() => this.openTopic(f.topic[0])" t-esc="f.topic[1]"/>
+                                <span class="o_sdb_muted">/</span><b t-esc="f.name"/>
+                            </div>
+                            <button type="button" class="o_sdb_btn" t-on-click="editFinding">Edit</button>
+                        </div>
+                        <div class="o_sdb_body">
+                            <header>
+                                <div class="o_sdb_badges">
+                                    <span class="o_sdb_status" t-att-class="f.status" t-esc="statusLabels[f.status]"/>
+                                    <span t-if="f.disagree" class="o_sdb_badge disagree">Sources disagree</span>
+                                    <span t-if="f.review" class="o_sdb_badge review">To review</span>
+                                </div>
+                                <h1 t-esc="f.name"/>
+                                <p t-if="f.statement" class="o_sdb_lede" t-esc="f.statement"/>
+                                <p t-if="f.review and f.review_note" class="o_sdb_decide"><b>To decide:</b> <t t-esc="f.review_note"/></p>
+                            </header>
+
+                            <section>
+                                <h2>What each source says</h2>
+                                <div t-if="f.source_rows.length" class="o_sdb_tablebox">
+                                    <table class="o_sdb_table sources">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Source</th>
+                                                <th scope="col">What it says</th>
+                                                <th scope="col">Date of figure</th>
+                                                <th scope="col">Kind</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="f.source_rows" t-as="s" t-key="s.id">
+                                                <td>
+                                                    <a t-if="s.url" t-att-href="s.url" target="_blank" rel="noopener noreferrer" t-esc="s.name"/>
+                                                    <t t-else="" t-esc="s.name"/>
+                                                    <div t-if="!s.opened" class="o_sdb_muted">Not opened</div>
+                                                </td>
+                                                <td t-esc="s.says"/>
+                                                <td class="o_sdb_nowrap" t-esc="s.figure_date"/>
+                                                <td t-esc="s.kind"/>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p t-else="" class="o_sdb_muted">No sources yet. A finding needs one before it can be verified.</p>
+                            </section>
+
+                            <section t-if="f.why" class="o_sdb_read">
+                                <h2>Why it matters</h2>
+                                <p t-esc="f.why"/>
+                            </section>
+
+                            <section>
+                                <h2>History</h2>
+                                <div class="o_sdb_lines">
+                                    <div t-if="f.run" class="o_sdb_line">
+                                        <b class="o_sdb_nowrap" t-esc="f.run.date"/>
+                                        <span>Last touched by a research run<t t-if="f.run.researcher"> (<t t-esc="f.run.researcher"/>)</t>.</span>
+                                        <button type="button" class="o_sdb_link" t-on-click="() => this.openRun(f.run.id)">Open run</button>
+                                    </div>
+                                    <div class="o_sdb_line">
+                                        <b class="o_sdb_nowrap" t-esc="f.changed"/>
+                                        <span>Last changed<t t-if="f.changed_by"> by <t t-esc="f.changed_by"/></t>. Added <t t-esc="f.created"/>.</span>
+                                    </div>
+                                    <div t-if="f.origin" class="o_sdb_line">
+                                        <b>Origin</b><span t-esc="f.origin"/>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <aside class="o_sdb_props" aria-label="Properties">
+                        <h2>Properties</h2>
+                        <dl>
+                            <div><dt>Status</dt><dd t-esc="statusLabels[f.status]"/></div>
+                            <div><dt>Evidence</dt><dd>
+                                <t t-esc="evidenceText(f.evidence)"/>
+                                <div t-if="f.evidence.unopened" class="o_sdb_muted"><t t-esc="f.evidence.unopened"/> not opened</div>
+                            </dd></div>
+                            <div><dt>Topic</dt><dd><button type="button" class="o_sdb_link" t-on-click="() => this.openTopic(f.topic[0])" t-esc="f.topic[1]"/></dd></div>
+                            <div t-if="f.orgs.length"><dt>Organisations</dt><dd class="o_sdb_chips">
+                                <span t-foreach="f.orgs" t-as="o" t-key="o" class="o_sdb_chip" t-esc="o"/>
+                            </dd></div>
+                            <div><dt>Checked on</dt><dd t-esc="f.checked or 'Not checked yet'"/></div>
+                            <div t-if="f.checked_by"><dt>Checked by</dt><dd t-esc="f.checked_by"/></div>
+                            <div t-if="f.recheck"><dt>Check again by</dt><dd t-esc="f.recheck"/></div>
+                            <div><dt>Used in</dt><dd t-att-class="{ o_sdb_muted: !f.used_in }" t-esc="f.used_in or 'Nothing yet'"/></div>
+                        </dl>
+                        <div class="o_sdb_actions">
+                            <button t-if="f.status !== 'verified'" type="button" class="o_sdb_btn primary" t-on-click="() => this.setStatus('verified')">Mark verified</button>
+                            <button t-if="f.status !== 'lead'" type="button" class="o_sdb_btn" t-on-click="() => this.setStatus('lead')">Move back to leads</button>
+                            <button t-if="f.status !== 'unconfirmed'" type="button" class="o_sdb_btn" t-on-click="() => this.setStatus('unconfirmed')">Could not confirm</button>
+                            <button type="button" class="o_sdb_btn" t-on-click="toggleReview">
+                                <t t-if="f.review">Reviewed, clear the flag</t><t t-else="">Flag for review</t>
+                            </button>
+                        </div>
+                    </aside>
+                </div>
+
+                <!-- All findings / To review -->
+                <div t-elif="state.view === 'list'" class="o_sdb_page">
+                    <t t-set="d" t-value="state.data"/>
+                    <div class="o_sdb_body">
+                        <header>
+                            <h1>Findings</h1>
+                            <p t-if="state.search" class="o_sdb_lede">Matching “<t t-esc="state.search"/>”</p>
+                        </header>
+                        <div class="o_sdb_pills" role="group" aria-label="Filter">
+                            <button t-foreach="pills" t-as="p" t-key="p[0]" type="button" t-att-class="{ on: state.pill === p[0] }"
+                                    t-att-aria-pressed="state.pill === p[0] ? 'true' : 'false'"
+                                    t-on-click="() => this.openList(p[0])" t-esc="p[1]"/>
+                        </div>
+                        <t t-if="d.rows.length">
+                            <t t-set="rows" t-value="d.rows"/>
+                            <t t-set="withTopic" t-value="true"/>
+                            <t t-call="sediba.Rows"/>
+                            <p class="o_sdb_muted"><t t-esc="d.rows.length"/> of <t t-esc="d.total"/></p>
+                            <button t-if="d.rows.length &lt; d.total" type="button" class="o_sdb_btn" t-on-click="more">Show more</button>
+                        </t>
+                        <p t-else="" class="o_sdb_empty">Nothing here.</p>
+                    </div>
+                </div>
+
+                <!-- Runs -->
+                <div t-elif="state.view === 'runs'" class="o_sdb_page">
+                    <t t-set="d" t-value="state.data"/>
+                    <div class="o_sdb_body">
+                        <header>
+                            <h1>Research runs</h1>
+                            <p class="o_sdb_lede">One line for each time a topic was researched.</p>
+                        </header>
+                        <div t-if="d.rows.length" class="o_sdb_tablebox">
+                            <table class="o_sdb_table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Topic</th>
+                                        <th scope="col">By</th>
+                                        <th scope="col" class="num">Verified</th>
+                                        <th scope="col" class="num">New leads</th>
+                                        <th scope="col">What changed</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="d.rows" t-as="r" t-key="r.id">
+                                        <td class="o_sdb_nowrap"><button type="button" class="o_sdb_link" t-on-click="() => this.openRun(r.id)" t-esc="r.date"/></td>
+                                        <td><button type="button" class="o_sdb_link" t-on-click="() => this.openTopic(r.topic[0])" t-esc="r.topic[1]"/></td>
+                                        <td t-esc="r.researcher"/>
+                                        <td class="num" t-esc="r.verified"/>
+                                        <td class="num" t-esc="r.leads"/>
+                                        <td><t t-esc="r.summary"/><div t-if="r.failures" class="o_sdb_muted">Failed: <t t-esc="r.failures"/></div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p t-else="" class="o_sdb_empty">No runs yet.</p>
+                        <button t-if="d.rows.length &lt; d.total" type="button" class="o_sdb_btn" t-on-click="more">Show more</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

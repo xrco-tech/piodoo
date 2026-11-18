@@ -1,0 +1,332 @@
+// Sediba workspace: the topics down the side, one page beside them.
+// Colours are variables so the dark file only has to redefine them.
+.o_sdb_ws {
+    --sdb-bg: #f1f2f4;
+    --sdb-card: #ffffff;
+    --sdb-line: #dfe1e5;
+    --sdb-line-soft: #eceef1;
+    --sdb-fg: #111827;
+    --sdb-muted: #4b5563;
+    --sdb-soft: #f6f7f9;
+    --sdb-read: #f6f3f5;
+    --sdb-read-fg: #5b3a53;
+    --sdb-brand: #714b67;
+    --sdb-on-brand: #ffffff;
+    --sdb-link: #015a5f;
+    --sdb-sel: #dff0f1;
+    --sdb-sel-fg: #015a5f;
+    --sdb-ok-bg: #0f5132;
+    --sdb-ok-fg: #ffffff;
+    --sdb-ok-text: #0f5132;
+    --sdb-lead-bg: #fde8c8;
+    --sdb-lead-fg: #6b3a00;
+    --sdb-none-bg: #e5e7eb;
+    --sdb-none-fg: #1f2937;
+    --sdb-info-bg: #dbe7ff;
+    --sdb-info-fg: #1e3a8a;
+
+    display: flex;
+    gap: 8px;
+    padding: 0 8px 8px;
+    background: var(--sdb-bg);
+    color: var(--sdb-fg);
+    font-size: 14px;
+    line-height: 1.5;
+    overflow: hidden;
+
+    h1 { margin: 0; font-size: 30px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+    h2 { margin: 0; font-size: 18px; font-weight: 600; }
+    p { margin: 0; }
+    button { font: inherit; color: inherit; }
+    a, .o_sdb_link { color: var(--sdb-link); }
+
+    .o_sdb_muted { color: var(--sdb-muted); }
+    .o_sdb_nowrap { white-space: nowrap; }
+    .o_sdb_pad { padding: 0 8px; }
+
+    // ── Controls ────────────────────────────────────────────────────────────
+    .o_sdb_btn {
+        min-height: 40px;
+        padding: 0 14px;
+        border: 1px solid var(--sdb-line);
+        border-radius: 6px;
+        background: var(--sdb-card);
+        font-weight: 500;
+        cursor: pointer;
+        &:hover { background: var(--sdb-soft); }
+        &.primary { border-color: var(--sdb-brand); background: var(--sdb-brand); color: var(--sdb-on-brand); font-weight: 600; }
+        &.primary:hover { filter: brightness(0.92); }
+        &.square { width: 40px; padding: 0; font-size: 20px; line-height: 1; flex: none; }
+    }
+    .o_sdb_link {
+        padding: 0;
+        border: 0;
+        background: none;
+        text-align: left;
+        cursor: pointer;
+        &:hover { text-decoration: underline; }
+        &.strong { font-weight: 600; }
+    }
+    .o_sdb_input {
+        flex: 1 1 160px;
+        min-width: 0;
+        height: 40px;
+        padding: 0 12px;
+        border: 1px solid var(--sdb-line);
+        border-radius: 6px;
+        background: var(--sdb-card);
+        color: var(--sdb-fg);
+    }
+    button:focus-visible, a:focus-visible, .o_sdb_input:focus-visible { outline: 2px solid var(--sdb-link); outline-offset: 2px; }
+
+    // ── Sidebar ─────────────────────────────────────────────────────────────
+    .o_sdb_side {
+        flex: 0 0 280px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 12px 4px;
+        overflow-y: auto;
+    }
+    .o_sdb_side_top { display: flex; gap: 8px; }
+    .o_sdb_group { display: flex; flex-direction: column; gap: 2px; }
+    .o_sdb_group_name { padding: 0 8px 4px; font-size: 12px; font-weight: 600; color: var(--sdb-muted); }
+    .o_sdb_item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+        padding: 4px 8px;
+        border: 0;
+        border-radius: 6px;
+        background: none;
+        text-align: left;
+        cursor: pointer;
+        &:hover { background: var(--sdb-line-soft); }
+        &.on { background: var(--sdb-sel); color: var(--sdb-sel-fg); font-weight: 600; }
+    }
+    .o_sdb_item_name { flex: 1 1 auto; min-width: 0; }
+    .o_sdb_note {
+        flex: none;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--sdb-muted);
+        &.next { color: var(--sdb-info-fg); background: var(--sdb-info-bg); border-radius: 10px; padding: 1px 8px; font-weight: 600; }
+        &.count { color: var(--sdb-lead-fg); background: var(--sdb-lead-bg); border-radius: 10px; padding: 1px 8px; font-weight: 600; }
+    }
+    .o_sdb_item.on .o_sdb_note:not(.next):not(.count) { color: inherit; }
+
+    // ── Page ────────────────────────────────────────────────────────────────
+    .o_sdb_main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .o_sdb_browse { display: none; align-self: flex-start; margin: 8px 0; }
+    .o_sdb_split { flex: 1 1 auto; min-height: 0; display: flex; gap: 8px; }
+    .o_sdb_page {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+        overflow-y: auto;
+        background: var(--sdb-card);
+        border: 1px solid var(--sdb-line);
+        border-radius: 8px;
+    }
+    .o_sdb_bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 12px;
+        padding: 6px 16px;
+        border-bottom: 1px solid var(--sdb-line-soft);
+    }
+    .o_sdb_crumbs { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .o_sdb_body {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        padding: 28px 32px 36px;
+        > header, > section { display: flex; flex-direction: column; gap: 10px; }
+    }
+    .o_sdb_lede { font-size: 16px; color: var(--sdb-fg); }
+    header > .o_sdb_lede { color: var(--sdb-muted); }
+    .o_sdb_split header > .o_sdb_lede { color: var(--sdb-fg); }
+    .o_sdb_decide { padding: 10px 14px; border-radius: 8px; background: var(--sdb-lead-bg); color: var(--sdb-lead-fg); }
+    .o_sdb_meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 28px;
+        margin: 0;
+        > div { display: flex; gap: 6px; }
+        dt { font-weight: 400; color: var(--sdb-muted); }
+        dd { margin: 0; font-weight: 500; }
+    }
+
+    .o_sdb_pair {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        > section { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+        &.wide > section:first-child { flex: 2 1 380px; }
+    }
+    .o_sdb_box { padding: 16px 18px; border: 1px solid var(--sdb-line); border-radius: 8px; h2 { font-size: 16px; } }
+    .o_sdb_read {
+        padding: 16px 18px;
+        border-radius: 8px;
+        background: var(--sdb-read);
+        h2 { font-size: 15px; }
+    }
+    .o_sdb_tag { font-size: 12px; font-weight: 600; color: var(--sdb-read-fg); }
+    .o_sdb_known { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+
+    // ── Status and badges ───────────────────────────────────────────────────
+    .o_sdb_status, .o_sdb_badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .o_sdb_status.verified { background: var(--sdb-ok-bg); color: var(--sdb-ok-fg); }
+    .o_sdb_status.lead { background: var(--sdb-lead-bg); color: var(--sdb-lead-fg); }
+    .o_sdb_status.unconfirmed { background: var(--sdb-none-bg); color: var(--sdb-none-fg); }
+    .o_sdb_badge.disagree { background: var(--sdb-info-bg); color: var(--sdb-info-fg); }
+    .o_sdb_badge.review { background: var(--sdb-lead-bg); color: var(--sdb-lead-fg); }
+    .o_sdb_badges { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    // ── Overview ────────────────────────────────────────────────────────────
+    .o_sdb_stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .o_sdb_stat {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 14px 16px;
+        border: 1px solid var(--sdb-line);
+        border-radius: 8px;
+        background: var(--sdb-card);
+        text-align: left;
+        cursor: pointer;
+        &:hover { background: var(--sdb-soft); }
+        b { font-size: 30px; line-height: 1.1; font-weight: 700; }
+        span { font-weight: 600; }
+        &.verified span { color: var(--sdb-ok-text); }
+        &.lead span { color: var(--sdb-lead-fg); }
+        &.unconfirmed span { color: var(--sdb-muted); }
+        &.review span { color: var(--sdb-info-fg); }
+    }
+    .o_sdb_lines { display: flex; flex-direction: column; border-top: 1px solid var(--sdb-line-soft); }
+    .o_sdb_line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px 16px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--sdb-line-soft);
+        > span { flex: 1 1 300px; min-width: 0; }
+    }
+
+    // ── Tables ──────────────────────────────────────────────────────────────
+    .o_sdb_tablebox { overflow-x: auto; border: 1px solid var(--sdb-line); border-radius: 8px; }
+    .o_sdb_table {
+        width: 100%;
+        min-width: 620px;
+        border-collapse: collapse;
+        th, td { padding: 10px 12px; text-align: left; vertical-align: top; }
+        th { background: var(--sdb-soft); font-weight: 600; }
+        tbody tr { border-top: 1px solid var(--sdb-line-soft); }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        td .o_sdb_badge { margin-left: 8px; }
+    }
+
+    // ── A topic's findings ──────────────────────────────────────────────────
+    .o_sdb_toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        background: var(--sdb-soft);
+        h2 { flex: 1 1 auto; font-size: 17px; }
+        .o_sdb_input { flex: 1 1 200px; max-width: 320px; }
+    }
+    .o_sdb_switch, .o_sdb_pills {
+        display: flex;
+        flex-wrap: wrap;
+        button {
+            min-height: 38px;
+            padding: 0 12px;
+            border: 1px solid var(--sdb-line);
+            background: var(--sdb-card);
+            font-weight: 500;
+            cursor: pointer;
+            &.on { background: var(--sdb-none-bg); color: var(--sdb-none-fg); font-weight: 600; }
+        }
+    }
+    .o_sdb_switch button { margin-left: -1px; &:first-child { margin-left: 0; border-radius: 6px 0 0 6px; } &:last-child { border-radius: 0 6px 6px 0; } }
+    .o_sdb_pills { gap: 8px; button { border-radius: 19px; } }
+
+    .o_sdb_board { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
+    .o_sdb_col { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+    .o_sdb_col_head { display: flex; align-items: center; gap: 8px; }
+    .o_sdb_card {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 12px 14px;
+        border: 1px solid var(--sdb-line);
+        border-radius: 8px;
+        background: var(--sdb-card);
+        text-align: left;
+        cursor: pointer;
+        &.lead { border-style: dashed; }
+        &:hover { background: var(--sdb-soft); }
+        .o_sdb_muted { font-size: 12px; }
+    }
+    .o_sdb_card_name { font-size: 15px; font-weight: 600; }
+    .o_sdb_empty { padding: 14px; border: 1px dashed var(--sdb-line); border-radius: 8px; color: var(--sdb-muted); }
+
+    // ── A finding's properties ──────────────────────────────────────────────
+    .o_sdb_props {
+        flex: 0 0 300px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding: 18px 20px 22px;
+        overflow-y: auto;
+        background: var(--sdb-card);
+        border: 1px solid var(--sdb-line);
+        border-radius: 8px;
+        dl { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+        dl > div { display: flex; flex-direction: column; gap: 3px; }
+        dt { font-weight: 600; }
+        dd { margin: 0; }
+    }
+    .o_sdb_chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .o_sdb_chip { padding: 2px 10px; border-radius: 12px; background: var(--sdb-none-bg); color: var(--sdb-none-fg); font-size: 13px; }
+    .o_sdb_actions { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--sdb-line-soft); }
+}
+
+// The web client lays an action out as a column; the workspace is a row.
+html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: row; overflow: hidden; }
+
+// ── Narrow screens: one thing at a time ─────────────────────────────────────
+@media (max-width: 991.98px) {
+    .o_sdb_ws .o_sdb_split { flex-direction: column; overflow-y: auto; }
+    .o_sdb_ws .o_sdb_split > .o_sdb_page { flex: none; overflow: visible; }
+    .o_sdb_ws .o_sdb_props { flex: none; overflow: visible; }
+}
+@media (max-width: 767.98px) {
+    html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: column; overflow-y: auto; }
+    .o_sdb_ws {
+        gap: 0;
+        .o_sdb_side { display: none; flex: none; }
+        &.browsing .o_sdb_side { display: flex; }
+        &.browsing .o_sdb_main > :not(.o_sdb_browse) { display: none; }
+        .o_sdb_browse { display: block; }
+        .o_sdb_main { flex: none; overflow: visible; }
+        .o_sdb_page { overflow: visible; }
+        .o_sdb_split { overflow: visible; }
+        .o_sdb_body { padding: 20px 16px 28px; }
+        .o_sdb_btn, .o_sdb_item, .o_sdb_input { min-height: 44px; }
+        h1 { font-size: 26px; }
+    }
+}
