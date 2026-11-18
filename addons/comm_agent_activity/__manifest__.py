@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Agent Activity',
-    'version': '18.0.1.1.0',
+    'version': '18.0.1.1.1',
     'category': 'Communications',
     'summary': 'What each agent did, how fast and how well: one record per action, and the Team report',
     'description': """

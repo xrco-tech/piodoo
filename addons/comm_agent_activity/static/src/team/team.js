@@ -139,6 +139,15 @@ export class TeamReport extends Component {
 
     // ── The team ────────────────────────────────────────────────────────
 
+    /** How many targets this view is measured against, in words for the settings line. */
+    get targetsNote() {
+        const on = this.state.team.targets.columns.length;
+        if (!on) {
+            return _t("No targets are on for this view.");
+        }
+        return on === 1 ? _t("1 target is on for this view.") : _t("%s targets are on for this view.", on);
+    }
+
     get tiles() {
         const t = this.state.team.tiles;
         const idle = t.agents - t.active;

@@ -9,6 +9,7 @@
     --caa-red: #{$danger};
     --caa-green: #{$success};
     --caa-amber: #b06a00;
+    --caa-hivis: #d9a400;
 
     display: flex;
     flex-direction: column;
@@ -41,8 +42,8 @@
     .o_caa_title {
         display: flex;
         flex-direction: column;
+        flex: 1 1 240px;
         min-width: 0;
-        margin-right: auto;
 
         .o_caa_muted { font-size: 14px; }
     }
@@ -57,23 +58,32 @@
 
         &:hover { background: var(--bs-tertiary-bg, #f1f3f5); }
     }
-    .o_caa_seg {
+    // Filters as pills, the same as the spend reports.
+    .o_caa_chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .o_caa_chips_sm { margin-top: 8px; }
+    .o_caa_chip {
+        min-height: 36px;
+        padding: 4px 14px;
+        border: 1px solid var(--caa-line);
+        border-radius: 999px;
+        background: var(--caa-card);
+        color: inherit;
+
+        &.on { border-color: var(--caa-hivis); background: rgba(255, 196, 20, .3); font-weight: 600; }
+        &.o_caa_chip_sm { min-height: 30px; padding: 2px 12px; font-size: .9em; }
+    }
+    .o_caa_setline {
         display: flex;
         flex-wrap: wrap;
-        border: 1px solid var(--caa-line);
-        border-radius: 8px;
-        overflow: hidden;
-        background: var(--caa-card);
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px 12px;
+        padding: 6px 16px;
 
-        button {
-            min-height: 40px;
-            padding: 0 14px;
-            border: 0;
-            background: transparent;
-            color: inherit;
-        }
-        button.on { background: var(--caa-accent); color: #fff; font-weight: 600; }
+        .o_caa_muted { font-size: 14px; }
+        .btn { min-height: 36px; }
     }
+    .o_caa_setlinks { display: flex; flex-wrap: wrap; gap: 0 6px; }
 
     .o_caa_tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
     .o_caa_tile {
@@ -340,6 +350,9 @@
 
     @media (max-width: 575.98px) {
         padding: 12px 16px 24px;
+
+        .o_caa_chip { min-height: 44px; }
+        .o_caa_chip.o_caa_chip_sm { min-height: 40px; }
 
         .o_caa_crow { grid-template-columns: minmax(0, 1fr) 72px 88px; }
         .o_caa_log { grid-template-columns: minmax(0, 1fr) auto; }
