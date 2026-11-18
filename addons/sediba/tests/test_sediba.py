@@ -200,3 +200,67 @@ class TestSedibaWorkspace(TransactionCase):
                      lambda: ws.ws_set_review(self.lead.id, False)):
             with self.assertRaises(AccessError):
                 call()
+
+
+@tagged('post_install', '-at_install')
+class TestSedibaInApps(TransactionCase):
+    """The screen opened from inside another app: only that app's topics,
+    and readers change nothing."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.reader = new_test_user(cls.env, 'sediba_app_reader', groups='base.group_user,sediba.group_reader')
+        cls.researcher = new_test_user(cls.env, 'sediba_app_researcher', groups='base.group_user,sediba.group_user')
+        cls.env['sediba.source'].search([]).unlink()
+        cls.env['sediba.finding'].with_context(active_test=False).search([]).unlink()
+        cls.env['sediba.run'].search([]).unlink()
+        cls.env['sediba.topic'].with_context(active_test=False).search([]).unlink()
+        Space = cls.env['sediba.space']
+        cls.jobs = Space.search([('code', '=', 'test_jobs')]) or Space.create({'name': 'Jobs app', 'code': 'test_jobs'})
+        cls.calls = Space.search([('code', '=', 'test_calls')]) or Space.create({'name': 'Calls app', 'code': 'test_calls'})
+        Topic = cls.env['sediba.topic']
+        cls.jobs_topic = Topic.create({'name': 'Job seekers', 'sequence': 1, 'space_ids': [(6, 0, cls.jobs.ids)]})
+        cls.both_topic = Topic.create({'name': 'Regulation', 'sequence': 2, 'space_ids': [(6, 0, (cls.jobs | cls.calls).ids)]})
+        cls.plain_topic = Topic.create({'name': 'Unmarked', 'sequence': 3})
+        Finding = cls.env['sediba.finding']
+        cls.jobs_finding = Finding.create({'name': 'About jobs', 'topic_id': cls.jobs_topic.id, 'needs_review': True})
+        cls.both_finding = Finding.create({'name': 'About rules', 'topic_id': cls.both_topic.id})
+        cls.plain_finding = Finding.create({'name': 'About nothing', 'topic_id': cls.plain_topic.id})
+        cls.env['sediba.run'].create({'topic_id': cls.jobs_topic.id, 'run_date': date(2026, 11, 18)})
+        cls.Ws = cls.env['sediba.workspace'].with_user(cls.reader)
+
+    def test_each_app_sees_its_own_topics(self):
+        self.assertEqual(len(self.Ws.ws_nav()['topics']), 3)
+        jobs = self.Ws.ws_nav('test_jobs')
+        self.assertEqual([t['name'] for t in jobs['topics']], ['Job seekers', 'Regulation'])
+        self.assertEqual((jobs['all'], jobs['review'], jobs['runs'], jobs['space']), (2, 1, 1, 'Jobs app'))
+        calls = self.Ws.ws_nav('test_calls')
+        self.assertEqual([t['name'] for t in calls['topics']], ['Regulation'])
+        self.assertEqual((calls['all'], calls['review'], calls['runs']), (1, 0, 0))
+        # An app nobody has marked anything for shows nothing, not everything.
+        self.assertEqual(self.Ws.ws_nav('no_such_app')['topics'], [])
+        self.assertEqual(self.Ws.ws_findings('all', '', 0, 40, 'no_such_app')['total'], 0)
+
+    def test_pages_stay_inside_the_app(self):
+        self.assertEqual(self.Ws.ws_overview('test_calls')['counts'], {'lead': 1, 'verified': 0, 'unconfirmed': 0, 'review': 0})
+        self.assertFalse(self.Ws.ws_overview('test_calls')['last_run'])
+        self.assertEqual(self.Ws.ws_overview('test_calls')['next']['name'], 'Regulation')
+        self.assertFalse(self.Ws.ws_topic(self.jobs_topic.id, '', 'test_calls'))
+        self.assertEqual(self.Ws.ws_topic(self.both_topic.id, '', 'test_calls')['of'], 1)
+        self.assertFalse(self.Ws.ws_finding(self.jobs_finding.id, 'test_calls'))
+        self.assertFalse(self.Ws.ws_finding(self.plain_finding.id, 'test_jobs'))
+        self.assertEqual(self.Ws.ws_finding(self.both_finding.id, 'test_calls')['name'], 'About rules')
+        self.assertEqual([f['name'] for f in self.Ws.ws_findings('all', '', 0, 40, 'test_calls')['rows']], ['About rules'])
+        self.assertEqual(self.Ws.ws_runs(0, 40, 'test_calls')['total'], 0)
+        self.assertEqual(self.Ws.ws_runs(0, 40, 'test_jobs')['total'], 1)
+
+    def test_readers_change_nothing(self):
+        self.assertFalse(self.Ws.ws_nav('test_jobs')['can_edit'])
+        self.assertTrue(self.env['sediba.workspace'].with_user(self.researcher).ws_nav('test_jobs')['can_edit'])
+        with self.assertRaises(AccessError):
+            self.Ws.ws_set_review(self.jobs_finding.id, False, 'test_jobs')
+        with self.assertRaises(AccessError):
+            self.Ws.ws_set_status(self.jobs_finding.id, 'unconfirmed', 'test_jobs')
+        with self.assertRaises(AccessError):
+            self.env['sediba.finding'].with_user(self.reader).create({'name': 'Mine', 'topic_id': self.jobs_topic.id})

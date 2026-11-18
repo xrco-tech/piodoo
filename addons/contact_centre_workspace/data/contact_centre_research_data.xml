@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Research (Sediba) inside the Contact Centre: only the topics marked as
+         shown in the Contact Centre, read-only for agents. -->
+    <record id="sediba_space_contact_centre" model="sediba.space">
+        <field name="name">Contact Centre</field>
+        <field name="code">contact_centre</field>
+    </record>
+
+    <record id="contact_centre.group_contact_centre_agent" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('sediba.group_reader'))]"/>
+    </record>
+
+    <record id="action_contact_centre_research" model="ir.actions.client">
+        <field name="name">Research</field>
+        <field name="tag">sediba_workspace</field>
+        <field name="params" eval="{'space': 'contact_centre'}"/>
+    </record>
+    <menuitem id="menu_contact_centre_research" name="Research" parent="contact_centre.menu_contact_centre_main"
+              action="action_contact_centre_research" sequence="13"
+              groups="contact_centre.group_contact_centre_agent"/>
+</odoo>

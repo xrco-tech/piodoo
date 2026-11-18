@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Contact Centre Workspace',
-    'version': '18.0.3.5.0',
+    'version': '18.0.3.6.0',
     'category': 'Communications',
     'summary': 'The Contact Centre inbox as a Discuss-style workspace: rail, list, thread, information card',
     'description': """
@@ -58,12 +58,13 @@ Centre Inbox's own methods, so the two screens behave the same.
 """,
     'author': 'Tsela NavTech',
     'license': 'LGPL-3',
-    'depends': ['contact_centre_inbox', 'contact_centre_sync', 'comm_dialer', 'comm_agent_activity'],
+    'depends': ['contact_centre_inbox', 'contact_centre_sync', 'comm_dialer', 'comm_agent_activity', 'sediba'],
     'data': [
         'security/ir.model.access.csv',
         'data/contact_centre_queue_data.xml',
         'views/contact_centre_workspace_views.xml',
         'views/contact_centre_queue_views.xml',
+        'data/contact_centre_research_data.xml',
     ],
     'assets': {
         'web.assets_backend': [

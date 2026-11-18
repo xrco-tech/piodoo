@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="group_reader" model="res.groups">
+        <field name="name">Sediba: reader</field>
+        <field name="comment">Read research where another app shows it. Changes nothing.</field>
+    </record>
     <record id="group_user" model="res.groups">
         <field name="name">Sediba: researcher</field>
         <field name="comment">Read and write research topics, findings, sources and runs.</field>
+        <field name="implied_ids" eval="[(4, ref('group_reader'))]"/>
     </record>
     <record id="base.group_system" model="res.groups">
         <field name="implied_ids" eval="[(4, ref('group_user'))]"/>
