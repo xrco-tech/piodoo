@@ -49,7 +49,7 @@ export class SedibaWorkspace extends Component {
         this.emptyColumn = EMPTY_COLUMN;
         this.state = useState({
             view: "overview", // overview | topic | finding | list | runs
-            nav: { topics: [], all: 0, review: 0, runs: 0, space: false, can_edit: false },
+            nav: { topics: [], all: 0, review: 0, runs: 0, space: false, reference: false, can_edit: false },
             data: null,
             topicId: false,
             findingId: false,

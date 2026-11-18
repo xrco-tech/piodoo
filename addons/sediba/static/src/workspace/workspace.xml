@@ -57,7 +57,7 @@
                 </div>
 
                 <div class="o_sdb_group">
-                    <div class="o_sdb_group_name">Research topics<t t-if="state.nav.space"> for <t t-esc="state.nav.space"/></t></div>
+                    <div class="o_sdb_group_name"><t t-if="state.nav.reference">Reference for <t t-esc="state.nav.space"/></t><t t-else="">Research topics</t></div>
                     <button t-foreach="state.nav.topics" t-as="t" t-key="t.id" type="button" class="o_sdb_item"
                             t-att-class="{ on: isTopic(t.id) }" t-att-aria-current="isTopic(t.id) ? 'page' : false"
                             t-on-click="() => this.openTopic(t.id)">
@@ -65,7 +65,7 @@
                         <span t-if="t.next" class="o_sdb_note next">Next</span>
                         <span t-elif="t.last" class="o_sdb_note" t-esc="t.last"/>
                     </button>
-                    <p t-if="!state.nav.topics.length and state.nav.space" class="o_sdb_muted o_sdb_pad">No research is marked for <t t-esc="state.nav.space"/> yet. A researcher marks a topic as shown here in Sediba.</p>
+                    <p t-if="!state.nav.topics.length and state.nav.space" class="o_sdb_muted o_sdb_pad">Nothing verified is marked for <t t-esc="state.nav.space"/> yet. A researcher marks a topic as shown here in Sediba, and its verified findings appear.</p>
                     <p t-elif="!state.nav.topics.length" class="o_sdb_muted o_sdb_pad">No topics yet. Add them under Configuration.</p>
                 </div>
 
@@ -76,15 +76,15 @@
                     </button>
                     <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'list' and state.pill !== 'review' }"
                             t-on-click="() => this.openList('all')">
-                        <span class="o_sdb_item_name">All findings</span>
+                        <span class="o_sdb_item_name"><t t-if="state.nav.reference">All verified findings</t><t t-else="">All findings</t></span>
                         <span class="o_sdb_note" t-esc="state.nav.all"/>
                     </button>
-                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'list' and state.pill === 'review' }"
+                    <button t-if="!state.nav.reference" type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'list' and state.pill === 'review' }"
                             t-on-click="() => this.openList('review')">
                         <span class="o_sdb_item_name">To review</span>
                         <span t-if="state.nav.review" class="o_sdb_note count" t-esc="state.nav.review"/>
                     </button>
-                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'runs' }" t-on-click="openRuns">
+                    <button t-if="!state.nav.reference" type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'runs' }" t-on-click="openRuns">
                         <span class="o_sdb_item_name">Research runs</span>
                         <span class="o_sdb_note" t-esc="state.nav.runs"/>
                     </button>
@@ -104,26 +104,32 @@
                     <t t-set="d" t-value="state.data"/>
                     <div class="o_sdb_body">
                         <header>
-                            <h1>Overview</h1>
-                            <p class="o_sdb_lede">Research <t t-if="state.nav.space">for <t t-esc="state.nav.space"/>, </t>gathered by topic, with what is proven kept apart from what is only a lead.</p>
+                            <t t-if="state.nav.reference">
+                                <h1>Reference</h1>
+                                <p class="o_sdb_lede">Verified findings for <t t-esc="state.nav.space"/>. Each one rests on a source that was opened and read. Leads are not shown here.</p>
+                            </t>
+                            <t t-else="">
+                                <h1>Overview</h1>
+                                <p class="o_sdb_lede">Research gathered by topic, with what is proven kept apart from what is only a lead.</p>
+                            </t>
                         </header>
 
                         <div class="o_sdb_stats">
                             <button type="button" class="o_sdb_stat verified" t-on-click="() => this.openList('verified')">
                                 <b t-esc="d.counts.verified"/><span>Verified</span>
                             </button>
-                            <button type="button" class="o_sdb_stat lead" t-on-click="() => this.openList('lead')">
+                            <button t-if="!state.nav.reference" type="button" class="o_sdb_stat lead" t-on-click="() => this.openList('lead')">
                                 <b t-esc="d.counts.lead"/><span>Leads, not verified</span>
                             </button>
-                            <button type="button" class="o_sdb_stat unconfirmed" t-on-click="() => this.openList('unconfirmed')">
+                            <button t-if="!state.nav.reference" type="button" class="o_sdb_stat unconfirmed" t-on-click="() => this.openList('unconfirmed')">
                                 <b t-esc="d.counts.unconfirmed"/><span>Could not confirm</span>
                             </button>
-                            <button type="button" class="o_sdb_stat review" t-on-click="() => this.openList('review')">
+                            <button t-if="!state.nav.reference" type="button" class="o_sdb_stat review" t-on-click="() => this.openList('review')">
                                 <b t-esc="d.counts.review"/><span>For you to review</span>
                             </button>
                         </div>
 
-                        <div class="o_sdb_pair">
+                        <div t-if="!state.nav.reference" class="o_sdb_pair">
                             <section class="o_sdb_box">
                                 <h2>Last run</h2>
                                 <t t-if="d.last_run">
@@ -167,8 +173,8 @@
                                             <th scope="col">Topic</th>
                                             <th scope="col">Last researched</th>
                                             <th scope="col" class="num">Verified</th>
-                                            <th scope="col" class="num">Leads</th>
-                                            <th scope="col">Due</th>
+                                            <th t-if="!state.nav.reference" scope="col" class="num">Leads</th>
+                                            <th t-if="!state.nav.reference" scope="col">Due</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -176,8 +182,8 @@
                                             <td><button type="button" class="o_sdb_link" t-on-click="() => this.openTopic(t.id)" t-esc="t.name"/></td>
                                             <td t-esc="t.last or 'Not yet'"/>
                                             <td class="num" t-esc="t.verified"/>
-                                            <td class="num" t-esc="t.leads"/>
-                                            <td class="o_sdb_nowrap"><t t-if="t.next">Next</t><t t-else="" t-esc="t.due or ''"/></td>
+                                            <td t-if="!state.nav.reference" class="num" t-esc="t.leads"/>
+                                            <td t-if="!state.nav.reference" class="o_sdb_nowrap"><t t-if="t.next">Next</t><t t-else="" t-esc="t.due or ''"/></td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -190,7 +196,7 @@
                 <div t-elif="state.view === 'topic'" class="o_sdb_page">
                     <t t-set="d" t-value="state.data"/>
                     <div class="o_sdb_bar">
-                        <div class="o_sdb_crumbs"><span class="o_sdb_muted">Research topics</span><span class="o_sdb_muted">/</span><b t-esc="d.name"/></div>
+                        <div class="o_sdb_crumbs"><span class="o_sdb_muted"><t t-if="state.nav.reference">Reference</t><t t-else="">Research topics</t></span><span class="o_sdb_muted">/</span><b t-esc="d.name"/></div>
                         <button t-if="state.nav.can_edit" type="button" class="o_sdb_btn" t-on-click="editTopic">Edit topic</button>
                     </div>
                     <div class="o_sdb_body">
@@ -224,7 +230,7 @@
                                 <h2>Findings</h2>
                                 <input type="search" class="o_sdb_input" placeholder="Search this topic" aria-label="Search this topic"
                                        t-att-value="state.topicSearch" t-on-input="onTopicSearch"/>
-                                <div class="o_sdb_switch" role="group" aria-label="View">
+                                <div t-if="!state.nav.reference" class="o_sdb_switch" role="group" aria-label="View">
                                     <button type="button" t-att-class="{ on: state.board }" t-att-aria-pressed="state.board ? 'true' : 'false'"
                                             t-on-click="() => state.board = true">Board</button>
                                     <button type="button" t-att-class="{ on: !state.board }" t-att-aria-pressed="state.board ? 'false' : 'true'"
@@ -232,7 +238,7 @@
                                 </div>
                             </div>
 
-                            <div t-if="state.board" class="o_sdb_board">
+                            <div t-if="state.board or state.nav.reference" class="o_sdb_board" t-att-class="{ single: state.nav.reference }">
                                 <div t-foreach="d.columns" t-as="col" t-key="col.key" class="o_sdb_col">
                                     <div class="o_sdb_col_head">
                                         <span class="o_sdb_status" t-att-class="col.key" t-esc="statusLabels[col.key]"/>
@@ -251,7 +257,7 @@
                             </t>
                         </section>
 
-                        <section>
+                        <section t-if="!state.nav.reference">
                             <h2>Research log</h2>
                             <div t-if="d.runs.length" class="o_sdb_lines">
                                 <div t-foreach="d.runs" t-as="r" t-key="r.id" class="o_sdb_line">
@@ -322,7 +328,7 @@
                                 <p t-esc="f.why"/>
                             </section>
 
-                            <section>
+                            <section t-if="!state.nav.reference">
                                 <h2>History</h2>
                                 <div class="o_sdb_lines">
                                     <div t-if="f.run" class="o_sdb_line">
@@ -357,7 +363,7 @@
                             <div><dt>Checked on</dt><dd t-esc="f.checked or 'Not checked yet'"/></div>
                             <div t-if="f.checked_by"><dt>Checked by</dt><dd t-esc="f.checked_by"/></div>
                             <div t-if="f.recheck"><dt>Check again by</dt><dd t-esc="f.recheck"/></div>
-                            <div><dt>Used in</dt><dd t-att-class="{ o_sdb_muted: !f.used_in }" t-esc="f.used_in or 'Nothing yet'"/></div>
+                            <div t-if="!state.nav.reference"><dt>Used in</dt><dd t-att-class="{ o_sdb_muted: !f.used_in }" t-esc="f.used_in or 'Nothing yet'"/></div>
                         </dl>
                         <div t-if="state.nav.can_edit" class="o_sdb_actions">
                             <button t-if="f.status !== 'verified'" type="button" class="o_sdb_btn primary" t-on-click="() => this.setStatus('verified')">Mark verified</button>
@@ -375,10 +381,10 @@
                     <t t-set="d" t-value="state.data"/>
                     <div class="o_sdb_body">
                         <header>
-                            <h1>Findings</h1>
+                            <h1><t t-if="state.nav.reference">Verified findings</t><t t-else="">Findings</t></h1>
                             <p t-if="state.search" class="o_sdb_lede">Matching “<t t-esc="state.search"/>”</p>
                         </header>
-                        <div class="o_sdb_pills" role="group" aria-label="Filter">
+                        <div t-if="!state.nav.reference" class="o_sdb_pills" role="group" aria-label="Filter">
                             <button t-foreach="pills" t-as="p" t-key="p[0]" type="button" t-att-class="{ on: state.pill === p[0] }"
                                     t-att-aria-pressed="state.pill === p[0] ? 'true' : 'false'"
                                     t-on-click="() => this.openList(p[0])" t-esc="p[1]"/>

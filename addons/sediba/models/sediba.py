@@ -33,9 +33,9 @@ RECHECK_DAYS = 90
 
 
 class SedibaSpace(models.Model):
-    """An app that shows part of the research, for example Chat2Work. A topic
-    lists the apps it is relevant to; the workspace opened from inside an app
-    shows only those topics and their findings."""
+    """An app that shows part of the research as its Reference, for example
+    Chat2Work. A topic lists the apps it is relevant to; the Reference inside
+    an app shows only the verified findings on those topics."""
     _name = 'sediba.space'
     _description = 'App that shows research'
     _order = 'name'
@@ -58,8 +58,8 @@ class SedibaTopic(models.Model):
     active = fields.Boolean(default=True)
     scope = fields.Text(help="What to look for under this topic.")
     space_ids = fields.Many2many('sediba.space', string="Shown in",
-                                 help="The apps this topic is relevant to. It shows in the research "
-                                      "screen opened from inside each of them. Sediba itself shows every topic.")
+                                 help="The apps this topic is relevant to. Its verified findings show in "
+                                      "the Reference inside each of them. Sediba itself shows everything.")
     summary = fields.Text(string="What we know",
                           help="A short summary, drawn only from verified findings.")
     our_read = fields.Text(string="Our read",

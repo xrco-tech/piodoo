@@ -50,7 +50,7 @@ sidekick chats (with what the sidekick looked at) and the agent notes.
         'views/chat2work_workspace_views.xml',
         'data/chat2work_agent_note_data.xml',
         'data/chat2work_alerts_data.xml',
-        'data/chat2work_research_data.xml',
+        'data/chat2work_reference_data.xml',
     ],
     'assets': {
         'web.assets_backend': [

@@ -267,6 +267,14 @@
     .o_sdb_board { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
     .o_sdb_col { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
     .o_sdb_col_head { display: flex; align-items: center; gap: 8px; }
+    // A Reference shows one column only: lay its cards out as a grid.
+    .o_sdb_board.single .o_sdb_col {
+        flex: 1 1 100%;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        align-items: start;
+        .o_sdb_col_head, .o_sdb_empty { grid-column: 1 / -1; }
+    }
     .o_sdb_card {
         display: flex;
         flex-direction: column;
