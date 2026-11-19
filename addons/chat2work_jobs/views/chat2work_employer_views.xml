@@ -12,6 +12,7 @@
                 <field name="is_recruiter" optional="show"/>
                 <field name="open_count"/>
                 <field name="listing_count"/>
+                <field name="partner_id" optional="hide"/>
                 <field name="checked_by_id" optional="show"/>
                 <field name="checked_at" optional="show"/>
             </list>
@@ -36,6 +37,10 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_open_partner" type="object" class="oe_stat_button" icon="fa-address-card-o"
+                                string="Contact details" invisible="not id or not partner_id"/>
+                        <button name="action_open_partner" type="object" class="oe_stat_button" icon="fa-plus"
+                                string="Add contact details" invisible="not id or partner_id"/>
                         <button name="action_open_listings" type="object" class="oe_stat_button" icon="fa-briefcase"
                                 invisible="not id">
                             <field name="open_count" widget="statinfo" string="Open jobs"/>
@@ -54,11 +59,36 @@
                             <field name="check_no_fees"/>
                         </group>
                         <group string="Result" name="result">
+                            <field name="partner_id" options="{'no_quick_create': True}"
+                                   context="{'default_is_company': True, 'default_name': name}"
+                                   placeholder="Address, phone, email and people"/>
                             <field name="is_recruiter"/>
                             <field name="checked_by_id" invisible="not checked_by_id"/>
                             <field name="checked_at" invisible="not checked_at"/>
                             <field name="listing_count" string="Jobs ever listed"/>
                             <field name="distinct_ids" widget="many2many_tags" readonly="1" invisible="not distinct_ids"/>
+                        </group>
+                    </group>
+                    <group string="Contact details" name="contact" invisible="not partner_id">
+                        <group>
+                            <field name="contact_phone" widget="phone"/>
+                            <field name="contact_mobile" widget="phone"/>
+                            <field name="contact_email" widget="email"/>
+                            <field name="contact_website" widget="url"/>
+                        </group>
+                        <group>
+                            <label for="contact_street" string="Address"/>
+                            <div class="o_address_format">
+                                <field name="contact_street" placeholder="Street..." class="o_address_street"/>
+                                <field name="contact_street2" placeholder="Street 2..." class="o_address_street"/>
+                                <field name="contact_city" placeholder="City" class="o_address_city"/>
+                                <field name="contact_state_id" placeholder="Province" class="o_address_state"
+                                       options="{'no_open': True, 'no_create': True}"
+                                       domain="[('country_id', '=?', contact_country_id)]"/>
+                                <field name="contact_zip" placeholder="Postal code" class="o_address_zip"/>
+                                <field name="contact_country_id" placeholder="Country" class="o_address_country"
+                                       options="{'no_open': True, 'no_create': True}"/>
+                            </div>
                         </group>
                     </group>
                     <group string="How it was checked" name="note">

@@ -85,3 +85,30 @@ class TestChat2workEmployer(TransactionCase):
         action = employer.action_open_listings()
         self.assertEqual(action['res_model'], 'chat2work.listing')
         self.assertEqual(action['domain'], [('employer_id', '=', employer.id)])
+
+    def test_contact_record(self):
+        """The contact is made on first use, then the same one is opened."""
+        employer = self.env['chat2work.employer'].create({'name': 'Contact Link Traders', 'registration_no': '2019/1/07'})
+        self.assertFalse(employer.partner_id)
+        action = employer.action_open_partner()
+        partner = employer.partner_id
+        self.assertTrue(partner.is_company)
+        self.assertEqual(partner.name, 'Contact Link Traders')
+        self.assertEqual(action['res_id'], partner.id)
+        self.assertEqual(employer.action_open_partner()['res_id'], partner.id)
+        # Joining another spelling keeps a contact the other one had.
+        other = self.env['chat2work.employer'].create({'name': 'Zzq Joined Works'})
+        keeper = self.env['chat2work.employer'].create({'name': 'Zzq Joined Works Group'})
+        other.action_open_partner()
+        kept = other.partner_id
+        keeper.action_join(other)
+        self.assertEqual(keeper.partner_id, kept)
+
+    def test_contact_details_on_the_employer(self):
+        """Details typed on the employer land on its contact."""
+        employer = self.env['chat2work.employer'].create({'name': 'Zzr Detail Traders'})
+        employer.action_open_partner()
+        employer.write({'contact_phone': '011 555 0100', 'contact_email': 'jobs@zzr.example', 'contact_city': 'Soweto'})
+        self.assertEqual(employer.partner_id.phone, '011 555 0100')
+        self.assertEqual(employer.partner_id.email, 'jobs@zzr.example')
+        self.assertEqual(employer.partner_id.city, 'Soweto')
