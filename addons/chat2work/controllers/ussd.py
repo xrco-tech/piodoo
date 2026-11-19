@@ -26,3 +26,8 @@ class Chat2workUssdController(UssdController):
     def _ussd_closed(self, session_id, status, seconds=None):
         request.env["chat2work.ussd.session"].sudo().ussd_session_closed(session_id, seconds=seconds)
         return super()._ussd_closed(session_id, status, seconds)
+
+    def _ussd_session_service_code(self, session_id):
+        session = request.env["chat2work.ussd.session"].sudo().search(
+            [("session_id", "=", session_id)], limit=1)
+        return session.service_code or super()._ussd_session_service_code(session_id)

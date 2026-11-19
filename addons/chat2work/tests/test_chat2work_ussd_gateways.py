@@ -4,7 +4,11 @@
 import json
 from urllib.parse import parse_qs
 
+from unittest.mock import patch
+
+from odoo.exceptions import ValidationError
 from odoo.tests import HttpCase, tagged
+from odoo.tools import config
 
 AT_CODE = '*384*7001#'
 CM_CODE = '*120*8800*7002#'
@@ -86,3 +90,61 @@ class TestChat2workUssdGateways(HttpCase):
         post(sessionId='ATUid_gw_2', serviceCode=AT_CODE, phoneNumber='+27820007008', text='')
         self.url_open('/ussd/notifications', data={'sessionId': 'ATUid_gw_2', 'status': 'Incomplete'}, timeout=30)
         self.assertFalse(Session.search([('session_id', '=', 'ATUid_gw_2')]))
+
+    # ── Allowed callers ──────────────────────────────────────────────────────
+
+    def test_allowed_callers(self):
+        Account = self.env['comm.ussd.account']
+        at = Account.search([('service_code', '=', AT_CODE)])
+        cm = Account.search([('service_code', '=', CM_CODE)])
+        Session = self.env['chat2work.ussd.session']
+        at.allowed_ips = '18.133.205.228\n196.201.214.0/24'
+        cm.allowed_ips = '41.0.0.7'
+
+        def via(ip, extra=''):
+            # What Odoo receives behind Cloudflare and nginx: the caller's own
+            # claim (if any), the real address, then the tunnel's.
+            return {'X-Forwarded-For': '%s%s, 172.18.0.6' % (extra, ip)}
+
+        with patch.dict(config.options, {'proxy_mode': True}):
+            at_post = lambda headers, **d: self.url_open('/ussd/inbound', data=d, headers=headers, timeout=30)
+            start = dict(serviceCode=AT_CODE, phoneNumber='+27820007020', text='')
+            # A stranger is refused and nothing is started, even claiming a listed address.
+            res = at_post(via('8.8.4.4'), sessionId='ATUid_ip_1', **start)
+            self.assertEqual(res.status_code, 403)
+            res = at_post(via('8.8.4.4', extra='18.133.205.228, '), sessionId='ATUid_ip_1', **start)
+            self.assertEqual(res.status_code, 403)
+            self.assertFalse(Session.search([('session_id', '=', 'ATUid_ip_1')]))
+            # The gateway is answered, by single address and by range.
+            res = at_post(via('18.133.205.228'), sessionId='ATUid_ip_1', **start)
+            self.assertTrue(res.text.startswith('CON '), res.text)
+            res = at_post(via('196.201.214.77'), sessionId='ATUid_ip_2', **dict(start, phoneNumber='+27820007021'))
+            self.assertTrue(res.text.startswith('CON '), res.text)
+            # A stranger cannot close a live session; the gateway can.
+            notice = {'sessionId': 'ATUid_ip_1', 'status': 'Incomplete'}
+            res = self.url_open('/ussd/notifications', data=notice, headers=via('8.8.4.4'), timeout=30)
+            self.assertEqual(res.status_code, 403)
+            self.assertTrue(Session.search([('session_id', '=', 'ATUid_ip_1')]))
+            self.url_open('/ussd/notifications', data=notice, headers=via('18.133.205.228'), timeout=30)
+            self.assertFalse(Session.search([('session_id', '=', 'ATUid_ip_1')]))
+
+            # Connect Mobile: the first request, an answer and a hang-up are all checked.
+            cm_post = lambda ip, **d: self.url_open('/ussd/connectmobile', data=d, headers=via(ip), timeout=30)
+            first = dict(msisdn='27820007022', sessionid='9001', request=CM_CODE, type='1')
+            self.assertEqual(cm_post('8.8.4.4', **first).status_code, 403)
+            self.assertFalse(self.env['comm.ussd.gateway.session'].search([('key', '=', '9001/27820007022')]))
+            self.assertEqual(cm_post('41.0.0.7', **first).status_code, 200)
+            held = self.env['comm.ussd.gateway.session'].search([('key', '=', '9001/27820007022')])
+            self.assertTrue(held)
+            self.assertEqual(cm_post('8.8.4.4', **dict(first, request='', type='3')).status_code, 403)
+            self.assertTrue(held.exists())
+            self.assertEqual(cm_post('41.0.0.7', **dict(first, request='', type='3')).status_code, 200)
+            self.assertFalse(held.exists())
+
+            # No list: anyone, as before.
+            at.allowed_ips = False
+            res = at_post(via('8.8.4.4'), sessionId='ATUid_ip_3', **dict(start, phoneNumber='+27820007023'))
+            self.assertTrue(res.text.startswith('CON '), res.text)
+
+        with self.assertRaises(ValidationError):
+            at.allowed_ips = '18.133.205.228\nnot-an-address'

@@ -43,6 +43,10 @@
                             <field name="api_key" password="True"/>
                             <field name="base_url"/>
                         </group>
+                        <group string="Allowed Callers">
+                            <field name="allowed_ips" nolabel="1" colspan="2"
+                                   placeholder="One address or range per line, e.g. 196.201.214.0/24. Empty accepts any caller."/>
+                        </group>
                         <div class="alert alert-info" role="alert">
                             Inbound callback: <code>/ussd/inbound</code>.
                             Notifications: <code>/ussd/notifications</code>.

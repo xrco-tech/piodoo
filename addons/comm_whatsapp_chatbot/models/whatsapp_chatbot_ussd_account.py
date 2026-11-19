@@ -7,7 +7,11 @@ inbound path (the gateway already authenticated the caller); outbound
 sessions (e.g. push USSD) can use api_key when needed.
 """
 
-from odoo import api, fields, models
+import ipaddress
+import re
+
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class CommUssdAccount(models.Model):
@@ -41,6 +45,13 @@ class CommUssdAccount(models.Model):
     base_url = fields.Char(string="Base URL",
                            help="Provider base URL for push-USSD or callbacks.")
 
+    allowed_ips = fields.Text(
+        string="Allowed Callers", tracking=True,
+        help="Internet addresses the gateway calls us from, one per line: a single "
+             "address (196.201.214.1) or a range (196.201.214.0/24). Requests for this "
+             "code from anywhere else are refused. Leave empty to accept any caller.",
+    )
+
     is_default = fields.Boolean(
         string="Default Account", default=False,
         help="If multiple accounts can match an inbound, the default wins.",
@@ -51,6 +62,36 @@ class CommUssdAccount(models.Model):
          'UNIQUE(service_code)',
          "A USSD account already exists for this service code."),
     ]
+
+    def _allowed_networks(self):
+        self.ensure_one()
+        entries = [e for e in re.split(r"[\s,;]+", self.allowed_ips or "") if e]
+        return [ipaddress.ip_network(e, strict=False) for e in entries]
+
+    @api.constrains('allowed_ips')
+    def _check_allowed_ips(self):
+        for account in self:
+            try:
+                account._allowed_networks()
+            except ValueError as e:
+                raise ValidationError(_(
+                    "Allowed Callers on %(name)s has an entry that is not an address or a range: %(error)s",
+                    name=account.name, error=e))
+
+    def caller_allowed(self, ip):
+        """Whether a gateway request from `ip` may use this code. No list
+        means anyone; a list means only those addresses."""
+        self.ensure_one()
+        networks = self._allowed_networks()
+        if not networks:
+            return True
+        try:
+            address = ipaddress.ip_address((ip or "").strip())
+        except ValueError:
+            return False
+        if getattr(address, "ipv4_mapped", None):
+            address = address.ipv4_mapped
+        return any(address in network for network in networks)
 
     @api.model
     def find_for_service_code(self, service_code):
