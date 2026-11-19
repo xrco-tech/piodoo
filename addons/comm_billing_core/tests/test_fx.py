@@ -171,3 +171,31 @@ class TestFx(common.TransactionCase):
         later = self._fixed_rand_event(2)
         self.assertAlmostEqual(later.price_local, 1.0, places=4)
         self.assertAlmostEqual(later.price_usd, 0.05, places=6)
+
+    def test_fee_per_session_on_top_of_time(self):
+        """7c for the session plus 21c for every started 20 seconds."""
+        self.ZAR.active = True
+        card = self.env['comm.billing.rate.card'].create({
+            'name': 'Fee test', 'channel': 'ussd', 'provider': 'Fee Test',
+            'service_code': '*134*0000#', 'effective_from': date(2026, 1, 1),
+            'billing_model': 'per_session',
+            'rate_ids': [(0, 0, {
+                'category': 'ussd_session', 'unit': 'block', 'price_usd': 0.0,
+                'block_seconds': 20, 'price_local': 0.21, 'session_fee_local': 0.07,
+                'local_currency_id': self.ZAR.id,
+            })],
+        })
+        Event = self.env['comm.billing.event']
+        charge = lambda seconds, code='*134*0000#': Event.create({
+            'channel': 'ussd', 'provider': 'Fee Test', 'category': 'ussd_session',
+            'unit': 'block', 'unit_qty': 1.0, 'duration_seconds': seconds,
+            'service_code': code, 'event_date': datetime(2026, 6, 15),
+        })
+        short, minute = charge(5), charge(60)
+        self.assertEqual(short.rate_card_id, card)
+        self.assertAlmostEqual(short.price_local, 0.28, places=4)
+        self.assertAlmostEqual(minute.price_local, 0.70, places=4)
+        self.assertEqual(minute.unit_qty, 3)
+        self.assertEqual(minute.currency_id, self.ZAR)
+        self.assertNotEqual(charge(60, '*134*9999#').rate_card_id, card,
+                            'another code is not priced from this list')
