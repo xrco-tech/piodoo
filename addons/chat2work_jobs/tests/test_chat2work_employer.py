@@ -68,3 +68,20 @@ class TestChat2workEmployer(TransactionCase):
         job.employer_id = False
         self.env['chat2work.listing']._c2w_link_all_employers()
         self.assertEqual(job.employer_id.name, 'Zze Old Employer')
+
+    def test_form_buttons(self):
+        """The record form's buttons record who answered, like the workspace."""
+        employer = self.env['chat2work.employer'].create({'name': 'Form Button Traders'})
+        employer.action_mark_verified()
+        self.assertEqual(employer.state, 'verified')
+        self.assertEqual(employer.checked_by_id, self.env.user)
+        self.assertTrue(employer.checked_at)
+        employer.action_mark_invalid()
+        self.assertEqual(employer.state, 'invalid')
+        employer.action_mark_unsure()
+        self.assertEqual(employer.state, 'unsure')
+        employer.action_mark_new()
+        self.assertEqual(employer.state, 'new')
+        action = employer.action_open_listings()
+        self.assertEqual(action['res_model'], 'chat2work.listing')
+        self.assertEqual(action['domain'], [('employer_id', '=', employer.id)])
