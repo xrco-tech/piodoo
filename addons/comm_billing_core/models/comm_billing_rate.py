@@ -80,6 +80,10 @@ class CommBillingRate(models.Model):
              '(e.g. R0.50 per 20 seconds). When set, with its currency, the '
              'charge is this amount and the USD price is worked out from it.')
     local_currency_id = fields.Many2one('res.currency', string='Fixed price currency')
+    session_fee_local = fields.Float(string='Fee per session', digits=(12, 6),
+        help='For a provider that charges an amount for every session on top '
+             'of its price by time (e.g. 7c per USSD session plus 21c per 20 '
+             'seconds). In the fixed price currency; added once per charge.')
     tier_from = fields.Integer(default=0,
         help='Cumulative monthly volume at which this tier starts.')
     tier_to = fields.Integer(default=0,

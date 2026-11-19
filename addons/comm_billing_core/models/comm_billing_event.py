@@ -358,7 +358,8 @@ class CommBillingEvent(models.Model):
 
         if rate.price_local and rate.local_currency_id:
             vals.update(rate_id=rate.id, **self._fixed_price(
-                unit_qty * rate.price_local, rate.local_currency_id, provider, event_date))
+                unit_qty * rate.price_local + (rate.session_fee_local or 0.0),
+                rate.local_currency_id, provider, event_date))
             return vals
 
         price_usd = unit_qty * rate.price_usd
