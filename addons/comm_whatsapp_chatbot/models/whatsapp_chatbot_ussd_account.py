@@ -24,7 +24,10 @@ class CommUssdAccount(models.Model):
     provider = fields.Selection([
         ('generic', 'Generic'),
         ('africastalking', "Africa's Talking"),
-    ], string="Provider", default='generic', required=True, tracking=True)
+        ('connect_mobile', 'Connect Mobile'),
+    ], string="Provider", default='generic', required=True, tracking=True,
+        help="Africa's Talking and Generic codes are answered on /ussd/inbound; "
+             "Connect Mobile codes on /ussd/connectmobile.")
 
     service_code = fields.Char(
         string="Service Code", required=True, tracking=True, index='btree',
@@ -64,3 +67,30 @@ class CommUssdAccount(models.Model):
         if default:
             return default
         return self.sudo().search([('active', '=', True)], order='sequence, id', limit=1)
+
+
+class CommUssdGatewaySession(models.Model):
+    """What we must remember about a live session for a gateway that tells us
+    less than Africa's Talking does: Connect Mobile sends only the latest
+    entry and may not repeat the dialled code, and its session number can
+    come round again."""
+    _name = 'comm.ussd.gateway.session'
+    _description = 'USSD Gateway Session'
+
+    provider = fields.Char(required=True, index=True)
+    key = fields.Char(required=True, index=True, help="The gateway's own session number and the caller.")
+    service_code = fields.Char(required=True)
+    network = fields.Char(help="The caller's mobile network, as the gateway names it.")
+    breadcrumb = fields.Char(default='', help="Everything typed so far, joined by *.")
+    turns = fields.Integer(default=0)
+    session_id = fields.Char(compute='_compute_session_id',
+                             help="The session id our flows see: never repeats, unlike the gateway's.")
+
+    def _compute_session_id(self):
+        for held in self:
+            held.session_id = '%s-%s-%s' % (held.provider, held.key, held.id)
+
+    @api.autovacuum
+    def _gc_stale(self):
+        """Sessions the gateway never told us had ended."""
+        self.search([('create_date', '<', fields.Datetime.subtract(fields.Datetime.now(), days=1))]).unlink()
