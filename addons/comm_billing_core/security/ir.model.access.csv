@@ -15,3 +15,5 @@ access_comm_billing_budget_alert_admin,comm.billing.budget.alert.admin,model_com
 access_comm_billing_budget_alert_user,comm.billing.budget.alert.user,model_comm_billing_budget_alert,comm_billing_core.group_billing_user,1,0,0,0
 access_comm_billing_invoice_admin,comm.billing.invoice.admin,model_comm_billing_invoice,comm_billing_core.group_billing_administrator,1,1,1,1
 access_comm_billing_invoice_user,comm.billing.invoice.user,model_comm_billing_invoice,comm_billing_core.group_billing_user,1,0,0,0
+access_comm_billing_fee_admin,comm.billing.fee.admin,model_comm_billing_fee,comm_billing_core.group_billing_administrator,1,1,1,1
+access_comm_billing_fee_user,comm.billing.fee.user,model_comm_billing_fee,comm_billing_core.group_billing_user,1,0,0,0

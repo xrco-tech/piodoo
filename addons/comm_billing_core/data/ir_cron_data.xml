@@ -8,4 +8,12 @@
         <field name="interval_number">1</field>
         <field name="interval_type">hours</field>
     </record>
+    <record id="cron_comm_billing_fixed_fees" model="ir.cron">
+        <field name="name">Comm Billing: charge fixed fees</field>
+        <field name="model_id" ref="model_comm_billing_fee"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_post()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+    </record>
 </odoo>

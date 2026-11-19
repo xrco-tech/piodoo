@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_comm_billing_fee_list" model="ir.ui.view">
+        <field name="name">comm.billing.fee.list</field>
+        <field name="model">comm.billing.fee</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" decoration-muted="date_until and date_until &lt; context_today().strftime('%Y-%m-%d')">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="company_id" column_invisible="1"/>
+                <field name="name"/>
+                <field name="provider"/>
+                <field name="channel"/>
+                <field name="source"/>
+                <field name="kind"/>
+                <field name="date_from"/>
+                <field name="date_until"/>
+                <field name="vat_pct" invisible="kind == 'deposit'"/>
+                <field name="amount"/>
+                <field name="note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_comm_billing_fee_search" model="ir.ui.view">
+        <field name="name">comm.billing.fee.search</field>
+        <field name="model">comm.billing.fee</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="provider"/>
+                <filter string="Running" name="running"
+                        domain="['|', ('date_until', '=', False), ('date_until', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Every month" name="monthly" domain="[('kind', '=', 'monthly')]"/>
+                <filter string="Once" name="once" domain="[('kind', '=', 'once')]"/>
+                <filter string="Deposits" name="deposit" domain="[('kind', '=', 'deposit')]"/>
+                <group expand="0" string="Group by">
+                    <filter string="Provider" name="group_provider" context="{'group_by': 'provider'}"/>
+                    <filter string="Used by" name="group_source" context="{'group_by': 'source'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_comm_billing_fee" model="ir.actions.act_window">
+        <field name="name">Fixed Fees</field>
+        <field name="res_model">comm.billing.fee</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add what a provider charges whether or not anything is used</p>
+            <p>Hosting, code or line rental, activation, deposits. Each fee is counted in
+               the month it falls in, next to usage, on the spend overview and the statement.
+               Write the provider's name exactly as it appears on the billing events.
+               When a price changes, end the fee and add a new one from that date,
+               so earlier months keep the old price.</p>
+        </field>
+    </record>
+
+</odoo>

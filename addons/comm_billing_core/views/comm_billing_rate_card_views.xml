@@ -9,6 +9,7 @@
                 <field name="name"/>
                 <field name="channel"/>
                 <field name="provider"/>
+                <field name="vat_pct" optional="show"/>
                 <field name="billing_model"/>
                 <field name="effective_from"/>
                 <field name="effective_to"/>
@@ -28,6 +29,7 @@
                             <field name="name"/>
                             <field name="channel"/>
                             <field name="provider"/>
+                            <field name="vat_pct"/>
                             <field name="service_code" invisible="channel != 'ussd'"/>
                             <field name="billing_model"/>
                             <field name="active"/>

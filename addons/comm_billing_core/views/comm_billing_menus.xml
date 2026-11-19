@@ -35,6 +35,12 @@
               action="action_comm_billing_budget"
               sequence="2"/>
 
+    <menuitem id="menu_comm_billing_fees"
+              name="Fixed Fees"
+              parent="menu_comm_billing_config"
+              action="action_comm_billing_fee"
+              sequence="3"/>
+
     <menuitem id="menu_comm_billing_invoices"
               name="Provider Invoices"
               parent="menu_comm_billing_config"
