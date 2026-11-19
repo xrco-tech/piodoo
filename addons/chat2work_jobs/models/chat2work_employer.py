@@ -63,6 +63,17 @@ class Chat2workEmployer(models.Model):
     partner_id = fields.Many2one(
         'res.partner', 'Contact', ondelete='set null', index=True, copy=False, tracking=True,
         help="The company's contact record, where its address, phone, email, website and people are kept.")
+    # The contact's own details, shown and changed on the employer form.
+    contact_phone = fields.Char('Phone', related='partner_id.phone', readonly=False)
+    contact_mobile = fields.Char('Mobile', related='partner_id.mobile', readonly=False)
+    contact_email = fields.Char('Email', related='partner_id.email', readonly=False)
+    contact_website = fields.Char('Website', related='partner_id.website', readonly=False)
+    contact_street = fields.Char('Street', related='partner_id.street', readonly=False)
+    contact_street2 = fields.Char('Street 2', related='partner_id.street2', readonly=False)
+    contact_city = fields.Char('City', related='partner_id.city', readonly=False)
+    contact_zip = fields.Char('Postal Code', related='partner_id.zip', readonly=False)
+    contact_state_id = fields.Many2one('res.country.state', 'Province', related='partner_id.state_id', readonly=False)
+    contact_country_id = fields.Many2one('res.country', 'Country', related='partner_id.country_id', readonly=False)
     listing_ids = fields.One2many('chat2work.listing', 'employer_id', 'Jobs')
     listing_count = fields.Integer('Jobs', compute='_compute_counts')
     open_count = fields.Integer('Open Jobs', compute='_compute_counts')

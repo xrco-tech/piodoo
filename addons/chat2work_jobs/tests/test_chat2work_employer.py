@@ -103,3 +103,12 @@ class TestChat2workEmployer(TransactionCase):
         kept = other.partner_id
         keeper.action_join(other)
         self.assertEqual(keeper.partner_id, kept)
+
+    def test_contact_details_on_the_employer(self):
+        """Details typed on the employer land on its contact."""
+        employer = self.env['chat2work.employer'].create({'name': 'Zzr Detail Traders'})
+        employer.action_open_partner()
+        employer.write({'contact_phone': '011 555 0100', 'contact_email': 'jobs@zzr.example', 'contact_city': 'Soweto'})
+        self.assertEqual(employer.partner_id.phone, '011 555 0100')
+        self.assertEqual(employer.partner_id.email, 'jobs@zzr.example')
+        self.assertEqual(employer.partner_id.city, 'Soweto')

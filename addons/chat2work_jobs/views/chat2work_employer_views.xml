@@ -69,6 +69,28 @@
                             <field name="distinct_ids" widget="many2many_tags" readonly="1" invisible="not distinct_ids"/>
                         </group>
                     </group>
+                    <group string="Contact details" name="contact" invisible="not partner_id">
+                        <group>
+                            <field name="contact_phone" widget="phone"/>
+                            <field name="contact_mobile" widget="phone"/>
+                            <field name="contact_email" widget="email"/>
+                            <field name="contact_website" widget="url"/>
+                        </group>
+                        <group>
+                            <label for="contact_street" string="Address"/>
+                            <div class="o_address_format">
+                                <field name="contact_street" placeholder="Street..." class="o_address_street"/>
+                                <field name="contact_street2" placeholder="Street 2..." class="o_address_street"/>
+                                <field name="contact_city" placeholder="City" class="o_address_city"/>
+                                <field name="contact_state_id" placeholder="Province" class="o_address_state"
+                                       options="{'no_open': True, 'no_create': True}"
+                                       domain="[('country_id', '=?', contact_country_id)]"/>
+                                <field name="contact_zip" placeholder="Postal code" class="o_address_zip"/>
+                                <field name="contact_country_id" placeholder="Country" class="o_address_country"
+                                       options="{'no_open': True, 'no_create': True}"/>
+                            </div>
+                        </group>
+                    </group>
                     <group string="How it was checked" name="note">
                         <field name="note" nolabel="1" colspan="2"
                                placeholder="Who you spoke to, what you looked up, and what you found."/>
