@@ -60,6 +60,9 @@ class Chat2workEmployer(models.Model):
     note = fields.Text('How It Was Checked')
     checked_by_id = fields.Many2one('res.users', 'Checked By', readonly=True, copy=False)
     checked_at = fields.Datetime('Checked On', readonly=True, copy=False)
+    partner_id = fields.Many2one(
+        'res.partner', 'Contact', ondelete='set null', index=True, copy=False, tracking=True,
+        help="The company's contact record, where its address, phone, email, website and people are kept.")
     listing_ids = fields.One2many('chat2work.listing', 'employer_id', 'Jobs')
     listing_count = fields.Integer('Jobs', compute='_compute_counts')
     open_count = fields.Integer('Open Jobs', compute='_compute_counts')
@@ -143,6 +146,22 @@ class Chat2workEmployer(models.Model):
     def action_mark_new(self):
         return self.action_set_state('new')
 
+    def action_open_partner(self):
+        """Open the company's contact record, making it on first use."""
+        self.ensure_one()
+        if not self.partner_id:
+            vals = {'name': self.name, 'is_company': True}
+            if self.registration_no and 'company_registry' in self.env['res.partner']._fields:
+                vals['company_registry'] = self.registration_no
+            self.partner_id = self.env['res.partner'].create(vals)
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.partner_id.display_name,
+            'res_model': 'res.partner',
+            'res_id': self.partner_id.id,
+            'view_mode': 'form',
+        }
+
     def action_open_listings(self):
         self.ensure_one()
         return {
@@ -163,6 +182,8 @@ class Chat2workEmployer(models.Model):
             raise UserError(_("Pick another employer to join with this one."))
         Alias = self.env['chat2work.employer.alias']
         other.listing_ids.write({'employer_id': self.id})
+        if other.partner_id and not self.partner_id:
+            self.partner_id = other.partner_id
         other.alias_ids.write({'employer_id': self.id})
         if other.key != self.key and not Alias.search_count([('key', '=', other.key)]):
             other_name, other_key = other.name, other.key

@@ -12,6 +12,7 @@
                 <field name="is_recruiter" optional="show"/>
                 <field name="open_count"/>
                 <field name="listing_count"/>
+                <field name="partner_id" optional="hide"/>
                 <field name="checked_by_id" optional="show"/>
                 <field name="checked_at" optional="show"/>
             </list>
@@ -36,6 +37,10 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_open_partner" type="object" class="oe_stat_button" icon="fa-address-card-o"
+                                string="Contact details" invisible="not id or not partner_id"/>
+                        <button name="action_open_partner" type="object" class="oe_stat_button" icon="fa-plus"
+                                string="Add contact details" invisible="not id or partner_id"/>
                         <button name="action_open_listings" type="object" class="oe_stat_button" icon="fa-briefcase"
                                 invisible="not id">
                             <field name="open_count" widget="statinfo" string="Open jobs"/>
@@ -54,6 +59,9 @@
                             <field name="check_no_fees"/>
                         </group>
                         <group string="Result" name="result">
+                            <field name="partner_id" options="{'no_quick_create': True}"
+                                   context="{'default_is_company': True, 'default_name': name}"
+                                   placeholder="Address, phone, email and people"/>
                             <field name="is_recruiter"/>
                             <field name="checked_by_id" invisible="not checked_by_id"/>
                             <field name="checked_at" invisible="not checked_at"/>
