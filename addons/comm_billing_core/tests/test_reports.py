@@ -18,6 +18,7 @@ class TestBillingReports(TransactionCase):
         cls.currency = cls.env.company.currency_id
         cls.Event.search([]).unlink()
         cls.env['comm.billing.budget'].search([]).unlink()
+        cls.env['comm.billing.fee'].search([]).unlink()
         cls.today = cls.Report._today()
         cls.first = cls.today.replace(day=1)
         cls.seq = 0
@@ -199,3 +200,138 @@ class TestBillingReports(TransactionCase):
         self.assertEqual(self.Report.budget_warnings(), [])
         outsider = self.env['res.users'].create({'name': 'No billing 2', 'login': 'nobilling2'})
         self.assertEqual(self.Report.with_user(outsider).budget_warnings(), [])
+
+    # ---- fixed fees ----
+    def _fee(self, **vals):
+        return self.env['comm.billing.fee'].create(dict({
+            'name': 'USSD hosting', 'provider': 'Connect Mobile', 'channel': 'ussd',
+            'source': 'chat2work', 'kind': 'monthly', 'date_from': self.first,
+            'amount': 850.0, 'vat_pct': 15.0}, **vals))
+
+    def test_monthly_fee_is_charged_every_month(self):
+        start = self.first - relativedelta(months=2) + timedelta(days=9)
+        fee = self._fee(date_from=start)
+        self.assertEqual(len(fee.event_ids), 3, 'one charge a month, the running month included')
+        self.assertEqual(set(fee.event_ids.mapped('category')), {'fixed_fee'})
+        self.assertEqual(min(fee.event_ids.mapped('event_date')).date(), start)
+        self.assertEqual(max(fee.event_ids.mapped('event_date')).date(), self.first)
+        self.assertAlmostEqual(sum(fee.event_ids.mapped('price_local')), 2550.0)
+        self.assertEqual(set(fee.event_ids.mapped('currency_id')), {self.currency})
+        fee._sync()
+        self.env['comm.billing.fee']._cron_post()
+        self.assertEqual(len(fee.event_ids), 3, 'running it again adds nothing')
+
+    def test_overview_counts_fixed_fees_apart_from_usage(self):
+        self._event(self.first, 100.0, channel='ussd', category='ussd_session',
+                    provider='Connect Mobile')
+        self._fee()
+        self._fee(name='USSD activation', kind='once', amount=2750.0)
+        self._fee(name='Later', kind='once', amount=1.0, date_from=self.today + timedelta(days=40))
+        data = self.Report.overview('month')
+        self.assertAlmostEqual(data['spent'], 3700.0)
+        self.assertAlmostEqual(data['usage'], 100.0)
+        self.assertAlmostEqual(data['fixed'], 3600.0)
+        self.assertAlmostEqual(data['vat'], 540.0)
+        self.assertAlmostEqual(data['spent_vat'], 4240.0)
+        self.assertEqual([(f['name'], f['cost']) for f in data['fees']],
+                         [('USSD activation', 2750.0), ('USSD hosting', 850.0)])
+        ussd = data['channels'][0]
+        self.assertAlmostEqual(ussd['fixed'], 3600.0)
+        self.assertAlmostEqual(ussd['usage'], 100.0)
+        self.assertEqual(data['unpriced'], 1, 'a fixed fee is not a charge without a rate')
+        self.assertAlmostEqual(sum(b['cost'] for b in data['days']['bars']), 100.0,
+                               'the daily chart is usage only')
+        # The forecast grows usage with the days, and adds the fixed fees once.
+        self.assertGreaterEqual(data['forecast'], 3700.0 - 0.01)
+        days = (self.today - self.first).days + 1
+        self.assertLessEqual(data['forecast'], 3600.0 + 100.0 * 62 / max(days - 1, 0.5))
+        rows = {r['label']: r['cost'] for r in data['rows']}
+        self.assertAlmostEqual(rows['Fixed fees'], 3600.0)
+        self.assertAlmostEqual(self.Report.overview('month', source='chat2work')['fixed'], 3600.0)
+        self.assertAlmostEqual(self.Report.overview('month', source='contact_centre')['fixed'], 0.0)
+        self.assertAlmostEqual(self.Report.dashboard_cost(
+            'chat2work', self.Report._utc(self.first))['total'], 3600.0)
+
+    def test_fixed_fees_count_against_the_budget(self):
+        budget = self.env['comm.billing.budget'].create({
+            'amount': 1000.0, 'warn_day': True, 'warn_day_amount': 60.0})
+        self._fee()
+        block = self.Report.overview('month')['budget']
+        self.assertEqual(block['pct'], 85)
+        budget._check_warnings()
+        kinds = set(budget.alert_ids.mapped('kind'))
+        self.assertIn('pct', kinds)
+        self.assertFalse([k for k in kinds if k.startswith('day:')],
+                         'a fixed fee is not an unusually expensive day')
+
+    def test_deposit_is_held_not_spent(self):
+        deposit = self._fee(name='Deposit', kind='deposit', amount=5000.0, vat_pct=0.0)
+        self.assertFalse(deposit.event_ids)
+        data = self.Report.overview('month')
+        self.assertAlmostEqual(data['spent'], 0.0)
+        self.assertAlmostEqual(data['held'], 5000.0)
+        self.assertTrue(data['deposits'][0]['paid_now'])
+        deposit.date_until = self.first
+        self.assertAlmostEqual(self.Report.overview('month')['held'], 5000.0)
+        deposit.write({'date_from': self.first - relativedelta(months=3),
+                       'date_until': self.first - relativedelta(months=2)})
+        self.assertFalse(self.Report.overview('month')['deposits'], 'given back: no longer held')
+
+    def test_changing_a_fee_corrects_the_ledger(self):
+        fee = self._fee(date_from=self.first - relativedelta(months=1))
+        self.assertEqual(len(fee.event_ids), 2)
+        fee.amount = 900.0
+        self.assertEqual(set(fee.event_ids.mapped('price_local')), {900.0})
+        fee.write({'provider': 'Someone Else', 'source': 'contact_centre'})
+        self.assertEqual(set(fee.event_ids.mapped('provider')), {'Someone Else'})
+        self.assertEqual(set(fee.event_ids.mapped('source')), {'contact_centre'})
+        fee.date_until = self.first - timedelta(days=1)
+        self.assertEqual(len(fee.event_ids), 1, 'ended last month: this month is not charged')
+        fee.kind = 'deposit'
+        self.assertFalse(fee.event_ids)
+        fee.kind = 'once'
+        events = fee.event_ids
+        self.assertEqual(len(events), 1)
+        events._reconvert()
+        self.assertAlmostEqual(events.price_local, 900.0, msg='a new exchange rate leaves the fee alone')
+        fee.unlink()
+        self.assertFalse(events.exists())
+        with self.assertRaises(Exception):
+            self._fee(amount=0.0)
+
+    def test_statement_with_fixed_fees_vat_and_deposit(self):
+        last_month = self.first - relativedelta(months=1)
+        card = self.env['comm.billing.rate.card'].create({
+            'name': 'Connect', 'channel': 'ussd', 'provider': 'Connect Mobile',
+            'effective_from': last_month, 'vat_pct': 15.0})
+        usage = self._event(last_month, 100.0, channel='ussd', category='ussd_session',
+                            provider='Connect Mobile')
+        usage.write({'rate_card_id': card.id})
+        self._event(last_month, 200.0)  # Meta: no VAT on its card
+        self._fee(date_from=last_month, date_until=last_month + timedelta(days=20))
+        self._fee(name='Deposit', kind='deposit', amount=5000.0, vat_pct=0.0,
+                  date_from=last_month + timedelta(days=5))
+        self.env['comm.billing.invoice'].create({
+            'month': last_month, 'provider': 'Connect Mobile', 'amount': 5950.0})
+        statement = self.Report.statement()
+        self.assertAlmostEqual(statement['usage'], 300.0)
+        self.assertAlmostEqual(statement['fixed'], 850.0)
+        self.assertAlmostEqual(statement['total'], 1150.0)
+        self.assertAlmostEqual(statement['vat'], 142.5)
+        self.assertAlmostEqual(statement['total_vat'], 1292.5)
+        self.assertAlmostEqual(statement['deposit_total'], 5000.0)
+        self.assertAlmostEqual(statement['cash'], 6292.5)
+        section = statement['sections'][0]
+        self.assertEqual((section['channel'], section['provider']), ('ussd', 'Connect Mobile'))
+        self.assertAlmostEqual(section['total'], 950.0)
+        self.assertEqual([(line['label'], line['fixed']) for line in section['lines']],
+                         [('Sessions', False), ('USSD hosting', True)])
+        check = next(c for c in statement['checks'] if c['provider'] == 'Connect Mobile')
+        self.assertAlmostEqual(check['ours'], 5950.0)
+        self.assertAlmostEqual(check['deposit'], 5000.0)
+        self.assertEqual(check['result'], 'match')
+        # The PDF renders with the new lines.
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'comm_billing_core.report_statement', [], data={'month': statement['month']})[0]
+        self.assertIn(b'Cash needed this month', html)
+        self.assertIn(b'Fixed: ', html)

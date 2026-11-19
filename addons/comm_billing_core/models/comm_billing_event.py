@@ -73,9 +73,17 @@ class CommBillingEvent(models.Model):
     feature = fields.Char(index=True,
         help='The feature that caused an AI charge, e.g. sidekick or copilot.')
 
+    fee_id = fields.Many2one('comm.billing.fee', string='Fixed fee', index=True,
+        readonly=True, ondelete='cascade',
+        help='Set on a charge that is a fixed fee rather than usage.')
+    fee_month = fields.Date(readonly=True,
+        help='First day of the month a fixed fee was charged for.')
+
     display_name = fields.Char(compute='_compute_display_name', store=True)
 
     _sql_constraints = [
+        ('event_fee_month_uniq', 'unique(fee_id, fee_month)',
+         'This fixed fee is already charged for the month.'),
         ('event_source_uniq', 'unique(source_model, source_id, category, unit)',
          'A billing event for this source record already exists.'),
     ]
@@ -273,7 +281,8 @@ class CommBillingEvent(models.Model):
         changed = 0
         for event in self:
             rate = event.rate_id
-            if rate.price_local and rate.local_currency_id and event.currency_id == rate.local_currency_id:
+            if event.fee_id or (rate.price_local and rate.local_currency_id
+                                and event.currency_id == rate.local_currency_id):
                 # Fixed in rand (say): the amount stays, only its dollar price moves.
                 vals = self._fixed_price(event.price_local, event.currency_id,
                                          event.provider, event.event_date)
@@ -377,6 +386,9 @@ class CommBillingEvent(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if vals.get('fee_id'):
+                # A fixed fee arrives complete: nothing to attribute or price.
+                continue
             if not vals.get('country_id') and vals.get('wa_id'):
                 country = self._country_from_wa_id(vals['wa_id'])
                 if country:

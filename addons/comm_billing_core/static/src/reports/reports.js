@@ -156,6 +156,22 @@ export class CommBillingReports extends Component {
         return this.money(value, value < 1 ? 4 : 2);
     }
 
+    get fixedText() {
+        const fees = this.state.data.fees;
+        if (!fees.length) {
+            return _t("None charged in this period");
+        }
+        const sum = (kind) => fees.filter((fee) => fee.kind === kind).reduce((total, fee) => total + fee.cost, 0);
+        const parts = [];
+        if (sum("monthly")) {
+            parts.push(_t("%s monthly", this.money(sum("monthly"))));
+        }
+        if (sum("once")) {
+            parts.push(_t("%s once", this.money(sum("once"))));
+        }
+        return parts.join(", ");
+    }
+
     get changeText() {
         const { change_pct: pct, prev_span: span } = this.state.data;
         if (pct === null) {
@@ -251,11 +267,15 @@ export class CommBillingReports extends Component {
 
     openUnpriced() {
         const data = this.state.view === "statement" ? this.state.statement : this.state.data;
-        this.openEvents(_t("Charges with no matching rate"), [...data.domain, ["rate_id", "=", false], ["is_free", "=", false]]);
+        this.openEvents(_t("Charges with no matching rate"), [...data.domain, ["rate_id", "=", false], ["fee_id", "=", false], ["is_free", "=", false]]);
     }
 
     openBudget() {
         this.action.doAction("comm_billing_core.action_comm_billing_budget");
+    }
+
+    openFees() {
+        this.action.doAction("comm_billing_core.action_comm_billing_fee");
     }
 
     openInvoices() {

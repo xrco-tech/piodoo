@@ -82,6 +82,7 @@ class CommBillingReport(models.AbstractModel):
             'llm_output': _('Writing (output)'),
             'llm_cache_read': _('Reading again from memory (cache)'),
             'llm_cache_write': _('Saving to memory (cache)'),
+            'fixed_fee': _('Fixed fees'),
         }.get(category, category or _('Other'))
 
     @api.model
@@ -107,6 +108,7 @@ class CommBillingReport(models.AbstractModel):
             'minute': _('min'),
             'kilotoken': _('thousand tokens'),
             'conversation': _('conversations'),
+            'fee': _('fees'),
         }.get(unit, '')
 
     # ------------------------------------------------------------------
@@ -213,25 +215,30 @@ class CommBillingReport(models.AbstractModel):
             SELECT e.channel,
                    {self._cost_sql()},
                    COALESCE(SUM(e.unit_qty) FILTER (WHERE e.is_free), 0),
-                   COUNT(*) FILTER (WHERE e.rate_id IS NULL AND NOT COALESCE(e.is_free, FALSE)),
-                   COUNT(*) FILTER (WHERE e.price_usd > 0 AND e.currency_id IS DISTINCT FROM %(cur)s)
+                   COUNT(*) FILTER (WHERE e.rate_id IS NULL AND e.fee_id IS NULL
+                                      AND NOT COALESCE(e.is_free, FALSE)),
+                   COUNT(*) FILTER (WHERE e.price_usd > 0 AND e.currency_id IS DISTINCT FROM %(cur)s),
+                   COALESCE(SUM(e.price_local) FILTER
+                            (WHERE e.currency_id = %(cur)s AND e.fee_id IS NOT NULL), 0)
               FROM comm_billing_event e
              WHERE e.event_date >= %(start)s AND e.event_date < %(end)s {self._source_sql()}
              GROUP BY e.channel
         """, self._params(start, end))
         return {
             channel: {'cost': cost, 'free_qty': free, 'unpriced': unpriced,
-                      'unconverted': unconverted}
-            for channel, cost, free, unpriced, unconverted in self.env.cr.fetchall()
+                      'unconverted': unconverted, 'fixed': fixed}
+            for channel, cost, free, unpriced, unconverted, fixed in self.env.cr.fetchall()
         }
 
     def _by_day(self, start, end):
-        """{local date: cost}."""
+        """{local date: cost of usage}. Fixed fees are left out: a month's
+        rental on one day says nothing about how that day went."""
         self.env.cr.execute(f"""
             SELECT (e.event_date AT TIME ZONE 'UTC' AT TIME ZONE %(tz)s)::date AS day,
                    {self._cost_sql()}
               FROM comm_billing_event e
              WHERE e.event_date >= %(start)s AND e.event_date < %(end)s {self._source_sql()}
+               AND e.fee_id IS NULL
              GROUP BY day
         """, self._params(start, end, tz=self._tz().zone))
         return dict(self.env.cr.fetchall())
@@ -253,6 +260,71 @@ class CommBillingReport(models.AbstractModel):
         """, self._params(start, end))
         return self.env.cr.fetchall()
 
+    def _vat(self, start, end):
+        """VAT on the period's charges: each at the rate of its fixed fee or
+        of the rate card that priced it (none where neither says)."""
+        self.env['comm.billing.fee'].flush_model()
+        self.env['comm.billing.rate.card'].flush_model()
+        self.env.cr.execute(f"""
+            SELECT COALESCE(SUM(e.price_local * COALESCE(f.vat_pct, c.vat_pct, 0) / 100.0)
+                            FILTER (WHERE e.currency_id = %(cur)s), 0)
+              FROM comm_billing_event e
+              LEFT JOIN comm_billing_fee f ON f.id = e.fee_id
+              LEFT JOIN comm_billing_rate_card c ON c.id = e.rate_card_id
+             WHERE e.event_date >= %(start)s AND e.event_date < %(end)s {self._source_sql()}
+        """, self._params(start, end))
+        return self.env.cr.fetchone()[0] or 0.0
+
+    def _fee_lines(self, start, end):
+        """The fixed fees charged in the period, biggest first."""
+        self.env.cr.execute(f"""
+            SELECT e.fee_id, COUNT(*), {self._cost_sql()}
+              FROM comm_billing_event e
+             WHERE e.event_date >= %(start)s AND e.event_date < %(end)s {self._source_sql()}
+               AND e.fee_id IS NOT NULL
+             GROUP BY e.fee_id
+             ORDER BY 3 DESC, 1
+        """, self._params(start, end))
+        rows = self.env.cr.fetchall()
+        fees = {f.id: f for f in self.env['comm.billing.fee'].sudo().browse([r[0] for r in rows])}
+        kinds = dict(self.env['comm.billing.fee']._fields['kind']._description_selection(self.env))
+        lines = []
+        for fee_id, count, cost in rows:
+            fee = fees[fee_id]
+            lines.append({
+                'key': fee.id,
+                'name': fee.name,
+                'provider': fee.provider,
+                'channel': fee.channel,
+                'channel_label': self._channel_label(fee.channel),
+                'kind': fee.kind,
+                'kind_label': kinds.get(fee.kind, fee.kind),
+                'since': format_date(self.env, fee.date_from, date_format='d MMM y'),
+                'count': count,
+                'amount': fee.amount,
+                'cost': cost,
+            })
+        return lines
+
+    def _deposits(self, start, end):
+        """Deposits a provider was holding at some point in the period. They
+        are money held, not a cost, so they are in no total of spend."""
+        domain = [('kind', '=', 'deposit'), ('company_id', '=', self.env.company.id),
+                  ('date_from', '<=', end),
+                  '|', ('date_until', '=', False), ('date_until', '>=', start)]
+        source = self._source()
+        if source:
+            domain.append(('source', '=', source))
+        return [{
+            'key': fee.id,
+            'name': fee.name,
+            'provider': fee.provider,
+            'amount': fee.amount,
+            'since': format_date(self.env, fee.date_from, date_format='d MMMM y'),
+            # Paid over in this period, so it is cash to find now.
+            'paid_now': start <= fee.date_from <= end,
+        } for fee in self.env['comm.billing.fee'].sudo().search(domain, order='date_from, id')]
+
     # ------------------------------------------------------------------
     # Budget
     # ------------------------------------------------------------------
@@ -266,14 +338,17 @@ class CommBillingReport(models.AbstractModel):
         last = first.replace(day=days_in_month)
         current = (first.year, first.month) == (today.year, today.month)
         end = today if current else last
-        channels = {ch: v['cost'] for ch, v in self._by_channel(first, end).items()}
+        by_channel = self._by_channel(first, end)
+        channels = {ch: v['cost'] for ch, v in by_channel.items()}
         spent = sum(channels.values())
+        fixed = sum(v['fixed'] for v in by_channel.values())
         forecast = None
         elapsed = days_in_month
         if current:
             now = datetime.now(self._tz()).replace(tzinfo=None)
             elapsed = max((now - datetime.combine(first, time.min)).total_seconds() / 86400.0, 0.5)
-            forecast = spent / elapsed * days_in_month
+            # Only usage grows with the days; a fixed fee is the same all month.
+            forecast = (spent - fixed) / elapsed * days_in_month + fixed
         return {
             'month': first,
             'month_label': format_date(self.env, first, date_format='MMMM y'),
@@ -309,7 +384,12 @@ class CommBillingReport(models.AbstractModel):
         now = self._by_channel(start, end)
         before = self._by_channel(p_start, p_end)
         spent = sum(v['cost'] for v in now.values())
+        fixed = sum(v['fixed'] for v in now.values())
         prev = sum(v['cost'] for v in before.values())
+        vat = self._vat(start, end)
+        # This month's deposits count from the start, whatever day they fall on.
+        month_end = start.replace(day=calendar.monthrange(start.year, start.month)[1])
+        deposits = self._deposits(start, month_end if period == 'month' else end)
 
         budget = self.env['comm.billing.budget']._for_company()
         state = None
@@ -324,14 +404,19 @@ class CommBillingReport(models.AbstractModel):
                               key=lambda c: (-now.get(c, {}).get('cost', 0.0),
                                              CHANNEL_ORDER.index(c) if c in CHANNEL_ORDER else 99)):
             cost = now.get(channel, {}).get('cost', 0.0)
+            channel_fixed = now.get(channel, {}).get('fixed', 0.0)
             limit = limits.get(channel)
             channels.append({
                 'key': channel,
                 'label': self._channel_label(channel),
                 'hint': self._channel_hint(channel),
                 'cost': cost,
+                'usage': cost - channel_fixed,
+                'fixed': channel_fixed,
                 'share': round(cost / spent * 100) if spent else 0,
                 'bar': round(cost / top * 100) if top else 0,
+                'bar_usage': round((cost - channel_fixed) / top * 100) if top else 0,
+                'bar_fixed': round(channel_fixed / top * 100) if top else 0,
                 'change': cost - before.get(channel, {}).get('cost', 0.0),
                 'limit': limit,
                 'limit_pct': round(cost / limit * 100) if limit else None,
@@ -345,7 +430,7 @@ class CommBillingReport(models.AbstractModel):
                 days_in_month = calendar.monthrange(start.year, start.month)[1]
                 local_now = datetime.now(self._tz()).replace(tzinfo=None)
                 elapsed = max((local_now - datetime.combine(start, time.min)).total_seconds() / 86400.0, 0.5)
-                forecast = spent / elapsed * days_in_month
+                forecast = (spent - fixed) / elapsed * days_in_month + fixed
 
         budget_block = None
         if state and state['amount']:
@@ -373,6 +458,14 @@ class CommBillingReport(models.AbstractModel):
             'span': self._span_label(start, end),
             'prev_span': self._span_label(p_start, p_end),
             'spent': spent,
+            'usage': spent - fixed,
+            'fixed': fixed,
+            'vat': vat,
+            'spent_vat': spent + vat,
+            'fees': self._fee_lines(start, end),
+            'deposits': deposits,
+            'held': sum(d['amount'] for d in deposits),
+            'can_fees': self.env['comm.billing.fee'].has_access('write'),
             'prev': prev,
             'change_pct': round((spent - prev) / prev * 100) if prev else None,
             'forecast': forecast,
@@ -584,12 +677,14 @@ class CommBillingReport(models.AbstractModel):
                    {self._cost_sql()}
               FROM comm_billing_event e
              WHERE e.event_date >= %(start)s AND e.event_date < %(end)s
+               AND e.fee_id IS NULL
              GROUP BY e.channel, COALESCE(e.provider, ''), e.category
              ORDER BY 7 DESC
         """, self._params(first, end))
         sections = {}
-        for channel, provider, category, unit, qty, free, cost in self.env.cr.fetchall():
-            section = sections.setdefault((channel, provider), {
+
+        def section_for(channel, provider):
+            return sections.setdefault((channel, provider), {
                 'key': '%s/%s' % (channel, provider),
                 'channel': channel,
                 'label': self._channel_label(channel),
@@ -597,6 +692,9 @@ class CommBillingReport(models.AbstractModel):
                 'total': 0.0,
                 'lines': [],
             })
+
+        for channel, provider, category, unit, qty, free, cost in self.env.cr.fetchall():
+            section = section_for(channel, provider)
             section['total'] += cost
             paid = qty - free
             if paid > 0 or not free:
@@ -604,22 +702,44 @@ class CommBillingReport(models.AbstractModel):
                     'label': self._category_label(category),
                     'qty': paid, 'unit': self._unit_label(unit),
                     'rate': cost / paid if paid > 0 and cost else None,
-                    'free': False, 'cost': cost,
+                    'free': False, 'fixed': False, 'cost': cost,
                 })
             if free:
                 section['lines'].append({
                     'label': _('%s, sent for free', self._category_label(category)),
                     'qty': free, 'unit': self._unit_label(unit),
-                    'rate': None, 'free': True, 'cost': 0.0,
+                    'rate': None, 'free': True, 'fixed': False, 'cost': 0.0,
                 })
+        # Fixed fees go under their provider, after what was used.
+        fixed = 0.0
+        for fee in self._fee_lines(first, end):
+            section = section_for(fee['channel'], fee['provider'])
+            section['total'] += fee['cost']
+            fixed += fee['cost']
+            section['lines'].append({
+                'label': fee['name'],
+                'qty': fee['count'],
+                'unit': _('month') if fee['kind'] == 'monthly' else _('once-off fee'),
+                'rate': fee['cost'] / fee['count'] if fee['count'] else None,
+                'free': False, 'fixed': True, 'cost': fee['cost'],
+            })
         sections = sorted(sections.values(), key=lambda s: -s['total'])
         total = sum(s['total'] for s in sections)
+        vat = self._vat(first, end)
+        # A deposit paid over this month is cash to find, though not a cost.
+        deposits = [d for d in self._deposits(first, last) if d['paid_now']]
+        deposit_total = sum(d['amount'] for d in deposits)
 
         # Our records against what each provider invoiced.
         ours = {}
         for section in sections:
             name = section['provider'] or section['label']
             ours[name] = ours.get(name, 0.0) + section['total']
+        # The provider invoices its deposit too, so it belongs in the comparison.
+        held = {}
+        for deposit in deposits:
+            held[deposit['provider']] = held.get(deposit['provider'], 0.0) + deposit['amount']
+            ours[deposit['provider']] = ours.get(deposit['provider'], 0.0) + deposit['amount']
         invoices = {
             inv.provider: inv for inv in self.env['comm.billing.invoice'].search([
                 ('month', '=', first), ('company_id', '=', self.env.company.id)])
@@ -630,12 +750,14 @@ class CommBillingReport(models.AbstractModel):
             invoice = invoices.get(name)
             if not invoice:
                 checks.append({'provider': name, 'ours': mine, 'theirs': None,
+                               'deposit': held.get(name, 0.0),
                                'diff': None, 'pct': None, 'result': 'missing'})
                 continue
             diff = invoice.amount - mine
             pct = abs(diff) / invoice.amount * 100 if invoice.amount else (100.0 if diff else 0.0)
             checks.append({
                 'provider': name, 'ours': mine, 'theirs': invoice.amount,
+                'deposit': held.get(name, 0.0),
                 'diff': diff, 'pct': round(pct, 1),
                 'result': ('match' if currency.is_zero(diff)
                            else 'close' if pct <= 2 else 'differs'),
@@ -662,6 +784,13 @@ class CommBillingReport(models.AbstractModel):
             'span': self._span_label(first, end),
             'closed': closed,
             'total': total,
+            'usage': total - fixed,
+            'fixed': fixed,
+            'vat': vat,
+            'total_vat': total + vat,
+            'deposits': deposits,
+            'deposit_total': deposit_total,
+            'cash': total + vat + deposit_total,
             'prev_label': format_date(self.env, p_first, date_format='MMMM'),
             'prev': sum(v['cost'] for v in self._by_channel(p_first, p_last).values()),
             'free_qty': sum(v['free_qty'] for v in now.values()),

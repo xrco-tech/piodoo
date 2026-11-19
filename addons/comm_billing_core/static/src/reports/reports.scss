@@ -72,6 +72,29 @@
         background: var(--cbr-hivis);
         &.o_cbr_fill_over { background: $danger; }
     }
+    // Usage and fixed fees side by side in one bar.
+    .o_cbr_split {
+        display: flex;
+        .o_cbr_fill { position: static; flex: none; border-radius: 0; }
+    }
+    .o_cbr_fill_fixed {
+        background: repeating-linear-gradient(135deg, var(--cbr-navy) 0 4px, #51607a 4px 8px) !important;
+    }
+    .o_cbr_legend { display: flex; gap: 18px; margin-top: auto; }
+    .o_cbr_strong { border: 2px solid var(--cbr-navy); }
+    .o_cbr_sum { padding-top: 10px; margin-top: auto; border-top: 2px solid $body-color; }
+    .o_cbr_table.o_cbr_fees { min-width: 320px; }
+    .o_cbr_fixed {
+        display: inline-block; padding: 0 8px; margin-right: 6px;
+        border: $border-width solid $body-color; border-radius: 999px;
+        font-size: .85em; font-weight: 600;
+    }
+    .o_cbr_totals {
+        display: flex; flex-direction: column; gap: 6px;
+        padding-top: 12px; border-top: 2px solid $body-color;
+    }
+    .o_cbr_grand { font-size: 1.15em; font-weight: 600; }
+    .o_cbr_rule { padding-top: 8px; border-top: $border-width solid $border-color; }
     .o_cbr_today { position: absolute; top: -4px; bottom: -4px; width: 2px; background: $body-color; }
     .o_cbr_verdict {
         align-self: flex-start;

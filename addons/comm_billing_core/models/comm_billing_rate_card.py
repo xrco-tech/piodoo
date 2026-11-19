@@ -52,6 +52,10 @@ class CommBillingRateCard(models.Model):
     utility_free_in_cs_window = fields.Boolean(
         default=False,
         help='WhatsApp: utility templates inside a 24h CS window are free.')
+    vat_pct = fields.Float(string='VAT (%)',
+        help='VAT this provider adds to what these rates charge, e.g. 15. '
+             'Rates and charges stay before VAT; the reports add it to show '
+             'what is actually paid. Leave 0 for a provider that charges none.')
     rate_ids = fields.One2many('comm.billing.rate', 'card_id', string='Rates')
     active = fields.Boolean(default=True)
     notes = fields.Text()

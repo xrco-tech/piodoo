@@ -18,18 +18,38 @@
                         <div style="text-transform: uppercase; letter-spacing: .06em; color: #5f6770; font-size: 11px">Communications statement</div>
                         <h2 style="margin: 0"><t t-out="s['month_label']"/></h2>
                         <div style="color: #5f6770">
-                            <t t-out="s['span']"/> · prepared <t t-out="today"/> · amounts in <t t-out="s['currency']"/>, before VAT
+                            <t t-out="s['span']"/> · prepared <t t-out="today"/> · amounts in <t t-out="s['currency']"/>, lines before VAT
                             <t t-if="not s['closed']"> · month still running</t>
                         </div>
                     </div>
 
                     <table class="table table-sm" style="margin-bottom: 14px">
                         <tr>
-                            <td><strong>Total for the month</strong></td>
-                            <td class="text-end"><strong t-out="s['total']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                            <td>Usage</td>
+                            <td class="text-end"><span t-out="s['usage']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
                         </tr>
                         <tr>
-                            <td><t t-out="s['prev_label']"/></td>
+                            <td>Fixed fees</td>
+                            <td class="text-end"><span t-out="s['fixed']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                        </tr>
+                        <tr>
+                            <td>VAT</td>
+                            <td class="text-end"><span t-out="s['vat']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total to pay for the month</strong></td>
+                            <td class="text-end"><strong t-out="s['total_vat']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                        </tr>
+                        <tr t-foreach="s['deposits']" t-as="dep">
+                            <td>Also to pay, not a cost: <t t-out="dep['name']"/>, <t t-out="dep['provider']"/></td>
+                            <td class="text-end"><span t-out="dep['amount']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                        </tr>
+                        <tr t-if="s['deposits']">
+                            <td><strong>Cash needed this month</strong></td>
+                            <td class="text-end"><strong t-out="s['cash']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
+                        </tr>
+                        <tr>
+                            <td><t t-out="s['prev_label']"/>, before VAT</td>
                             <td class="text-end"><span t-out="s['prev']" t-options='{"widget": "monetary", "display_currency": currency}'/></td>
                         </tr>
                         <tr t-if="s['budget']">
@@ -50,7 +70,7 @@
                             </thead>
                             <tbody>
                                 <tr t-foreach="section['lines']" t-as="line">
-                                    <td t-out="line['label']"/>
+                                    <td><t t-if="line['fixed']">Fixed: </t><t t-out="line['label']"/></td>
                                     <td class="text-end"><span t-out="line['qty']" t-options='{"widget": "float", "precision": 0}'/> <t t-out="line['unit']"/></td>
                                     <td class="text-end" style="color: #5f6770">
                                         <t t-if="line['free']">Free</t>

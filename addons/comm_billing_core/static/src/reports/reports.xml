@@ -83,19 +83,26 @@
 
         <div class="o_cbr_tiles">
             <div class="o_cbr_card o_cbr_tile">
-                <span class="text-muted">Spent<t t-if="d.period === 'month'"> so far</t></span>
+                <span class="text-muted">Usage<t t-if="d.period === 'month'"> so far</t></span>
+                <b class="o_cbr_big" t-esc="round(d.usage)"/>
+                <span t-if="d.free_qty" class="text-success"><t t-esc="qty(d.free_qty)"/> messages went out free</span>
+                <span t-else="" class="text-muted">Messages, sessions, calls and AI</span>
+            </div>
+            <div class="o_cbr_card o_cbr_tile">
+                <span class="text-muted">Fixed fees</span>
+                <b class="o_cbr_big" t-esc="round(d.fixed)"/>
+                <span class="text-muted" t-esc="fixedText"/>
+            </div>
+            <div class="o_cbr_card o_cbr_tile o_cbr_strong">
+                <span class="text-muted">Total to cover<t t-if="d.period === 'month'"> so far</t></span>
                 <b class="o_cbr_big" t-esc="round(d.spent)"/>
+                <span t-if="d.vat"><t t-esc="money(d.spent_vat)"/> including VAT</span>
                 <span t-att-class="d.change_pct &gt; 0 ? 'text-danger' : d.change_pct &lt; 0 ? 'text-success' : 'text-muted'" t-esc="changeText"/>
             </div>
             <div t-if="d.forecast !== null" class="o_cbr_card o_cbr_tile">
                 <span class="text-muted">Likely by month end</span>
                 <b class="o_cbr_big" t-esc="round(d.forecast)"/>
-                <span class="text-muted">If the rest of the month goes like the days so far</span>
-            </div>
-            <div class="o_cbr_card o_cbr_tile">
-                <span class="text-muted">Sent for free</span>
-                <b class="o_cbr_big text-success" t-esc="qty(d.free_qty)"/>
-                <span class="text-muted">Messages inside WhatsApp's free windows</span>
+                <span class="text-muted">Usage at the pace so far, plus fixed fees</span>
             </div>
             <button t-if="d.unpriced or d.unconverted" type="button" class="o_cbr_card o_cbr_tile o_cbr_warn" t-on-click="openUnpriced">
                 <span>Needs a look</span>
@@ -103,6 +110,13 @@
                 <span>No rate matched them, so they count as zero.
                     <t t-if="d.unconverted"><t t-esc="d.unconverted"/> more could not be converted and are left out.</t></span>
             </button>
+        </div>
+
+        <div t-if="d.deposits.length or d.can_fees" class="o_cbr_card o_cbr_between o_cbr_wrap">
+            <span t-if="d.deposits.length">Held as a deposit, not a cost: <b t-esc="money(d.held)"/>
+                <span class="text-muted"> · <t t-foreach="d.deposits" t-as="dep" t-key="dep.key"><t t-esc="dep.provider"/>, from <t t-esc="dep.since"/><t t-if="!dep_last">; </t></t></span></span>
+            <span t-else="" class="text-muted">Hosting, rental and other fixed fees are counted with usage once they are entered.</span>
+            <a t-if="d.can_fees" href="#" t-on-click.prevent="openFees">Manage fixed fees</a>
         </div>
 
         <div class="o_cbr_two">
@@ -117,15 +131,56 @@
                         <span><span class="o_cbr_dot" t-att-data-channel="ch.key"/> <b t-esc="ch.label"/> <span class="text-muted o_cbr_small" t-esc="ch.hint"/></span>
                         <span class="text-nowrap"><b t-esc="money(ch.cost)"/> <span class="text-muted o_cbr_small"><t t-esc="ch.share"/>%</span></span>
                     </span>
-                    <span class="o_cbr_track o_cbr_thin"><span class="o_cbr_fill" t-att-data-channel="ch.key" t-attf-style="width: {{ ch.bar }}%"/></span>
+                    <span class="o_cbr_track o_cbr_thin o_cbr_split" role="img"
+                          t-attf-aria-label="{{ ch.label }}: {{ money(ch.usage) }} usage and {{ money(ch.fixed) }} fixed fees">
+                        <span class="o_cbr_fill" t-att-data-channel="ch.key" t-attf-style="width: {{ ch.bar_usage }}%"/>
+                        <span t-if="ch.fixed" class="o_cbr_fill o_cbr_fill_fixed" t-attf-style="width: {{ ch.bar_fixed }}%"/>
+                    </span>
+                    <span t-if="ch.fixed" class="o_cbr_small"><t t-esc="money(ch.usage)"/> usage, <t t-esc="money(ch.fixed)"/> fixed fees</span>
                     <span class="o_cbr_small" t-att-class="channelNoteClass(ch)" t-esc="channelNote(ch)"/>
                 </button>
+                <div t-if="d.fixed" class="o_cbr_legend text-muted o_cbr_small">
+                    <span><span class="o_cbr_dot" data-channel="none"/> Usage</span>
+                    <span><span class="o_cbr_dot o_cbr_fill_fixed"/> Fixed fees</span>
+                </div>
             </section>
+
+            <section t-if="d.fees.length" class="o_cbr_card o_cbr_stack o_cbr_gap" aria-label="Fixed fees">
+                <div class="o_cbr_between">
+                    <h2>Fixed fees in this period</h2>
+                    <span class="text-muted o_cbr_small">Before VAT</span>
+                </div>
+                <div class="o_cbr_scroll">
+                    <table class="o_cbr_table o_cbr_fees">
+                        <thead>
+                            <tr>
+                                <th scope="col">Fee</th>
+                                <th scope="col">How often</th>
+                                <th scope="col" class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="d.fees" t-as="fee" t-key="fee.key">
+                                <td><b t-esc="fee.name"/><br/><span class="text-muted o_cbr_small" t-esc="fee.provider"/></td>
+                                <td><t t-esc="fee.kind_label"/><span t-if="fee.count &gt; 1" class="text-muted"> × <t t-esc="fee.count"/></span>
+                                    <br/><span class="text-muted o_cbr_small">from <t t-esc="fee.since"/></span></td>
+                                <td class="text-end text-nowrap" t-esc="money(fee.cost)"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="o_cbr_between o_cbr_sum">
+                    <b>Fixed fees</b><b t-esc="money(d.fixed)"/>
+                </div>
+            </section>
+        </div>
+
+        <div class="o_cbr_two">
 
             <section class="o_cbr_card o_cbr_stack o_cbr_gap" aria-label="Spend over time">
                 <div class="o_cbr_between">
-                    <h2>Spend per <t t-if="d.days.weekly">week</t><t t-else="">day</t></h2>
-                    <span class="text-muted o_cbr_small">Average <t t-esc="round(d.days.average)"/></span>
+                    <h2>Usage per <t t-if="d.days.weekly">week</t><t t-else="">day</t></h2>
+                    <span class="text-muted o_cbr_small">Average <t t-esc="round(d.days.average)"/><t t-if="d.fixed"> · fixed fees not shown</t></span>
                 </div>
                 <div class="o_cbr_chart">
                     <button t-foreach="d.days.bars" t-as="bar" t-key="bar.key" type="button" class="o_cbr_col"
@@ -200,32 +255,36 @@
             <div class="o_cbr_sheet_head">
                 <span class="o_cbr_eyebrow">Communications statement</span>
                 <h2 class="o_cbr_sheet_title" t-esc="s.month_label"/>
-                <span class="text-muted"><t t-esc="s.span"/> · amounts before VAT<t t-if="!s.closed"> · month still running</t></span>
+                <span class="text-muted"><t t-esc="s.span"/> · lines are before VAT<t t-if="!s.closed"> · month still running</t></span>
             </div>
 
             <div class="o_cbr_tiles">
+                <div class="o_cbr_tile o_cbr_outline">
+                    <span class="text-muted">Usage</span>
+                    <b class="o_cbr_mid" t-esc="money(s.usage)"/>
+                </div>
+                <div class="o_cbr_tile o_cbr_outline">
+                    <span class="text-muted">Fixed fees</span>
+                    <b class="o_cbr_mid" t-esc="money(s.fixed)"/>
+                </div>
+                <div class="o_cbr_tile o_cbr_outline">
+                    <span class="text-muted">VAT</span>
+                    <b class="o_cbr_mid" t-esc="money(s.vat)"/>
+                </div>
                 <div class="o_cbr_tile o_cbr_total">
-                    <span>Total for the month</span>
-                    <b class="o_cbr_big" t-esc="money(s.total)"/>
-                </div>
-                <div class="o_cbr_tile o_cbr_outline">
-                    <span class="text-muted" t-esc="s.prev_label"/>
-                    <b class="o_cbr_mid" t-esc="money(s.prev)"/>
-                </div>
-                <div t-if="s.budget" class="o_cbr_tile o_cbr_outline">
-                    <span class="text-muted">Monthly budget</span>
-                    <b class="o_cbr_mid" t-esc="money(s.budget)"/>
-                    <span t-if="s.closed" t-att-class="s.total &gt; s.budget ? 'text-danger' : 'text-success'">
-                        <t t-if="s.total &gt; s.budget"><t t-esc="money(s.total - s.budget)"/> over</t>
-                        <t t-else=""><t t-esc="money(s.budget - s.total)"/> under</t>
-                    </span>
-                </div>
-                <div class="o_cbr_tile o_cbr_outline">
-                    <span class="text-muted">Sent for free</span>
-                    <b class="o_cbr_mid text-success" t-esc="qty(s.free_qty)"/>
-                    <span class="text-muted">messages</span>
+                    <span>Total to pay</span>
+                    <b class="o_cbr_mid" t-esc="money(s.total_vat)"/>
                 </div>
             </div>
+            <p class="text-muted mb-0">
+                <t t-esc="s.prev_label"/>, before VAT: <t t-esc="money(s.prev)"/>
+                <t t-if="s.budget"> · Monthly budget <t t-esc="money(s.budget)"/><t t-if="s.closed">,
+                    <span t-att-class="s.total &gt; s.budget ? 'text-danger' : 'text-success'">
+                        <t t-if="s.total &gt; s.budget"><t t-esc="money(s.total - s.budget)"/> over</t>
+                        <t t-else=""><t t-esc="money(s.budget - s.total)"/> under</t>
+                    </span></t></t>
+                <t t-if="s.free_qty"> · <t t-esc="qty(s.free_qty)"/> messages sent for free</t>
+            </p>
 
             <p t-if="!s.sections.length" class="text-muted mb-0">Nothing was charged in this month.</p>
             <div t-foreach="s.sections" t-as="section" t-key="section.key" class="o_cbr_scroll">
@@ -240,13 +299,25 @@
                     </thead>
                     <tbody>
                         <tr t-foreach="section.lines" t-as="line" t-key="line_index">
-                            <td t-esc="line.label"/>
+                            <td><span t-if="line.fixed" class="o_cbr_fixed">Fixed</span><t t-esc="line.label"/></td>
                             <td class="text-end text-nowrap"><t t-esc="qty(line.qty)"/> <span class="text-muted" t-esc="line.unit"/></td>
                             <td class="text-end text-nowrap text-muted"><t t-if="line.free">Free</t><t t-elif="line.rate" t-esc="rate(line.rate)"/></td>
                             <td class="text-end text-nowrap" t-esc="money(line.cost)"/>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div class="o_cbr_totals">
+                <div class="o_cbr_between"><span>Usage and fixed fees, before VAT</span><span t-esc="money(s.total)"/></div>
+                <div class="o_cbr_between"><span>VAT</span><span t-esc="money(s.vat)"/></div>
+                <div class="o_cbr_between o_cbr_grand"><span>Total to pay for <t t-esc="s.month_label"/></span><span t-esc="money(s.total_vat)"/></div>
+                <t t-if="s.deposits.length">
+                    <div t-foreach="s.deposits" t-as="dep" t-key="dep.key" class="o_cbr_between text-muted o_cbr_rule">
+                        <span>Also to pay, not a cost: <t t-esc="dep.name"/>, <t t-esc="dep.provider"/></span><span t-esc="money(dep.amount)"/>
+                    </div>
+                    <div class="o_cbr_between"><b>Cash needed this month</b><b t-esc="money(s.cash)"/></div>
+                </t>
             </div>
 
             <div class="o_cbr_check">
@@ -268,7 +339,7 @@
                         <tbody>
                             <tr t-foreach="s.checks" t-as="check" t-key="check.provider">
                                 <td t-esc="check.provider"/>
-                                <td class="text-end text-nowrap" t-esc="money(check.ours)"/>
+                                <td class="text-end text-nowrap"><t t-esc="money(check.ours)"/><t t-if="check.deposit"><br/><span class="text-muted o_cbr_small">with the <t t-esc="money(check.deposit)"/> deposit</span></t></td>
                                 <td class="text-end text-nowrap"><t t-if="check.theirs !== null" t-esc="money(check.theirs)"/><span t-else="" class="text-muted">Not entered</span></td>
                                 <td class="text-end text-nowrap"><t t-if="check.diff !== null"><t t-esc="money(check.diff)"/> (<t t-esc="check.pct"/>%)</t></td>
                                 <td><b t-att-class="checkClass(check)" t-esc="checkLabel(check)"/></td>

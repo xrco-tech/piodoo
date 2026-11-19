@@ -33,6 +33,8 @@ CATEGORY_SELECTION = [
     ('llm_output',      'LLM / Output tokens'),
     ('llm_cache_read',  'LLM / Cache read (discounted input)'),
     ('llm_cache_write', 'LLM / Cache write (surcharged input)'),
+    # Charged whatever the usage; see comm.billing.fee
+    ('fixed_fee',       'Fixed fee'),
 ]
 
 UNIT_SELECTION = [
@@ -43,6 +45,7 @@ UNIT_SELECTION = [
     ('minute',       'per minute'),
     ('kilotoken',    'per 1,000 tokens'),
     ('conversation', 'per conversation (legacy)'),
+    ('fee',          'per fixed fee'),
 ]
 
 DIRECTION_SELECTION = [

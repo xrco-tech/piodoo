@@ -15,6 +15,7 @@
                 <field name="carrier" optional="show"/>
                 <field name="direction" optional="hide"/>
                 <field name="category"/>
+                <field name="fee_id" optional="show"/>
                 <field name="unit_qty"/>
                 <field name="price_local" sum="Total (local)"/>
                 <field name="currency_id"/>
@@ -54,6 +55,7 @@
                             <field name="unit_qty"/>
                             <field name="rate_card_id"/>
                             <field name="rate_id"/>
+                            <field name="fee_id" invisible="not fee_id"/>
                             <field name="is_free"/>
                             <field name="free_reason" invisible="not is_free"/>
                         </group>
@@ -127,6 +129,10 @@
                 <separator/>
                 <filter string="Free (windows)" name="free"
                         domain="[('is_free', '=', True)]"/>
+                <filter string="Fixed fees" name="fixed"
+                        domain="[('fee_id', '!=', False)]"/>
+                <filter string="Usage" name="usage"
+                        domain="[('fee_id', '=', False)]"/>
                 <filter string="Paid" name="paid"
                         domain="[('is_free', '=', False), ('price_usd', '>', 0)]"/>
                 <filter string="This month" name="this_month"
