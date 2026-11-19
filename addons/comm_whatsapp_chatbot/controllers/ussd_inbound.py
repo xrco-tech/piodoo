@@ -25,12 +25,14 @@ Connect Mobile speaks a different shape on its own address, /ussd/connectmobile
 flow behaves the same whichever one the caller dialled through.
 """
 
+import ipaddress
 import json
 import logging
 from urllib.parse import urlencode
 
 from odoo import http
 from odoo.http import request
+from odoo.tools import config
 
 _logger = logging.getLogger(__name__)
 
@@ -50,7 +52,59 @@ class UssdController(http.Controller):
         if not session_id or not phone_number:
             _logger.warning(f"USSD inbound missing sessionId or phoneNumber: {params}")
             return self._text_response("END Service unavailable.")
+        if not self._caller_allowed(service_code, ("africastalking", "generic")):
+            return self._refused()
         return self._text_response(self._ussd_reply(session_id, service_code, phone_number, text))
+
+    # ── Who is calling ───────────────────────────────────────────────────────
+    #
+    # The gateway addresses are public and carry no key, so an account can list
+    # the addresses its gateway calls from (Allowed Callers) and everything
+    # else is refused for that code.
+
+    @staticmethod
+    def _caller_ip():
+        """The internet address the request came from. Behind our proxies
+        (Cloudflare, the tunnel, nginx) that is the last public address in
+        X-Forwarded-For: each proxy appends the address it saw, so anything a
+        caller wrote there itself sits further left and is ignored."""
+        remote = request.httprequest.remote_addr or ""
+        if not config.get("proxy_mode"):
+            return remote
+        hops = [h.strip() for h in request.httprequest.headers.get("X-Forwarded-For", "").split(",")]
+        for hop in reversed(hops):
+            try:
+                address = ipaddress.ip_address(hop)
+            except ValueError:
+                continue
+            if not (address.is_private or address.is_loopback or address.is_link_local):
+                return hop
+        return remote
+
+    def _caller_allowed(self, service_code, providers=None):
+        """Whether this request may use `service_code`. A code with no account,
+        or an account with no list, accepts anyone, as before. `providers`
+        limits the check to accounts of those gateways."""
+        account = request.env["comm.ussd.account"].sudo().find_for_service_code(service_code)
+        if not account or (providers and account.provider not in providers):
+            return True
+        ip = self._caller_ip()
+        if account.caller_allowed(ip):
+            return True
+        _logger.warning("USSD request for %r refused: %s is not an allowed caller of %s",
+                        service_code, ip, account.name)
+        return False
+
+    @staticmethod
+    def _refused():
+        return request.make_response(
+            "Forbidden", status=403, headers=[("Content-Type", "text/plain; charset=utf-8")])
+
+    def _ussd_session_service_code(self, session_id):
+        """The code a live session was dialled on, to check who may close it."""
+        session = request.env["whatsapp.chatbot.ussd.session"].sudo().search(
+            [("session_id", "=", session_id)], limit=1)
+        return session.service_code or ""
 
     def _ussd_reply(self, session_id, service_code, phone_number, text, latest_input=None):
         """One turn of a session, whatever gateway it came through: the screen
@@ -166,6 +220,9 @@ class UssdController(http.Controller):
             key = "%s/%s" % (network_session, msisdn)
             held = Held.search([("provider", "=", "connect_mobile"), ("key", "=", key)], limit=1)
 
+            if held and not self._caller_allowed(held.service_code):
+                return self._refused()
+
             if kind in (3, 4):
                 if held:
                     self._ussd_closed(held.session_id, "hangup" if kind == 3 else "timeout")
@@ -182,6 +239,8 @@ class UssdController(http.Controller):
                 if not account or account.provider != "connect_mobile":
                     _logger.warning("Connect Mobile USSD: no Connect Mobile account for %r", service_code)
                     return self._connect_mobile_response("END Service unavailable.", as_json)
+                if not self._caller_allowed(service_code):
+                    return self._refused()
                 held = Held.create({
                     "provider": "connect_mobile", "key": key, "service_code": service_code,
                     "network": str(params.get("mno") or "").strip() or False,
@@ -234,6 +293,8 @@ class UssdController(http.Controller):
             session_id = params.get("sessionId") or params.get("session_id") or ""
             status = (params.get("status") or params.get("event") or "").lower()
             _logger.info(f"USSD notification session={session_id!r} status={status!r}")
+            if session_id and not self._caller_allowed(self._ussd_session_service_code(session_id)):
+                return self._refused()
             if session_id:
                 if status in ("timeout", "expired"):
                     outcome = "timeout"
