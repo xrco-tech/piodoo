@@ -44,35 +44,130 @@
         </div>
     </t>
 
+    <!-- The small label beside a doc in the sidebar. -->
+    <t t-name="sediba.DocNote">
+        <span t-if="n.state === 'draft'" class="o_sdb_note draft">Draft</span>
+        <span t-elif="n.due" class="o_sdb_note count">Read again</span>
+        <span t-elif="n.changes" class="o_sdb_note count">Changes</span>
+    </t>
+
+    <!-- Company docs as rows. -->
+    <t t-name="sediba.DocRows">
+        <div class="o_sdb_tablebox">
+            <table class="o_sdb_table">
+                <thead>
+                    <tr>
+                        <th scope="col">Doc</th>
+                        <th scope="col">Owner</th>
+                        <th t-if="!state.nav.reference" scope="col">Shown in</th>
+                        <th scope="col">Updated</th>
+                        <th t-if="!state.nav.reference" scope="col">Read again by</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="docRows" t-as="r" t-key="r.id">
+                        <td>
+                            <span t-if="r.parent" class="o_sdb_muted"><t t-esc="r.parent[1]"/> / </span>
+                            <button type="button" class="o_sdb_link" t-on-click="() => this.openDoc(r.id)" t-esc="r.name"/>
+                            <span t-if="r.state === 'draft'" class="o_sdb_status draft">Draft</span>
+                            <span t-elif="r.changes" class="o_sdb_badge review">Changes not published</span>
+                            <div t-if="r.summary" class="o_sdb_muted" t-esc="r.summary"/>
+                        </td>
+                        <td t-esc="r.owner"/>
+                        <td t-if="!state.nav.reference" t-esc="r.spaces or 'Sediba only'"/>
+                        <td class="o_sdb_nowrap" t-esc="r.updated"/>
+                        <td t-if="!state.nav.reference" class="o_sdb_nowrap"><t t-esc="r.read_again_by or ''"/><span t-if="r.due" class="o_sdb_badge review">Due</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </t>
+
     <t t-name="sediba.Workspace">
         <div class="o_action o_sdb_ws" t-att-class="{ browsing: state.browsing }">
 
             <!-- ── Sidebar ──────────────────────────────────────────────── -->
-            <nav class="o_sdb_side" aria-label="Sediba">
+            <nav class="o_sdb_side" t-att-aria-label="state.nav.reference ? 'Reference' : 'Sediba'">
                 <div class="o_sdb_side_top">
-                    <input type="search" class="o_sdb_input" placeholder="Search findings" aria-label="Search findings"
+                    <input type="search" class="o_sdb_input" t-att-placeholder="searchLabel" t-att-aria-label="searchLabel"
                            t-att-value="state.search" t-on-input="onSearch"/>
                     <button t-if="state.nav.can_edit" type="button" class="o_sdb_btn primary square" aria-label="New finding" title="New finding"
                             t-on-click="newFinding">+</button>
                 </div>
 
+                <!-- Company docs: written by us -->
                 <div class="o_sdb_group">
-                    <div class="o_sdb_group_name"><t t-if="state.nav.reference">Reference for <t t-esc="state.nav.space"/></t><t t-else="">Research topics</t></div>
-                    <button t-foreach="state.nav.topics" t-as="t" t-key="t.id" type="button" class="o_sdb_item"
-                            t-att-class="{ on: isTopic(t.id) }" t-att-aria-current="isTopic(t.id) ? 'page' : false"
-                            t-on-click="() => this.openTopic(t.id)">
-                        <span class="o_sdb_item_name" t-esc="t.name"/>
-                        <span t-if="t.next" class="o_sdb_note next">Next</span>
-                        <span t-elif="t.last" class="o_sdb_note" t-esc="t.last"/>
-                    </button>
-                    <p t-if="!state.nav.topics.length and state.nav.space" class="o_sdb_muted o_sdb_pad">Nothing verified is marked for <t t-esc="state.nav.space"/> yet. A researcher marks a topic as shown here in Sediba, and its verified findings appear.</p>
-                    <p t-elif="!state.nav.topics.length" class="o_sdb_muted o_sdb_pad">No topics yet. Add them under Configuration.</p>
+                    <div class="o_sdb_group_head">
+                        <button type="button" class="o_sdb_group_name" t-att-aria-expanded="state.open.docs ? 'true' : 'false'"
+                                t-on-click="() => state.open.docs = !state.open.docs">
+                            <span class="o_sdb_caret" aria-hidden="true"><t t-if="state.open.docs">▾</t><t t-else="">▸</t></span>Company docs
+                            <span t-if="!state.open.docs" class="o_sdb_note" t-esc="state.nav.doc_count"/>
+                        </button>
+                        <button t-if="state.nav.can_write" type="button" class="o_sdb_add" t-att-aria-expanded="state.newMenu ? 'true' : 'false'"
+                                t-on-click="() => state.newMenu = !state.newMenu">New doc</button>
+                    </div>
+                    <div t-if="state.newMenu" class="o_sdb_menu">
+                        <span class="o_sdb_muted">Start from</span>
+                        <button t-foreach="state.nav.templates" t-as="tpl" t-key="tpl[0]" type="button" class="o_sdb_item"
+                                t-on-click="() => this.newDoc(tpl[0])"><span class="o_sdb_item_name" t-esc="tpl[1]"/></button>
+                    </div>
+                    <t t-if="state.open.docs">
+                        <div class="o_sdb_group_hint"><t t-if="state.nav.reference">How we do things, written by us.</t><t t-else="">Written by us. No sources needed.</t></div>
+                        <t t-foreach="state.nav.docs" t-as="d" t-key="d.id">
+                            <button type="button" class="o_sdb_item" t-att-class="{ on: isDoc(d.id) }" t-att-aria-current="isDoc(d.id) ? 'page' : false"
+                                    t-on-click="() => this.openDoc(d.id)">
+                                <span class="o_sdb_item_name" t-esc="d.name"/>
+                                <t t-set="n" t-value="d"/><t t-call="sediba.DocNote"/>
+                            </button>
+                            <button t-foreach="d.pages" t-as="pg" t-key="pg.id" type="button" class="o_sdb_item child"
+                                    t-att-class="{ on: isDoc(pg.id) }" t-att-aria-current="isDoc(pg.id) ? 'page' : false"
+                                    t-on-click="() => this.openDoc(pg.id)">
+                                <span class="o_sdb_item_name" t-esc="pg.name"/>
+                                <t t-set="n" t-value="pg"/><t t-call="sediba.DocNote"/>
+                            </button>
+                        </t>
+                        <p t-if="!state.nav.docs.length and state.nav.reference" class="o_sdb_muted o_sdb_pad">No company docs are shown in <t t-esc="state.nav.space"/> yet. A writer publishes a doc in Sediba and marks it as shown here.</p>
+                        <p t-elif="!state.nav.docs.length" class="o_sdb_muted o_sdb_pad">No company docs yet.<t t-if="state.nav.can_write"> Start one with New doc.</t></p>
+                    </t>
                 </div>
 
+                <div class="o_sdb_rule"/>
+
+                <!-- Research: from outside sources -->
                 <div class="o_sdb_group">
-                    <div class="o_sdb_group_name">Collections</div>
+                    <div class="o_sdb_group_head">
+                        <button type="button" class="o_sdb_group_name" t-att-aria-expanded="state.open.research ? 'true' : 'false'"
+                                t-on-click="() => state.open.research = !state.open.research">
+                            <span class="o_sdb_caret" aria-hidden="true"><t t-if="state.open.research">▾</t><t t-else="">▸</t></span><t t-if="state.nav.reference">Research</t><t t-else="">Research topics</t>
+                            <span t-if="!state.open.research" class="o_sdb_note" t-esc="state.nav.topics.length"/>
+                        </button>
+                    </div>
+                    <t t-if="state.open.research">
+                        <div class="o_sdb_group_hint"><t t-if="state.nav.reference">Verified findings from outside sources.</t><t t-else="">From outside sources. Shown once verified.</t></div>
+                        <button t-foreach="state.nav.topics" t-as="t" t-key="t.id" type="button" class="o_sdb_item"
+                                t-att-class="{ on: isTopic(t.id) }" t-att-aria-current="isTopic(t.id) ? 'page' : false"
+                                t-on-click="() => this.openTopic(t.id)">
+                            <span class="o_sdb_item_name" t-esc="t.name"/>
+                            <span t-if="state.nav.reference" class="o_sdb_note" t-esc="t.verified"/>
+                            <span t-elif="t.next" class="o_sdb_note next">Next</span>
+                            <span t-elif="t.last" class="o_sdb_note" t-esc="t.last"/>
+                        </button>
+                        <p t-if="!state.nav.topics.length and state.nav.space" class="o_sdb_muted o_sdb_pad">Nothing verified is marked for <t t-esc="state.nav.space"/> yet. A researcher marks a topic as shown here in Sediba, and its verified findings appear.</p>
+                        <p t-elif="!state.nav.topics.length" class="o_sdb_muted o_sdb_pad">No topics yet. Add them under Configuration.</p>
+                    </t>
+                </div>
+
+                <div class="o_sdb_rule"/>
+
+                <div class="o_sdb_group">
+                    <div class="o_sdb_group_head"><span class="o_sdb_group_name">Collections</span></div>
                     <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'overview' }" t-on-click="openOverview">
                         <span class="o_sdb_item_name">Overview</span>
+                        <span t-if="state.nav.doc_review" class="o_sdb_note count" t-esc="state.nav.doc_review"/>
+                    </button>
+                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'docs' }" t-on-click="openDocs">
+                        <span class="o_sdb_item_name">All company docs</span>
+                        <span class="o_sdb_note" t-esc="state.nav.doc_count"/>
                     </button>
                     <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'list' and state.pill !== 'review' }"
                             t-on-click="() => this.openList('all')">
@@ -81,7 +176,7 @@
                     </button>
                     <button t-if="!state.nav.reference" type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'list' and state.pill === 'review' }"
                             t-on-click="() => this.openList('review')">
-                        <span class="o_sdb_item_name">To review</span>
+                        <span class="o_sdb_item_name">Findings to review</span>
                         <span t-if="state.nav.review" class="o_sdb_note count" t-esc="state.nav.review"/>
                     </button>
                     <button t-if="!state.nav.reference" type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'runs' }" t-on-click="openRuns">
@@ -94,7 +189,7 @@
             <!-- ── Page ─────────────────────────────────────────────────── -->
             <div class="o_sdb_main">
                 <button type="button" class="o_sdb_btn o_sdb_browse" t-on-click="() => state.browsing = !state.browsing">
-                    <t t-if="state.browsing">Close</t><t t-else="">Browse topics</t>
+                    <t t-if="state.browsing">Close</t><t t-else="">Browse docs and topics</t>
                 </button>
 
                 <div t-if="!state.data" class="o_sdb_page"><p class="o_sdb_muted">Loading…</p></div>
@@ -106,27 +201,60 @@
                         <header>
                             <t t-if="state.nav.reference">
                                 <h1>Reference</h1>
-                                <p class="o_sdb_lede">Verified findings for <t t-esc="state.nav.space"/>. Each one rests on a source that was opened and read. Leads are not shown here.</p>
+                                <p class="o_sdb_lede">Our own company docs for <t t-esc="state.nav.space"/>, and verified research. Everything here is read-only. It is written and checked in Sediba.</p>
                             </t>
                             <t t-else="">
                                 <h1>Overview</h1>
-                                <p class="o_sdb_lede">Research gathered by topic, with what is proven kept apart from what is only a lead.</p>
+                                <p class="o_sdb_lede">What we say about ourselves, and what we have learned from outside. The two are kept apart so nobody mistakes one for the other.</p>
                             </t>
                         </header>
 
-                        <div class="o_sdb_stats">
-                            <button type="button" class="o_sdb_stat verified" t-on-click="() => this.openList('verified')">
-                                <b t-esc="d.counts.verified"/><span>Verified</span>
-                            </button>
-                            <button t-if="!state.nav.reference" type="button" class="o_sdb_stat lead" t-on-click="() => this.openList('lead')">
-                                <b t-esc="d.counts.lead"/><span>Leads, not verified</span>
-                            </button>
-                            <button t-if="!state.nav.reference" type="button" class="o_sdb_stat unconfirmed" t-on-click="() => this.openList('unconfirmed')">
-                                <b t-esc="d.counts.unconfirmed"/><span>Could not confirm</span>
-                            </button>
-                            <button t-if="!state.nav.reference" type="button" class="o_sdb_stat review" t-on-click="() => this.openList('review')">
-                                <b t-esc="d.counts.review"/><span>For you to review</span>
-                            </button>
+                        <!-- Inside an app: two numbers, then the docs as cards -->
+                        <t t-if="state.nav.reference">
+                            <div class="o_sdb_stats narrow">
+                                <button type="button" class="o_sdb_stat ours" t-on-click="openDocs">
+                                    <b t-esc="d.docs.published"/><span>Company docs</span>
+                                </button>
+                                <button type="button" class="o_sdb_stat verified" t-on-click="() => this.openList('verified')">
+                                    <b t-esc="d.counts.verified"/><span>Verified findings</span>
+                                </button>
+                            </div>
+                            <section>
+                                <h2>Company docs</h2>
+                                <t t-if="d.doc_cards.length">
+                                    <p class="o_sdb_muted">Written by us. Open one to read it.</p>
+                                    <div class="o_sdb_cards">
+                                        <button t-foreach="d.doc_cards" t-as="c" t-key="c.id" type="button" class="o_sdb_card" t-on-click="() => this.openDoc(c.id)">
+                                            <span class="o_sdb_card_name" t-esc="c.name"/>
+                                            <span t-if="c.summary" class="o_sdb_card_text" t-esc="c.summary"/>
+                                            <span class="o_sdb_muted"><t t-if="c.parent"><t t-esc="c.parent[1]"/> · </t>Updated <t t-esc="c.updated"/></span>
+                                        </button>
+                                    </div>
+                                </t>
+                                <p t-else="" class="o_sdb_empty">No company docs are shown in <t t-esc="state.nav.space"/> yet.</p>
+                            </section>
+                        </t>
+
+                        <!-- In Sediba: a box for each half -->
+                        <div t-else="" class="o_sdb_pair">
+                            <section class="o_sdb_box">
+                                <h2>Company docs</h2>
+                                <p class="o_sdb_muted">Written and owned by us. Each has an owner and a date to read it again.</p>
+                                <div class="o_sdb_stats">
+                                    <button type="button" class="o_sdb_stat ours" t-on-click="openDocs"><b t-esc="d.docs.published"/><span>Published</span></button>
+                                    <button type="button" class="o_sdb_stat unconfirmed" t-on-click="openDocs"><b t-esc="d.docs.draft"/><span>Drafts</span></button>
+                                    <button type="button" class="o_sdb_stat lead" t-on-click="openDocs"><b t-esc="d.docs.due"/><span>Read again now</span></button>
+                                </div>
+                            </section>
+                            <section class="o_sdb_box">
+                                <h2>Research</h2>
+                                <p class="o_sdb_muted">Gathered from outside sources. Only verified findings reach the apps.</p>
+                                <div class="o_sdb_stats">
+                                    <button type="button" class="o_sdb_stat verified" t-on-click="() => this.openList('verified')"><b t-esc="d.counts.verified"/><span>Verified</span></button>
+                                    <button type="button" class="o_sdb_stat lead" t-on-click="() => this.openList('lead')"><b t-esc="d.counts.lead"/><span>Leads</span></button>
+                                    <button type="button" class="o_sdb_stat unconfirmed" t-on-click="() => this.openList('unconfirmed')"><b t-esc="d.counts.unconfirmed"/><span>Could not confirm</span></button>
+                                </div>
+                            </section>
                         </div>
 
                         <div t-if="!state.nav.reference" class="o_sdb_pair">
@@ -154,19 +282,54 @@
                             </section>
                         </div>
 
-                        <section t-if="d.review.length">
+                        <section t-if="d.doc_review.length or d.review.length">
                             <h2>For you to review</h2>
                             <div class="o_sdb_lines">
+                                <div t-foreach="d.doc_review" t-as="r" t-key="r_index" class="o_sdb_line">
+                                    <span class="o_sdb_status" t-att-class="r.kind === 'draft' ? 'draft' : 'published'" t-esc="reviewLabels[r.kind]"/>
+                                    <button type="button" class="o_sdb_link strong" t-on-click="() => this.openDoc(r.id)" t-esc="r.name"/>
+                                    <span t-esc="r.text"/>
+                                </div>
                                 <div t-foreach="d.review" t-as="f" t-key="f.id" class="o_sdb_line">
+                                    <span class="o_sdb_status lead">Finding</span>
                                     <button type="button" class="o_sdb_link strong" t-on-click="() => this.openFinding(f.id)" t-esc="f.name"/>
                                     <span t-esc="f.review_note or f.statement"/>
                                 </div>
                             </div>
                         </section>
 
+                        <section t-if="!state.nav.reference">
+                            <h2>Company docs</h2>
+                            <div t-if="d.doc_rows.length" class="o_sdb_tablebox">
+                                <table class="o_sdb_table">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Doc</th>
+                                            <th scope="col">Owner</th>
+                                            <th scope="col">Shown in</th>
+                                            <th scope="col">Updated</th>
+                                            <th scope="col">Read again by</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="d.doc_rows" t-as="r" t-key="r.id">
+                                            <td><button type="button" class="o_sdb_link" t-on-click="() => this.openDoc(r.id)" t-esc="r.name"/>
+                                                <span t-if="r.pages" class="o_sdb_muted"> + <t t-esc="r.pages"/> <t t-if="r.pages === 1">page</t><t t-else="">pages</t></span>
+                                                <span t-if="r.state === 'draft'" class="o_sdb_status draft">Draft</span></td>
+                                            <td t-esc="r.owner"/>
+                                            <td t-esc="r.spaces or 'Sediba only'"/>
+                                            <td class="o_sdb_nowrap" t-esc="r.updated"/>
+                                            <td class="o_sdb_nowrap"><t t-esc="r.read_again_by or ''"/><span t-if="r.due" class="o_sdb_badge review">Due</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p t-else="" class="o_sdb_empty">No company docs yet.<t t-if="state.nav.can_write"> Start one with New doc, at the top of the list on the left.</t></p>
+                        </section>
+
                         <section>
-                            <h2>Topics</h2>
-                            <div class="o_sdb_tablebox">
+                            <h2><t t-if="state.nav.reference">Research</t><t t-else="">Research topics</t></h2>
+                            <div t-if="d.topics.length" class="o_sdb_tablebox">
                                 <table class="o_sdb_table">
                                     <thead>
                                         <tr>
@@ -187,6 +350,19 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                            <p t-elif="state.nav.reference" class="o_sdb_empty">Nothing verified is marked for <t t-esc="state.nav.space"/> yet.</p>
+                            <p t-else="" class="o_sdb_empty">No topics yet. Add them under Configuration.</p>
+                        </section>
+
+                        <section t-if="state.nav.reference and d.doc_changed.length">
+                            <h2>New and changed</h2>
+                            <div class="o_sdb_lines">
+                                <div t-foreach="d.doc_changed" t-as="c" t-key="c.id" class="o_sdb_line">
+                                    <b class="o_sdb_nowrap" t-esc="c.date"/>
+                                    <span><button type="button" class="o_sdb_link" t-on-click="() => this.openDoc(c.id)" t-esc="c.name"/>
+                                        <t t-if="c.new"> is new.</t><t t-else=""> was updated.</t></span>
+                                </div>
                             </div>
                         </section>
                     </div>
@@ -384,6 +560,12 @@
                             <h1><t t-if="state.nav.reference">Verified findings</t><t t-else="">Findings</t></h1>
                             <p t-if="state.search" class="o_sdb_lede">Matching “<t t-esc="state.search"/>”</p>
                         </header>
+                        <section t-if="state.search and state.docHits.length">
+                            <h2>Company docs</h2>
+                            <t t-set="docRows" t-value="state.docHits"/>
+                            <t t-call="sediba.DocRows"/>
+                            <h2>Findings</h2>
+                        </section>
                         <div t-if="!state.nav.reference" class="o_sdb_pills" role="group" aria-label="Filter">
                             <button t-foreach="pills" t-as="p" t-key="p[0]" type="button" t-att-class="{ on: state.pill === p[0] }"
                                     t-att-aria-pressed="state.pill === p[0] ? 'true' : 'false'"
@@ -397,6 +579,260 @@
                             <button t-if="d.rows.length &lt; d.total" type="button" class="o_sdb_btn" t-on-click="more">Show more</button>
                         </t>
                         <p t-else="" class="o_sdb_empty">Nothing here.</p>
+                    </div>
+                </div>
+
+                <!-- One company doc, to read -->
+                <div t-elif="state.view === 'doc'" class="o_sdb_split">
+                    <t t-set="d" t-value="state.data"/>
+                    <div class="o_sdb_page">
+                        <div class="o_sdb_bar">
+                            <div class="o_sdb_crumbs">
+                                <span t-if="state.nav.reference" class="o_sdb_muted">Reference</span><span t-if="state.nav.reference" class="o_sdb_muted">/</span>
+                                <span class="o_sdb_muted">Company docs</span><span class="o_sdb_muted">/</span>
+                                <t t-if="d.parent"><button type="button" class="o_sdb_link" t-on-click="() => this.openDoc(d.parent[0])" t-esc="d.parent[1]"/><span class="o_sdb_muted">/</span></t>
+                                <b t-esc="d.name"/>
+                            </div>
+                            <span t-if="state.nav.reference" class="o_sdb_muted">Read-only</span>
+                            <button t-if="state.nav.can_write and !d.viewing" type="button" class="o_sdb_btn primary" t-on-click="editDoc">Edit</button>
+                        </div>
+                        <div class="o_sdb_body">
+                            <p t-if="d.viewing" class="o_sdb_decide">
+                                <b>Version <t t-esc="d.viewing.number"/></b>, published <t t-esc="d.viewing.date"/><t t-if="d.viewing.by"> by <t t-esc="d.viewing.by"/></t>. This is an older copy, not the working text.
+                                <button type="button" class="o_sdb_link strong" t-on-click="() => this.viewVersion(false)">Back to the working text</button>
+                            </p>
+                            <header>
+                                <div class="o_sdb_badges">
+                                    <span class="o_sdb_status published">Company doc</span>
+                                    <t t-if="!state.nav.reference">
+                                        <span t-if="d.state === 'published'" class="o_sdb_status published">Published</span>
+                                        <span t-else="" class="o_sdb_status draft">Draft</span>
+                                        <span t-if="d.changes" class="o_sdb_badge review">Changes not published</span>
+                                        <span t-if="d.due" class="o_sdb_badge review">Read again now</span>
+                                    </t>
+                                </div>
+                                <h1 t-esc="d.name"/>
+                                <p t-if="d.summary" class="o_sdb_lede" t-esc="d.summary"/>
+                                <dl class="o_sdb_meta">
+                                    <div t-if="d.owner"><dt>Owner</dt><dd t-esc="d.owner"/></div>
+                                    <div><dt>Updated</dt><dd t-esc="d.updated"/></div>
+                                    <div t-if="d.read_again_by"><dt>Read again by</dt><dd t-esc="d.read_again_by"/></div>
+                                </dl>
+                            </header>
+
+                            <section t-if="d.body" class="o_sdb_doc" t-out="d.body"/>
+
+                            <section t-if="d.questions.length" class="o_sdb_doc">
+                                <input t-if="d.questions.length > 3" type="search" class="o_sdb_input wide" placeholder="Find a question on this page"
+                                       aria-label="Find a question on this page" t-att-value="state.find" t-on-input="(ev) => state.find = ev.target.value"/>
+                                <div t-foreach="shownQuestions" t-as="q" t-key="q_index" class="o_sdb_qa">
+                                    <h3 t-esc="q.name"/>
+                                    <p class="o_sdb_answer" t-esc="q.answer"/>
+                                    <button t-if="q.answer" type="button" class="o_sdb_link small" t-on-click="() => this.copyAnswer(q)">Copy answer</button>
+                                </div>
+                                <p t-if="!shownQuestions.length" class="o_sdb_empty">No question on this page matches.</p>
+                            </section>
+
+                            <p t-if="!d.body and !d.questions.length and !d.pages.length" class="o_sdb_empty">Nothing written yet.<t t-if="state.nav.can_write"> Choose Edit to start.</t></p>
+
+                            <section t-if="d.pages.length">
+                                <h2>Pages</h2>
+                                <div class="o_sdb_cards">
+                                    <button t-foreach="d.pages" t-as="c" t-key="c.id" type="button" class="o_sdb_card" t-on-click="() => this.openDoc(c.id)">
+                                        <span class="o_sdb_card_name" t-esc="c.name"/>
+                                        <span t-if="c.summary" class="o_sdb_card_text" t-esc="c.summary"/>
+                                        <span t-if="c.state === 'draft'" class="o_sdb_badges"><span class="o_sdb_status draft">Draft</span></span>
+                                    </button>
+                                </div>
+                            </section>
+
+                            <section t-if="d.topics.length">
+                                <h2>Related research</h2>
+                                <p class="o_sdb_muted">Background from the research side, linked rather than copied.</p>
+                                <div class="o_sdb_lines">
+                                    <div t-foreach="d.topics" t-as="t" t-key="t.id" class="o_sdb_line">
+                                        <button type="button" class="o_sdb_link strong" t-on-click="() => this.openTopic(t.id)" t-esc="t.name"/>
+                                        <span><span class="o_sdb_status verified"><t t-esc="t.verified"/> verified</span></span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- Tell the owner: open to every reader -->
+                            <section class="o_sdb_tell">
+                                <p class="o_sdb_muted">Written by us<t t-if="d.owner">, kept by <t t-esc="d.owner"/></t>. Something wrong or missing?
+                                    <button t-if="!state.telling" type="button" class="o_sdb_link" t-on-click="() => state.telling = true">Tell the owner</button></p>
+                                <t t-if="state.telling">
+                                    <label class="o_sdb_label" for="o_sdb_note_text">What is wrong or missing?</label>
+                                    <textarea id="o_sdb_note_text" class="o_sdb_input area" rows="3" t-model="state.noteText"/>
+                                    <div class="o_sdb_row">
+                                        <button type="button" class="o_sdb_btn primary" t-on-click="sendNote">Send to the owner</button>
+                                        <button type="button" class="o_sdb_btn" t-on-click="() => state.telling = false">Cancel</button>
+                                    </div>
+                                </t>
+                            </section>
+                        </div>
+                    </div>
+
+                    <aside t-if="!state.nav.reference" class="o_sdb_props" aria-label="Properties">
+                        <h2>Properties</h2>
+                        <dl>
+                            <div><dt>Kind</dt><dd>Company doc, written by us</dd></div>
+                            <div><dt>Status</dt><dd><t t-if="d.state === 'published'">Published</t><t t-else="">Draft, not shown in any app</t>
+                                <div t-if="d.changes" class="o_sdb_muted">Changed since. The apps show the last published version.</div></dd></div>
+                            <div><dt>Owner</dt><dd t-esc="d.owner or 'Nobody yet'"/></div>
+                            <div><dt>Shown in</dt><dd t-if="d.spaces.length" class="o_sdb_chips">
+                                <span t-foreach="d.spaces" t-as="sp" t-key="sp" class="o_sdb_chip" t-esc="sp"/></dd>
+                                <dd t-else="" class="o_sdb_muted">Sediba only</dd></div>
+                            <div><dt>Sidekick and the chatbot may answer from it</dt><dd><t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></dd></div>
+                            <div><dt>Last updated</dt><dd><t t-esc="d.updated"/><t t-if="d.updated_by"> by <t t-esc="d.updated_by"/></t></dd></div>
+                            <div><dt>Read again by</dt><dd><t t-esc="d.read_again_by or 'Set when it is published'"/>
+                                <div class="o_sdb_muted" t-esc="d.read_again"/></dd></div>
+                            <div><dt>Published versions</dt><dd><t t-esc="d.versions.length"/>
+                                <button t-if="d.versions.length" type="button" class="o_sdb_link" t-on-click="() => state.history = !state.history">
+                                    <t t-if="state.history">Hide history</t><t t-else="">See history</t></button></dd></div>
+                        </dl>
+
+                        <div t-if="state.history and d.versions.length" class="o_sdb_history">
+                            <div t-foreach="d.versions" t-as="v" t-key="v.id" class="o_sdb_version">
+                                <b>Version <t t-esc="v.number"/></b>
+                                <span class="o_sdb_muted"><t t-esc="v.date"/><t t-if="v.by"> by <t t-esc="v.by"/></t></span>
+                                <span class="o_sdb_row">
+                                    <button type="button" class="o_sdb_link" t-on-click="() => this.viewVersion(v.id)">Read it</button>
+                                    <button t-if="state.nav.can_write" type="button" class="o_sdb_link" t-on-click="() => this.docDo('restore', v.id)">Bring it back</button>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div t-if="d.notes.length" class="o_sdb_history">
+                            <h3>Notes to the owner</h3>
+                            <div t-foreach="d.notes" t-as="n" t-key="n.id" class="o_sdb_version">
+                                <span t-esc="n.text"/>
+                                <span class="o_sdb_muted"><t t-esc="n.author"/><t t-if="n.space">, from <t t-esc="n.space"/></t>, <t t-esc="n.date"/></span>
+                                <button t-if="state.nav.can_write" type="button" class="o_sdb_link" t-on-click="() => this.noteDone(n.id)">Dealt with</button>
+                            </div>
+                        </div>
+
+                        <div t-if="state.nav.can_write and !d.viewing" class="o_sdb_actions">
+                            <button t-if="d.state !== 'published' or d.changes" type="button" class="o_sdb_btn primary" t-on-click="() => this.docDo('publish')">
+                                <t t-if="d.changes">Publish the changes</t><t t-else="">Publish</t></button>
+                            <button t-if="d.state === 'published'" type="button" class="o_sdb_btn" t-att-class="{ primary: d.due and !d.changes }" t-on-click="() => this.docDo('read_again')">Still right, mark as read again</button>
+                            <button t-if="!d.parent" type="button" class="o_sdb_btn" t-on-click="() => this.newDoc('blank', d.id)">Add a page under this one</button>
+                            <button t-if="d.state === 'published'" type="button" class="o_sdb_btn" t-on-click="() => this.docDo('take_down')">Take down (back to draft)</button>
+                            <button type="button" class="o_sdb_btn" t-on-click="() => this.docDo('archive')">Archive</button>
+                        </div>
+                    </aside>
+                </div>
+
+                <!-- One company doc, being written -->
+                <div t-elif="state.view === 'docedit'" class="o_sdb_split">
+                    <t t-set="e" t-value="state.draft"/>
+                    <div class="o_sdb_page">
+                        <div class="o_sdb_bar">
+                            <div class="o_sdb_crumbs">
+                                <span class="o_sdb_muted">Company docs</span><span class="o_sdb_muted">/</span>
+                                <b t-esc="e.name or 'New doc'"/>
+                                <span t-if="e.state === 'draft'" class="o_sdb_status draft">Draft</span>
+                                <span t-else="" class="o_sdb_status published">Published</span>
+                            </div>
+                            <button type="button" class="o_sdb_btn" t-on-click="cancelEdit">Discard changes</button>
+                            <button type="button" class="o_sdb_btn" t-att-disabled="state.saving" t-on-click="() => this.saveDoc(false)">
+                                <t t-if="e.state === 'published'">Save, do not publish yet</t><t t-else="">Save draft</t></button>
+                            <button type="button" class="o_sdb_btn primary" t-att-disabled="state.saving" t-on-click="() => this.saveDoc(true)">Publish</button>
+                        </div>
+                        <div class="o_sdb_body">
+                            <header>
+                                <label class="o_sdb_label" for="o_sdb_doc_title">Title</label>
+                                <input id="o_sdb_doc_title" type="text" class="o_sdb_title_input" placeholder="For example: How we work"
+                                       t-model="state.draft.name" t-on-input="touch"/>
+                                <label class="o_sdb_label" for="o_sdb_doc_summary">In one line</label>
+                                <input id="o_sdb_doc_summary" type="text" class="o_sdb_input wide" placeholder="What this doc is for"
+                                       t-model="state.draft.summary" t-on-input="touch"/>
+                            </header>
+
+                            <section>
+                                <h2>Text</h2>
+                                <Wysiwyg t-key="state.editorKey" config="editorConfig" toolbar="true" onLoad.bind="onEditorLoad"
+                                         class="'o_sdb_editor'" contentClass="'o_sdb_doc o_sdb_editable'"/>
+                            </section>
+
+                            <section>
+                                <h2>Questions and answers</h2>
+                                <p class="o_sdb_muted">For an FAQ. Each answer can be copied by an agent with one click. Leave empty for an ordinary doc.</p>
+                                <div t-foreach="e.questions" t-as="q" t-key="q_index" class="o_sdb_qa editing">
+                                    <label class="o_sdb_label" t-att-for="'o_sdb_q_' + q_index">Question <t t-esc="q_index + 1"/></label>
+                                    <input t-att-id="'o_sdb_q_' + q_index" type="text" class="o_sdb_input wide" t-model="q.name" t-on-input="touch"/>
+                                    <label class="o_sdb_label" t-att-for="'o_sdb_a_' + q_index">Answer</label>
+                                    <textarea t-att-id="'o_sdb_a_' + q_index" class="o_sdb_input area" rows="3" t-model="q.answer" t-on-input="touch"/>
+                                    <div class="o_sdb_row">
+                                        <button t-if="q_index" type="button" class="o_sdb_link" t-on-click="() => this.moveQuestion(q_index, -1)">Move up</button>
+                                        <button t-if="q_index &lt; e.questions.length - 1" type="button" class="o_sdb_link" t-on-click="() => this.moveQuestion(q_index, 1)">Move down</button>
+                                        <button type="button" class="o_sdb_link" t-on-click="() => this.removeQuestion(q_index)">Remove</button>
+                                    </div>
+                                </div>
+                                <button type="button" class="o_sdb_btn start" t-on-click="addQuestion">Add a question</button>
+                            </section>
+
+                            <p class="o_sdb_empty">
+                                <t t-if="e.state === 'published'">People in the apps keep seeing the last published version until you publish again.</t>
+                                <t t-else="">This doc is a draft. The apps show nothing for it until you publish.</t>
+                            </p>
+                        </div>
+                    </div>
+
+                    <aside class="o_sdb_props" aria-label="Properties">
+                        <h2>Properties</h2>
+                        <div class="o_sdb_field">
+                            <label for="o_sdb_p_owner">Owner</label>
+                            <select id="o_sdb_p_owner" class="o_sdb_input" t-model.number="state.draft.owner_id" t-on-change="touch">
+                                <option t-foreach="e.choices.owners" t-as="o" t-key="o[0]" t-att-value="o[0]" t-esc="o[1]"/>
+                            </select>
+                            <span class="o_sdb_muted small">Keeps it right and is asked to read it again.</span>
+                        </div>
+                        <div t-if="!e.has_pages" class="o_sdb_field">
+                            <label for="o_sdb_p_parent">Sits under</label>
+                            <select id="o_sdb_p_parent" class="o_sdb_input" t-model.number="state.draft.parent_id" t-on-change="touch">
+                                <option value="0">Nothing, a doc of its own</option>
+                                <option t-foreach="e.choices.parents" t-as="o" t-key="o[0]" t-att-value="o[0]" t-esc="o[1]"/>
+                            </select>
+                        </div>
+                        <fieldset class="o_sdb_field">
+                            <legend>Shown in</legend>
+                            <label t-foreach="e.choices.spaces" t-as="sp" t-key="sp[0]" class="o_sdb_check">
+                                <input type="checkbox" t-att-checked="e.space_ids.includes(sp[0])" t-on-change="() => this.toggleSpace(sp[0])"/>
+                                <span t-esc="sp[1]"/>
+                            </label>
+                            <span t-if="!e.choices.spaces.length" class="o_sdb_muted small">No app has a Reference menu yet.</span>
+                        </fieldset>
+                        <fieldset class="o_sdb_field">
+                            <legend>Assistants</legend>
+                            <label class="o_sdb_check">
+                                <input type="checkbox" t-model="state.draft.ai_allowed" t-on-change="touch"/>
+                                <span>Sidekick and the chatbot may answer from it</span>
+                            </label>
+                        </fieldset>
+                        <div class="o_sdb_field">
+                            <label for="o_sdb_p_again">Read again</label>
+                            <select id="o_sdb_p_again" class="o_sdb_input" t-model="state.draft.read_again" t-on-change="touch">
+                                <option t-foreach="e.choices.read_again" t-as="o" t-key="o[0]" t-att-value="o[0]" t-esc="o[1]"/>
+                            </select>
+                            <span class="o_sdb_muted small">Counted from the day it is published or confirmed.</span>
+                        </div>
+                    </aside>
+                </div>
+
+                <!-- All company docs -->
+                <div t-elif="state.view === 'docs'" class="o_sdb_page">
+                    <t t-set="d" t-value="state.data"/>
+                    <div class="o_sdb_body">
+                        <header>
+                            <h1>Company docs</h1>
+                            <p class="o_sdb_lede">Everything we have written ourselves<t t-if="state.nav.reference"> for <t t-esc="state.nav.space"/></t>.</p>
+                        </header>
+                        <t t-if="d.rows.length">
+                            <t t-set="docRows" t-value="d.rows"/>
+                            <t t-call="sediba.DocRows"/>
+                        </t>
+                        <p t-else="" class="o_sdb_empty">No company docs yet.</p>
                     </div>
                 </div>
 
