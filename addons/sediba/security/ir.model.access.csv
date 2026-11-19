@@ -16,3 +16,14 @@ access_sediba_source_reader,sediba.source reader,model_sediba_source,group_reade
 access_sediba_organisation_reader,sediba.organisation reader,model_sediba_organisation,group_reader,1,0,0,0
 access_sediba_run_reader,sediba.run reader,model_sediba_run,group_reader,1,0,0,0
 access_sediba_space_reader,sediba.space reader,model_sediba_space,group_reader,1,0,0,0
+access_sediba_doc_reader,sediba.doc reader,model_sediba_doc,group_reader,1,0,0,0
+access_sediba_doc_question_reader,sediba.doc.question reader,model_sediba_doc_question,group_reader,1,0,0,0
+access_sediba_doc_version_reader,sediba.doc.version reader,model_sediba_doc_version,group_reader,1,0,0,0
+access_sediba_doc_note_reader,sediba.doc.note reader,model_sediba_doc_note,group_reader,1,0,0,0
+access_sediba_doc_writer,sediba.doc writer,model_sediba_doc,group_writer,1,1,1,0
+access_sediba_doc_question_writer,sediba.doc.question writer,model_sediba_doc_question,group_writer,1,1,1,1
+access_sediba_doc_version_writer,sediba.doc.version writer,model_sediba_doc_version,group_writer,1,0,1,0
+access_sediba_doc_note_writer,sediba.doc.note writer,model_sediba_doc_note,group_writer,1,1,1,0
+access_sediba_doc_admin,sediba.doc admin,model_sediba_doc,base.group_system,1,1,1,1
+access_sediba_doc_version_admin,sediba.doc.version admin,model_sediba_doc_version,base.group_system,1,1,1,1
+access_sediba_doc_note_admin,sediba.doc.note admin,model_sediba_doc_note,base.group_system,1,1,1,1

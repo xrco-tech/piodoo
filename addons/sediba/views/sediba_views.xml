@@ -347,6 +347,133 @@
         </field>
     </record>
 
+    <!-- ── Company docs ─────────────────────────────────────────────────── -->
+
+    <record id="view_sediba_doc_search" model="ir.ui.view">
+        <field name="name">sediba.doc.search</field>
+        <field name="model">sediba.doc</field>
+        <field name="arch" type="xml">
+            <search string="Company docs">
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('summary', 'ilike', self)]"/>
+                <field name="owner_id"/>
+                <filter name="published" string="Published" domain="[('state', '=', 'published')]"/>
+                <filter name="draft" string="Drafts" domain="[('state', '=', 'draft')]"/>
+                <filter name="changes" string="Changed since published" domain="[('has_changes', '=', True)]"/>
+                <separator/>
+                <filter name="due" string="Read again now" domain="[('read_again_by', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_sediba_doc_list" model="ir.ui.view">
+        <field name="name">sediba.doc.list</field>
+        <field name="model">sediba.doc</field>
+        <field name="arch" type="xml">
+            <list string="Company docs">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="parent_id"/>
+                <field name="owner_id"/>
+                <field name="space_ids" widget="many2many_tags"/>
+                <field name="state" widget="badge" decoration-success="state == 'published'" decoration-muted="state == 'draft'"/>
+                <field name="has_changes" optional="show"/>
+                <field name="read_again_by"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sediba_doc_form" model="ir.ui.view">
+        <field name="name">sediba.doc.form</field>
+        <field name="model">sediba.doc</field>
+        <field name="arch" type="xml">
+            <form string="Company doc">
+                <header>
+                    <button name="action_publish" type="object" string="Publish" class="btn-primary"
+                            invisible="state == 'published' and not has_changes"/>
+                    <button name="action_read_again" type="object" string="Still right, read again"
+                            invisible="state != 'published'"/>
+                    <button name="action_take_down" type="object" string="Take down" invisible="state != 'published'"
+                            confirm="The apps will stop showing this doc. Take it down?"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="alert alert-warning" role="alert" invisible="not has_changes">
+                        Changed since it was published. The apps still show the older version until you publish again.
+                    </div>
+                    <field name="has_changes" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                        <field name="summary" placeholder="In one line: what this doc is for"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="owner_id"/>
+                            <field name="parent_id"/>
+                            <field name="read_again"/>
+                            <field name="read_again_by"/>
+                        </group>
+                        <group>
+                            <field name="space_ids" widget="many2many_tags"/>
+                            <field name="topic_ids" widget="many2many_tags"/>
+                            <field name="ai_allowed"/>
+                            <field name="last_read_on"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Text" name="text">
+                            <field name="body"/>
+                        </page>
+                        <page string="Questions and answers" name="questions">
+                            <field name="question_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="answer"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Published versions" name="versions">
+                            <field name="version_ids" readonly="1">
+                                <list>
+                                    <field name="number"/>
+                                    <field name="name"/>
+                                    <field name="published_on"/>
+                                    <field name="published_by"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes to the owner" name="notes">
+                            <field name="note_ids">
+                                <list editable="bottom" create="0">
+                                    <field name="create_date" string="When" readonly="1"/>
+                                    <field name="author" readonly="1"/>
+                                    <field name="space" readonly="1"/>
+                                    <field name="name" readonly="1"/>
+                                    <field name="done"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sediba_doc" model="ir.actions.act_window">
+        <field name="name">Company docs</field>
+        <field name="res_model">sediba.doc</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No company docs yet</p>
+            <p>A company doc is something we write ourselves: About us, How we work, an FAQ. It shows in the apps once it is published.</p>
+        </field>
+    </record>
+
     <!-- ── Menus ────────────────────────────────────────────────────────── -->
 
     <record id="action_sediba_workspace" model="ir.actions.client">
@@ -356,9 +483,10 @@
 
     <!-- The app opens on the workspace; every other screen is under Configuration. -->
     <menuitem id="menu_sediba_root" name="Sediba" sequence="46"
-              web_icon="sediba,static/description/icon.png" groups="group_user"/>
+              web_icon="sediba,static/description/icon.png" groups="group_user,group_writer"/>
     <menuitem id="menu_sediba_workspace" name="Workspace" parent="menu_sediba_root" action="action_sediba_workspace" sequence="1"/>
     <menuitem id="menu_sediba_config" name="Configuration" parent="menu_sediba_root" sequence="90"/>
+    <menuitem id="menu_sediba_docs" name="Company docs" parent="menu_sediba_config" action="action_sediba_doc" sequence="5" groups="group_writer"/>
     <menuitem id="menu_sediba_topics" name="Topics" parent="menu_sediba_config" action="action_sediba_topic" sequence="10"/>
     <menuitem id="menu_sediba_findings" name="Findings" parent="menu_sediba_config" action="action_sediba_finding" sequence="20"/>
     <menuitem id="menu_sediba_review" name="To review" parent="menu_sediba_config" action="action_sediba_finding_review" sequence="30"/>

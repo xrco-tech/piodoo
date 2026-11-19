@@ -338,3 +338,163 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
         h1 { font-size: 26px; }
     }
 }
+
+// ── Company docs ────────────────────────────────────────────────────────────
+// Written by us, so they get their own colour: never the green of "verified".
+.o_sdb_ws {
+    --sdb-ours-bg: #ece3e9;
+    --sdb-ours-fg: #4a2f43;
+
+    h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .small { font-size: 12px; }
+
+    // Sidebar: two named groups that fold, with a rule between them.
+    .o_sdb_group_head { display: flex; align-items: center; gap: 8px; padding: 0 8px 2px 4px; }
+    .o_sdb_group_head .o_sdb_group_name { flex: 1 1 auto; padding: 0; }
+    button.o_sdb_group_name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 32px;
+        border: 0;
+        border-radius: 6px;
+        background: none;
+        text-align: left;
+        cursor: pointer;
+        &:hover { background: var(--sdb-line-soft); }
+    }
+    span.o_sdb_group_name { padding-left: 4px; }
+    .o_sdb_group_name { font-weight: 700; color: var(--sdb-fg); }
+    .o_sdb_group_hint { padding: 0 8px 6px; font-size: 12px; color: var(--sdb-muted); }
+    .o_sdb_caret { flex: none; width: 14px; font-size: 11px; text-align: center; color: var(--sdb-muted); }
+    .o_sdb_rule { flex: none; height: 1px; margin: 0 8px; background: var(--sdb-line); }
+    .o_sdb_add {
+        flex: none;
+        min-height: 32px;
+        padding: 0 10px;
+        border: 1px solid var(--sdb-line);
+        border-radius: 6px;
+        background: var(--sdb-card);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        &:hover { background: var(--sdb-soft); }
+    }
+    .o_sdb_menu {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin: 0 4px 6px;
+        padding: 8px;
+        border: 1px solid var(--sdb-line);
+        border-radius: 8px;
+        background: var(--sdb-card);
+        > .o_sdb_muted { padding: 0 8px 2px; font-size: 12px; }
+    }
+    .o_sdb_item.child { padding-left: 28px; }
+    .o_sdb_note.draft { color: var(--sdb-none-fg); background: var(--sdb-none-bg); border-radius: 10px; padding: 1px 8px; font-weight: 600; }
+    .o_sdb_item.on .o_sdb_note.draft { color: var(--sdb-none-fg); }
+
+    .o_sdb_status.published { background: var(--sdb-ours-bg); color: var(--sdb-ours-fg); }
+    .o_sdb_status.draft { background: var(--sdb-none-bg); color: var(--sdb-none-fg); }
+    .o_sdb_stat.ours span { color: var(--sdb-ours-fg); }
+    .o_sdb_stats.narrow { max-width: 520px; }
+    td .o_sdb_status { margin-left: 8px; }
+
+    .o_sdb_cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-items: start; }
+    .o_sdb_row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+    .o_sdb_label { font-size: 12px; font-weight: 600; color: var(--sdb-muted); margin: 0; }
+
+    // A doc's own text.
+    .o_sdb_doc {
+        max-width: 760px;
+        font-size: 15px;
+        line-height: 1.65;
+        h1 { font-size: 24px; margin: 12px 0 6px; }
+        h2 { font-size: 20px; margin: 18px 0 6px; }
+        h3 { font-size: 17px; margin: 14px 0 4px; }
+        p { margin: 0 0 10px; }
+        ul, ol { margin: 0 0 10px; padding-left: 22px; }
+        li { margin-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        td, th { padding: 6px 10px; border: 1px solid var(--sdb-line); vertical-align: top; }
+        img { max-width: 100%; height: auto; }
+    }
+    .o_sdb_qa {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 14px 16px;
+        border: 1px solid var(--sdb-line);
+        border-radius: 8px;
+        h3 { margin: 0; font-size: 15px; }
+        p { margin: 0; }
+        &.editing { background: var(--sdb-soft); }
+    }
+    section.o_sdb_doc { gap: 12px; }
+    .o_sdb_answer { white-space: pre-line; }
+    .o_sdb_tell { padding-top: 16px; border-top: 1px solid var(--sdb-line-soft); max-width: 760px; }
+
+    // Writing.
+    .o_sdb_input.wide { flex: none; width: 100%; max-width: 760px; }
+    .o_sdb_input.area { flex: none; width: 100%; max-width: 760px; height: auto; min-height: 84px; padding: 8px 12px; line-height: 1.5; resize: vertical; }
+    .o_sdb_title_input {
+        width: 100%;
+        max-width: 760px;
+        padding: 4px 0;
+        border: 0;
+        border-bottom: 1px dashed var(--sdb-line);
+        background: none;
+        color: var(--sdb-fg);
+        font-size: 30px;
+        line-height: 1.2;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        &:focus-visible { outline: 2px solid var(--sdb-link); outline-offset: 2px; }
+    }
+    .o_sdb_btn.start { align-self: flex-start; }
+    .o_sdb_btn[disabled] { opacity: 0.6; cursor: default; }
+    .o_sdb_editor {
+        max-width: 820px;
+        border: 1px solid var(--sdb-line);
+        border-radius: 8px;
+        background: var(--sdb-card);
+        .o_sdb_editable { min-height: 260px; padding: 14px 18px; max-width: none; outline: none; }
+    }
+    .o_sdb_field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        min-width: 0;
+        > label, > legend { margin: 0; padding: 0; font-size: 14px; font-weight: 600; float: none; width: auto; }
+        select.o_sdb_input { flex: none; width: 100%; }
+        > label.o_sdb_check { font-weight: 400; }
+    }
+    .o_sdb_check {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        min-height: 32px;
+        padding: 4px 0;
+        font-weight: 400;
+        cursor: pointer;
+        input { flex: none; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--sdb-brand); }
+    }
+    .o_sdb_history {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 14px;
+        border-top: 1px solid var(--sdb-line-soft);
+    }
+    .o_sdb_version { display: flex; flex-direction: column; gap: 2px; }
+    .o_sdb_props dd > .o_sdb_link { margin-left: 8px; }
+}
+
+@media (max-width: 767.98px) {
+    .o_sdb_ws .o_sdb_add, .o_sdb_ws button.o_sdb_group_name { min-height: 44px; }
+    .o_sdb_ws .o_sdb_title_input { font-size: 26px; }
+}
