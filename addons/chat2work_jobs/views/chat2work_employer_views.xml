@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_chat2work_employer_list" model="ir.ui.view">
+        <field name="name">chat2work.employer.list</field>
+        <field name="model">chat2work.employer</field>
+        <field name="arch" type="xml">
+            <list string="Employers">
+                <field name="name"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'verified'" decoration-danger="state == 'invalid'"
+                       decoration-warning="state == 'unsure'" decoration-info="state == 'new'"/>
+                <field name="is_recruiter" optional="show"/>
+                <field name="open_count"/>
+                <field name="listing_count"/>
+                <field name="checked_by_id" optional="show"/>
+                <field name="checked_at" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chat2work_employer_form" model="ir.ui.view">
+        <field name="name">chat2work.employer.form</field>
+        <field name="model">chat2work.employer</field>
+        <field name="arch" type="xml">
+            <form string="Employer">
+                <header>
+                    <button name="action_mark_verified" type="object" string="Mark verified" class="btn-primary"
+                            invisible="not id or state == 'verified'"/>
+                    <button name="action_mark_unsure" type="object" string="Can't tell yet"
+                            invisible="not id or state == 'unsure'"/>
+                    <button name="action_mark_invalid" type="object" string="Not genuine"
+                            invisible="not id or state == 'invalid'"/>
+                    <button name="action_mark_new" type="object" string="Back to not checked"
+                            invisible="not id or state == 'new'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_listings" type="object" class="oe_stat_button" icon="fa-briefcase"
+                                invisible="not id">
+                            <field name="open_count" widget="statinfo" string="Open jobs"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="Employer"/>
+                        <h1><field name="name" placeholder="The employer's name"/></h1>
+                    </div>
+                    <group>
+                        <group string="The check" name="check">
+                            <field name="check_registered"/>
+                            <field name="registration_no" placeholder="For example 2019/123456/07"/>
+                            <field name="check_domain"/>
+                            <field name="check_confirmed"/>
+                            <field name="check_no_fees"/>
+                        </group>
+                        <group string="Result" name="result">
+                            <field name="is_recruiter"/>
+                            <field name="checked_by_id" invisible="not checked_by_id"/>
+                            <field name="checked_at" invisible="not checked_at"/>
+                            <field name="listing_count" string="Jobs ever listed"/>
+                            <field name="distinct_ids" widget="many2many_tags" readonly="1" invisible="not distinct_ids"/>
+                        </group>
+                    </group>
+                    <group string="How it was checked" name="note">
+                        <field name="note" nolabel="1" colspan="2"
+                               placeholder="Who you spoke to, what you looked up, and what you found."/>
+                    </group>
+                    <notebook>
+                        <page string="Jobs" name="jobs">
+                            <field name="listing_ids" readonly="1" nolabel="1">
+                                <list string="Jobs" default_order="state desc, closing_on">
+                                    <field name="title"/>
+                                    <field name="location"/>
+                                    <field name="verification_state" widget="badge"
+                                           decoration-success="verification_state == 'verified'"
+                                           decoration-danger="verification_state == 'invalid'"/>
+                                    <field name="closing_on"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'open'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Other spellings" name="spellings">
+                            <p class="text-muted">Names the job sites have used for this employer. Join two
+                                spellings from the Employers section of the workspace.</p>
+                            <field name="alias_ids" readonly="1" nolabel="1">
+                                <list string="Other spellings">
+                                    <field name="name" string="Spelling"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_chat2work_employer_search" model="ir.ui.view">
+        <field name="name">chat2work.employer.search</field>
+        <field name="model">chat2work.employer</field>
+        <field name="arch" type="xml">
+            <search string="Employers">
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('alias_ids.name', 'ilike', self)]"/>
+                <field name="registration_no"/>
+                <filter name="to_check" string="To check" domain="[('state', 'in', ('new', 'unsure'))]"/>
+                <filter name="verified" string="Verified" domain="[('state', '=', 'verified')]"/>
+                <filter name="invalid" string="Not genuine" domain="[('state', '=', 'invalid')]"/>
+                <separator/>
+                <filter name="recruiters" string="Recruiters" domain="[('is_recruiter', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="Check" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_chat2work_employer" model="ir.actions.act_window">
+        <field name="name">Employers</field>
+        <field name="res_model">chat2work.employer</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

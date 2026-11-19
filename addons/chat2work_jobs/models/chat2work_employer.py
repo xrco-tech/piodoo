@@ -130,6 +130,30 @@ class Chat2workEmployer(models.Model):
             employer.write({'state': state, 'checked_by_id': self.env.user.id, 'checked_at': fields.Datetime.now()})
         return True
 
+    # The record form's buttons: the same answers the workspace gives.
+    def action_mark_verified(self):
+        return self.action_set_state('verified')
+
+    def action_mark_unsure(self):
+        return self.action_set_state('unsure')
+
+    def action_mark_invalid(self):
+        return self.action_set_state('invalid')
+
+    def action_mark_new(self):
+        return self.action_set_state('new')
+
+    def action_open_listings(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Jobs at %s", self.name),
+            'res_model': 'chat2work.listing',
+            'view_mode': 'list,form',
+            'domain': [('employer_id', '=', self.id)],
+            'context': {'active_test': False},
+        }
+
     def action_join(self, other):
         """`other` is the same employer under another spelling: its jobs and
         spellings move here and it is removed."""

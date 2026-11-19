@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Chat2Work Job Listings',
-    'version': '18.0.1.15.0',
+    'version': '18.0.1.16.0',
     'category': 'Human Resources/Recruitment',
     'summary': 'Outside job listings for Chat2Work, kept up to date and matched to candidates',
     'description': """
@@ -23,6 +23,7 @@ and they can say they're interested from WhatsApp.
         'wizards/chat2work_listing_import_views.xml',
         'wizards/chat2work_job_send_views.xml',
         'views/chat2work_listing_views.xml',
+        'views/chat2work_employer_views.xml',
     ],
     'installable': True,
 }
