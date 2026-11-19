@@ -5,3 +5,4 @@ from . import test_chat2work_pipeline
 from . import test_chat2work_cv_rebuild
 from . import test_chat2work_menu
 from . import test_chat2work_flow_run
+from . import test_chat2work_ussd_gateways

@@ -3,10 +3,10 @@
 
 Service codes whose comm.ussd.account has flow_engine='chat2work' bypass the
 chatbot step engine entirely — notably its inbound path, which creates a
-res.partner for every dialler before any consent is given.
+res.partner for every dialler before any consent is given. This holds for
+every gateway (Africa's Talking, Connect Mobile): they all reach `_ussd_reply`.
 """
 
-from odoo import http
 from odoo.http import request
 
 from odoo.addons.comm_whatsapp_chatbot.controllers.ussd_inbound import UssdController
@@ -14,28 +14,15 @@ from odoo.addons.comm_whatsapp_chatbot.controllers.ussd_inbound import UssdContr
 
 class Chat2workUssdController(UssdController):
 
-    @http.route()
-    def receive_ussd(self, **kwargs):
-        params = self._extract_params(kwargs)
-        service_code = (params.get("serviceCode") or params.get("service_code") or "").strip()
+    def _ussd_reply(self, session_id, service_code, phone_number, text, latest_input=None):
         account = request.env["comm.ussd.account"].sudo().find_for_service_code(service_code)
         if not account or account.flow_engine != "chat2work":
-            return super().receive_ussd(**kwargs)
-        session_id = params.get("sessionId") or params.get("session_id") or ""
-        phone_number = (params.get("phoneNumber") or params.get("phone_number") or "").strip()
-        if not session_id or not phone_number:
-            return self._text_response("END Service unavailable. Please try again later.")
-        text = params.get("text") or ""
-        body = request.env["chat2work.ussd.session"].sudo().ussd_handle(
-            session_id, service_code, phone_number, text, self._latest_input(text),
-        )
-        return self._text_response(body)
+            return super()._ussd_reply(session_id, service_code, phone_number, text, latest_input)
+        if latest_input is None:
+            latest_input = self._latest_input(text)
+        return request.env["chat2work.ussd.session"].sudo().ussd_handle(
+            session_id, service_code, phone_number, text, latest_input)
 
-    @http.route()
-    def ussd_notifications(self, **kwargs):
-        params = self._extract_params(kwargs)
-        session_id = params.get("sessionId") or params.get("session_id") or ""
-        if session_id:
-            request.env["chat2work.ussd.session"].sudo().ussd_session_closed(
-                session_id, seconds=self._duration_seconds(params))
-        return super().ussd_notifications(**kwargs)
+    def _ussd_closed(self, session_id, status, seconds=None):
+        request.env["chat2work.ussd.session"].sudo().ussd_session_closed(session_id, seconds=seconds)
+        return super()._ussd_closed(session_id, status, seconds)

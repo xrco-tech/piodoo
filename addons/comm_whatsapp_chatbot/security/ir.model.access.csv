@@ -16,4 +16,4 @@ access_whatsapp_chatbot_ussd_session_user,whatsapp.chatbot.ussd.session.user,mod
 access_comm_ussd_account_user,comm.ussd.account.user,model_comm_ussd_account,base.group_user,1,0,0,0
 access_comm_ussd_account_admin,comm.ussd.account.admin,model_comm_ussd_account,base.group_system,1,1,1,1
 access_comm_voice_call_session_user,comm.voice.call.session.user,model_comm_voice_call_session,base.group_user,1,1,1,1
-
+access_comm_ussd_gateway_session_admin,comm.ussd.gateway.session.admin,model_comm_ussd_gateway_session,base.group_system,1,1,1,1
