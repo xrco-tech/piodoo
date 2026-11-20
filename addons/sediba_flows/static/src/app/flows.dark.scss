@@ -1,0 +1,23 @@
+// Sediba Flows in Odoo's dark mode: the frame goes dark, step cards keep
+// their light tints so each kind stays recognisable.
+.o_sfl {
+    --sfl-ground: #1b1d26;
+    --sfl-box: #262a36;
+    --sfl-line: #4b5160;
+    --sfl-soft: #3a3f4c;
+    --sfl-text: #e4e6eb;
+    --sfl-muted: #b3b9c6;
+    --sfl-dot: #3a3f4c;
+    --sfl-edge: #9ca3af;
+    --sfl-warn: #fbbf24;
+    --sfl-danger: #fca5a5;
+    --sfl-select: #93c5fd;
+}
+
+.o_sfl_bubble.o_sfl_mine {
+    border-color: #93c5fd;
+    background: #93c5fd;
+    color: #111827;
+}
+
+.o_sfl_tab.active { border-bottom-color: #d9a400; }

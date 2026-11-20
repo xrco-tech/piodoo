@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="sediba_flows.App">
+        <div class="o_sfl">
+            <t t-if="state.view === 'home'" t-call="sediba_flows.Home"/>
+            <t t-else="" t-call="sediba_flows.Builder"/>
+        </div>
+    </t>
+
+    <!-- ── The list of flows ─────────────────────────────────────────────── -->
+    <t t-name="sediba_flows.Home">
+        <div class="o_sfl_home">
+            <div class="o_sfl_head">
+                <div class="o_sfl_head_text">
+                    <h1>Sediba Flows</h1>
+                    <span class="o_sfl_muted">Conversations you design once and run on any channel you have connected.</span>
+                </div>
+                <button t-if="state.home.can_create" type="button" class="btn btn-primary" t-on-click="newFlow">New flow</button>
+            </div>
+            <div class="o_sfl_home_body">
+                <div class="o_sfl_box o_sfl_flows">
+                    <div t-if="!state.home.flows.length" class="o_sfl_empty">
+                        No flows yet. A flow is a conversation: what to say, what to ask and where each answer leads.
+                    </div>
+                    <div t-else="" class="o_sfl_scroll_x">
+                        <table class="o_sfl_table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Flow</th>
+                                    <th scope="col">Runs on</th>
+                                    <th scope="col" class="o_sfl_num">Steps</th>
+                                    <th scope="col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.home.flows" t-as="flow" t-key="flow.id">
+                                    <td>
+                                        <button type="button" class="o_sfl_link" t-on-click="() => this.openFlow(flow.id)" t-esc="flow.name"/>
+                                    </td>
+                                    <td>
+                                        <span t-foreach="flow.channels" t-as="name" t-key="name" class="o_sfl_chip" t-esc="name"/>
+                                        <span t-if="!flow.channels.length" class="o_sfl_muted">No channel yet</span>
+                                    </td>
+                                    <td class="o_sfl_num" t-esc="flow.steps"/>
+                                    <td>
+                                        <b t-if="flow.status === 'live'" t-esc="statusLabel(flow.status)"/>
+                                        <span t-else="" class="o_sfl_muted" t-esc="statusLabel(flow.status)"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="o_sfl_box o_sfl_channels">
+                    <h2>Channels</h2>
+                    <span class="o_sfl_muted o_sfl_small">Each channel is its own add-on. A flow can use whichever are installed.</span>
+                    <div t-foreach="state.home.channels" t-as="channel" t-key="channel.id" class="o_sfl_row">
+                        <span t-esc="channel.name"/>
+                        <b t-if="channel.connected">Connected</b>
+                        <span t-else="" class="o_sfl_muted">Add-on not installed</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ── The builder ───────────────────────────────────────────────────── -->
+    <t t-name="sediba_flows.Builder">
+        <div class="o_sfl_builder">
+            <div class="o_sfl_toolbar">
+                <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Back to all flows" title="Back to all flows" t-on-click="backHome">
+                    <i class="fa fa-chevron-left" aria-hidden="true"/>
+                </button>
+                <button t-if="canEdit" type="button" class="btn btn-primary" t-on-click="addStepFromToolbar">Add step</button>
+                <input type="text" class="o_sfl_title" aria-label="Flow name" t-model="state.flowName"
+                       t-att-disabled="!canEdit" t-on-change="renameFlow"/>
+                <span class="o_sfl_status" t-att-class="{o_sfl_live: isLive}" t-esc="statusLabel(state.data.flow.status)"/>
+                <span class="o_sfl_grow"/>
+                <t t-if="flowChannels.length">
+                    <span class="o_sfl_muted">Show as</span>
+                    <div class="o_sfl_pills" role="group" aria-label="Show as channel">
+                        <button type="button" class="o_sfl_pill" t-att-class="{active: state.showAs === 'all'}"
+                                t-att-aria-pressed="state.showAs === 'all' ? 'true' : 'false'"
+                                t-on-click="() => this.state.showAs = 'all'">All</button>
+                        <button t-foreach="flowChannels" t-as="channel" t-key="channel.id" type="button" class="o_sfl_pill"
+                                t-att-class="{active: state.showAs === channel.code}"
+                                t-att-aria-pressed="state.showAs === channel.code ? 'true' : 'false'"
+                                t-on-click="() => this.state.showAs = channel.code" t-esc="channel.name"/>
+                    </div>
+                </t>
+                <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Zoom out" t-on-click="() => this.setZoom(-0.1)">−</button>
+                <span class="o_sfl_zoom" t-esc="zoomLabel"/>
+                <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Zoom in" t-on-click="() => this.setZoom(0.1)">+</button>
+                <button t-if="canEdit" type="button" class="btn btn-light" t-on-click="toggleLive">
+                    <t t-if="isLive">Pause</t><t t-else="">Go live</t>
+                </button>
+            </div>
+
+            <div class="o_sfl_body">
+                <div class="o_sfl_canvas_wrap" t-on-click.self="() => this.select(false)">
+                    <div t-if="!state.data.steps.length" class="o_sfl_empty">
+                        This flow has no steps yet. Add the first one.
+                    </div>
+                    <div t-else="" class="o_sfl_canvas" t-att-style="canvasStyle" t-on-click.self="() => this.select(false)">
+                        <svg class="o_sfl_lines" aria-hidden="true" t-att-width="layout.width" t-att-height="layout.height">
+                            <defs>
+                                <marker id="o_sfl_arrow" orient="auto" markerWidth="6" markerHeight="6" refX="3" refY="3">
+                                    <path d="M0 0 L6 3 L0 6 Z"/>
+                                </marker>
+                            </defs>
+                            <path t-foreach="layout.edges" t-as="edge" t-key="edge.key" t-att-d="edge.path" marker-end="url(#o_sfl_arrow)"/>
+                        </svg>
+                        <t t-foreach="layout.edges" t-as="edge" t-key="edge.key">
+                            <div t-if="edge.label" class="o_sfl_edge_label" t-att-style="edge.labelStyle">
+                                <span t-esc="edge.label"/>
+                            </div>
+                        </t>
+                        <button t-foreach="layout.nodes" t-as="node" t-key="node.step.id" type="button"
+                                t-att-class="cardClass(node)" t-att-style="cardStyle(node)"
+                                t-att-aria-pressed="node.step.id === state.selectedId ? 'true' : 'false'"
+                                t-on-click="() => this.select(node.step.id)">
+                            <span class="o_sfl_card_top">
+                                <i t-att-class="kindIcon(node.step.kind)" aria-hidden="true"/>
+                                <span class="o_sfl_card_kind" t-esc="kindLabel(node.step.kind)"/>
+                                <span t-if="node.step.id === state.data.flow.entry_id" class="o_sfl_card_tag">Starts here</span>
+                                <span t-if="outState(node.step) === 'warn'" class="o_sfl_card_tag o_sfl_warn">
+                                    <i class="fa fa-exclamation-triangle" aria-hidden="true"/> Check
+                                </span>
+                                <span t-if="outState(node.step) === 'skip'" class="o_sfl_card_tag">Skipped</span>
+                            </span>
+                            <span class="o_sfl_card_name" t-esc="node.step.name"/>
+                            <span t-if="node.back.length" class="o_sfl_card_text">Then back to: <t t-esc="node.back.join(', ')"/></span>
+                            <span t-else="" class="o_sfl_card_text" t-esc="cardText(node.step)"/>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="o_sfl_panel">
+                    <div class="o_sfl_tabs" role="group" aria-label="Panel">
+                        <button type="button" class="o_sfl_tab" t-att-class="{active: state.panel === 'step'}"
+                                t-att-aria-pressed="state.panel === 'step' ? 'true' : 'false'"
+                                t-on-click="() => this.state.panel = 'step'">
+                            <t t-if="state.draft">Step</t><t t-else="">Flow</t>
+                        </button>
+                        <button type="button" class="o_sfl_tab" t-att-class="{active: state.panel === 'try'}"
+                                t-att-aria-pressed="state.panel === 'try' ? 'true' : 'false'"
+                                t-on-click="openTry">Try it</button>
+                    </div>
+                    <t t-if="state.panel === 'try'" t-call="sediba_flows.Try"/>
+                    <t t-elif="state.draft" t-call="sediba_flows.Step"/>
+                    <t t-else="" t-call="sediba_flows.Flow"/>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ── Panel: the flow (nothing selected) ────────────────────────────── -->
+    <t t-name="sediba_flows.Flow">
+        <fieldset class="o_sfl_form" t-att-disabled="!canEdit">
+            <span class="o_sfl_muted">Click a step to change it. These settings are for the whole flow.</span>
+            <div class="o_sfl_group">
+                <b>Runs on</b>
+                <label t-foreach="state.data.channels" t-as="channel" t-key="channel.id" class="o_sfl_check">
+                    <input type="checkbox" t-att-checked="state.data.flow.channel_ids.includes(channel.id)"
+                           t-on-change="() => this.toggleChannel(channel.id)"/>
+                    <span t-esc="channel.name"/>
+                    <span t-if="!channel.connected" class="o_sfl_muted o_sfl_small">add-on not installed</span>
+                </label>
+            </div>
+            <div class="o_sfl_field">
+                <label for="o_sfl_entry">Starts at</label>
+                <select id="o_sfl_entry" class="o_sfl_input" t-on-change="(ev) => this.saveFlow({ entry_id: Number(ev.target.value) || false })">
+                    <option value="" t-att-selected="!state.data.flow.entry_id">Not chosen</option>
+                    <option t-foreach="state.data.steps" t-as="s" t-key="s.id" t-att-value="s.id"
+                            t-att-selected="s.id === state.data.flow.entry_id" t-esc="s.name"/>
+                </select>
+            </div>
+        </fieldset>
+    </t>
+
+    <!-- ── Panel: one step ───────────────────────────────────────────────── -->
+    <t t-name="sediba_flows.Step">
+        <t t-set="d" t-value="state.draft"/>
+        <fieldset class="o_sfl_form" t-att-disabled="!canEdit" t-on-input="touch">
+            <div class="o_sfl_field">
+                <label for="o_sfl_kind">Kind</label>
+                <select id="o_sfl_kind" class="o_sfl_input" t-on-change="(ev) => this.setField('kind', ev.target.value)">
+                    <option t-foreach="KINDS" t-as="kind" t-key="kind[0]" t-att-value="kind[0]"
+                            t-att-selected="kind[0] === d.kind" t-esc="kind[1]"/>
+                </select>
+            </div>
+            <div class="o_sfl_field">
+                <label for="o_sfl_name">Name</label>
+                <input id="o_sfl_name" type="text" class="o_sfl_input" t-model="d.name" t-on-change="saveStep"/>
+            </div>
+
+            <div t-if="d.kind === 'message' or d.kind === 'menu' or d.kind === 'input'" class="o_sfl_field">
+                <label for="o_sfl_body">What the flow says</label>
+                <textarea id="o_sfl_body" rows="3" class="o_sfl_input" t-model="d.body" t-on-change="saveStep"/>
+                <span class="o_sfl_muted o_sfl_small">{{contact.first_name}} puts in the contact's first name.</span>
+            </div>
+
+            <div t-if="d.kind === 'menu'" class="o_sfl_group">
+                <b>Choices</b>
+                <div t-foreach="d.options" t-as="option" t-key="option_index" class="o_sfl_choice">
+                    <input type="text" class="o_sfl_input" t-att-aria-label="'Choice ' + (option_index + 1)" placeholder="What the contact picks"
+                           t-model="option.label" t-on-change="saveStep"/>
+                    <div class="o_sfl_choice_then">
+                        <select class="o_sfl_input" t-att-aria-label="'Step after choice ' + (option_index + 1)"
+                                t-on-change="(ev) => this.setOption(option, 'next_id', ev.target.value, true)">
+                            <option value="" t-att-selected="!option.next_id">Then: not chosen</option>
+                            <option t-foreach="otherSteps(d.id)" t-as="s" t-key="s.id" t-att-value="s.id"
+                                    t-att-selected="s.id === option.next_id">Then: <t t-esc="s.name"/></option>
+                        </select>
+                        <button t-if="option.id and !option.next_id" type="button" class="btn btn-light" t-on-click="() => this.addStep(false, option.id)">New step</button>
+                        <button type="button" class="btn btn-light o_sfl_icon_btn" t-att-aria-label="'Remove choice ' + (option_index + 1)" title="Remove"
+                                t-on-click="() => this.removeChoice(option_index)">
+                            <i class="fa fa-trash-o" aria-hidden="true"/>
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-light o_sfl_start" t-on-click="addChoice">Add a choice</button>
+            </div>
+
+            <t t-if="d.kind === 'input'">
+                <div class="o_sfl_field">
+                    <label for="o_sfl_input_type">The answer should be</label>
+                    <select id="o_sfl_input_type" class="o_sfl_input" t-on-change="(ev) => this.setField('input_type', ev.target.value)">
+                        <option t-foreach="INPUT_TYPES" t-as="type" t-key="type[0]" t-att-value="type[0]"
+                                t-att-selected="type[0] === d.input_type" t-esc="type[1]"/>
+                    </select>
+                </div>
+                <div class="o_sfl_field">
+                    <label for="o_sfl_save_to">Keep the answer as</label>
+                    <input id="o_sfl_save_to" type="text" class="o_sfl_input" placeholder="for example: province" t-model="d.save_to" t-on-change="saveStep"/>
+                    <span class="o_sfl_muted o_sfl_small">Later steps can use it as {{state.province}}.</span>
+                </div>
+            </t>
+
+            <div t-if="d.kind === 'condition'" class="o_sfl_group">
+                <div class="o_sfl_field">
+                    <label for="o_sfl_condition">Check</label>
+                    <input id="o_sfl_condition" type="text" class="o_sfl_input" placeholder="for example: {{state.province}}" t-model="d.condition" t-on-change="saveStep"/>
+                    <span class="o_sfl_muted o_sfl_small">True when it has a value that is not empty, 0, no or false.</span>
+                </div>
+                <div class="o_sfl_field">
+                    <label for="o_sfl_if">If so, go to</label>
+                    <select id="o_sfl_if" class="o_sfl_input" t-on-change="(ev) => this.setBranch(false, ev.target.value)">
+                        <option value="" t-att-selected="!(branch(false) and branch(false).next_id)">Not chosen</option>
+                        <option t-foreach="otherSteps(d.id)" t-as="s" t-key="s.id" t-att-value="s.id"
+                                t-att-selected="branch(false) and s.id === branch(false).next_id" t-esc="s.name"/>
+                    </select>
+                </div>
+                <div class="o_sfl_field">
+                    <label for="o_sfl_else">Otherwise, go to</label>
+                    <select id="o_sfl_else" class="o_sfl_input" t-on-change="(ev) => this.setBranch(true, ev.target.value)">
+                        <option value="" t-att-selected="!(branch(true) and branch(true).next_id)">Not chosen</option>
+                        <option t-foreach="otherSteps(d.id)" t-as="s" t-key="s.id" t-att-value="s.id"
+                                t-att-selected="branch(true) and s.id === branch(true).next_id" t-esc="s.name"/>
+                    </select>
+                </div>
+            </div>
+
+            <t t-if="d.kind === 'llm'">
+                <div class="o_sfl_field">
+                    <label for="o_sfl_prompt">Instructions for the AI</label>
+                    <textarea id="o_sfl_prompt" rows="4" class="o_sfl_input" t-model="d.llm_prompt" t-on-change="saveStep"/>
+                </div>
+                <label class="o_sfl_check">
+                    <input type="checkbox" t-att-checked="d.llm_use_sediba" t-on-change="(ev) => this.setField('llm_use_sediba', ev.target.checked)"/>
+                    <span>Answer from Sediba</span>
+                </label>
+            </t>
+
+            <div t-if="d.kind === 'handoff'" class="o_sfl_field">
+                <label for="o_sfl_handoff">What the contact is told</label>
+                <input id="o_sfl_handoff" type="text" class="o_sfl_input" t-model="d.handoff_message" t-on-change="saveStep"/>
+            </div>
+
+            <div t-if="d.kind === 'jump'" class="o_sfl_field">
+                <label for="o_sfl_jump">Carry on in the flow</label>
+                <select id="o_sfl_jump" class="o_sfl_input" t-on-change="(ev) => this.setField('jump_bot_id', ev.target.value, true)">
+                    <option value="" t-att-selected="!d.jump_bot_id">This flow, at the step below</option>
+                    <option t-foreach="state.data.flows" t-as="flow" t-key="flow.id" t-att-value="flow.id"
+                            t-att-selected="flow.id === d.jump_bot_id" t-esc="flow.name"/>
+                </select>
+            </div>
+
+            <div t-if="d.kind === 'wait'" class="o_sfl_field">
+                <label for="o_sfl_wait">Wait, in seconds</label>
+                <input id="o_sfl_wait" type="number" min="0" class="o_sfl_input" t-model="d.wait_seconds" t-on-change="saveStep"/>
+            </div>
+
+            <div t-if="d.kind === 'end'" class="o_sfl_field">
+                <label for="o_sfl_outcome">How it ended, for reports</label>
+                <input id="o_sfl_outcome" type="text" class="o_sfl_input" placeholder="for example: done" t-model="d.end_outcome" t-on-change="saveStep"/>
+            </div>
+
+            <div t-if="['message', 'input', 'action', 'llm', 'wait', 'jump', 'channel_switch'].includes(d.kind) and !(d.kind === 'jump' and d.jump_bot_id)" class="o_sfl_field">
+                <label for="o_sfl_next">Then</label>
+                <div class="o_sfl_choice_then">
+                    <select id="o_sfl_next" class="o_sfl_input" t-on-change="(ev) => this.setField(d.kind === 'jump' ? 'jump_step_id' : 'next_id', ev.target.value, true)">
+                        <option value="" t-att-selected="!(d.kind === 'jump' ? d.jump_step_id : d.next_id)">Nothing: the flow stops here</option>
+                        <option t-foreach="otherSteps(d.id)" t-as="s" t-key="s.id" t-att-value="s.id"
+                                t-att-selected="s.id === (d.kind === 'jump' ? d.jump_step_id : d.next_id)" t-esc="s.name"/>
+                    </select>
+                    <button t-if="d.kind !== 'jump'" type="button" class="btn btn-light" t-on-click="() => this.addStep(d.id, false)">New step</button>
+                </div>
+            </div>
+
+            <div t-if="flowChannels.length" class="o_sfl_group o_sfl_out">
+                <b>How it comes out</b>
+                <div t-foreach="flowChannels" t-as="channel" t-key="channel.id" class="o_sfl_out_row">
+                    <t t-set="out" t-value="d.out[channel.code]"/>
+                    <div class="o_sfl_row">
+                        <span t-esc="channel.name"/>
+                        <span class="o_sfl_muted" t-esc="out ? out.how : ''"/>
+                    </div>
+                    <div t-if="out and out.note" class="o_sfl_note">
+                        <i class="fa fa-exclamation-triangle" aria-hidden="true"/> <t t-esc="out.note"/>
+                    </div>
+                    <div t-elif="out and out.limit and out.chars" class="o_sfl_muted o_sfl_small">
+                        <t t-esc="out.chars"/> of <t t-esc="out.limit"/> characters
+                    </div>
+                </div>
+            </div>
+            <div t-else="" class="o_sfl_note">
+                This flow runs on no channel yet. Click an empty part of the canvas, then tick the channels under Runs on.
+            </div>
+
+            <t t-if="flowChannels.length and (d.kind === 'message' or d.kind === 'menu' or d.kind === 'input')">
+                <button t-if="!state.wording" type="button" class="btn btn-light o_sfl_start" t-on-click="() => this.state.wording = true">Different wording for one channel</button>
+                <div t-else="" class="o_sfl_group">
+                    <b>Different wording for one channel</b>
+                    <div t-foreach="d.overrides" t-as="row" t-key="row.channel_id" class="o_sfl_field">
+                        <t t-set="channel" t-value="state.data.channels.find((c) => c.id === row.channel_id)"/>
+                        <label t-att-for="'o_sfl_ov_' + row.channel_id" t-esc="channel.name"/>
+                        <textarea t-att-id="'o_sfl_ov_' + row.channel_id" rows="2" class="o_sfl_input" placeholder="Leave empty to use the wording above"
+                                  t-model="row.body" t-on-change="saveStep"/>
+                        <label class="o_sfl_check">
+                            <input type="checkbox" t-att-checked="row.hide" t-on-change="(ev) => this.setHide(row, ev.target.checked)"/>
+                            <span>Skip this step on <t t-esc="channel.name"/></span>
+                        </label>
+                    </div>
+                </div>
+            </t>
+
+            <div class="o_sfl_foot">
+                <button type="button" class="btn btn-light" t-on-click="moreSettings">More settings</button>
+                <button type="button" class="btn btn-light o_sfl_danger" t-on-click="deleteStep">Delete step</button>
+            </div>
+        </fieldset>
+    </t>
+
+    <!-- ── Panel: try the flow ───────────────────────────────────────────── -->
+    <t t-name="sediba_flows.Try">
+        <div class="o_sfl_form o_sfl_try">
+            <t t-if="!flowChannels.length">
+                <div class="o_sfl_note">Choose a channel for this flow first: open the Flow tab and tick one under Runs on.</div>
+            </t>
+            <t t-else="">
+                <div class="o_sfl_field">
+                    <label for="o_sfl_try_channel">Try it on</label>
+                    <div class="o_sfl_choice_then">
+                        <select id="o_sfl_try_channel" class="o_sfl_input" t-model="state.sim.channel">
+                            <option t-foreach="flowChannels" t-as="channel" t-key="channel.id" t-att-value="channel.code" t-esc="channel.name"/>
+                        </select>
+                        <button type="button" class="btn btn-primary" t-att-disabled="state.sim.busy" t-on-click="simStart">
+                            <t t-if="state.sim.session">Start again</t><t t-else="">Start</t>
+                        </button>
+                    </div>
+                    <span class="o_sfl_muted o_sfl_small">You are a test contact. Nothing is sent and AI steps are not run.</span>
+                </div>
+                <div t-if="state.sim.error" class="o_sfl_note" t-esc="state.sim.error"/>
+                <div class="o_sfl_chat" aria-live="polite">
+                    <div t-foreach="state.sim.messages" t-as="message" t-key="message_index"
+                         t-att-class="'o_sfl_bubble ' + (message.direction === 'inbound' ? 'o_sfl_mine' : '')" t-esc="message.body"/>
+                    <div t-if="state.sim.waiting === 'done'" class="o_sfl_muted o_sfl_small">The flow has ended.</div>
+                </div>
+                <div t-if="state.sim.waiting === 'menu' and state.sim.options.length" class="o_sfl_quick">
+                    <button t-foreach="state.sim.options" t-as="option" t-key="option_index" type="button" class="btn btn-light"
+                            t-att-disabled="state.sim.busy" t-on-click="() => this.simSend(option.label)" t-esc="option.label"/>
+                </div>
+                <div t-if="state.sim.session and state.sim.waiting !== 'done'" class="o_sfl_choice_then">
+                    <input type="text" class="o_sfl_input" aria-label="Your reply" placeholder="Reply as the contact"
+                           t-model="state.sim.input" t-on-keydown="simKey"/>
+                    <button type="button" class="btn btn-light" t-att-disabled="state.sim.busy" t-on-click="() => this.simSend()">Send</button>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>
