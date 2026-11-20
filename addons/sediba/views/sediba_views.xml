@@ -212,6 +212,7 @@
                         </group>
                         <group>
                             <field name="space_ids" widget="many2many_tags"/>
+                            <field name="ai_allowed"/>
                             <field name="scope"/>
                         </group>
                     </group>

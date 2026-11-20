@@ -454,6 +454,14 @@ export class SedibaWorkspace extends Component {
         this.state.nav = await this.orm.call(WS, "ws_nav", [this.space]);
     }
 
+    async toggleTopicAi(ev) {
+        // Keep what was typed in the topic's search box: only the switch changed.
+        const d = await this.orm.call(WS, "ws_set_topic_ai", [this.state.topicId, ev.target.checked, this.space]);
+        if (d) {
+            this.state.data.ai_allowed = d.ai_allowed;
+        }
+    }
+
     async toggleReview() {
         const f = this.state.data;
         this.state.data = await this.orm.call(WS, "ws_set_review", [f.id, !f.review, this.space]);

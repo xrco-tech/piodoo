@@ -384,6 +384,14 @@
                                 <div t-if="d.due"><dt>Due again</dt><dd t-esc="d.due"/></div>
                             </dl>
                             <p t-if="d.scope" class="o_sdb_muted" t-esc="d.scope"/>
+                            <t t-if="!state.nav.reference">
+                                <label t-if="state.nav.can_edit" class="o_sdb_check o_sdb_ai">
+                                    <input type="checkbox" t-att-checked="d.ai_allowed" t-on-change="toggleTopicAi"/>
+                                    <span>Sidekick and the chatbot may answer from it
+                                        <span class="o_sdb_muted small d-block">Verified findings only. Leads and findings that could not be confirmed are never included.</span></span>
+                                </label>
+                                <p t-else="" class="o_sdb_muted small">Sidekick and the chatbot may answer from it: <t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></p>
+                            </t>
                         </header>
 
                         <div t-if="d.summary.length or d.our_read" class="o_sdb_pair wide">
