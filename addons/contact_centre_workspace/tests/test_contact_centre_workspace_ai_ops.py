@@ -127,3 +127,21 @@ class TestContactCentreWorkspaceAiOps(TransactionCase):
         self.assertEqual([m['mine'] for m in data['messages']], [True, False])
         self.assertIn("API key isn't configured", data['messages'][1]['content'])
         self.assertEqual(self.Boss.ws_ai_chats(search='Draft a renewal campaign')['rows'][0]['id'], chat.id)
+
+    def test_sidekick_reads_company_docs_from_sediba(self):
+        """The copilot looks up only what Sediba allowed and shows in Contact Centre."""
+        here = self.env.ref('contact_centre_workspace.sediba_space_contact_centre')
+        Doc = self.env['sediba.doc']
+        ours = Doc.create({'name': 'About Zebraworks', 'body': '<p>Zebraworks answers calls all day.</p>',
+                           'space_ids': [(6, 0, here.ids)]})
+        elsewhere = Doc.create({'name': 'Zebraworks jobs guide', 'body': '<p>Zebraworks matches jobs.</p>'})
+        (ours | elsewhere).action_publish()
+        chat = self._chat('Docs').with_user(self.manager)
+        self.assertIn('look_up_reference', [tool['name'] for tool in chat._tools()])
+        self.assertIn('look_up_reference', chat._system_prompt())
+        result = chat._execute_tool('look_up_reference', {'question': 'Zebraworks'})
+        self.assertEqual(result['used'], ['About Zebraworks'])
+        self.assertIn('answers calls all day', result['results'][0]['text'])
+        # A look-up, so it runs without asking the user first.
+        from odoo.addons.contact_centre_ai_ops.models.contact_centre_ai_chat import _is_mutating
+        self.assertFalse(_is_mutating('look_up_reference'))

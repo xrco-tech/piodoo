@@ -59,6 +59,7 @@
                         <group>
                             <field name="llm_output_mode"/>
                             <field name="llm_output_save_to" invisible="llm_output_mode != 'structured'"/>
+                            <field name="llm_use_sediba"/>
                             <field name="llm_include_history"/>
                             <field name="llm_history_turns"/>
                             <field name="llm_fallback_step_id"/>

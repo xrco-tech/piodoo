@@ -253,7 +253,7 @@ class TestChat2workSidekick(TransactionCase):
         """No tool the AI is offered creates, changes or deletes: only reads, a draft and a button."""
         names = [tool['name'] for tool in self.Ws._sidekick_tools(self.Ws._sidekick_lists())]
         self.assertEqual(set(names), {'count_lists', 'list_people', 'find_candidate', 'get_candidate', 'read_notes',
-                                      'list_bookings', 'draft_message', 'suggest_screen'})
+                                      'list_bookings', 'draft_message', 'suggest_screen', 'look_up_reference'})
         self.thandi.cv_state = 'started'
         before = self.thandi.write_date
         chat, sent = self._ask('How are we doing, and who is Thandi?', said(
@@ -286,6 +286,27 @@ class TestChat2workSidekick(TransactionCase):
         self.assertEqual(chat['messages'][-1]['source'], 'From the agent notes')
         with self.assertRaises(AccessError):        # agents read the notes; administrators write them
             self.env['chat2work.agent.note'].with_user(self.agent).create({'name': 'x', 'body': 'y'})
+
+    def test_company_docs_and_research_come_from_sediba(self):
+        """Only what Sediba allowed for the assistants and shows in Chat2Work."""
+        here = self.env.ref('chat2work_workspace.sediba_space_chat2work')
+        Doc = self.env['sediba.doc']
+        ours = Doc.create({'name': 'About Zebraworks', 'body': '<p>Zebraworks is free for job seekers.</p>',
+                           'space_ids': [(6, 0, here.ids)]})
+        elsewhere = Doc.create({'name': 'Zebraworks call scripts', 'body': '<p>Zebraworks greets callers.</p>'})
+        hidden = Doc.create({'name': 'Zebraworks pay', 'body': '<p>Zebraworks pays monthly.</p>',
+                             'ai_allowed': False, 'space_ids': [(6, 0, here.ids)]})
+        (ours | elsewhere | hidden).action_publish()
+        Doc.create({'name': 'Zebraworks plans', 'body': '<p>Zebraworks draft.</p>', 'space_ids': [(6, 0, here.ids)]})
+        chat, sent = self._ask('What is Zebraworks?', said('It is free.', ('look_up_reference', {'question': 'Zebraworks'})))
+        self.assertIn('Zebraworks is free for job seekers.', sent)
+        for kept_out in ('call scripts', 'pays monthly', 'draft'):
+            self.assertNotIn(kept_out, sent)
+        self.assertEqual(chat['messages'][-1]['source'], 'From Sediba: About Zebraworks')
+        self.assertTrue(chat['actions'][-1]['ok'])
+        chat, _sent = self._ask('And giraffes?', said('Nothing written covers it.',
+                                                      ('look_up_reference', {'question': 'giraffes'})))
+        self.assertFalse(chat['messages'][-1]['source'])
 
     def test_no_phone_or_id_number_reaches_the_ai(self):
         self._log(self.thandi, 'whatsapp', 'inbound', 'Help, my ID is 9001015009087, call 082 555 0142')
