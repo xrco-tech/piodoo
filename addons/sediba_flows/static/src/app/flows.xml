@@ -278,8 +278,17 @@
                 <div class="o_sfl_field">
                     <label for="o_sfl_condition">Check</label>
                     <input id="o_sfl_condition" type="text" class="o_sfl_input" placeholder="for example: {{state.province}}" t-model="d.condition" t-on-change="saveStep"/>
-                    <span class="o_sfl_muted o_sfl_small">True when it has a value that is not empty, 0, no or false.</span>
+                    <span t-if="d.condition_mode !== 'equals'" class="o_sfl_muted o_sfl_small">It has a value when it is not empty, 0, no or false.</span>
+                    <span t-else="" class="o_sfl_muted o_sfl_small">Capital letters and spaces around the value do not matter.</span>
                 </div>
+                <div class="o_sfl_field">
+                    <label for="o_sfl_cond_mode">Branch on</label>
+                    <select id="o_sfl_cond_mode" class="o_sfl_input" t-on-change="(ev) => this.setField('condition_mode', ev.target.value)">
+                        <option value="truthy" t-att-selected="d.condition_mode !== 'equals'">Whether it has a value</option>
+                        <option value="equals" t-att-selected="d.condition_mode === 'equals'">Which value it has</option>
+                    </select>
+                </div>
+                <t t-if="d.condition_mode !== 'equals'">
                 <div class="o_sfl_field">
                     <label for="o_sfl_if">If so, go to</label>
                     <select id="o_sfl_if" class="o_sfl_input" t-on-change="(ev) => this.setBranch(false, ev.target.value)">
@@ -288,6 +297,27 @@
                                 t-att-selected="branch(false) and s.id === branch(false).next_id" t-esc="s.name"/>
                     </select>
                 </div>
+                </t>
+                <t t-else="">
+                    <b>When it is</b>
+                    <div t-foreach="valueBranches" t-as="option" t-key="option_index" class="o_sfl_choice">
+                        <input type="text" class="o_sfl_input" t-att-aria-label="'Value ' + (option_index + 1)" placeholder="a value, for example: lead"
+                               t-model="option.label" t-on-change="saveStep"/>
+                        <div class="o_sfl_choice_then">
+                            <select class="o_sfl_input" t-att-aria-label="'Step when it is value ' + (option_index + 1)"
+                                    t-on-change="(ev) => this.setOption(option, 'next_id', ev.target.value, true)">
+                                <option value="" t-att-selected="!option.next_id">Then: not chosen</option>
+                                <option t-foreach="otherSteps(d.id)" t-as="s" t-key="s.id" t-att-value="s.id"
+                                        t-att-selected="s.id === option.next_id">Then: <t t-esc="s.name"/></option>
+                            </select>
+                            <button type="button" class="btn btn-light o_sfl_icon_btn" t-att-aria-label="'Remove value ' + (option_index + 1)" title="Remove"
+                                    t-on-click="() => this.removeOption(option)">
+                                <i class="fa fa-trash-o" aria-hidden="true"/>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-light o_sfl_start" t-on-click="addChoice">Add a value</button>
+                </t>
                 <div class="o_sfl_field">
                     <label for="o_sfl_else">Otherwise, go to</label>
                     <select id="o_sfl_else" class="o_sfl_input" t-on-change="(ev) => this.setBranch(true, ev.target.value)">

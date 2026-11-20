@@ -140,3 +140,19 @@ class TestSedibaFlows(TransactionCase):
             self.Flows.save_step(self.bot.entry_step_id.id, {'name': ' '})
         with self.assertRaises(UserError):
             self.Flows.save_flow(self.flow_id, {'name': ''})
+
+    def test_condition_by_value_is_saved(self):
+        entry = self.bot.entry_step_id
+        target = self.Flows.add_step(self.flow_id, entry.id)['new_id']
+        data = self.Flows.save_step(entry.id, {
+            'kind': 'condition', 'condition': '{{state.route}}',
+            'condition_mode': 'equals',
+            'options': [
+                {'id': False, 'label': 'sfm', 'next_id': target},
+                {'id': False, 'label': 'Otherwise', 'next_id': False, 'is_default': True},
+            ]})
+        step = self._step(data, entry.id)
+        self.assertEqual(step['condition_mode'], 'equals')
+        self.assertEqual([(o['label'], o['is_default']) for o in step['options']],
+                         [('sfm', False), ('Otherwise', True)])
+        self.assertEqual(entry.option_ids.sorted('sequence')[0].value, 'sfm')
