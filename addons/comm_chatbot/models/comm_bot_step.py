@@ -117,6 +117,12 @@ class CommBotStep(models.Model):
         string='Allowed decision targets',
         domain="[('bot_id', '=', bot_id)]",
         help='For decision mode: allowed next steps.')
+    llm_use_sediba = fields.Boolean(
+        string='Answer from Sediba',
+        help='Give this step a look-up of the company docs and verified '
+             'research that were allowed for the assistants in Sediba '
+             '(published docs and verified findings only). Has no effect '
+             'when Sediba is not installed.')
     llm_include_history = fields.Boolean(default=True)
     llm_history_turns = fields.Integer(default=10)
     llm_fallback_step_id = fields.Many2one('comm.bot.step',
