@@ -1,0 +1,206 @@
+// Flow diagrams inside a company doc: the picture, the block in a doc, the editor.
+.o_sdb_ws {
+    --sdb-flow-dot: #cbd5e1;
+    --sdb-flow-line: #6b7280;
+    --sdb-flow-start-bg: #f0fdf4;   --sdb-flow-start-line: #86efac;   --sdb-flow-start-fg: #166534;
+    --sdb-flow-step-bg: #e8f0fe;    --sdb-flow-step-line: #93c5fd;    --sdb-flow-step-fg: #1e40af;
+    --sdb-flow-decision-bg: #fffbeb; --sdb-flow-decision-line: #fcd34d; --sdb-flow-decision-fg: #92400e;
+    --sdb-flow-handover-bg: #faf5ff; --sdb-flow-handover-line: #d8b4fe; --sdb-flow-handover-fg: #6b21a8;
+    --sdb-flow-end-bg: #f3f4f6;     --sdb-flow-end-line: #9ca3af;     --sdb-flow-end-fg: #374151;
+    --sdb-flow-focus: #1d4ed8;
+    position: relative;
+
+    .o_sdb_flow_icon { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    // ── The picture ──────────────────────────────────────────────────────
+    .o_sdb_flow_sizer { position: relative; flex: none; }
+    .o_sdb_flow_canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; font-size: 13px; line-height: 17px; }
+    .o_sdb_flow_lines {
+        position: absolute; left: 0; top: 0; overflow: visible;
+        path { fill: none; stroke: var(--sdb-flow-line); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        marker path { fill: var(--sdb-flow-line); stroke: none; }
+    }
+    .o_sdb_flow_answer {
+        position: absolute;
+        padding: 0 4px;
+        border-radius: 4px;
+        background: var(--sdb-soft);
+        color: var(--sdb-fg);
+        font-weight: 600;
+        line-height: 16px;
+        white-space: nowrap;
+    }
+    .o_sdb_flow_card {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 220px;
+        height: 72px;
+        padding: 8px 12px;
+        border: 1px solid var(--sdb-flow-step-line);
+        border-radius: 14px;
+        background: var(--sdb-flow-step-bg);
+        color: var(--sdb-fg);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        .o_sdb_flow_icon, .o_sdb_flow_kind { color: var(--sdb-flow-step-fg); }
+        &.start { background: var(--sdb-flow-start-bg); border-color: var(--sdb-flow-start-line); .o_sdb_flow_icon, .o_sdb_flow_kind { color: var(--sdb-flow-start-fg); } }
+        &.decision { background: var(--sdb-flow-decision-bg); border-color: var(--sdb-flow-decision-line); border-style: dashed; .o_sdb_flow_icon, .o_sdb_flow_kind { color: var(--sdb-flow-decision-fg); } }
+        &.handover { background: var(--sdb-flow-handover-bg); border-color: var(--sdb-flow-handover-line); .o_sdb_flow_icon, .o_sdb_flow_kind { color: var(--sdb-flow-handover-fg); } }
+        &.end { background: var(--sdb-flow-end-bg); border-color: var(--sdb-flow-end-line); border-width: 2px; .o_sdb_flow_icon, .o_sdb_flow_kind { color: var(--sdb-flow-end-fg); } }
+        &.on { border: 2px solid var(--sdb-flow-focus); box-shadow: 0 0 0 4px rgba(29, 78, 216, .25); }
+        &:focus-visible { outline: 3px solid var(--sdb-flow-focus); outline-offset: 2px; }
+    }
+    .o_sdb_flow_words {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        overflow: hidden;
+        min-width: 0;
+    }
+    .o_sdb_flow_kind { display: block; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .o_sdb_flow_blank { color: var(--sdb-muted); font-style: italic; }
+
+    // ── A diagram inside a doc ───────────────────────────────────────────
+    .o_sdb_flow_block {
+        align-self: flex-start;
+        display: flex;
+        flex-direction: column;
+        max-width: 100%;
+        margin: 0;
+        border: 1px solid var(--sdb-line);
+        border-radius: 12px;
+        background: var(--sdb-card);
+        overflow: hidden;
+    }
+    .o_sdb_flow_head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--sdb-line); }
+    .o_sdb_flow_title { flex: 1 1 auto; min-height: 32px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .o_sdb_flow_scroll, .o_sdb_flow_stage {
+        overflow: auto;
+        background-color: var(--sdb-soft);
+        background-image: radial-gradient(var(--sdb-flow-dot) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+    .o_sdb_flow_scroll { padding: 0 16px; }
+    .o_sdb_flow_detail {
+        padding: 12px 16px;
+        border-top: 1px solid var(--sdb-line);
+        p { margin: 4px 0 0; white-space: pre-line; }
+    }
+    .o_sdb_flow_text {
+        padding: 8px 16px;
+        border-top: 1px solid var(--sdb-line);
+        summary { min-height: 32px; display: flex; align-items: center; cursor: pointer; color: var(--sdb-link); font-weight: 500; }
+        ol { margin: 6px 0 8px; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; line-height: 1.45; }
+    }
+
+    // The block as it stands in the text while the doc is being written.
+    .o_sdb_editable .o_sdb_flow {
+        margin: 10px 0;
+        padding: 14px 16px;
+        border: 1px dashed var(--sdb-line);
+        border-radius: 12px;
+        background: var(--sdb-soft);
+        color: var(--sdb-fg);
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+        &::after { content: "  Click to edit"; color: var(--sdb-link); font-weight: 500; white-space: pre; }
+    }
+    .o_sdb_flow_list { display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
+    .o_sdb_flow_row {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        padding: 8px 8px 8px 14px;
+        border: 1px solid var(--sdb-line);
+        border-radius: 8px;
+        background: var(--sdb-card);
+        > span { flex: 1 1 200px; min-width: 0; }
+    }
+
+    // ── The editor ───────────────────────────────────────────────────────
+    .o_sdb_flow_editor {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        background: var(--sdb-bg);
+        color: var(--sdb-fg);
+    }
+    .o_sdb_flow_tools {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+        padding: 6px 16px;
+        background: var(--sdb-card);
+        border-bottom: 1px solid var(--sdb-line);
+        .o_sdb_btn { min-height: 44px; }
+        .o_sdb_btn.square { width: 44px; padding: 0; justify-content: center; font-size: 18px; }
+        .o_sdb_btn.strong { font-weight: 600; }
+    }
+    .o_sdb_flow_name {
+        flex: 1 1 220px; min-width: 0; margin: 0;
+        display: flex; align-items: center; gap: 8px;
+        .o_sdb_input { flex: 0 1 320px; min-width: 0; min-height: 44px; font-weight: 600; }
+        > .o_sdb_muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    }
+    .o_sdb_flow_zoom { width: 44px; text-align: center; color: var(--sdb-muted); }
+    .o_sdb_flow_work { flex: 1 1 auto; min-height: 0; display: flex; }
+    .o_sdb_flow_stage { flex: 1 1 auto; min-width: 0; padding: 4px 56px 40px; }
+    .o_sdb_flow_panel {
+        flex: none; width: 340px; max-width: 100%;
+        display: flex; flex-direction: column;
+        background: var(--sdb-card);
+        border-left: 1px solid var(--sdb-line);
+        overflow: auto;
+    }
+    .o_sdb_flow_tabs {
+        display: flex; flex: none;
+        border-bottom: 1px solid var(--sdb-line);
+        button {
+            flex: 1; min-height: 44px;
+            border: 0; border-bottom: 2px solid transparent;
+            background: var(--sdb-card); color: var(--sdb-muted);
+            cursor: pointer;
+            &.on { border-bottom-color: var(--sdb-brand); color: var(--sdb-fg); font-weight: 600; }
+        }
+    }
+    .o_sdb_flow_fields {
+        flex: 1 1 auto;
+        display: flex; flex-direction: column; gap: 14px;
+        padding: 16px;
+        .o_sdb_input { flex: none; width: 100%; min-height: 44px; }
+        .o_sdb_input.area { min-height: 84px; }
+        p { margin: 0; line-height: 1.45; }
+    }
+    .o_sdb_flow_then { gap: 8px; padding-top: 12px; border-top: 1px solid var(--sdb-line-soft); }
+    .o_sdb_flow_way {
+        display: flex; align-items: center; gap: 8px;
+        .o_sdb_input { flex: 1 1 auto; width: auto; min-width: 0; }
+        .o_sdb_input.answer { flex: none; width: 84px; }
+    }
+    .o_sdb_flow_foot {
+        display: flex; gap: 8px;
+        margin-top: auto; padding-top: 12px;
+        border-top: 1px solid var(--sdb-line-soft);
+        .grow { flex: 1 1 auto; }
+    }
+    .o_sdb_btn.danger, .o_sdb_link.danger { border-color: #b91c1c; color: #b91c1c; }
+    .o_sdb_link.danger { min-height: 44px; }
+    .o_sdb_flow_aslist { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; line-height: 1.45; }
+
+    @media (max-width: 767px) {
+        .o_sdb_flow_work { flex-direction: column; overflow: auto; }
+        .o_sdb_flow_stage { flex: none; max-height: 45vh; padding: 4px 16px 24px; }
+        .o_sdb_flow_panel { width: 100%; border-left: 0; border-top: 1px solid var(--sdb-line); overflow: visible; }
+    }
+}
+
+// On paper the picture gives way to the same steps as a list.
+@media print {
+    .o_sdb_ws {
+        .o_sdb_flow_scroll, .o_sdb_flow_detail, .o_sdb_flow_head .o_sdb_btn, .o_sdb_flow_text summary { display: none !important; }
+        .o_sdb_flow_text > ol { display: flex !important; }
+        .o_sdb_flow_text { border-top: 0; }
+    }
+}

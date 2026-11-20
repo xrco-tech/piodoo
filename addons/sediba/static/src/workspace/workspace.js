@@ -10,6 +10,7 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
+import { SedibaFlowBlock, SedibaFlowEditor } from "./flow";
 
 const WS = "sediba.workspace";
 const PAGE = 40;
@@ -54,7 +55,7 @@ const CONFIRM = {
  */
 export class SedibaWorkspace extends Component {
     static template = "sediba.Workspace";
-    static components = { Wysiwyg };
+    static components = { Wysiwyg, SedibaFlowBlock, SedibaFlowEditor };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -83,6 +84,7 @@ export class SedibaWorkspace extends Component {
             versionId: false, // an older version of the open doc
             draft: null, // the doc being written
             editorKey: 0,
+            flowKey: false, // the diagram open in the editor, while a doc is being written
             dirty: false,
             saving: false,
             newDocFrom: { template: "blank", parentId: false },
@@ -163,6 +165,11 @@ export class SedibaWorkspace extends Component {
         if (this.state.view === "doc" && data.body) {
             data.body = markup(data.body);
         }
+        for (const part of data.parts || []) {
+            if (part.html) {
+                part.html = markup(part.html);
+            }
+        }
         return data;
     }
 
@@ -186,7 +193,7 @@ export class SedibaWorkspace extends Component {
         }
         Object.assign(
             this.state,
-            { view, browsing: false, data: null, dirty: false, newMenu: false, history: false, telling: false,
+            { view, browsing: false, data: null, dirty: false, flowKey: false, newMenu: false, history: false, telling: false,
               noteText: "", find: "", versionId: false },
             extra
         );
@@ -332,19 +339,153 @@ export class SedibaWorkspace extends Component {
         data.parent_id = data.parent_id || 0;
         this.editor = null;
         this.editorConfig = {
-            content: data.body || "<p><br></p>",
+            content: this.lockFlowBlocks(data.body) || "<p><br></p>",
             Plugins: MAIN_PLUGINS,
             onChange: () => this.touch(),
             getRecordInfo: () => ({ resModel: "sediba.doc", resId: data.id || false }),
         };
+        data.flows = data.flows || {};
         this.state.draft = data;
         this.state.data = data;
         this.state.dirty = false;
         this.state.editorKey++;
+        // Came here from "Edit diagram" on the doc: open that diagram.
+        this.state.flowKey = this.openFlowNext && data.flows[this.openFlowNext] ? this.openFlowNext : false;
+        this.openFlowNext = false;
     }
 
     onEditorLoad(editor) {
+        // Called before the editor has a place on the page: only keep hold of it.
         this.editor = editor;
+    }
+
+    /** A click in the text: on a diagram's block, it opens that diagram. */
+    onTextClick(ev) {
+        const block = ev.target.closest && ev.target.closest(".o_sdb_editable .o_sdb_flow");
+        const key = block && this.flowKeyOf(block);
+        if (key && this.state.draft.flows[key]) {
+            this.state.flowKey = key;
+        }
+    }
+
+    /** The doc's text with its diagram blocks made read-only, for the editor. */
+    lockFlowBlocks(body) {
+        if (!body || !body.includes("o_sdb_flow")) {
+            return body;
+        }
+        const holder = new DOMParser().parseFromString(`<div>${body}</div>`, "text/html").body.firstChild;
+        for (const block of holder.querySelectorAll(".o_sdb_flow")) {
+            block.setAttribute("contenteditable", "false");
+        }
+        return holder.innerHTML;
+    }
+
+    // ── Flow diagrams in a doc ───────────────────────────────────────────────
+
+    flowKeyOf(block) {
+        const found = /(?:^|\s)o_sdb_flow_([a-z0-9]+)(?:\s|$)/.exec(block.className || "");
+        return found ? found[1] : false;
+    }
+
+    flowLabel(flow) {
+        return _t("Flow diagram: %(name)s (%(count)s steps)", { name: flow.name, count: flow.steps.length });
+    }
+
+    /** The diagrams of the doc being written, in the order they were added. */
+    get draftFlows() {
+        return Object.entries(this.state.draft.flows || {}).map(([key, flow]) => ({ key, flow }));
+    }
+
+    flowBlock(key) {
+        const editable = this.editor && this.editor.editable;
+        return editable ? editable.querySelector(`.o_sdb_flow_${key}`) : null;
+    }
+
+    /** Tell the text editor its content changed by our hand, so undo and save see it. */
+    editorChanged() {
+        const shared = (this.editor && this.editor.shared) || {};
+        try {
+            if (shared.history && shared.history.addStep) {
+                shared.history.addStep();
+            } else if (shared.addStep) {
+                shared.addStep();
+            } else if (this.editor && this.editor.dispatch) {
+                this.editor.dispatch("ADD_STEP");
+            }
+        } catch {
+            // The text is still read from the page when the doc is saved.
+        }
+        this.touch();
+    }
+
+    /** A new diagram, on a line of its own after the line the cursor is in. */
+    insertFlow() {
+        if (!this.editor || !this.editor.editable) {
+            return;
+        }
+        const flows = this.state.draft.flows;
+        let count = 1;
+        while (flows[`f${count}`]) {
+            count++;
+        }
+        const key = `f${count}`;
+        flows[key] = { name: _t("Flow diagram"), steps: [] };
+        const editable = this.editor.editable;
+        const doc = editable.ownerDocument;
+        const block = doc.createElement("div");
+        block.className = `o_sdb_flow o_sdb_flow_${key}`;
+        block.setAttribute("contenteditable", "false");
+        block.textContent = this.flowLabel(flows[key]);
+        const selection = doc.getSelection();
+        let line = selection && selection.rangeCount && editable.contains(selection.anchorNode) ? selection.anchorNode : null;
+        while (line && line.parentNode !== editable) {
+            line = line.parentNode;
+        }
+        if (line) {
+            line.after(block);
+        } else {
+            editable.append(block);
+        }
+        if (!block.nextElementSibling) {
+            const after = doc.createElement("p");
+            after.append(doc.createElement("br"));
+            block.after(after);
+        }
+        this.editorChanged();
+        this.state.flowKey = key;
+    }
+
+    openFlow(key) {
+        this.state.flowKey = key;
+    }
+
+    onFlowDone(flow) {
+        const key = this.state.flowKey;
+        const before = JSON.stringify(this.state.draft.flows[key]);
+        this.state.draft.flows[key] = flow;
+        this.state.flowKey = false;
+        const block = this.flowBlock(key);
+        if (block) {
+            block.textContent = this.flowLabel(flow);
+        }
+        if (JSON.stringify(flow) !== before) {
+            this.editorChanged();
+        }
+    }
+
+    removeFlow(key) {
+        const block = this.flowBlock(key);
+        if (block) {
+            block.remove();
+        }
+        delete this.state.draft.flows[key];
+        this.editorChanged();
+    }
+
+    /** From the doc as it is read: go and edit one of its diagrams. */
+    editFlow(key) {
+        this.openFlowNext = key;
+        return this.editDoc();
     }
 
     touch() {
@@ -393,6 +534,7 @@ export class SedibaWorkspace extends Component {
                     name: e.name,
                     summary: e.summary,
                     body: this.editor ? this.editor.getContent() : e.body,
+                    flows: JSON.parse(JSON.stringify(e.flows || {})),
                     questions: e.questions.map((q) => ({ name: q.name, answer: q.answer })),
                     owner_id: e.owner_id || false,
                     parent_id: e.parent_id || false,
