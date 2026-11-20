@@ -197,6 +197,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
                         'by': version.published_by or '', 'id': version.id} if version else False,
             'spaces': doc.space_ids.mapped('name'),
             'ai_allowed': doc.ai_allowed,
+            'public_allowed': doc.public_allowed,
             'updated_by': doc.write_uid.name or '',
             'read_again': dict(READ_AGAIN).get(doc.read_again, ''),
             'read_again_by': self._date(doc.read_again_by),
@@ -255,6 +256,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             'parent_id': (doc.parent_id.id if doc else parent.id) or False,
             'space_ids': (doc.space_ids if doc else parent.space_ids).ids,
             'ai_allowed': doc.ai_allowed if doc else True,
+            'public_allowed': doc.public_allowed if doc else False,
             'read_again': doc.read_again if doc else '3',
             'state': doc.state if doc else 'draft',
             'changes': doc.has_changes if doc else False,
@@ -290,6 +292,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             'parent_id': vals.get('parent_id') or False,
             'space_ids': [(6, 0, vals.get('space_ids') or [])],
             'ai_allowed': bool(vals.get('ai_allowed')),
+            'public_allowed': bool(vals.get('public_allowed')),
             'read_again': vals.get('read_again') or '3',
         }
         questions = [{'name': (q.get('name') or '').strip(), 'answer': (q.get('answer') or '').strip()}

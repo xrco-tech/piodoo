@@ -213,6 +213,7 @@
                         <group>
                             <field name="space_ids" widget="many2many_tags"/>
                             <field name="ai_allowed"/>
+                            <field name="public_allowed"/>
                             <field name="scope"/>
                         </group>
                     </group>
@@ -422,6 +423,7 @@
                             <field name="space_ids" widget="many2many_tags"/>
                             <field name="topic_ids" widget="many2many_tags"/>
                             <field name="ai_allowed"/>
+                            <field name="public_allowed"/>
                             <field name="last_read_on"/>
                         </group>
                     </group>

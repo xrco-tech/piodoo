@@ -97,3 +97,19 @@ class TestSedibaAssistant(TransactionCase):
         self.assertNotIn('Zebra plans', [doc['title'] for doc in index['docs']])
         self.assertIn({'topic': 'Zebra market', 'verified_findings': 1}, index['research_topics'])
         self.assertEqual(self.Assistant.tool()['name'], 'look_up_reference')
+
+    def test_the_public_chatbot_has_its_own_switch(self):
+        """What Sidekick may read says nothing about what the public may be told."""
+        public = lambda question: self.Assistant.look_up(question, public=True)['used']
+        self.assertEqual(public('zebraworks'), [])
+        self.assertEqual(public('zebras'), [])
+        self.assertTrue(self.Assistant.look_up('', public=True)['note'])
+        self.faq.public_allowed = True
+        self.private.public_allowed = True          # public, though Sidekick is not allowed it
+        self.draft.public_allowed = True            # still a draft
+        self.assertEqual(sorted(public('zebraworks')), ['Zebra FAQ', 'Zebra salaries'])
+        self.assertNotIn('Zebra salaries', self._titles('zebraworks'))
+        self.shut_topic.public_allowed = True
+        self.lead.topic_id.public_allowed = False
+        self.assertEqual(public('zebras'), ['Zebra rival prices'])
+        self.assertEqual(self._titles('zebras'), ['Zebra youth unemployment'])
