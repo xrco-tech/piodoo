@@ -153,3 +153,34 @@ class TestExecutor(ChatbotTestCase):
         self.env['comm.chatbot.executor'].advance(c)
         self.assertEqual(c.bot_id, self.bot)
         self.assertFalse((c.state or {}).get('__stack'))
+
+    def _route(self, value):
+        """A condition on which value state.route has: sfm, lead, or other."""
+        Step = self.env['comm.bot.step']
+        Option = self.env['comm.bot.step.option']
+        tag = str(value).strip() or 'none'
+        check = Step.create({
+            'bot_id': self.bot.id, 'name': 'route_' + tag, 'kind': 'condition',
+            'condition_mode': 'equals',
+            'condition_expression': '{{state.route}}',
+        })
+        for label, default in (('sfm', False), ('lead', False), ('other', True)):
+            end = Step.create({'bot_id': self.bot.id,
+                               'name': 'end_%s_%s' % (label, tag),
+                               'kind': 'end', 'end_outcome': label})
+            Option.create({'step_id': check.id, 'label': label, 'value': label,
+                           'is_default': default, 'next_step_id': end.id})
+        c = self.env['comm.conversation'].create({
+            'partner_id': self.partner.id, 'bot_id': self.bot.id,
+            'primary_channel_id': self.wa.id, 'current_step_id': check.id,
+            'state': {'route': value} if value is not None else {},
+        })
+        self.env['comm.chatbot.executor'].advance(c)
+        return c.outcome
+
+    def test_condition_by_value(self):
+        self.assertEqual(self._route('sfm'), 'sfm')
+        self.assertEqual(self._route(' LEAD '), 'lead', "case and spaces ignored")
+        self.assertEqual(self._route('unknown'), 'other',
+                         "a value no branch names takes the default branch")
+        self.assertEqual(self._route(None), 'other')

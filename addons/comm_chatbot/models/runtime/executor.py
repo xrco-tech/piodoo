@@ -144,8 +144,21 @@ class ExecutorService(models.AbstractModel):
         renderer = self.env['comm.chatbot.renderer']
         result = renderer._eval_condition(step.condition_expression or '',
                                           conversation)
-        # Pick first option matching branch; is_default = else-branch
         options = step.option_ids.sorted('sequence')
+        if step.condition_mode == 'equals':
+            # Which value it has: the branch whose value equals what the
+            # expression gives, else the default branch.
+            given = renderer._substitute(
+                step.condition_expression or '', conversation,
+                conversation.bot_id).strip().casefold()
+            match = options.filtered(
+                lambda o: not o.is_default
+                and (o.value or o.label or '').strip().casefold() == given)[:1]
+            if not match:
+                match = options.filtered('is_default')[:1]
+            return match.next_step_id or step.next_step_id
+        # Whether it has a value: first branch when it does; is_default =
+        # else-branch
         target = None
         for opt in options:
             if opt.is_default and not result:

@@ -63,7 +63,14 @@ function leadsTo(step) {
             .filter((o) => o.next_id)
             .map((o) => ({
                 id: o.next_id,
-                label: step.kind === "condition" ? (o.is_default ? _t("otherwise") : _t("if so")) : o.label,
+                label:
+                    step.kind !== "condition"
+                        ? o.label
+                        : o.is_default
+                          ? _t("otherwise")
+                          : step.condition_mode === "equals"
+                            ? o.label
+                            : _t("if so"),
             }));
     }
     // A jump inside this flow goes to its target; a jump into another flow
@@ -384,6 +391,7 @@ export class SedibaFlows extends Component {
                 input_type: d.input_type,
                 save_to: d.save_to,
                 condition: d.condition,
+                condition_mode: d.condition_mode,
                 handoff_message: d.handoff_message,
                 jump_bot_id: d.jump_bot_id,
                 jump_step_id: d.jump_step_id,
@@ -414,6 +422,18 @@ export class SedibaFlows extends Component {
     setHide(row, hide) {
         this.touch();
         row.hide = hide;
+        return this.saveStep();
+    }
+
+    /** The values a "which value" condition names, without its "otherwise". */
+    get valueBranches() {
+        return this.state.draft.options.filter((o) => !o.is_default);
+    }
+
+    removeOption(option) {
+        this.touch();
+        const options = this.state.draft.options;
+        options.splice(options.indexOf(option), 1);
         return this.saveStep();
     }
 

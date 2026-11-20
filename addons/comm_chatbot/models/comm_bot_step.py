@@ -71,6 +71,15 @@ class CommBotStep(models.Model):
     # Condition
     condition_expression = fields.Char(
         help='For kind=condition: expression evaluated to pick branch.')
+    condition_mode = fields.Selection([
+        ('truthy', 'Whether it has a value'),
+        ('equals', 'Which value it has'),
+    ], default='truthy', required=True,
+        help='How a condition picks its branch. "Whether it has a value": '
+             'the first branch when the expression gives something, the '
+             'default branch when it is empty, 0, no or false. "Which value '
+             'it has": the branch whose value equals what the expression '
+             'gives (ignoring case), else the default branch.')
 
     # Action
     action_executor = fields.Selection([

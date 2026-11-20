@@ -166,6 +166,24 @@ class TestBringOver(TransactionCase):
         self.assertEqual(second.kind, 'condition')
         self.assertEqual(second.option_ids.filtered('is_default').next_step_id, s['Unknown'])
 
+    def test_variable_equal_to_becomes_a_value_condition(self):
+        old = self._old('By value')
+        var = self.env['whatsapp.chatbot.variable'].create(
+            {'chatbot_id': old.id, 'name': 'route', 'data_type': 'text'})
+        top = self._step(old, 'Top', body_plain='Hello')
+        other = self._step(old, 'Other', parent=top, body_plain='Other')
+        lead = self._step(old, 'Lead', parent=top, body_plain='Lead')
+        self.env['whatsapp.chatbot.variable.trigger'].create(
+            {'step_id': lead.id, 'variable_id': var.id,
+             'operator': 'is_equal_to', 'value': 'lead'})
+        flow = self.Importer.import_bot(old)
+        s = self._by_name(flow)
+        check = s['Top'].next_step_id
+        self.assertEqual((check.kind, check.condition_mode), ('condition', 'equals'))
+        named = check.option_ids.filtered(lambda o: not o.is_default)
+        self.assertEqual((named.value, named.next_step_id), ('lead', s['Lead']))
+        self.assertEqual(check.option_ids.filtered('is_default').next_step_id, s['Other'])
+
     def test_jump_brings_the_other_bot_and_comes_back(self):
         sub = self._old('Sub')
         sub_var = self.env['whatsapp.chatbot.variable'].create(

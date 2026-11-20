@@ -264,10 +264,12 @@ class SedibaFlowsImporter(models.AbstractModel):
             if len(kid.trigger_variable_ids) > 1:
                 notes.append(_("“%s” had several variable rules; only the first "
                                "was carried over.", kid.name))
-            if rule.operator not in ('is_set', 'is_not_set'):
+            by_value = rule.operator in ('is_equal_to', 'is_not_equal_to')
+            if not by_value and rule.operator not in ('is_set', 'is_not_set'):
                 notes.append(_(
-                    "“%(step)s” was reached when %(rule)s. Only “is set” and "
-                    "“is not set” can be carried over; check what leads to it.",
+                    "“%(step)s” was reached when %(rule)s. Only “is set”, “is "
+                    "not set”, “is equal to” and “is not equal to” can be "
+                    "carried over; check what leads to it.",
                     step=kid.name, rule=rule.display_name))
                 continue
             variable = names.get(rule.variable_id.name, rule.variable_id.name)
@@ -280,11 +282,13 @@ class SedibaFlowsImporter(models.AbstractModel):
                 'name': name,
                 'kind': 'condition',
                 'condition_expression': '{{state.%s}}' % variable,
+                'condition_mode': 'equals' if by_value else 'truthy',
             })
-            is_set = rule.operator == 'is_set'
+            is_set = rule.operator in ('is_set', 'is_equal_to')
             Option.create({
-                'step_id': check.id, 'sequence': 10, 'label': _("If so"),
-                'value': 'yes',
+                'step_id': check.id, 'sequence': 10,
+                'label': rule.value if by_value else _("If so"),
+                'value': rule.value if by_value else 'yes',
                 'next_step_id': (new[kid.id] if is_set else following).id,
             })
             Option.create({
