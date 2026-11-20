@@ -28,10 +28,12 @@ class TestLlmSediba(ChatbotTestCase):
 
     def test_it_reads_what_sediba_allowed(self):
         Doc = self.env['sediba.doc']
-        allowed = Doc.create({'name': 'About Zebraworks', 'body': '<p>Zebraworks is free for job seekers.</p>'})
-        kept = Doc.create({'name': 'Zebraworks staff notes', 'body': '<p>Zebraworks internal.</p>', 'ai_allowed': False})
+        allowed = Doc.create({'name': 'About Zebraworks', 'body': '<p>Zebraworks is free for job seekers.</p>',
+                              'public_allowed': True})
+        # Sidekick may read this one; the public may not be told it.
+        kept = Doc.create({'name': 'Zebraworks staff notes', 'body': '<p>Zebraworks internal.</p>'})
         (allowed | kept).action_publish()
-        Doc.create({'name': 'Zebraworks plans', 'body': '<p>Zebraworks draft.</p>'})
+        Doc.create({'name': 'Zebraworks plans', 'body': '<p>Zebraworks draft.</p>', 'public_allowed': True})
         self.step_ai.llm_use_sediba = True
         result = self.Llm._execute_tool(self.step_ai, 'look_up_reference', {'question': 'Zebraworks'}, None)
         self.assertEqual(result['used'], ['About Zebraworks'])

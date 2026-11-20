@@ -4,14 +4,15 @@
 Sidekick (in Chat2Work and in the Contact Centre) and a chatbot's AI step
 look things up here, and only here. One rule decides what they are given:
 
-  * a company doc: published, and its "Sidekick and the chatbot may answer
-    from it" switch on. They get the last published version, never a draft
+  * a company doc: published, and its switch on. There are two switches:
+    "Sidekick may answer from it" for the staff assistants, and "The public
+    chatbot may answer from it" for a bot that talks to people outside. They get the last published version, never a draft
     or changes still waiting to be published.
   * research: verified findings only, on a topic whose switch is on. Never a
     lead, never a finding that could not be confirmed, never "our read".
 
 A Sidekick inside an app is also held to what that app's Reference shows
-(`space`). Nothing here writes.
+(`space`). A chatbot is held to the public switch (`public`). Nothing here writes.
 
 The reads are sudo on purpose: the text handed out is exactly what a writer
 or researcher cleared for the assistants, whoever is asking.
@@ -58,15 +59,16 @@ class SedibaAssistant(models.AbstractModel):
     # ── What is allowed ──────────────────────────────────────────────────────
 
     @api.model
-    def _docs(self, space=False):
-        domain = [('state', '=', 'published'), ('ai_allowed', '=', True)]
+    def _docs(self, space=False, public=False):
+        domain = [('state', '=', 'published'), ('public_allowed' if public else 'ai_allowed', '=', True)]
         if space:
             domain.append(('space_ids.code', '=', space))
         return self.env['sediba.doc'].sudo().search(domain)
 
     @api.model
-    def _findings(self, space=False):
-        domain = [('status', '=', 'verified'), ('topic_id.ai_allowed', '=', True), ('topic_id.active', '=', True)]
+    def _findings(self, space=False, public=False):
+        domain = [('status', '=', 'verified'), ('topic_id.active', '=', True),
+                  ('topic_id.public_allowed' if public else 'topic_id.ai_allowed', '=', True)]
         if space:
             domain.append(('topic_id.space_ids.code', '=', space))
         return self.env['sediba.finding'].sudo().search(domain)
@@ -107,12 +109,14 @@ class SedibaAssistant(models.AbstractModel):
     # ── The look-up ──────────────────────────────────────────────────────────
 
     @api.model
-    def look_up(self, question='', space=False):
+    def look_up(self, question='', space=False, public=False):
         """What Sediba has on `question`, as something safe to hand to an
         assistant. Returns {'results': [...], 'used': [titles], 'note'} or,
-        with no question, {'docs': [...], 'research_topics': [...]}."""
-        docs = [self._doc_item(doc) for doc in self._docs(space)]
-        findings = self._findings(space)
+        with no question, {'docs': [...], 'research_topics': [...]}.
+        `public` is for an assistant that talks to people outside the
+        company: it reads by the public switch, not Sidekick's."""
+        docs = [self._doc_item(doc) for doc in self._docs(space, public)]
+        findings = self._findings(space, public)
         words = [w for w in WORD.findall((question or '').lower()) if w not in STOP]
         if not words:
             topics = {}
@@ -125,7 +129,7 @@ class SedibaAssistant(models.AbstractModel):
                                     for name, count in list(topics.items())[:INDEX_ROWS]],
                 'used': [],
                 'note': "Ask again with a question to read any of these." if docs or topics
-                        else "Nothing in Sediba has been allowed for the assistants yet.",
+                        else "Nothing in Sediba has been allowed for this assistant yet.",
             }
 
         scored = []

@@ -120,7 +120,7 @@ class CommBotStep(models.Model):
     llm_use_sediba = fields.Boolean(
         string='Answer from Sediba',
         help='Give this step a look-up of the company docs and verified '
-             'research that were allowed for the assistants in Sediba '
+             'research switched on for the public chatbot in Sediba '
              '(published docs and verified findings only). Has no effect '
              'when Sediba is not installed.')
     llm_include_history = fields.Boolean(default=True)

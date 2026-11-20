@@ -54,8 +54,13 @@ class SedibaDoc(models.Model):
                                  help="The apps whose Reference shows this doc once it is published.")
     topic_ids = fields.Many2many('sediba.topic', string="Related research",
                                  help="Research topics worth reading with this doc. Linked, never copied.")
-    ai_allowed = fields.Boolean(string="Sidekick and the chatbot may answer from it", default=True,
-                                help="Recorded here so the assistants can be limited to the docs you allow.")
+    ai_allowed = fields.Boolean(string="Sidekick may answer from it", default=True,
+                                help="Sidekick, the assistant your own staff use, may read the published "
+                                     "version of this doc.")
+    public_allowed = fields.Boolean(string="The public chatbot may answer from it",
+                                    help="A chatbot that talks to people outside the company may read the "
+                                         "published version of this doc. Leave it off for anything written "
+                                         "for staff only.")
     read_again = fields.Selection(READ_AGAIN, string="Read again", required=True, default='3')
     state = fields.Selection(DOC_STATES, required=True, default='draft', readonly=True, copy=False, index=True)
     has_changes = fields.Boolean(string="Changed since it was published", readonly=True, copy=False)

@@ -240,7 +240,7 @@ class TestSedibaDocsWorkspace(DocsCase):
             self.Ws.ws_doc_save(False, {'name': '  '})
         doc_id = self.Ws.ws_doc_save(False, {
             'name': ' Refunds ', 'summary': 'When we pay back.', 'body': '<p>Never.</p>', 'owner_id': self.writer.id,
-            'parent_id': self.how.id, 'space_ids': self.calls.ids, 'ai_allowed': False, 'read_again': '6',
+            'parent_id': self.how.id, 'space_ids': self.calls.ids, 'ai_allowed': False, 'public_allowed': True, 'read_again': '6',
             'questions': [{'name': 'Why?', 'answer': 'Because.'}, {'name': ' ', 'answer': 'Dropped: no question.'}]})
         doc = self.env['sediba.doc'].browse(doc_id)
         self.assertEqual((doc.name, doc.state, doc.parent_id, doc.space_ids, doc.ai_allowed, doc.read_again),
@@ -248,9 +248,12 @@ class TestSedibaDocsWorkspace(DocsCase):
         self.assertEqual(doc.question_ids.mapped('name'), ['Why?'])
         edit = self.Ws.ws_doc_edit(doc_id)
         self.assertEqual((edit['name'], edit['questions']), ('Refunds', [{'name': 'Why?', 'answer': 'Because.'}]))
+        self.assertTrue(doc.public_allowed)
+        self.assertEqual((edit['ai_allowed'], edit['public_allowed']), (False, True))
+        self.assertFalse(self.Ws.ws_doc_edit(False)['public_allowed'])      # off on a new doc
         # Save and publish in one go; saving the same text again is not a change.
         vals = {'name': 'Refunds', 'summary': 'When we pay back.', 'body': doc.body, 'owner_id': self.writer.id,
-                'parent_id': self.how.id, 'space_ids': self.calls.ids, 'ai_allowed': False, 'read_again': '6',
+                'parent_id': self.how.id, 'space_ids': self.calls.ids, 'ai_allowed': False, 'public_allowed': True, 'read_again': '6',
                 'questions': [{'name': 'Why?', 'answer': 'Because.'}]}
         self.Ws.ws_doc_save(doc_id, vals, True)
         self.assertEqual(doc.state, 'published')

@@ -398,6 +398,7 @@ export class SedibaWorkspace extends Component {
                     parent_id: e.parent_id || false,
                     space_ids: [...e.space_ids],
                     ai_allowed: e.ai_allowed,
+                    public_allowed: e.public_allowed,
                     read_again: e.read_again,
                 },
                 publish,
@@ -459,6 +460,13 @@ export class SedibaWorkspace extends Component {
         const d = await this.orm.call(WS, "ws_set_topic_ai", [this.state.topicId, ev.target.checked, this.space]);
         if (d) {
             this.state.data.ai_allowed = d.ai_allowed;
+        }
+    }
+
+    async toggleTopicPublic(ev) {
+        const d = await this.orm.call(WS, "ws_set_topic_ai", [this.state.topicId, ev.target.checked, this.space, true]);
+        if (d) {
+            this.state.data.public_allowed = d.public_allowed;
         }
     }
 

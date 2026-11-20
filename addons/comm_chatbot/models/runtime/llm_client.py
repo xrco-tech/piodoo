@@ -342,8 +342,9 @@ class LlmClient(models.AbstractModel):
         sediba = self._sediba(step)
         if not tool and sediba is not None and tool_name == sediba.tool()['name']:
             try:
-                # Not held to one app: a bot talks to people outside them.
-                return sediba.look_up((args or {}).get('question') or '')
+                # A bot talks to people outside the company: it reads only
+                # what was switched on for the public chatbot.
+                return sediba.look_up((args or {}).get('question') or '', public=True)
             except Exception as e:
                 _logger.warning('Tool %s failed: %s', tool_name, e)
                 return {'error': str(e)}

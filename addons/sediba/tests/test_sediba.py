@@ -200,6 +200,10 @@ class TestSedibaWorkspace(TransactionCase):
         self.assertTrue(self.first.ai_allowed)
         self.assertFalse(self.second.ai_allowed)
         self.assertFalse(self.Ws.ws_set_topic_ai(self.first.id, False)['ai_allowed'])
+        # The public chatbot's switch is a second one and moves on its own.
+        data = self.Ws.ws_set_topic_ai(self.first.id, True, False, True)
+        self.assertEqual((data['public_allowed'], data['ai_allowed']), (True, False))
+        self.assertFalse(self.Ws.ws_set_topic_ai(self.first.id, False, public=True)['public_allowed'])
         self.assertFalse(self.Ws.ws_set_topic_ai(0, True))
         with self.assertRaises(AccessError):
             self.env['sediba.workspace'].with_user(self.outsider).ws_set_topic_ai(self.first.id, True)

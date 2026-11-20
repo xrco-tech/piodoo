@@ -387,10 +387,15 @@
                             <t t-if="!state.nav.reference">
                                 <label t-if="state.nav.can_edit" class="o_sdb_check o_sdb_ai">
                                     <input type="checkbox" t-att-checked="d.ai_allowed" t-on-change="toggleTopicAi"/>
-                                    <span>Sidekick and the chatbot may answer from it
-                                        <span class="o_sdb_muted small d-block">Verified findings only. Leads and findings that could not be confirmed are never included.</span></span>
+                                    <span>Sidekick may answer from it
+                                        <span class="o_sdb_muted small d-block">The assistant your own staff use. Verified findings only: leads and findings that could not be confirmed are never included.</span></span>
                                 </label>
-                                <p t-else="" class="o_sdb_muted small">Sidekick and the chatbot may answer from it: <t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></p>
+                                <label t-if="state.nav.can_edit" class="o_sdb_check o_sdb_ai">
+                                    <input type="checkbox" t-att-checked="d.public_allowed" t-on-change="toggleTopicPublic"/>
+                                    <span>The public chatbot may answer from it
+                                        <span class="o_sdb_muted small d-block">A chatbot that talks to people outside the company. Verified findings only.</span></span>
+                                </label>
+                                <p t-if="!state.nav.can_edit" class="o_sdb_muted small">Sidekick may answer from it: <t t-if="d.ai_allowed">Yes</t><t t-else="">No</t>. The public chatbot may answer from it: <t t-if="d.public_allowed">Yes</t><t t-else="">No</t>.</p>
                             </t>
                         </header>
 
@@ -691,7 +696,8 @@
                             <div><dt>Shown in</dt><dd t-if="d.spaces.length" class="o_sdb_chips">
                                 <span t-foreach="d.spaces" t-as="sp" t-key="sp" class="o_sdb_chip" t-esc="sp"/></dd>
                                 <dd t-else="" class="o_sdb_muted">Sediba only</dd></div>
-                            <div><dt>Sidekick and the chatbot may answer from it</dt><dd><t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></dd></div>
+                            <div><dt>Sidekick may answer from it</dt><dd><t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></dd></div>
+                            <div><dt>The public chatbot may answer from it</dt><dd><t t-if="d.public_allowed">Yes</t><t t-else="">No</t></dd></div>
                             <div><dt>Last updated</dt><dd><t t-esc="d.updated"/><t t-if="d.updated_by"> by <t t-esc="d.updated_by"/></t></dd></div>
                             <div><dt>Read again by</dt><dd><t t-esc="d.read_again_by or 'Set when it is published'"/>
                                 <div class="o_sdb_muted" t-esc="d.read_again"/></dd></div>
@@ -815,7 +821,11 @@
                             <legend>Assistants</legend>
                             <label class="o_sdb_check">
                                 <input type="checkbox" t-model="state.draft.ai_allowed" t-on-change="touch"/>
-                                <span>Sidekick and the chatbot may answer from it</span>
+                                <span>Sidekick may answer from it</span>
+                            </label>
+                            <label class="o_sdb_check">
+                                <input type="checkbox" t-model="state.draft.public_allowed" t-on-change="touch"/>
+                                <span>The public chatbot may answer from it</span>
                             </label>
                         </fieldset>
                         <div class="o_sdb_field">

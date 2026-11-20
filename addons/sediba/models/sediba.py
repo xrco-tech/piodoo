@@ -60,10 +60,13 @@ class SedibaTopic(models.Model):
     space_ids = fields.Many2many('sediba.space', string="Shown in",
                                  help="The apps this topic is relevant to. Its verified findings show in "
                                       "the Reference inside each of them. Sediba itself shows everything.")
-    ai_allowed = fields.Boolean(string="Sidekick and the chatbot may answer from it",
-                                help="Recorded here so the assistants can be limited to the topics you allow. "
-                                     "Only verified findings are ever meant for them: never leads, and never "
-                                     "findings that could not be confirmed.")
+    ai_allowed = fields.Boolean(string="Sidekick may answer from it",
+                                help="Sidekick, the assistant your own staff use, may read this topic's "
+                                     "verified findings: never leads, and never findings that could not "
+                                     "be confirmed.")
+    public_allowed = fields.Boolean(string="The public chatbot may answer from it",
+                                    help="A chatbot that talks to people outside the company may read this "
+                                         "topic's verified findings.")
     summary = fields.Text(string="What we know",
                           help="A short summary, drawn only from verified findings.")
     our_read = fields.Text(string="Our read",
