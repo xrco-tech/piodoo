@@ -1,0 +1,142 @@
+# -*- coding: utf-8 -*-
+from odoo.exceptions import UserError
+from odoo.tests import tagged
+from odoo.tests.common import TransactionCase
+
+
+@tagged('post_install', '-at_install')
+class TestSedibaFlows(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Flows = cls.env['sediba.flows']
+        cls.wa = cls.env.ref('comm_chatbot.channel_whatsapp')
+        cls.ussd = cls.env.ref('comm_chatbot.channel_ussd')
+        cls.sms = cls.env.ref('comm_chatbot.channel_sms')
+        cls.flow_id = cls.Flows.create_flow('Welcome flow')
+        cls.bot = cls.env['comm.bot'].browse(cls.flow_id)
+        cls.bot.channel_ids = cls.wa | cls.ussd | cls.sms
+
+    def _step(self, data, step_id):
+        return next(s for s in data['steps'] if s['id'] == step_id)
+
+    def _menu(self, labels):
+        """Turn the first step into a menu with these choices."""
+        entry = self.bot.entry_step_id
+        return self.Flows.save_step(entry.id, {
+            'kind': 'menu',
+            'body': 'What do you need?',
+            'options': [{'id': False, 'label': label, 'next_id': False}
+                        for label in labels],
+        })
+
+    def test_new_flow_starts_with_one_step(self):
+        self.assertEqual(self.bot.name, 'Welcome flow')
+        self.assertEqual(self.bot.engine_mode, 'draft')
+        self.assertEqual(len(self.bot.step_ids), 1)
+        self.assertEqual(self.bot.entry_step_id, self.bot.step_ids)
+
+    def test_home_lists_flow_and_channels(self):
+        home = self.Flows.home()
+        row = next(f for f in home['flows'] if f['id'] == self.flow_id)
+        self.assertEqual(row['steps'], 1)
+        self.assertEqual(set(row['channels']), {'WhatsApp', 'USSD', 'SMS'})
+        self.assertIn('ussd', [c['code'] for c in home['channels']])
+
+    def test_add_step_goes_between(self):
+        entry = self.bot.entry_step_id
+        last = self.Flows.add_step(self.flow_id, entry.id)['new_id']
+        middle = self.Flows.add_step(self.flow_id, entry.id)['new_id']
+        self.assertEqual(entry.next_step_id.id, middle)
+        self.assertEqual(self.env['comm.bot.step'].browse(middle).next_step_id.id, last)
+        names = self.bot.step_ids.mapped('name')
+        self.assertEqual(len(names), len(set(names)), "step names stay unique")
+
+    def test_menu_comes_out_per_channel(self):
+        data = self._menu(['Find a job', 'Build a CV', 'Talk to us'])
+        out = self._step(data, self.bot.entry_step_id.id)['out']
+        self.assertEqual(out['whatsapp']['options'],
+                         ['Find a job', 'Build a CV', 'Talk to us'])
+        self.assertIn('3', out['whatsapp']['how'])
+        self.assertEqual(out['whatsapp']['body'], 'What do you need?')
+        self.assertIn('1. Find a job', out['ussd']['body'])
+        self.assertIn('3. Talk to us', out['sms']['body'])
+        self.assertEqual(out['ussd']['state'], 'ok')
+        self.assertEqual(out['ussd']['limit'], 182)
+
+    def test_too_long_for_ussd_warns(self):
+        entry = self.bot.entry_step_id
+        data = self.Flows.save_step(entry.id, {'body': 'x' * 200})
+        out = self._step(data, entry.id)['out']
+        self.assertEqual(out['ussd']['state'], 'warn')
+        self.assertIn('200', out['ussd']['note'])
+        self.assertEqual(out['whatsapp']['state'], 'ok')
+
+    def test_menu_without_choices_warns(self):
+        entry = self.bot.entry_step_id
+        data = self.Flows.save_step(entry.id, {'kind': 'menu', 'options': []})
+        self.assertEqual(self._step(data, entry.id)['out']['ussd']['state'], 'warn')
+
+    def test_options_update_and_remove(self):
+        data = self._menu(['One', 'Two'])
+        entry = self.bot.entry_step_id
+        rows = self._step(data, entry.id)['options']
+        target = self.Flows.add_step(self.flow_id, False, rows[0]['id'])['new_id']
+        self.assertEqual(entry.option_ids.sorted('sequence')[0].next_step_id.id, target)
+        rows = self._step(self.Flows.load(self.flow_id), entry.id)['options']
+        rows[0]['label'] = 'First'
+        data = self.Flows.save_step(entry.id, {'options': rows[:1] + [
+            {'id': False, 'label': '  ', 'next_id': False}]})
+        rows = self._step(data, entry.id)['options']
+        self.assertEqual([r['label'] for r in rows], ['First'])
+        self.assertEqual(rows[0]['next_id'], target)
+        self.assertEqual(entry.option_ids.value, 'First')
+
+    def test_wording_for_one_channel_and_skip(self):
+        entry = self.bot.entry_step_id
+        data = self.Flows.save_step(entry.id, {
+            'body': 'Long welcome',
+            'overrides': [
+                {'channel_id': self.ussd.id, 'body': 'Hi', 'hide': False},
+                {'channel_id': self.sms.id, 'body': '', 'hide': True},
+                {'channel_id': self.wa.id, 'body': '', 'hide': False},
+            ]})
+        out = self._step(data, entry.id)['out']
+        self.assertEqual(out['ussd']['body'], 'Hi')
+        self.assertEqual(out['whatsapp']['body'], 'Long welcome')
+        self.assertEqual(out['sms']['state'], 'skip')
+        self.assertEqual(len(entry.channel_override_ids), 2)
+        self.Flows.save_step(entry.id, {'overrides': [
+            {'channel_id': self.ussd.id, 'body': '', 'hide': False}]})
+        self.assertEqual(entry.channel_override_ids.channel_id, self.sms)
+
+    def test_delete_keeps_the_flow_joined(self):
+        entry = self.bot.entry_step_id
+        last = self.Flows.add_step(self.flow_id, entry.id)['new_id']
+        middle = self.Flows.add_step(self.flow_id, entry.id)['new_id']
+        data = self.Flows.delete_step(middle)
+        self.assertEqual(entry.next_step_id.id, last)
+        self.assertEqual(len(data['steps']), 2)
+        self.Flows.delete_step(entry.id)
+        self.assertEqual(self.bot.entry_step_id.id, last)
+
+    def test_live_flow_keeps_a_first_step(self):
+        self.Flows.save_flow(self.flow_id, {'status': 'live'})
+        with self.assertRaises(UserError):
+            self.Flows.delete_step(self.bot.entry_step_id.id)
+
+    def test_go_live_needs_a_channel(self):
+        self.bot.channel_ids = False
+        with self.assertRaises(UserError):
+            self.Flows.save_flow(self.flow_id, {'status': 'live'})
+        data = self.Flows.save_flow(self.flow_id, {'channel_ids': [self.wa.id]})
+        self.assertEqual(data['flow']['channel_ids'], [self.wa.id])
+        data = self.Flows.save_flow(self.flow_id, {'status': 'live'})
+        self.assertEqual(data['flow']['status'], 'live')
+
+    def test_names_cannot_be_empty(self):
+        with self.assertRaises(UserError):
+            self.Flows.save_step(self.bot.entry_step_id.id, {'name': ' '})
+        with self.assertRaises(UserError):
+            self.Flows.save_flow(self.flow_id, {'name': ''})

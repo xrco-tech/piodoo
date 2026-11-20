@@ -1,0 +1,517 @@
+// Sediba Flows: the list of flows and the builder.
+// Kind colours: a tint for the card, a border, and a dark tone for its label.
+$o-sfl-kinds: (
+    message: (#e8f0fe, #93c5fd, #1e40af),
+    menu: (#ecfeff, #67e8f9, #155e75),
+    input: (#f5f3ff, #c4b5fd, #5b21b6),
+    condition: (#fffbeb, #fcd34d, #92400e),
+    action: (#f3f4f6, #9ca3af, #374151),
+    llm: (#f0fdf4, #86efac, #166534),
+    handoff: (#faf5ff, #d8b4fe, #6b21a8),
+    jump: (#eef2ff, #a5b4fc, #3730a3),
+    wait: (#fff7ed, #fdba74, #9a3412),
+    end: (#f3f4f6, #9ca3af, #374151),
+    channel_switch: (#ecfeff, #67e8f9, #155e75),
+);
+
+.o_sfl {
+    --sfl-ground: #f3f4f6;
+    --sfl-box: #ffffff;
+    --sfl-line: #d1d5db;
+    --sfl-soft: #e5e7eb;
+    --sfl-text: #1f2937;
+    --sfl-muted: #5b6470;
+    --sfl-dot: #cbd5e1;
+    --sfl-edge: #6b7280;
+    --sfl-warn: #92400e;
+    --sfl-danger: #b91c1c;
+    --sfl-select: #1d4ed8;
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: var(--sfl-ground);
+    color: var(--sfl-text);
+    font-size: 14px;
+
+    h1 { margin: 0; font-size: 24px; font-weight: 600; }
+    h2 { margin: 0; font-size: 17px; font-weight: 600; }
+    fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+    .btn { min-height: 40px; }
+    .btn-light { border: 1px solid var(--sfl-line); }
+}
+
+.o_sfl_muted { color: var(--sfl-muted); }
+.o_sfl_small { font-size: 13px; }
+.o_sfl_grow { flex: 1; }
+.o_sfl_num { text-align: right; }
+.o_sfl_start { align-self: flex-start; }
+
+.o_sfl_box {
+    background: var(--sfl-box);
+    border: 1px solid var(--sfl-line);
+    border-radius: 12px;
+}
+
+.o_sfl_empty {
+    padding: 32px 16px;
+    color: var(--sfl-muted);
+    text-align: center;
+}
+
+.o_sfl_row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    > :last-child { text-align: right; }
+}
+
+// ── The list of flows ─────────────────────────────────────────────────────
+.o_sfl_home {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 24px;
+    overflow-y: auto;
+}
+
+.o_sfl_head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.o_sfl_head_text {
+    flex: 1 1 240px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.o_sfl_home_body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.o_sfl_flows {
+    flex: 999 1 480px;
+    min-width: 0;
+    padding: 6px 16px 12px;
+}
+
+.o_sfl_channels {
+    flex: 1 1 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px;
+
+    .o_sfl_row + .o_sfl_row { border-top: 1px solid var(--sfl-soft); }
+}
+
+.o_sfl_scroll_x { overflow-x: auto; }
+
+.o_sfl_table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th {
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--sfl-line);
+        color: var(--sfl-muted);
+        font-size: 13px;
+        font-weight: 500;
+        text-align: left;
+        &.o_sfl_num { text-align: right; }
+    }
+    td {
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--sfl-soft);
+        vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: 0; }
+}
+
+.o_sfl_link {
+    min-height: 40px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--sfl-text);
+    font-weight: 600;
+    text-align: left;
+    text-decoration: underline;
+    text-decoration-color: var(--sfl-line);
+    text-underline-offset: 3px;
+    &:hover { text-decoration-color: currentColor; }
+}
+
+.o_sfl_chip {
+    display: inline-block;
+    margin: 2px 4px 2px 0;
+    padding: 2px 9px;
+    border: 1px solid var(--sfl-muted);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+// ── The builder ───────────────────────────────────────────────────────────
+.o_sfl_builder {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.o_sfl_toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: var(--sfl-box);
+    border-bottom: 1px solid var(--sfl-line);
+}
+
+.o_sfl_icon_btn {
+    width: 40px;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.o_sfl_title {
+    flex: 0 1 260px;
+    min-width: 120px;
+    min-height: 40px;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font-weight: 600;
+    &:hover:not(:disabled), &:focus { border-color: var(--sfl-line); }
+}
+
+.o_sfl_status {
+    color: var(--sfl-muted);
+    &.o_sfl_live { color: var(--sfl-text); font-weight: 700; }
+}
+
+.o_sfl_zoom {
+    width: 44px;
+    color: var(--sfl-muted);
+    text-align: center;
+}
+
+.o_sfl_pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.o_sfl_pill {
+    min-height: 40px;
+    padding: 4px 12px;
+    border: 1px solid var(--sfl-line);
+    border-radius: 999px;
+    background: var(--sfl-box);
+    color: inherit;
+    &.active {
+        border-color: #d9a400;
+        background: rgba(255, 196, 20, .3);
+        font-weight: 600;
+    }
+}
+
+.o_sfl_body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.o_sfl_canvas_wrap {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    background-color: var(--sfl-ground);
+    background-image: radial-gradient(var(--sfl-dot) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+.o_sfl_canvas {
+    position: relative;
+    transform-origin: top left;
+}
+
+.o_sfl_lines {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+
+    path { fill: none; stroke: var(--sfl-edge); stroke-width: 2; }
+    marker path { fill: var(--sfl-edge); stroke: none; }
+}
+
+.o_sfl_edge_label {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+
+    span {
+        max-width: 100%;
+        padding: 1px 8px;
+        overflow: hidden;
+        border: 1px solid var(--sfl-line);
+        border-radius: 999px;
+        background: var(--sfl-box);
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 18px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.o_sfl_card {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 12px;
+    overflow: hidden;
+    border: 1px solid var(--sfl-line);
+    border-radius: 14px;
+    background: var(--sfl-box);
+    color: #1f2937;
+    text-align: left;
+
+    &:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, .12); }
+    &.o_sfl_selected {
+        border: 2px solid var(--sfl-select);
+        padding: 7px 11px;
+        box-shadow: 0 0 0 4px rgba(29, 78, 216, .25);
+    }
+    &.o_sfl_skipped { opacity: .55; border-style: dashed; }
+
+    @each $kind, $tones in $o-sfl-kinds {
+        &.o_sfl_kind_#{$kind} {
+            background: nth($tones, 1);
+            border-color: nth($tones, 2);
+            .o_sfl_card_top { color: nth($tones, 3); }
+            &.o_sfl_selected { border-color: var(--sfl-select); }
+        }
+    }
+}
+
+.o_sfl_card_top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.o_sfl_card_kind { text-transform: uppercase; }
+
+.o_sfl_card_tag {
+    margin-left: auto;
+    padding: 0 6px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    color: #374151;
+    font-size: 10px;
+    letter-spacing: 0;
+    & + & { margin-left: 0; }
+    &.o_sfl_warn { color: #92400e; }
+}
+
+.o_sfl_card_name,
+.o_sfl_card_text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_sfl_card_name { font-weight: 600; }
+.o_sfl_card_text { color: #4b5563; font-size: 12px; }
+
+// ── The side panel ────────────────────────────────────────────────────────
+.o_sfl_panel {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 360px;
+    min-height: 0;
+    background: var(--sfl-box);
+    border-left: 1px solid var(--sfl-line);
+}
+
+.o_sfl_tabs {
+    display: flex;
+    border-bottom: 1px solid var(--sfl-line);
+}
+
+.o_sfl_tab {
+    flex: 1;
+    min-height: 44px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--sfl-muted);
+    &.active {
+        border-bottom-color: #714b67;
+        color: var(--sfl-text);
+        font-weight: 600;
+    }
+}
+
+.o_sfl_form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 12px;
+    min-height: 0;
+    padding: 16px !important;
+    overflow-y: auto;
+}
+
+.o_sfl_field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    > label {
+        margin: 0;
+        color: var(--sfl-muted);
+        font-size: 13px;
+    }
+}
+
+.o_sfl_input {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 6px 10px;
+    border: 1px solid var(--sfl-line);
+    border-radius: 4px;
+    background: var(--sfl-box);
+    color: inherit;
+}
+
+textarea.o_sfl_input { resize: vertical; }
+
+.o_sfl_group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--sfl-soft);
+}
+
+.o_sfl_choice {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.o_sfl_choice_then {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .o_sfl_input { flex: 1; }
+    .btn { flex-shrink: 0; white-space: nowrap; }
+}
+
+.o_sfl_check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    margin: 0;
+}
+
+.o_sfl_out_row + .o_sfl_out_row { border-top: 1px solid var(--sfl-soft); }
+.o_sfl_out .o_sfl_row { padding-bottom: 2px; }
+.o_sfl_out_row { padding-bottom: 6px; }
+
+.o_sfl_note {
+    padding: 8px 10px;
+    border: 1px solid var(--sfl-warn);
+    border-radius: 8px;
+    color: var(--sfl-warn);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.o_sfl_foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--sfl-soft);
+}
+
+.o_sfl_danger {
+    border-color: var(--sfl-danger) !important;
+    color: var(--sfl-danger) !important;
+}
+
+// ── Try it ────────────────────────────────────────────────────────────────
+.o_sfl_chat {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 6px;
+    min-height: 120px;
+    padding: 12px;
+    overflow-y: auto;
+    border: 1px solid var(--sfl-soft);
+    border-radius: 10px;
+    background: var(--sfl-ground);
+}
+
+.o_sfl_bubble {
+    align-self: flex-start;
+    max-width: 88%;
+    padding: 8px 12px;
+    border: 1px solid var(--sfl-line);
+    border-radius: 12px;
+    background: var(--sfl-box);
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    &.o_sfl_mine {
+        align-self: flex-end;
+        border-color: #1b2a41;
+        background: #1b2a41;
+        color: #ffffff;
+    }
+}
+
+.o_sfl_quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+// A narrow window: the panel goes under the canvas.
+@media (max-width: 900px) {
+    .o_sfl_body { flex-direction: column; overflow-y: auto; }
+    .o_sfl_canvas_wrap { flex: 0 0 55vh; }
+    .o_sfl_panel { flex: 0 0 auto; border-left: 0; border-top: 1px solid var(--sfl-line); }
+    .o_sfl_form { overflow-y: visible; }
+}
