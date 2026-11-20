@@ -102,6 +102,29 @@ class TestBringOver(TransactionCase):
         self.assertEqual(flow.channel_ids.code, 'ussd')
         self.assertIn('USSD', flow.import_notes)
 
+    def test_numbered_menu_keeps_names_and_numbers(self):
+        """A USSD menu answered by number shows the steps' names; a choice
+        whose number is not its place (0 for Back) still answers to it."""
+        old = self._old('Numbers', 'ussd')
+        top = self._step(old, 'Top', body_plain='Please select:')
+        for name, number in (('Balance', '1'), ('Bundles', '2'), ('Back', '0')):
+            self._answer(self._step(old, name, parent=top, body_plain=name), number)
+        flow = self.Importer.import_bot(old)
+        s = self._by_name(flow)
+        options = s['Top'].option_ids.sorted('sequence')
+        self.assertEqual(options.mapped('label'), ['Balance', 'Bundles', 'Back'])
+        self.assertEqual(options.mapped('value'), ['1', '2', '0'])
+        self.assertIn('number 0', flow.import_notes)
+        flow.engine_mode = 'shadow'
+        partner = self.env['res.partner'].create({'name': 'Test Contact'})
+        Exec = self.env['comm.chatbot.executor']
+        c = Exec.start(flow, partner, 'ussd')
+        first = c.interaction_ids.filtered(lambda i: i.direction == 'outbound')
+        self.assertEqual(first.rendered_body,
+                         'Please select:\n\n1. Balance\n2. Bundles\n3. Back')
+        Exec._handle_input(c, None, '0')
+        self.assertEqual(c.current_step_id, s['Back'])
+
     def test_buttons_become_choices(self):
         old = self._old('Buttons')
         ask = self._step(old, 'Pick', 'question_interactive',
