@@ -16,7 +16,7 @@ from odoo.addons.comm_chatbot.models.runtime.renderer import (
 # Steps that pick their next step from a list of answers, not from one "then".
 BRANCHING = ('menu', 'condition')
 # Steps that send nothing themselves.
-SILENT = ('condition', 'action', 'jump', 'wait', 'end')
+SILENT = ('condition', 'action', 'jump', 'wait', 'end', 'set_variable')
 
 STEP_FIELDS = {
     'name': 'name',
@@ -29,6 +29,9 @@ STEP_FIELDS = {
     'handoff_message': 'handoff_message',
     'jump_bot_id': 'jump_target_bot_id',
     'jump_step_id': 'jump_target_step_id',
+    'jump_return': 'jump_return',
+    'variable_name': 'set_variable_name',
+    'variable_value': 'set_variable_value',
     'wait_seconds': 'wait_seconds',
     'end_outcome': 'end_outcome',
     'llm_prompt': 'llm_system_prompt',
@@ -109,6 +112,9 @@ class SedibaFlows(models.AbstractModel):
             'handoff_message': step.handoff_message or '',
             'jump_bot_id': step.jump_target_bot_id.id or False,
             'jump_step_id': step.jump_target_step_id.id or False,
+            'jump_return': step.jump_return,
+            'variable_name': step.set_variable_name or '',
+            'variable_value': step.set_variable_value or '',
             'wait_seconds': step.wait_seconds or 0,
             'end_outcome': step.end_outcome or '',
             'llm_prompt': step.llm_system_prompt or '',

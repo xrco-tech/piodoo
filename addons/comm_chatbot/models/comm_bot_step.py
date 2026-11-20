@@ -15,6 +15,7 @@ STEP_KIND_SELECTION = [
     ('wait',           'Wait (delay / scheduled)'),
     ('end',            'End (close conversation)'),
     ('channel_switch', 'Channel switch (move to a different channel)'),
+    ('set_variable',   'Set variable (keep a value for later steps)'),
 ]
 
 INPUT_TYPE_SELECTION = [
@@ -151,6 +152,23 @@ class CommBotStep(models.Model):
         domain="[('bot_id', '=', bot_id)]")
     jump_target_bot_id = fields.Many2one('comm.bot',
         string='Jump to bot (starts fresh)')
+    jump_return = fields.Boolean(
+        string='Come back when that bot ends',
+        help='Run the other bot inside this conversation and, when it reaches '
+             'an End step, carry on here at the default next step. Without '
+             'this the other bot starts on its own and never comes back.')
+    jump_mapping = fields.Json(default=list,
+        help='Optional renames across the jump, a list of '
+             '{"from": name here, "to": name there, "direction": in|out|both}. '
+             '"in" copies the value over when jumping, "out" copies it back '
+             'on return. Variables with the same name need no mapping: both '
+             'bots share the conversation\'s variables.')
+
+    # Set variable
+    set_variable_name = fields.Char(
+        help='For kind=set_variable: the variable to write in state.')
+    set_variable_value = fields.Char(
+        help='The value to keep. May use {{state.*}} and {{contact.*}}.')
 
     # Channel switch
     channel_switch_target_id = fields.Many2one('comm.channel')

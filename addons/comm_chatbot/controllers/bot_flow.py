@@ -335,7 +335,9 @@ def _sim_response(env, conversation, session_id):
         token_prices_cache[key] = rate
         return rate
 
-    for i in conversation.interaction_ids.sorted('at'):
+    # By id: several interactions share one timestamp, and id is the order
+    # they happened in.
+    for i in conversation.interaction_ids.sorted('id'):
         entry = {
             'direction': i.direction,
             'body': i.rendered_body or i.raw_body or '',
