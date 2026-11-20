@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Sediba Flows: bring over older bots',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Communications',
     'summary': 'Copy a bot from the older WhatsApp chatbot into Sediba Flows as a draft',
     'description': """

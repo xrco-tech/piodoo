@@ -94,7 +94,8 @@ class SedibaFlowsImporter(models.AbstractModel):
             bot.entry_step_id = new[roots[0].id]
         bot.import_notes = '\n'.join(
             [_("Brought over from the older bot “%(name)s”: %(count)s steps.",
-               name=chatbot.name, count=len(chatbot.step_ids))] + notes)
+               name=chatbot.name, count=len(chatbot.step_ids))]
+            + list(dict.fromkeys(notes)))
         return bot
 
     # ── Variables and wording ────────────────────────────────────────────
@@ -221,12 +222,13 @@ class SedibaFlowsImporter(models.AbstractModel):
             step = new[old.id]
             kind = old.step_type
             if step.kind == 'menu':
-                for seq, (label, target) in enumerate(self._choices(old, notes)):
+                for seq, choice in enumerate(self._choices(old, notes)):
+                    label, target = choice[0], choice[1]
                     Option.create({
                         'step_id': step.id,
                         'sequence': (seq + 1) * 10,
                         'label': label,
-                        'value': label,
+                        'value': choice[2] if len(choice) > 2 else label,
                         'next_step_id': new[target.id].id if target else False,
                     })
                 continue
@@ -317,11 +319,20 @@ class SedibaFlowsImporter(models.AbstractModel):
             if kid.trigger_variable_ids:
                 notes.append(_("“%s” also had a variable rule, which was not "
                                "carried over.", kid.name))
-            choices.append((answers[0].value if answers else kid.name, kid))
-        if choices and all(label.strip().isdigit() for label, _kid in choices):
-            notes.append(_("“%s”: its choices are numbers. If its wording already "
-                           "lists them, they will show twice on text channels; "
-                           "give the choices their names.", old.name))
+            answer = (answers[0].value or '').strip() if answers else ''
+            if answer.isdigit():
+                # A numbered menu: the older engine shows "<number>. <step
+                # name>", so the choice is the step's name and the number is
+                # what it is stored as (typing it still picks the choice).
+                choices.append((kid.name, kid, answer))
+                if answer != str(len(choices)):
+                    notes.append(_(
+                        "“%(menu)s”: “%(choice)s” was number %(old)s and now "
+                        "shows as number %(new)s. Typing %(old)s still works.",
+                        menu=old.name, choice=kid.name, old=answer,
+                        new=len(choices)))
+            else:
+                choices.append((answer or kid.name, kid))
         return choices
 
     def _value_of(self, old, save_to, names, notes):
