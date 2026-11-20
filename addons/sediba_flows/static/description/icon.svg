@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="12 14 72 72" width="256" height="256">
   <g fill="none" stroke-width="8" stroke-linecap="round">
-    <path d="M48 76C48 54 33 52 27 38M48 76C48 54 63 52 69 38" stroke="#1b2a41"/>
-    <path d="M48 76V24" stroke="#e07a2f"/>
-    <path d="M28 78h40" stroke="#1b2a41"/>
+    <path d="M48 76C48 54 33 52 27 38M48 76C48 54 63 52 69 38" stroke="#144496"/>
+    <path d="M48 76V24" stroke="#2EBCFA"/>
+    <path d="M48 76V62" stroke="#088BF5" stroke-linecap="butt"/>
+    <path d="M28 78h40" stroke="#144496"/>
   </g>
 </svg>
