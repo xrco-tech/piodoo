@@ -90,6 +90,11 @@
                     <group string="Jump" invisible="kind != 'jump'">
                         <field name="jump_target_step_id"/>
                         <field name="jump_target_bot_id"/>
+                        <field name="jump_return" invisible="not jump_target_bot_id"/>
+                    </group>
+                    <group string="Set variable" invisible="kind != 'set_variable'">
+                        <field name="set_variable_name"/>
+                        <field name="set_variable_value"/>
                     </group>
 
                     <group string="Channel switch" invisible="kind != 'channel_switch'">

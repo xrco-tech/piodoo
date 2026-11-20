@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
@@ -30,6 +30,7 @@ const KINDS = [
     ["wait", _t("Wait"), "fa-clock-o"],
     ["end", _t("End"), "fa-check-circle-o"],
     ["channel_switch", _t("Switch channel"), "fa-exchange"],
+    ["set_variable", _t("Set variable"), "fa-pencil-square-o"],
 ];
 const KIND = Object.fromEntries(KINDS.map(([key, label, icon]) => [key, { label, icon }]));
 
@@ -53,7 +54,7 @@ const BRANCHING = ["menu", "condition"];
 // Kinds with a text the contact reads or hears.
 const SPEAKS = ["message", "menu", "input"];
 // Kinds followed by one "then" step.
-const HAS_THEN = ["message", "input", "action", "llm", "wait", "jump", "channel_switch"];
+const HAS_THEN = ["message", "input", "action", "llm", "wait", "jump", "channel_switch", "set_variable"];
 
 /** Where each step leads, with the answer that leads there, if any. */
 function leadsTo(step) {
@@ -65,8 +66,13 @@ function leadsTo(step) {
                 label: step.kind === "condition" ? (o.is_default ? _t("otherwise") : _t("if so")) : o.label,
             }));
     }
-    const next = step.kind === "jump" ? step.jump_step_id || step.next_id : step.next_id;
-    return next ? [{ id: next, label: "" }] : [];
+    // A jump inside this flow goes to its target; a jump into another flow
+    // either never comes back, or comes back to the step after it.
+    let next = step.next_id;
+    if (step.kind === "jump") {
+        next = step.jump_bot_id ? (step.jump_return ? step.next_id : false) : step.jump_step_id || step.next_id;
+    }
+    return next ? [{ id: next, label: step.kind === "jump" && step.jump_bot_id ? _t("when it ends") : "" }] : [];
 }
 
 /**
@@ -164,6 +170,7 @@ export class SedibaFlows extends Component {
         this.KINDS = KINDS;
         this.INPUT_TYPES = INPUT_TYPES;
         this.edits = 0;
+        this.simInput = useRef("simInput");
         this.state = useState({
             view: "home",
             home: null,
@@ -175,6 +182,7 @@ export class SedibaFlows extends Component {
             panel: "step",
             zoom: 1,
             wording: false,
+            busy: false,
             sim: this.freshSim(),
         });
         onWillStart(() => this.loadHome());
@@ -194,6 +202,16 @@ export class SedibaFlows extends Component {
     async newFlow() {
         const id = await this.orm.call(MODEL, "create_flow", []);
         await this.openFlow(id);
+    }
+
+    /** Copy an older bot into Sediba Flows as a draft, then open the copy. */
+    async importLegacy(id) {
+        this.state.busy = true;
+        try {
+            await this.openFlow(await this.orm.call(MODEL, "import_legacy", [id]));
+        } finally {
+            this.state.busy = false;
+        }
     }
 
     async openFlow(id) {
@@ -293,6 +311,13 @@ export class SedibaFlows extends Component {
         if (step.kind === "llm") {
             return step.llm_prompt;
         }
+        if (step.kind === "set_variable") {
+            return step.variable_name ? `${step.variable_name} = ${step.variable_value}` : "";
+        }
+        if (step.kind === "jump" && step.jump_bot_id) {
+            const flow = this.state.data.flows.find((f) => f.id === step.jump_bot_id);
+            return flow ? flow.name : "";
+        }
         return "";
     }
 
@@ -312,6 +337,12 @@ export class SedibaFlows extends Component {
         this.state.draft = step ? JSON.parse(JSON.stringify(step)) : null;
         this.state.wording = Boolean(step && step.overrides.some((o) => o.body || o.hide));
         this.state.panel = "step";
+    }
+
+    /** Which field the panel's "Then" writes: a jump inside this flow keeps its target apart. */
+    get thenField() {
+        const d = this.state.draft;
+        return d.kind === "jump" && !d.jump_bot_id ? "jump_step_id" : "next_id";
     }
 
     otherSteps(id) {
@@ -360,6 +391,9 @@ export class SedibaFlows extends Component {
                 end_outcome: d.end_outcome,
                 llm_prompt: d.llm_prompt,
                 llm_use_sediba: d.llm_use_sediba,
+                jump_return: d.jump_return,
+                variable_name: d.variable_name,
+                variable_value: d.variable_value,
                 overrides: d.overrides,
             },
         ]);
@@ -562,6 +596,9 @@ export class SedibaFlows extends Component {
             return;
         }
         sim.input = "";
+        if (this.simInput.el) {
+            this.simInput.el.value = "";
+        }
         sim.busy = true;
         this.simTake(
             await rpc("/comm_chatbot/bot_flow/simulate/reply", {

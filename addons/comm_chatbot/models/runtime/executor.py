@@ -105,10 +105,10 @@ class ExecutorService(models.AbstractModel):
                 self._handle_render_error(conversation, step, e)
                 next_step = conversation.bot_id.on_error_step_id
             if next_step and next_step.id != step.id:
+                # Carry on into the next step, also when it is one that
+                # waits: a menu or a question must be sent before the
+                # conversation stops to wait for the answer.
                 conversation.current_step_id = next_step
-                if next_step.kind in ('menu', 'input', 'wait'):
-                    conversation.lifecycle_state = 'waiting'
-                    break
                 continue
             if step.kind in ('menu', 'input', 'wait'):
                 conversation.lifecycle_state = 'waiting'
@@ -218,11 +218,76 @@ class ExecutorService(models.AbstractModel):
 
     # jump: move to target step or bot
     def _execute_jump(self, step, conversation, leg):
-        if step.jump_target_bot_id:
+        target = step.jump_target_bot_id
+        if target and step.jump_return:
+            return self._call_bot(step, conversation)
+        if target:
             # Start a fresh conversation on target bot; close this one
-            self._start_child_bot(step.jump_target_bot_id, conversation)
+            self._start_child_bot(target, conversation)
             return None
         return step.jump_target_step_id or step.next_step_id
+
+    # jump with return: run the other bot inside this conversation
+    MAX_CALL_DEPTH = 10
+
+    def _call_bot(self, step, conversation):
+        """Go into another bot and remember where to come back to. The frame
+        lives in the conversation's state under '__stack', so it survives the
+        wait for the contact's next message."""
+        target = step.jump_target_bot_id
+        entry = step.jump_target_step_id \
+            if step.jump_target_step_id.bot_id == target else target.entry_step_id
+        state = dict(conversation.state or {})
+        stack = list(state.get('__stack') or [])
+        if not entry or len(stack) >= self.MAX_CALL_DEPTH:
+            _logger.warning('Jump step %s: no entry step in bot %s, or too '
+                            'many nested jumps; carrying on.', step.id, target.id)
+            return step.next_step_id
+        mapping = [m for m in (step.jump_mapping or [])
+                   if m.get('from') and m.get('to')]
+        for m in mapping:
+            if m.get('direction', 'both') in ('in', 'both') and m['from'] in state:
+                state[m['to']] = state[m['from']]
+        stack.append({
+            'bot_id': conversation.bot_id.id,
+            'step_id': step.next_step_id.id,
+            'out': [[m['to'], m['from']] for m in mapping
+                    if m.get('direction', 'both') in ('out', 'both')],
+        })
+        state['__stack'] = stack
+        conversation.write({'state': state, 'bot_id': target.id})
+        return entry
+
+    def _return_to_caller(self, conversation):
+        """At an End step inside a called bot: go back to the caller. Returns
+        the step to carry on at, or None when there is no caller."""
+        state = dict(conversation.state or {})
+        stack = list(state.get('__stack') or [])
+        while stack:
+            frame = stack.pop()
+            for inner, outer in frame.get('out') or []:
+                if inner in state:
+                    state[outer] = state[inner]
+            state['__stack'] = stack
+            bot = self.env['comm.bot'].browse(frame.get('bot_id')).exists()
+            step = self.env['comm.bot.step'].browse(frame.get('step_id')).exists()
+            if bot:
+                conversation.write({'state': state, 'bot_id': bot.id})
+                if step:
+                    return step
+                # The caller had nothing after the jump: it ends here too.
+        conversation.state = state
+        return None
+
+    # set_variable: no output; keep a value for later steps
+    def _execute_set_variable(self, step, conversation, leg):
+        if step.set_variable_name:
+            renderer = self.env['comm.chatbot.renderer']
+            state = dict(conversation.state or {})
+            state[step.set_variable_name] = renderer._substitute(
+                step.set_variable_value or '', conversation, conversation.bot_id)
+            conversation.state = state
+        return step.next_step_id
 
     # wait: schedule resumption
     def _execute_wait(self, step, conversation, leg):
@@ -239,6 +304,10 @@ class ExecutorService(models.AbstractModel):
 
     # end: close conversation
     def _execute_end(self, step, conversation, leg):
+        if (conversation.state or {}).get('__stack'):
+            resume = self._return_to_caller(conversation)
+            if resume:
+                return resume
         conversation.close(outcome=step.end_outcome or 'ended', state='closed')
         return None
 

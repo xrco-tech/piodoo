@@ -51,6 +51,35 @@
                             </tbody>
                         </table>
                     </div>
+                    <t t-if="state.home.legacy and state.home.legacy.length">
+                        <h2 class="o_sfl_section">Older bots</h2>
+                        <span class="o_sfl_muted o_sfl_small">Bots built in the older WhatsApp chatbot. Bringing one over makes a draft copy here; the older bot is not changed and keeps running.</span>
+                        <div class="o_sfl_scroll_x">
+                            <table class="o_sfl_table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Bot</th>
+                                        <th scope="col">Channel</th>
+                                        <th scope="col" class="o_sfl_num">Steps</th>
+                                        <th scope="col">Status there</th>
+                                        <th scope="col"><span class="visually-hidden">Action</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="state.home.legacy" t-as="bot" t-key="bot.id">
+                                        <td t-esc="bot.name"/>
+                                        <td><span class="o_sfl_chip" t-esc="bot.channel"/></td>
+                                        <td class="o_sfl_num" t-esc="bot.steps"/>
+                                        <td class="o_sfl_muted" t-esc="bot.status"/>
+                                        <td class="o_sfl_num">
+                                            <button t-if="bot.flow_id" type="button" class="btn btn-light" t-on-click="() => this.openFlow(bot.flow_id)">Open its flow</button>
+                                            <button t-elif="state.home.can_create" type="button" class="btn btn-light" t-att-disabled="state.busy" t-on-click="() => this.importLegacy(bot.id)">Bring over</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
                 </div>
                 <div class="o_sfl_box o_sfl_channels">
                     <h2>Channels</h2>
@@ -159,6 +188,13 @@
     <t t-name="sediba_flows.Flow">
         <fieldset class="o_sfl_form" t-att-disabled="!canEdit">
             <span class="o_sfl_muted">Click a step to change it. These settings are for the whole flow.</span>
+            <div t-if="state.data.flow.notes and state.data.flow.notes.length" class="o_sfl_group o_sfl_notes">
+                <b>Brought over from an older bot</b>
+                <span class="o_sfl_muted o_sfl_small">Read these before going live. The older bot is unchanged.</span>
+                <ul>
+                    <li t-foreach="state.data.flow.notes" t-as="note" t-key="note_index" t-esc="note"/>
+                </ul>
+            </div>
             <div class="o_sfl_group">
                 <b>Runs on</b>
                 <label t-foreach="state.data.channels" t-as="channel" t-key="channel.id" class="o_sfl_check">
@@ -287,6 +323,23 @@
                 </select>
             </div>
 
+            <label t-if="d.kind === 'jump' and d.jump_bot_id" class="o_sfl_check">
+                <input type="checkbox" t-att-checked="d.jump_return" t-on-change="(ev) => this.setField('jump_return', ev.target.checked)"/>
+                <span>Come back here when that flow ends</span>
+            </label>
+
+            <t t-if="d.kind === 'set_variable'">
+                <div class="o_sfl_field">
+                    <label for="o_sfl_var_name">Keep as</label>
+                    <input id="o_sfl_var_name" type="text" class="o_sfl_input" placeholder="for example: province" t-model="d.variable_name" t-on-change="saveStep"/>
+                </div>
+                <div class="o_sfl_field">
+                    <label for="o_sfl_var_value">The value</label>
+                    <input id="o_sfl_var_value" type="text" class="o_sfl_input" placeholder="a fixed text, or {{state.other}}" t-model="d.variable_value" t-on-change="saveStep"/>
+                    <span class="o_sfl_muted o_sfl_small">Later steps can use it as {{state.province}}.</span>
+                </div>
+            </t>
+
             <div t-if="d.kind === 'wait'" class="o_sfl_field">
                 <label for="o_sfl_wait">Wait, in seconds</label>
                 <input id="o_sfl_wait" type="number" min="0" class="o_sfl_input" t-model="d.wait_seconds" t-on-change="saveStep"/>
@@ -297,13 +350,13 @@
                 <input id="o_sfl_outcome" type="text" class="o_sfl_input" placeholder="for example: done" t-model="d.end_outcome" t-on-change="saveStep"/>
             </div>
 
-            <div t-if="['message', 'input', 'action', 'llm', 'wait', 'jump', 'channel_switch'].includes(d.kind) and !(d.kind === 'jump' and d.jump_bot_id)" class="o_sfl_field">
+            <div t-if="['message', 'input', 'action', 'llm', 'wait', 'jump', 'channel_switch', 'set_variable'].includes(d.kind) and !(d.kind === 'jump' and d.jump_bot_id and !d.jump_return)" class="o_sfl_field">
                 <label for="o_sfl_next">Then</label>
                 <div class="o_sfl_choice_then">
-                    <select id="o_sfl_next" class="o_sfl_input" t-on-change="(ev) => this.setField(d.kind === 'jump' ? 'jump_step_id' : 'next_id', ev.target.value, true)">
-                        <option value="" t-att-selected="!(d.kind === 'jump' ? d.jump_step_id : d.next_id)">Nothing: the flow stops here</option>
+                    <select id="o_sfl_next" class="o_sfl_input" t-on-change="(ev) => this.setField(thenField, ev.target.value, true)">
+                        <option value="" t-att-selected="!d[thenField]">Nothing: the flow stops here</option>
                         <option t-foreach="otherSteps(d.id)" t-as="s" t-key="s.id" t-att-value="s.id"
-                                t-att-selected="s.id === (d.kind === 'jump' ? d.jump_step_id : d.next_id)" t-esc="s.name"/>
+                                t-att-selected="s.id === d[thenField]" t-esc="s.name"/>
                     </select>
                     <button t-if="d.kind !== 'jump'" type="button" class="btn btn-light" t-on-click="() => this.addStep(d.id, false)">New step</button>
                 </div>
@@ -384,7 +437,7 @@
                 </div>
                 <div t-if="state.sim.session and state.sim.waiting !== 'done'" class="o_sfl_choice_then">
                     <input type="text" class="o_sfl_input" aria-label="Your reply" placeholder="Reply as the contact"
-                           t-model="state.sim.input" t-on-keydown="simKey"/>
+                           t-ref="simInput" t-model="state.sim.input" t-on-keydown="simKey"/>
                     <button type="button" class="btn btn-light" t-att-disabled="state.sim.busy" t-on-click="() => this.simSend()">Send</button>
                 </div>
             </t>

@@ -12,6 +12,7 @@ $o-sfl-kinds: (
     wait: (#fff7ed, #fdba74, #9a3412),
     end: (#f3f4f6, #9ca3af, #374151),
     channel_switch: (#ecfeff, #67e8f9, #155e75),
+    set_variable: (#fffbeb, #fcd34d, #92400e),
 );
 
 .o_sfl {
@@ -515,3 +516,8 @@ textarea.o_sfl_input { resize: vertical; }
     .o_sfl_panel { flex: 0 0 auto; border-left: 0; border-top: 1px solid var(--sfl-line); }
     .o_sfl_form { overflow-y: visible; }
 }
+
+// Older bots under the flows, and what was brought over.
+.o_sfl_section { margin-top: 20px !important; padding-top: 16px; border-top: 1px solid var(--sfl-soft); }
+.o_sfl_notes ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.o_sfl_notes li + li { margin-top: 4px; }
