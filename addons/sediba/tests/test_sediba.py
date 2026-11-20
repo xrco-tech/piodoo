@@ -193,6 +193,17 @@ class TestSedibaWorkspace(TransactionCase):
         self.assertEqual(self.Ws.ws_set_status(self.proven.id, 'lead')['status'], 'lead')
         self.assertFalse(self.Ws.ws_set_status(self.lead.id, 'nonsense'))
 
+    def test_assistant_switch_on_a_topic(self):
+        # Off until someone allows it; the switch is the topic's, not a finding's.
+        self.assertFalse(self.Ws.ws_topic(self.first.id)['ai_allowed'])
+        self.assertTrue(self.Ws.ws_set_topic_ai(self.first.id, True)['ai_allowed'])
+        self.assertTrue(self.first.ai_allowed)
+        self.assertFalse(self.second.ai_allowed)
+        self.assertFalse(self.Ws.ws_set_topic_ai(self.first.id, False)['ai_allowed'])
+        self.assertFalse(self.Ws.ws_set_topic_ai(0, True))
+        with self.assertRaises(AccessError):
+            self.env['sediba.workspace'].with_user(self.outsider).ws_set_topic_ai(self.first.id, True)
+
     def test_outsiders_are_kept_out(self):
         ws = self.env['sediba.workspace'].with_user(self.outsider)
         for call in (ws.ws_nav, ws.ws_overview, lambda: ws.ws_topic(self.first.id),
@@ -298,6 +309,9 @@ class TestSedibaReference(TransactionCase):
                 ws.ws_set_review(self.jobs_proven.id, False, 'test_jobs')
             with self.assertRaises(AccessError):
                 ws.ws_set_status(self.jobs_proven.id, 'lead', 'test_jobs')
+            with self.assertRaises(AccessError):
+                ws.ws_set_topic_ai(self.jobs_topic.id, True, 'test_jobs')
+        self.assertFalse(self.jobs_topic.ai_allowed)
         # A reader changes nothing in Sediba itself either.
         with self.assertRaises(AccessError):
             self.Ws.ws_set_review(self.jobs_proven.id, False)

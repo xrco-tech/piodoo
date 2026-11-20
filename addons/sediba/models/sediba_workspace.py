@@ -181,6 +181,7 @@ class SedibaWorkspace(models.AbstractModel):
             'our_read': '' if space else (topic.our_read or ''),
             'last': self._date(topic.last_researched),
             'due': False if space else self._date(topic.due_date),
+            'ai_allowed': False if space else topic.ai_allowed,
             'columns': [{
                 'key': key,
                 'label': label,
@@ -272,6 +273,19 @@ class SedibaWorkspace(models.AbstractModel):
             vals.update({'checked_on': fields.Date.context_today(self), 'checked_by': self.env.user.name})
         finding.write(vals)
         return self.ws_finding(finding.id, space)
+
+    @api.model
+    def ws_set_topic_ai(self, topic_id, allowed, space=False):
+        """The switch on a topic: may Sidekick and the chatbot answer from its
+        verified findings. Stored only; the assistants read it when they are
+        wired to Sediba."""
+        if space:
+            raise AccessError(_("The Reference inside an app is read-only. Change topics in Sediba."))
+        topic = self.env['sediba.topic'].browse(topic_id).exists()
+        if not topic:
+            return False
+        topic.ai_allowed = bool(allowed)
+        return self.ws_topic(topic.id)
 
     @api.model
     def ws_set_review(self, finding_id, needs_review, space=False):
