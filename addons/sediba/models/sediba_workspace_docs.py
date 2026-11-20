@@ -13,6 +13,7 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tools import format_date, html2plaintext
 
 from .sediba_doc import READ_AGAIN
+from .sediba_flow import clean_doc, clean_flow, doc_parts, doc_text, flow_lines
 from .sediba_workspace import DATE_FORMAT
 
 # Starting points for a new doc. Headings only: the words are the writer's.
@@ -166,10 +167,10 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         version = doc._published() if space else doc.version_ids.filtered(lambda v: v.id == version_id)
         if version:
             questions = [{'name': q.get('name', ''), 'answer': q.get('answer', '')} for q in version.questions or []]
-            name, summary, body = version.name, version.summary, version.body
+            name, summary, body, flows = version.name, version.summary, version.body, version.flows
         else:
             questions = [{'name': q.name, 'answer': q.answer or ''} for q in doc.question_ids]
-            name, summary, body = doc.name, doc.summary, doc.body
+            name, summary, body, flows = doc.name, doc.summary, doc.body, doc.flows
         visible_topics = self._topics(space)
         docs = self._docs(space)
         data = {
@@ -177,6 +178,8 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             'name': name,
             'summary': summary or '',
             'body': Markup(body) if html2plaintext(body or '').strip() else '',
+            # The text cut at its flow diagrams, in the order the page draws them.
+            'parts': doc_parts(body, flows),
             'questions': questions,
             'parent': [doc.parent_id.id, self._doc_shown(doc.parent_id, space)['name']]
                       if doc.parent_id and doc.parent_id in docs else False,
@@ -221,7 +224,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
                 questions = version.questions or [] if version else [
                     {'name': q.name, 'answer': q.answer} for q in doc.question_ids]
                 text = " ".join(filter(None, [
-                    source.name, source.summary, html2plaintext(source.body or ''),
+                    source.name, source.summary, doc_text(source.body, source.flows),
                     *[q.get('name') or '' for q in questions], *[q.get('answer') or '' for q in questions]]))
                 if search.lower() not in text.lower():
                     continue
@@ -250,6 +253,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             'name': doc.name or '',
             'summary': doc.summary or '',
             'body': doc.body or body if doc else body,
+            'flows': doc.flows or {},
             'questions': [{'name': q.name, 'answer': q.answer or ''} for q in doc.question_ids]
                          or ([{'name': '', 'answer': ''}] if not doc and template == 'faq' else []),
             'owner_id': (doc.owner_id.id if doc else self.env.user.id) or False,
@@ -284,10 +288,12 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         name = (vals.get('name') or '').strip()
         if not name:
             raise UserError(_("Give the doc a title first."))
+        body, flows = clean_doc(vals.get('body') or '', vals.get('flows'))
         record = {
             'name': name,
             'summary': (vals.get('summary') or '').strip() or False,
-            'body': vals.get('body') or False,
+            'body': body or False,
+            'flows': flows or False,
             'owner_id': vals.get('owner_id') or False,
             'parent_id': vals.get('parent_id') or False,
             'space_ids': [(6, 0, vals.get('space_ids') or [])],
@@ -310,6 +316,13 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         if publish:
             doc.action_publish()
         return doc.id
+
+    @api.model
+    def ws_flow_text(self, flow):
+        """A diagram as numbered steps, for the editor's "As text" tab: the
+        same words the assistants read and the page prints."""
+        self._need_writer()
+        return flow_lines(clean_flow(flow))
 
     @api.model
     def ws_doc_do(self, doc_id, what, version_id=False):

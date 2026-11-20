@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- The icon of a kind of step. The kind is always written out beside it. -->
+    <t t-name="sediba.FlowIcon">
+        <svg class="o_sdb_flow_icon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24">
+            <path t-if="kind === 'start'" d="M7 4 L19 12 L7 20 Z"/>
+            <path t-elif="kind === 'decision'" d="M12 3 V10 M12 10 L5 20 M12 10 L19 20"/>
+            <t t-elif="kind === 'handover'">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 21 C4 16 8 14 12 14 C16 14 20 16 20 21"/>
+            </t>
+            <path t-elif="kind === 'end'" d="M5 12 L10 17 L19 7"/>
+            <path t-else="" d="M4 5 H20 V16 H10 L5 20 V16 H4 Z"/>
+        </svg>
+    </t>
+
+    <!-- The picture -->
+    <t t-name="sediba.Flow">
+        <t t-set="lay" t-value="layout"/>
+        <div class="o_sdb_flow_sizer" t-attf-style="width: {{ lay.width * zoom }}px; height: {{ lay.height * zoom }}px">
+            <div class="o_sdb_flow_canvas" role="group" t-att-aria-label="props.label or 'Flow diagram'"
+                 t-attf-style="width: {{ lay.width }}px; height: {{ lay.height }}px; transform: scale({{ zoom }})">
+                <svg class="o_sdb_flow_lines" aria-hidden="true" t-att-width="lay.width" t-att-height="lay.height"
+                     t-attf-viewBox="0 0 {{ lay.width }} {{ lay.height }}">
+                    <defs>
+                        <marker id="o_sdb_flow_arrow" orient="auto" markerWidth="6" markerHeight="6" refX="1" refY="3" markerUnits="userSpaceOnUse">
+                            <path d="M0 0 L6 3 L0 6 Z"/>
+                        </marker>
+                    </defs>
+                    <path t-foreach="lay.edges" t-as="edge" t-key="edge_index" t-att-d="edge.d" marker-end="url(#o_sdb_flow_arrow)"/>
+                </svg>
+                <t t-foreach="lay.edges" t-as="edge" t-key="edge_index">
+                    <span t-if="edge.label" class="o_sdb_flow_answer" aria-hidden="true"
+                          t-attf-style="left: {{ edge.left }}px; top: {{ edge.top }}px" t-esc="edge.label"/>
+                </t>
+                <button t-foreach="lay.nodes" t-as="node" t-key="node.step.id" type="button"
+                        t-attf-class="o_sdb_flow_card {{ node.step.kind }} {{ props.selected === node.step.id ? 'on' : '' }}"
+                        t-attf-style="left: {{ node.left }}px; top: {{ node.top }}px"
+                        t-att-aria-label="said(node)" t-att-aria-pressed="props.selected === node.step.id ? 'true' : 'false'"
+                        t-on-click="() => this.select(node.step)">
+                    <t t-call="sediba.FlowIcon"><t t-set="kind" t-value="node.step.kind"/></t>
+                    <span class="o_sdb_flow_words">
+                        <span class="o_sdb_flow_kind" t-esc="kindLabel[node.step.kind]"/>
+                        <b t-if="node.step.text" t-esc="node.step.text"/>
+                        <span t-else="" class="o_sdb_flow_blank">Nothing written yet</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </t>
+
+    <!-- A diagram inside a doc -->
+    <t t-name="sediba.FlowBlock">
+        <figure class="o_sdb_flow_block">
+            <figcaption class="o_sdb_flow_head">
+                <span class="o_sdb_flow_title"><b>Flow diagram</b> <t t-esc="props.flow.name"/>
+                    <span class="o_sdb_muted"><t t-esc="props.flow.steps.length"/> <t t-if="props.flow.steps.length === 1">step</t><t t-else="">steps</t></span></span>
+                <button t-if="props.canEdit" type="button" class="o_sdb_btn" t-on-click="props.onEdit">Edit diagram</button>
+            </figcaption>
+            <div class="o_sdb_flow_scroll">
+                <SedibaFlow steps="props.flow.steps" selected="state.open" onSelect.bind="toggle" label="props.flow.name"/>
+            </div>
+            <div t-if="opened" class="o_sdb_flow_detail" aria-live="polite">
+                <b><t t-esc="openedNumber"/>. <t t-esc="kindLabel[opened.kind]"/>: <t t-esc="opened.text"/></b>
+                <p t-if="opened.detail" t-esc="opened.detail"/>
+                <p t-else="" class="o_sdb_muted">Nothing more is written for this step.</p>
+            </div>
+            <details class="o_sdb_flow_text">
+                <summary>Show as steps</summary>
+                <ol>
+                    <li t-foreach="props.flow.lines" t-as="line" t-key="line_index"><b><t t-esc="line.label"/>:</b> <t t-esc="line.text"/></li>
+                </ol>
+            </details>
+        </figure>
+    </t>
+
+    <!-- The editor -->
+    <t t-name="sediba.FlowEditor">
+        <div class="o_sdb_flow_editor" role="dialog" aria-label="Edit flow diagram">
+            <div class="o_sdb_flow_tools">
+                <button type="button" class="o_sdb_btn square" aria-label="Back to the doc" title="Back to the doc" t-on-click="done">
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" class="o_sdb_flow_icon"><path d="M15 5 L8 12 L15 19"/></svg>
+                </button>
+                <button type="button" class="o_sdb_btn primary" t-on-click="addStep">Add step</button>
+                <label class="o_sdb_flow_name">
+                    <span class="visually-hidden">Diagram title</span>
+                    <input type="text" class="o_sdb_input" placeholder="Name this diagram" t-model="state.name"/>
+                    <span t-if="props.docName" class="o_sdb_muted">in <t t-esc="props.docName"/></span>
+                </label>
+                <button type="button" class="o_sdb_btn square" aria-label="Zoom out" t-att-disabled="state.zoom &lt;= 0.5" t-on-click="() => this.zoomBy(-0.1)">−</button>
+                <span class="o_sdb_flow_zoom" aria-live="polite" t-esc="zoomLabel"/>
+                <button type="button" class="o_sdb_btn square" aria-label="Zoom in" t-att-disabled="state.zoom >= 1.5" t-on-click="() => this.zoomBy(0.1)">+</button>
+                <button type="button" class="o_sdb_btn" t-on-click="tidy">Tidy layout</button>
+                <button type="button" class="o_sdb_btn strong" t-on-click="done">Done</button>
+            </div>
+
+            <div class="o_sdb_flow_work">
+                <div class="o_sdb_flow_stage">
+                    <SedibaFlow steps="state.steps" selected="state.selected" onSelect.bind="select" zoom="state.zoom" label="state.name"/>
+                </div>
+
+                <div class="o_sdb_flow_panel">
+                    <div class="o_sdb_flow_tabs" role="group" aria-label="Panel">
+                        <button type="button" t-att-class="{ on: state.tab === 'step' }" t-att-aria-pressed="state.tab === 'step' ? 'true' : 'false'"
+                                t-on-click="() => state.tab = 'step'">Step</button>
+                        <button type="button" t-att-class="{ on: state.tab === 'text' }" t-att-aria-pressed="state.tab === 'text' ? 'true' : 'false'"
+                                t-on-click="showText">As text</button>
+                    </div>
+
+                    <div t-if="state.tab === 'text'" class="o_sdb_flow_fields">
+                        <p class="o_sdb_muted">Every diagram is also kept as plain steps. This is what Sidekick and the chatbot read, what prints, and what a screen reader hears.</p>
+                        <ol class="o_sdb_flow_aslist">
+                            <li t-foreach="state.lines" t-as="line" t-key="line_index"><b><t t-esc="line.label"/>:</b> <t t-esc="line.text"/></li>
+                        </ol>
+                    </div>
+
+                    <div t-elif="step" class="o_sdb_flow_fields" t-key="step.id">
+                        <t t-set="s" t-value="step"/>
+                        <div class="o_sdb_field">
+                            <label for="o_sdb_flow_kind">Kind</label>
+                            <select id="o_sdb_flow_kind" class="o_sdb_input" t-on-change="setKind">
+                                <option t-foreach="kinds" t-as="k" t-key="k[0]" t-att-value="k[0]" t-att-selected="k[0] === s.kind" t-esc="k[1]"/>
+                            </select>
+                        </div>
+                        <div class="o_sdb_field">
+                            <label for="o_sdb_flow_what">What happens</label>
+                            <input id="o_sdb_flow_what" type="text" class="o_sdb_input" maxlength="160" t-model="s.text"/>
+                        </div>
+                        <div class="o_sdb_field">
+                            <label for="o_sdb_flow_more">More detail, optional</label>
+                            <textarea id="o_sdb_flow_more" rows="3" class="o_sdb_input area" maxlength="600"
+                                      placeholder="Shown when someone clicks the step, and read by Sidekick" t-model="s.detail"/>
+                        </div>
+
+                        <fieldset t-if="s.kind !== 'end'" class="o_sdb_field o_sdb_flow_then">
+                            <legend>Then</legend>
+                            <t t-if="s.kind === 'decision'">
+                                <div t-foreach="s.next" t-as="way" t-key="way_index" class="o_sdb_flow_way">
+                                    <input type="text" class="o_sdb_input answer" maxlength="24" placeholder="yes"
+                                           t-att-aria-label="answerLabel(way_index)" t-model="way.label"/>
+                                    <select class="o_sdb_input" t-att-aria-label="nextLabel(way, way_index)" t-on-change="(ev) => this.setNext(way_index, ev)">
+                                        <option value="" t-att-selected="!way.to">Not decided yet</option>
+                                        <option t-foreach="choices(s)" t-as="c" t-key="c.id" t-att-value="c.id" t-att-selected="c.id === way.to" t-esc="c.label"/>
+                                    </select>
+                                    <button t-if="s.next.length > 2" type="button" class="o_sdb_link danger" t-on-click="() => this.removeAnswer(way_index)">Remove<span class="visually-hidden"> answer <t t-esc="way_index + 1"/></span></button>
+                                </div>
+                                <button type="button" class="o_sdb_btn start" t-on-click="addAnswer">Add another answer</button>
+                            </t>
+                            <t t-else="">
+                                <select class="o_sdb_input" aria-label="Next step" t-on-change="(ev) => this.setNext(0, ev)">
+                                    <option value="" t-att-selected="!s.next.length">Nothing yet</option>
+                                    <option t-foreach="choices(s)" t-as="c" t-key="c.id" t-att-value="c.id"
+                                            t-att-selected="s.next.length and c.id === s.next[0].to" t-esc="c.label"/>
+                                </select>
+                            </t>
+                        </fieldset>
+                        <p t-else="" class="o_sdb_muted">An end has no next step.</p>
+
+                        <div class="o_sdb_flow_foot">
+                            <button t-if="s.kind !== 'end'" type="button" class="o_sdb_btn grow" t-on-click="addAfter">
+                                <t t-if="s.kind === 'decision'">Add step for a new answer</t><t t-else="">Add step after</t></button>
+                            <button type="button" class="o_sdb_btn danger" t-on-click="removeStep">Delete</button>
+                        </div>
+                        <p class="o_sdb_muted small">Steps place themselves, as in the chatbot flow builder. You never draw lines by hand: you say which step comes next.</p>
+                    </div>
+
+                    <div t-else="" class="o_sdb_flow_fields">
+                        <p class="o_sdb_muted">Choose a step in the diagram to change it, or add one.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

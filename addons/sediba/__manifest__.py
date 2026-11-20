@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Sediba',
-    'version': '18.0.1.6.0',
+    'version': '18.0.1.7.0',
     'category': 'Productivity',
     'summary': 'What we know in one place: our own company docs, and research with its sources',
     'description': """
@@ -50,6 +50,9 @@ user with no email address can write findings.
     'assets': {
         'web.assets_backend': [
             'sediba/static/src/workspace/workspace.scss',
+            'sediba/static/src/workspace/flow.scss',
+            'sediba/static/src/workspace/flow.js',
+            'sediba/static/src/workspace/flow.xml',
             'sediba/static/src/workspace/workspace.js',
             'sediba/static/src/workspace/workspace.xml',
         ],

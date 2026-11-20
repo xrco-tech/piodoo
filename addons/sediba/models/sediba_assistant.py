@@ -20,7 +20,7 @@ or researcher cleared for the assistants, whoever is asking.
 import re
 
 from odoo import _, api, models
-from odoo.tools import html2plaintext
+from .sediba_flow import doc_text
 
 DOC_CHARS = 2400        # of one doc's text handed over
 FINDING_CHARS = 700     # of one finding's statement
@@ -84,7 +84,8 @@ class SedibaAssistant(models.AbstractModel):
             'title': version.name,
             'under': doc.parent_id and doc.parent_id._published().name or '',
             'summary': version.summary or '',
-            'text': html2plaintext(version.body or '').strip(),
+            # Flow diagrams are written out as numbered steps where they stand.
+            'text': doc_text(version.body, version.flows),
             'questions': questions,
             'published': version.published_on.date().isoformat(),
         }

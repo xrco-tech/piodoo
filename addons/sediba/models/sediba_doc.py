@@ -30,7 +30,7 @@ READ_AGAIN = [
 ]
 
 # Changing one of these on a published doc leaves it with unpublished changes.
-CONTENT_FIELDS = ('name', 'summary', 'body')
+CONTENT_FIELDS = ('name', 'summary', 'body', 'flows')
 
 
 class SedibaDoc(models.Model):
@@ -47,6 +47,8 @@ class SedibaDoc(models.Model):
     child_ids = fields.One2many('sediba.doc', 'parent_id', string="Pages")
     summary = fields.Char(string="In one line", help="Shown under the title and on cards.")
     body = fields.Html(string="Text")
+    flows = fields.Json(string="Flow diagrams", copy=True,
+                        help="The diagrams in this doc, by the key of their block in the text.")
     question_ids = fields.One2many('sediba.doc.question', 'doc_id', string="Questions and answers", copy=True)
     owner_id = fields.Many2one('res.users', string="Owner", default=lambda self: self.env.user,
                                help="The person who keeps this doc right and is asked to read it again.")
@@ -132,6 +134,7 @@ class SedibaDoc(models.Model):
                 'name': doc.name,
                 'summary': doc.summary,
                 'body': doc.body,
+                'flows': doc.flows or {},
                 'questions': [{'name': q.name, 'answer': q.answer or ''} for q in doc.question_ids],
                 'published_on': fields.Datetime.now(),
                 'published_by': self.env.user.name,
@@ -161,6 +164,7 @@ class SedibaDoc(models.Model):
         self.question_ids.unlink()
         self.write({
             'name': version.name, 'summary': version.summary, 'body': version.body,
+            'flows': version.flows or {},
             'question_ids': [(0, 0, {'sequence': index, 'name': q.get('name'), 'answer': q.get('answer')})
                              for index, q in enumerate(version.questions or [])],
         })
@@ -220,6 +224,7 @@ class SedibaDocVersion(models.Model):
     name = fields.Char(string="Title", required=True)
     summary = fields.Char()
     body = fields.Html()
+    flows = fields.Json()
     questions = fields.Json()
     published_on = fields.Datetime(required=True)
     published_by = fields.Char()

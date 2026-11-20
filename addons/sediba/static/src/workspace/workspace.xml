@@ -633,7 +633,12 @@
                                 </dl>
                             </header>
 
-                            <section t-if="d.body" class="o_sdb_doc" t-out="d.body"/>
+                            <t t-foreach="d.parts" t-as="part" t-key="part_index">
+                                <section t-if="part.html" class="o_sdb_doc" t-out="part.html"/>
+                                <SedibaFlowBlock t-else="" flow="part.flow"
+                                                 canEdit="state.nav.can_write and !d.viewing and !state.nav.reference ? true : false"
+                                                 onEdit="() => this.editFlow(part.flow.key)"/>
+                            </t>
 
                             <section t-if="d.questions.length" class="o_sdb_doc">
                                 <input t-if="d.questions.length > 3" type="search" class="o_sdb_input wide" placeholder="Find a question on this page"
@@ -740,6 +745,8 @@
                 <!-- One company doc, being written -->
                 <div t-elif="state.view === 'docedit'" class="o_sdb_split">
                     <t t-set="e" t-value="state.draft"/>
+                    <SedibaFlowEditor t-if="state.flowKey and e.flows[state.flowKey]" t-key="state.flowKey"
+                                      flow="e.flows[state.flowKey]" docName="e.name" onDone.bind="onFlowDone"/>
                     <div class="o_sdb_page">
                         <div class="o_sdb_bar">
                             <div class="o_sdb_crumbs">
@@ -763,10 +770,23 @@
                                        t-model="state.draft.summary" t-on-input="touch"/>
                             </header>
 
-                            <section>
+                            <section t-on-click="onTextClick">
                                 <h2>Text</h2>
                                 <Wysiwyg t-key="state.editorKey" config="editorConfig" toolbar="true" onLoad.bind="onEditorLoad"
                                          class="'o_sdb_editor'" contentClass="'o_sdb_doc o_sdb_editable'"/>
+                            </section>
+
+                            <section>
+                                <h2>Flow diagrams</h2>
+                                <p class="o_sdb_muted">A diagram sits in the text like a picture or a table. It goes in after the line your cursor is on, and you can type above and below it.</p>
+                                <div t-if="draftFlows.length" class="o_sdb_flow_list">
+                                    <div t-foreach="draftFlows" t-as="item" t-key="item.key" class="o_sdb_flow_row">
+                                        <span><b t-esc="item.flow.name"/> <span class="o_sdb_muted"><t t-esc="item.flow.steps.length"/> <t t-if="item.flow.steps.length === 1">step</t><t t-else="">steps</t></span></span>
+                                        <button type="button" class="o_sdb_btn" t-on-click="() => this.openFlow(item.key)">Edit diagram<span class="visually-hidden">: <t t-esc="item.flow.name"/></span></button>
+                                        <button type="button" class="o_sdb_link danger" t-on-click="() => this.removeFlow(item.key)">Remove<span class="visually-hidden">: <t t-esc="item.flow.name"/></span></button>
+                                    </div>
+                                </div>
+                                <button type="button" class="o_sdb_btn start" t-on-click="insertFlow">Insert flow diagram</button>
                             </section>
 
                             <section>
