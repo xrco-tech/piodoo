@@ -623,3 +623,112 @@ textarea.o_sfl_input { resize: vertical; }
 }
 
 .o_sfl_handset_end { color: #cbd5e1; }
+
+// Usage on a card: contacts reached, and their share of the most-reached step.
+.o_sfl_card_usage {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: auto;
+    color: #4b5563;
+    font-size: 11px;
+    line-height: 14px;
+    white-space: nowrap;
+}
+
+.o_sfl_card_bar {
+    flex: 1;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(31, 41, 55, .15);
+
+    span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: #1b2a41;
+    }
+}
+
+// Dragging: the card follows the pointer, and the page does not scroll with it.
+.o_sfl_card { touch-action: none; cursor: grab; }
+.o_sfl_card:active { cursor: grabbing; }
+
+// Device: the web chat widget inside a phone, a tablet or a browser window.
+.o_sfl_panel_iphone, .o_sfl_panel_pixel { flex-basis: 460px; }
+// The width is capped apart from the basis: the stylesheet compiler cannot
+// take the smaller of a px and a vw value.
+.o_sfl_panel_ipad { flex-basis: 900px; max-width: 70vw; }
+.o_sfl_panel_desktop { flex-basis: 1060px; max-width: 75vw; }
+
+.o_sfl_device_scroll {
+    flex: 1;
+    min-height: 0;
+    padding: 8px 0 16px;
+    overflow: auto;
+}
+
+.o_sfl_device_shell {
+    position: relative;
+    margin: 0 auto;
+    box-sizing: border-box;
+    background: #111418;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .25);
+
+    iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #ffffff;
+    }
+}
+
+.o_sfl_device_iphone {
+    width: 390px;
+    height: 740px;
+    padding: 12px;
+    border-radius: 48px;
+    iframe { border-radius: 36px; }
+}
+
+.o_sfl_device_pixel {
+    width: 390px;
+    height: 740px;
+    padding: 10px;
+    border-radius: 38px;
+    background: #222222;
+    iframe { border-radius: 30px; }
+}
+
+.o_sfl_device_ipad {
+    width: 800px;
+    height: 600px;
+    padding: 22px;
+    border-radius: 22px;
+    background: #333333;
+    iframe { border-radius: 8px; }
+}
+
+.o_sfl_device_desktop {
+    width: 1000px;
+    height: 620px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #dddddd;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .15);
+    iframe { height: calc(100% - 32px); }
+}
+
+.o_sfl_browser_bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-bottom: 1px solid #cfcfcf;
+    background: #e0e0e0;
+
+    span { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
+}

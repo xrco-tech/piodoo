@@ -216,3 +216,40 @@ class TestSedibaFlows(TransactionCase):
         self.Flows.try_stop(real.id)
         self.assertTrue(real.exists())
         self.assertEqual(partner.name, 'Real person')
+
+    def test_dragged_card_is_kept_and_tidied(self):
+        entry = self.bot.entry_step_id
+        self.assertFalse(self._step(self.Flows.load(self.flow_id), entry.id)['placed'])
+        self.Flows.move_step(entry.id, 340, -5)
+        step = self._step(self.Flows.load(self.flow_id), entry.id)
+        self.assertEqual((step['placed'], step['x'], step['y']), (True, 340, 0))
+        step = self._step(self.Flows.tidy(self.flow_id), entry.id)
+        self.assertFalse(step['placed'])
+
+    def test_usage_counts_contacts_not_tests(self):
+        self._try_flow()
+        entry = self.bot.entry_step_id
+        data = self.Flows.load(self.flow_id)
+        self.assertEqual(data['flow']['reached_most'], 0)
+        # A walk in Try it does not count.
+        res = self.Flows.try_start(self.flow_id, 'whatsapp', 'Tester', '', {})
+        self.assertEqual(self.Flows.load(self.flow_id)['flow']['reached_most'], 0)
+        # Two real contacts start; one of them answers the question.
+        self.bot.engine_mode = 'shadow'
+        Exec = self.env['comm.chatbot.executor']
+        people = self.env['res.partner'].create([{'name': 'One'}, {'name': 'Two'}])
+        talks = [Exec.start(self.bot, p, 'whatsapp') for p in people]
+        Exec._handle_input(talks[0], None, '30')
+        data = self.Flows.load(self.flow_id)
+        by_name = {s['name']: s['reached'] for s in data['steps']}
+        self.assertEqual(data['flow']['reached_most'], 2)
+        self.assertEqual(by_name[entry.name], 2)
+        self.assertEqual(sorted(by_name.values()), [1, 2, 2])
+        self.Flows.try_stop(res['session_id'])
+
+    def test_device_preview_needs_the_web_chat_addon(self):
+        url = self.Flows.load(self.flow_id)['flow']['device_url']
+        if 'comm.bot.web.session' in self.env:
+            self.assertEqual(url, '/comm_chatbot_web/embed/%s?preview=1' % self.flow_id)
+        else:
+            self.assertEqual(url, '')
