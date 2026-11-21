@@ -438,39 +438,104 @@
 
     <!-- ── Panel: try the flow ───────────────────────────────────────────── -->
     <t t-name="sediba_flows.Try">
+        <t t-set="sim" t-value="state.sim"/>
         <div class="o_sfl_form o_sfl_try">
-            <t t-if="!flowChannels.length">
-                <div class="o_sfl_note">Choose a channel for this flow first: open the Flow tab and tick one under Runs on.</div>
-            </t>
-            <t t-else="">
+            <div t-if="!flowChannels.length" class="o_sfl_note">Choose a channel for this flow first: open the Flow tab and tick one under Runs on.</div>
+
+            <!-- Before a walk: who the test contact is, and the variables to start with. -->
+            <t t-elif="!sim.session">
                 <div class="o_sfl_field">
                     <label for="o_sfl_try_channel">Try it on</label>
-                    <div class="o_sfl_choice_then">
-                        <select id="o_sfl_try_channel" class="o_sfl_input" t-model="state.sim.channel">
-                            <option t-foreach="flowChannels" t-as="channel" t-key="channel.id" t-att-value="channel.code" t-esc="channel.name"/>
-                        </select>
-                        <button type="button" class="btn btn-primary" t-att-disabled="state.sim.busy" t-on-click="simStart">
-                            <t t-if="state.sim.session">Start again</t><t t-else="">Start</t>
-                        </button>
-                    </div>
-                    <span class="o_sfl_muted o_sfl_small">You are a test contact. Nothing is sent and AI steps are not run.</span>
+                    <select id="o_sfl_try_channel" class="o_sfl_input" t-model="sim.channel">
+                        <option t-foreach="flowChannels" t-as="channel" t-key="channel.id" t-att-value="channel.code" t-esc="channel.name"/>
+                    </select>
                 </div>
-                <div t-if="state.sim.error" class="o_sfl_note" t-esc="state.sim.error"/>
-                <div class="o_sfl_chat" aria-live="polite">
-                    <div t-foreach="state.sim.messages" t-as="message" t-key="message_index"
-                         t-att-class="'o_sfl_bubble ' + (message.direction === 'inbound' ? 'o_sfl_mine' : '')" t-esc="message.body"/>
-                    <div t-if="state.sim.waiting === 'done'" class="o_sfl_muted o_sfl_small">The flow has ended.</div>
-                </div>
-                <div t-if="state.sim.waiting === 'menu' and state.sim.options.length" class="o_sfl_quick">
-                    <button t-foreach="state.sim.options" t-as="option" t-key="option_index" type="button" class="btn btn-light"
-                            t-att-disabled="state.sim.busy" t-on-click="() => this.simSend(option.label)" t-esc="option.label"/>
-                </div>
-                <div t-if="state.sim.session and state.sim.waiting !== 'done'" class="o_sfl_choice_then">
-                    <input type="text" class="o_sfl_input" aria-label="Your reply" placeholder="Reply as the contact"
-                           t-ref="simInput" t-model="state.sim.input" t-on-keydown="simKey"/>
-                    <button type="button" class="btn btn-light" t-att-disabled="state.sim.busy" t-on-click="() => this.simSend()">Send</button>
-                </div>
+                <t t-call="sediba_flows.TryContact"/>
+                <div t-if="sim.error" class="o_sfl_note" t-esc="sim.error"/>
+                <button type="button" class="btn btn-primary" t-att-disabled="sim.busy or !sim.ready" t-on-click="simStart">Start</button>
+                <span class="o_sfl_muted o_sfl_small">You walk the flow as this test contact. Nothing is sent and AI steps are not run.</span>
             </t>
+
+            <!-- During a walk. -->
+            <t t-else="">
+                <div class="o_sfl_try_head">
+                    <span class="o_sfl_try_channel" t-esc="simChannelName"/>
+                    <button type="button" class="o_sfl_try_who" t-att-aria-expanded="sim.editing ? 'true' : 'false'"
+                            title="Change the contact or the variables" t-on-click="() => this.state.sim.editing = !this.state.sim.editing">
+                        <i class="fa fa-user" aria-hidden="true"/>
+                        <span t-esc="sim.name or sim.mobile"/>
+                        <i class="fa fa-pencil" aria-hidden="true"/>
+                    </button>
+                    <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Start again" title="Start again" t-on-click="simRestart">
+                        <i class="fa fa-refresh" aria-hidden="true"/>
+                    </button>
+                </div>
+
+                <t t-if="sim.editing">
+                    <b>Change the contact and variables</b>
+                    <t t-call="sediba_flows.TryContact"/>
+                    <button type="button" class="btn btn-primary" t-att-disabled="sim.busy" t-on-click="simApply">Apply changes</button>
+                    <span class="o_sfl_muted o_sfl_small">The walk carries on from where it is, with these values.</span>
+                </t>
+                <t t-else="">
+                    <div t-if="sim.error" class="o_sfl_note" t-esc="sim.error"/>
+
+                    <!-- USSD: one handset screen at a time. -->
+                    <div t-if="sim.channel === 'ussd'" class="o_sfl_handset" aria-live="polite">
+                        <div class="o_sfl_handset_text" t-esc="simScreen"/>
+                        <div t-if="sim.waiting === 'done'" class="o_sfl_handset_end">Session ended.</div>
+                    </div>
+
+                    <!-- Every other channel: the conversation so far. -->
+                    <div t-else="" t-att-class="'o_sfl_chat o_sfl_chat_' + sim.channel" aria-live="polite">
+                        <div t-foreach="sim.messages" t-as="message" t-key="message_index"
+                             t-att-class="'o_sfl_bubble ' + (message.direction === 'inbound' ? 'o_sfl_mine' : '')" t-out="simBody(message)"/>
+                        <div t-if="simButtons.length" class="o_sfl_wa_buttons">
+                            <button t-foreach="simButtons" t-as="option" t-key="option_index" type="button"
+                                    t-att-disabled="sim.busy" t-on-click="() => this.simSend(option.label)" t-esc="option.label"/>
+                        </div>
+                        <div t-if="sim.waiting === 'done'" class="o_sfl_muted o_sfl_small">The flow has ended.</div>
+                    </div>
+
+                    <div t-if="sim.waiting === 'menu' and sim.options.length and !simButtons.length and sim.channel !== 'ussd'" class="o_sfl_quick">
+                        <button t-foreach="sim.options" t-as="option" t-key="option_index" type="button" class="btn btn-light"
+                                t-att-disabled="sim.busy" t-on-click="() => this.simSend(option.label)" t-esc="option.label"/>
+                    </div>
+                    <div t-if="sim.waiting !== 'done'" class="o_sfl_choice_then">
+                        <input type="text" class="o_sfl_input" aria-label="Your reply"
+                               t-att-placeholder="sim.channel === 'ussd' ? 'Type a number or an answer' : 'Reply as the contact'"
+                               t-ref="simInput" t-model="sim.input" t-on-keydown="simKey"/>
+                        <button type="button" class="btn btn-light" t-att-disabled="sim.busy" t-on-click="() => this.simSend()">Send</button>
+                    </div>
+                </t>
+            </t>
+        </div>
+    </t>
+
+    <!-- The test contact and the variables, before a walk and while changing them. -->
+    <t t-name="sediba_flows.TryContact">
+        <t t-set="sim" t-value="state.sim"/>
+        <div class="o_sfl_field">
+            <label for="o_sfl_try_name">Contact's name</label>
+            <input id="o_sfl_try_name" type="text" class="o_sfl_input" t-model="sim.name"/>
+        </div>
+        <div class="o_sfl_field">
+            <label for="o_sfl_try_mobile">Mobile number</label>
+            <input id="o_sfl_try_mobile" type="tel" class="o_sfl_input" t-model="sim.mobile"/>
+        </div>
+        <div t-foreach="sim.groups" t-as="group" t-key="group.flow_id" class="o_sfl_group">
+            <b>
+                <t t-if="group.is_this_flow">Variables</t>
+                <t t-else="">Variables of “<t t-esc="group.flow_name"/>”</t>
+            </b>
+            <div t-foreach="group.variables" t-as="variable" t-key="variable.name" class="o_sfl_field">
+                <label t-att-for="'o_sfl_try_var_' + variable.name">
+                    <t t-esc="variable.name"/> <span class="o_sfl_small">(<t t-esc="variable.type"/>)</span>
+                </label>
+                <input t-att-id="'o_sfl_try_var_' + variable.name" class="o_sfl_input"
+                       t-att-type="variable.type === 'int' or variable.type === 'float' ? 'number' : 'text'"
+                       placeholder="Not set" t-model="variable.value"/>
+            </div>
         </div>
     </t>
 

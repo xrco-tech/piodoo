@@ -156,3 +156,63 @@ class TestSedibaFlows(TransactionCase):
         self.assertEqual([(o['label'], o['is_default']) for o in step['options']],
                          [('sfm', False), ('Otherwise', True)])
         self.assertEqual(entry.option_ids.sorted('sequence')[0].value, 'sfm')
+
+    def _try_flow(self):
+        """Welcome by name, then a question whose answer is kept."""
+        Var = self.env['comm.bot.variable']
+        Var.create({'bot_id': self.bot.id, 'name': 'town', 'type': 'string',
+                    'default_value': 'Soweto'})
+        Var.create({'bot_id': self.bot.id, 'name': 'age', 'type': 'int'})
+        entry = self.bot.entry_step_id
+        self.Flows.save_step(entry.id, {
+            'body': 'Hi {{contact.first_name}} from {{state.town}}'})
+        ask = self.Flows.add_step(self.flow_id, entry.id)['new_id']
+        self.Flows.save_step(ask, {'kind': 'input', 'body': 'Age?',
+                                   'input_type': 'number', 'save_to': 'age'})
+        last = self.Flows.add_step(self.flow_id, ask)['new_id']
+        self.Flows.save_step(last, {'body': '{{state.age}} in {{state.town}}'})
+
+    def test_try_it_setup_lists_contact_and_variables(self):
+        self._try_flow()
+        setup = self.Flows.try_setup(self.flow_id)
+        self.assertEqual(setup['name'], 'Test contact')
+        group = setup['groups'][0]
+        self.assertTrue(group['is_this_flow'])
+        self.assertEqual([(v['name'], v['value']) for v in group['variables']],
+                         [('age', ''), ('town', 'Soweto')])
+
+    def test_try_it_walk_with_contact_and_variables(self):
+        self._try_flow()
+        res = self.Flows.try_start(self.flow_id, 'whatsapp', 'Thabo M',
+                                   '+27600000009', {'town': 'Durban', 'age': ''})
+        self.assertEqual([m['body'] for m in res['messages']],
+                         ['Hi Thabo from Durban', 'Age?'])
+        self.assertEqual(res['waiting'], 'input')
+        self.assertEqual(res['variables'], {'town': 'Durban'})
+        # Change a variable in the middle of the walk, then answer.
+        res = self.Flows.try_apply(res['session_id'], 'Thabo M', '+27600000009',
+                                   {'town': 'Pretoria'})
+        res = self.Flows.try_reply(res['session_id'], '31')
+        self.assertEqual(res['messages'][-1]['body'], '31 in Pretoria')
+        self.assertEqual(res['variables'], {'town': 'Pretoria', 'age': '31'})
+        # The test contact is this user's own, archived, and reused.
+        contact = self.env['res.partner'].with_context(active_test=False).search(
+            [('ref', '=', 'sediba-flows-try-%s' % self.env.uid)])
+        self.assertEqual((len(contact), contact.active, contact.name),
+                         (1, False, 'Thabo M'))
+        self.assertEqual(self.Flows.try_setup(self.flow_id)['name'], 'Thabo M')
+        self.Flows.try_stop(res['session_id'])
+        self.assertFalse(self.env['comm.conversation'].browse(
+            int(res['session_id'])).exists())
+
+    def test_try_it_never_touches_a_real_conversation(self):
+        partner = self.env['res.partner'].create({'name': 'Real person'})
+        real = self.env['comm.conversation'].create({
+            'partner_id': partner.id, 'bot_id': self.bot.id,
+            'primary_channel_id': self.wa.id,
+            'current_step_id': self.bot.entry_step_id.id})
+        self.assertIn('error', self.Flows.try_reply(real.id, 'hello'))
+        self.assertIn('error', self.Flows.try_apply(real.id, 'X', '', {'a': 'b'}))
+        self.Flows.try_stop(real.id)
+        self.assertTrue(real.exists())
+        self.assertEqual(partner.name, 'Real person')

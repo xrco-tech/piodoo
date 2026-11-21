@@ -9,6 +9,7 @@ engine's own renderer, so the builder shows what the engine will send.
 from odoo import _, api, models
 from odoo.exceptions import UserError
 
+from odoo.addons.comm_chatbot.controllers.bot_flow import _sim_response
 from odoo.addons.comm_chatbot.models.runtime.adapter_registry import get_adapter
 from odoo.addons.comm_chatbot.models.runtime.renderer import (
     CapabilityMismatchError, RenderError)
@@ -348,3 +349,170 @@ class SedibaFlows(models.AbstractModel):
             bot.entry_step_id = after
         step.unlink()
         return self.load(bot.id)
+
+    # ── Try it ───────────────────────────────────────────────────────────
+    #
+    # A walk of the flow as a test contact. Nothing is sent: the engine runs
+    # with comm_chatbot_force_shadow, and AI steps are skipped.
+
+    def _try_contact(self):
+        """This user's own test contact. It is kept archived so that a real
+        message from the same number is never matched to it."""
+        Partner = self.env['res.partner'].sudo().with_context(active_test=False)
+        ref = 'sediba-flows-try-%s' % self.env.uid
+        contact = Partner.search([('ref', '=', ref)], limit=1)
+        if not contact:
+            contact = Partner.create({
+                'name': _("Test contact"), 'mobile': '+27600000001',
+                'ref': ref, 'active': False,
+            })
+        return contact
+
+    def _try_flows(self, bot):
+        """The flow and every flow it can go into, the flow itself first."""
+        flows, todo = bot, bot
+        while todo:
+            todo = todo.step_ids.jump_target_bot_id - flows
+            flows |= todo
+        return flows
+
+    def _try_typed(self, kind, text):
+        """A value typed in the panel, as the variable's declared type."""
+        text = (text or '').strip() if isinstance(text, str) else text
+        try:
+            if kind == 'int':
+                return int(text)
+            if kind == 'float':
+                return float(text)
+        except (TypeError, ValueError):
+            return text
+        if kind == 'bool' and isinstance(text, str):
+            return text.casefold() not in ('', '0', 'no', 'false')
+        return text
+
+    def _try_state(self, bot, variables):
+        """{name: value} for the conversation, from what was typed. An empty
+        box means "not set", so the variable is left out."""
+        kinds = {v.name: v.type for v in self._try_flows(bot).variable_ids}
+        return {name: self._try_typed(kinds.get(name), value)
+                for name, value in (variables or {}).items()
+                if value not in (None, False, '')}
+
+    def _try_result(self, conversation):
+        res = _sim_response(self.env, conversation, str(conversation.id))
+        state = conversation.state or {}
+        res['variables'] = {k: ('' if v is None else str(v))
+                            for k, v in state.items() if not k.startswith('__')}
+        return res
+
+    @api.model
+    def try_setup(self, bot_id):
+        """What the panel asks before a walk: who the test contact is, and
+        the variables of this flow and of the flows it goes into."""
+        bot = self.env['comm.bot'].browse(bot_id)
+        contact = self._try_contact()
+        seen, groups = set(), []
+        for flow in self._try_flows(bot):
+            rows = []
+            for var in flow.variable_ids.sorted('name'):
+                if var.name in seen:
+                    continue
+                seen.add(var.name)
+                rows.append({'name': var.name, 'type': var.type,
+                             'value': var.default_value or ''})
+            if rows:
+                groups.append({'flow_id': flow.id, 'flow_name': flow.name,
+                               'is_this_flow': flow == bot, 'variables': rows})
+        return {'name': contact.name, 'mobile': contact.mobile or '',
+                'groups': groups}
+
+    @api.model
+    def try_start(self, bot_id, channel_code, name=None, mobile=None, variables=None):
+        bot = self.env['comm.bot'].browse(bot_id)
+        channel = self.env['comm.channel'].get_by_code(channel_code)
+        if not bot.entry_step_id:
+            return {'error': _("This flow has no first step yet.")}
+        if not channel:
+            return {'error': _("That channel is not available.")}
+        contact = self._try_contact()
+        contact.write({'name': (name or '').strip() or _("Test contact"),
+                       'mobile': (mobile or '').strip()})
+        conversation = self.env['comm.conversation'].create({
+            'partner_id': contact.id,
+            'bot_id': bot.id,
+            'primary_channel_id': channel.id,
+            'current_step_id': bot.entry_step_id.id,
+            'outcome': '__preview_walker__',
+            'lifecycle_state': 'open',
+            'state': self._try_state(bot, variables),
+        })
+        leg = self.env['comm.conversation.leg'].create({
+            'conversation_id': conversation.id,
+            'channel_id': channel.id,
+            'external_session_id': 'sediba-flows-try-%s' % conversation.id,
+        })
+        self.env['comm.chatbot.executor'].with_context(
+            comm_chatbot_force_shadow=True, comm_chatbot_skip_llm=True,
+        ).advance(conversation, leg)
+        return self._try_result(conversation)
+
+    def _try_conversation(self, session_id):
+        """The walk with this id, or nothing. Only walks started here count:
+        a real contact's conversation is never replied to, changed or
+        removed from this screen."""
+        conversation = self.env['comm.conversation'].browse(int(session_id)).exists()
+        if any((leg.external_session_id or '').startswith('sediba-flows-try-')
+               for leg in conversation.leg_ids):
+            return conversation
+        return self.env['comm.conversation']
+
+    @api.model
+    def try_reply(self, session_id, text):
+        conversation = self._try_conversation(session_id)
+        if not conversation or conversation.lifecycle_state in ('closed', 'timeout'):
+            return {'error': _("This walk has ended. Start again.")}
+        leg = conversation.leg_ids.filtered(lambda l: not l.closed_at)[:1]
+        step = conversation.current_step_id
+        self.env['comm.interaction'].create({
+            'conversation_id': conversation.id,
+            'leg_id': leg.id,
+            'channel_id': conversation.primary_channel_id.id,
+            'direction': 'inbound',
+            'raw_body': text or '',
+            'status': 'received',
+            'step_id': step.id,
+        })
+        Exec = self.env['comm.chatbot.executor'].with_context(
+            comm_chatbot_force_shadow=True, comm_chatbot_skip_llm=True)
+        if step.kind in ('menu', 'input'):
+            Exec._handle_input(conversation, leg, text or '')
+        else:
+            Exec.advance(conversation, leg)
+        return self._try_result(conversation)
+
+    @api.model
+    def try_apply(self, session_id, name=None, mobile=None, variables=None):
+        """Change the test contact or the variables in the middle of a walk,
+        without starting again."""
+        conversation = self._try_conversation(session_id)
+        if not conversation:
+            return {'error': _("This walk has ended. Start again.")}
+        contact = self._try_contact()
+        if conversation.partner_id == contact:
+            contact.write({'name': (name or '').strip() or contact.name,
+                           'mobile': (mobile or '').strip()})
+        state = {k: v for k, v in (conversation.state or {}).items()
+                 if k.startswith('__')}
+        root = self.env['comm.bot'].browse(
+            ((conversation.state or {}).get('__stack') or [{}])[0].get('bot_id')
+        ).exists() or conversation.bot_id
+        state.update(self._try_state(root, variables))
+        conversation.state = state
+        return self._try_result(conversation)
+
+    @api.model
+    def try_stop(self, session_id):
+        conversation = self._try_conversation(session_id)
+        if conversation:
+            conversation.sudo().unlink()
+        return True

@@ -1,11 +1,11 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
+import { Component, markup, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { _t } from "@web/core/l10n/translation";
-import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { escape as escapeHTML } from "@web/core/utils/strings";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 const MODEL = "sediba.flows";
@@ -567,15 +567,59 @@ export class SedibaFlows extends Component {
     // ── Try it ───────────────────────────────────────────────────────────
 
     freshSim() {
-        return { channel: "", session: false, messages: [], waiting: "none", options: [], input: "", busy: false, error: "" };
+        return {
+            channel: "",
+            session: false,
+            messages: [],
+            waiting: "none",
+            options: [],
+            input: "",
+            busy: false,
+            error: "",
+            // Who the test contact is, and the variables to start with.
+            name: "",
+            mobile: "",
+            groups: [],
+            ready: false,
+            editing: false,
+        };
     }
 
-    openTry() {
+    async openTry() {
         this.state.panel = "try";
         const sim = this.state.sim;
         if (!sim.channel || !this.flowChannels.some((c) => c.code === sim.channel)) {
             sim.channel = this.flowChannels.length ? this.flowChannels[0].code : "";
         }
+        if (!sim.session) {
+            await this.simSetup();
+        }
+    }
+
+    /** Ask who the test contact is and which variables the flow has. */
+    async simSetup() {
+        const sim = this.state.sim;
+        const setup = await this.orm.call(MODEL, "try_setup", [this.state.data.flow.id]);
+        sim.name = setup.name;
+        sim.mobile = setup.mobile;
+        sim.groups = setup.groups;
+        sim.ready = true;
+    }
+
+    get simChannelName() {
+        const channel = this.flowChannels.find((c) => c.code === this.state.sim.channel);
+        return channel ? channel.name : "";
+    }
+
+    /** The values typed for the variables, as {name: text}. */
+    simValues() {
+        const values = {};
+        for (const group of this.state.sim.groups) {
+            for (const variable of group.variables) {
+                values[variable.name] = variable.value;
+            }
+        }
+        return values;
     }
 
     simTake(res) {
@@ -590,23 +634,50 @@ export class SedibaFlows extends Component {
         sim.messages = res.messages;
         sim.waiting = res.waiting;
         sim.options = res.current_options || [];
+        // Show what each variable holds now, so the next change starts from it.
+        for (const group of sim.groups) {
+            for (const variable of group.variables) {
+                variable.value = res.variables[variable.name] ?? "";
+            }
+        }
     }
 
     async simStart() {
-        await this.simReset();
         const sim = this.state.sim;
-        if (!sim.channel) {
+        if (!sim.channel || sim.busy) {
+            return;
+        }
+        const values = this.simValues();
+        await this.simStop();
+        sim.busy = true;
+        sim.editing = false;
+        this.simTake(
+            await this.orm.call(MODEL, "try_start", [
+                this.state.data.flow.id,
+                sim.channel,
+                sim.name,
+                sim.mobile,
+                values,
+            ])
+        );
+    }
+
+    /** Back to the form that asks who the contact is, with fresh values. */
+    async simRestart() {
+        await this.simStop();
+        await this.simSetup();
+    }
+
+    async simApply() {
+        const sim = this.state.sim;
+        if (!sim.session || sim.busy) {
             return;
         }
         sim.busy = true;
         this.simTake(
-            await rpc("/comm_chatbot/bot_flow/simulate/start", {
-                bot_id: this.state.data.flow.id,
-                channel_code: sim.channel,
-                persona_name: "Test contact",
-                persona_mobile: "+27600000000",
-            })
+            await this.orm.call(MODEL, "try_apply", [sim.session, sim.name, sim.mobile, this.simValues()])
         );
+        sim.editing = false;
     }
 
     async simSend(text) {
@@ -620,12 +691,7 @@ export class SedibaFlows extends Component {
             this.simInput.el.value = "";
         }
         sim.busy = true;
-        this.simTake(
-            await rpc("/comm_chatbot/bot_flow/simulate/reply", {
-                session_id: sim.session,
-                user_input: body,
-            })
-        );
+        this.simTake(await this.orm.call(MODEL, "try_reply", [sim.session, body]));
     }
 
     simKey(ev) {
@@ -634,17 +700,65 @@ export class SedibaFlows extends Component {
         }
     }
 
-    async simReset() {
+    async simStop() {
         const sim = this.state.sim;
         if (sim.session) {
             const session = sim.session;
             sim.session = false;
-            await rpc("/comm_chatbot/bot_flow/simulate/reset", { session_id: session });
+            await this.orm.call(MODEL, "try_stop", [session]);
         }
         sim.messages = [];
         sim.waiting = "none";
         sim.options = [];
         sim.error = "";
+    }
+
+    // Kept under its first name: leaving the builder calls it.
+    simReset() {
+        return this.simStop();
+    }
+
+    /**
+     * A USSD handset shows one screen at a time: what the flow said since the
+     * contact's last reply.
+     */
+    get simScreen() {
+        const messages = this.state.sim.messages;
+        let from = 0;
+        messages.forEach((m, i) => {
+            if (m.direction === "inbound") {
+                from = i + 1;
+            }
+        });
+        return messages
+            .slice(from)
+            .map((m) => m.body)
+            .join("\n");
+    }
+
+    /** WhatsApp shows a menu's choices as buttons, so the numbered list is left out of the text. */
+    get simButtons() {
+        const sim = this.state.sim;
+        return sim.channel === "whatsapp" && sim.waiting === "menu" ? sim.options : [];
+    }
+
+    /**
+     * The text of one message as its channel shows it. WhatsApp turns *bold*,
+     * _italic_, ~strike~ and ```code``` into formatting; every other channel
+     * shows the characters as typed.
+     */
+    simBody(message) {
+        const escaped = escapeHTML(message.body || "");
+        if (this.state.sim.channel !== "whatsapp") {
+            return markup(escaped);
+        }
+        return markup(
+            escaped
+                .replace(/```([^`]+)```/g, "<code>$1</code>")
+                .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
+                .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?])/g, "$1<em>$2</em>")
+                .replace(/~([^~\n]+)~/g, "<s>$1</s>")
+        );
     }
 }
 
