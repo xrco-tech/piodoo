@@ -13,7 +13,7 @@ const MODEL = "sediba.flows";
 // Card and gap sizes of the canvas, in px. The layout is worked out from
 // these alone, so no card has to be measured.
 const CARD_W = 220;
-const CARD_H = 88;
+const CARD_H = 110;
 const GAP_X = 40;
 const GAP_Y = 64;
 const PAD = 32;
@@ -48,6 +48,14 @@ const INPUT_TYPES = [
     ["email", _t("An email address")],
     ["phone", _t("A phone number")],
     ["media", _t("A photo or file")],
+];
+
+// Frames the Device tab can show the web chat widget in.
+const DEVICES = [
+    ["iphone", _t("iPhone")],
+    ["pixel", _t("Pixel")],
+    ["ipad", _t("iPad")],
+    ["desktop", _t("Desktop")],
 ];
 
 const BRANCHING = ["menu", "condition"];
@@ -85,9 +93,10 @@ function leadsTo(step) {
 /**
  * Place the steps as a tree that starts at the first step. A step that is
  * reached a second time is not drawn twice: the card that leads back to it
- * says so in words. Steps nothing leads to sit beside the tree.
+ * says so in words. Steps nothing leads to sit beside the tree. A card that
+ * was dragged keeps its place; `drag` is the card being dragged right now.
  */
-export function layoutFlow(steps, entryId) {
+export function layoutFlow(steps, entryId, drag) {
     const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
     const seen = new Set();
     const make = (id, level, label) => {
@@ -129,34 +138,49 @@ export function layoutFlow(steps, entryId) {
     roots.forEach(place);
 
     const nodes = [];
-    const edges = [];
     let deepest = 0;
     const walk = (node, parent) => {
+        node.parent = parent;
         node.x = PAD + node.col * (CARD_W + GAP_X);
         node.y = PAD + node.level * (CARD_H + GAP_Y);
+        // A card that was dragged stays where it was put.
+        if (node.step.placed) {
+            node.x = node.step.x;
+            node.y = node.step.y;
+        }
+        if (drag && drag.id === node.step.id) {
+            node.x = drag.x;
+            node.y = drag.y;
+        }
         deepest = Math.max(deepest, node.level);
         nodes.push(node);
-        if (parent) {
-            const x1 = parent.x + CARD_W / 2;
-            const y1 = parent.y + CARD_H;
-            const x2 = node.x + CARD_W / 2;
-            const y2 = node.y;
-            const mid = (y1 + y2) / 2;
-            edges.push({
-                key: `${parent.step.id}-${node.step.id}`,
-                path: `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2 - 3}`,
-                label: node.label,
-                labelStyle: `left:${x2 - CARD_W / 2}px;top:${y2 - 26}px;width:${CARD_W}px;`,
-            });
-        }
         node.kids.forEach((kid) => walk(kid, node));
     };
     roots.forEach((root) => walk(root, null));
+
+    const edges = [];
+    for (const node of nodes) {
+        const parent = node.parent;
+        if (!parent) {
+            continue;
+        }
+        const x1 = parent.x + CARD_W / 2;
+        const y1 = parent.y + CARD_H;
+        const x2 = node.x + CARD_W / 2;
+        const y2 = node.y;
+        const mid = (y1 + y2) / 2;
+        edges.push({
+            key: `${parent.step.id}-${node.step.id}`,
+            path: `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2 - 3}`,
+            label: node.label,
+            labelStyle: `left:${x2 - CARD_W / 2}px;top:${y2 - 26}px;width:${CARD_W}px;`,
+        });
+    }
     return {
         nodes,
         edges,
-        width: PAD * 2 + Math.max(column, 1) * (CARD_W + GAP_X) - GAP_X,
-        height: PAD * 2 + (deepest + 1) * (CARD_H + GAP_Y) - GAP_Y,
+        width: Math.max(...nodes.map((n) => n.x), 0) + CARD_W + PAD,
+        height: Math.max(...nodes.map((n) => n.y), 0) + CARD_H + PAD,
     };
 }
 
@@ -189,6 +213,10 @@ export class SedibaFlows extends Component {
             panel: "step",
             zoom: 1,
             wording: false,
+            // The card being dragged: {id, x, y}.
+            drag: null,
+            device: "iphone",
+            deviceKey: 0,
             busy: false,
             sim: this.freshSim(),
         });
@@ -259,7 +287,7 @@ export class SedibaFlows extends Component {
     }
 
     get layout() {
-        return layoutFlow(this.state.data.steps, this.state.data.flow.entry_id);
+        return layoutFlow(this.state.data.steps, this.state.data.flow.entry_id, this.state.drag);
     }
 
     get canvasStyle() {
@@ -336,6 +364,120 @@ export class SedibaFlows extends Component {
             return "skip";
         }
         return outs.some((o) => o.state === "warn") ? "warn" : "ok";
+    }
+
+    // ── Usage ────────────────────────────────────────────────────────────
+
+    /** Only steps that say something are counted; the others send nothing to count. */
+    hasUsage(step) {
+        return ["message", "menu", "input", "handoff", "llm", "channel_switch"].includes(step.kind);
+    }
+
+    /** Contacts this step was reached by, as a share of the most-reached step. */
+    reachPct(step) {
+        const most = this.state.data.flow.reached_most;
+        return most ? Math.round((step.reached / most) * 100) : 0;
+    }
+
+    /** How many fewer contacts reached this step than the step that leads to it, in %. */
+    dropOff(node) {
+        const before = node.parent && node.parent.step.reached;
+        if (!before || !this.hasUsage(node.parent.step)) {
+            return null;
+        }
+        const pct = Math.round((1 - node.step.reached / before) * 100);
+        return pct > 0 ? pct : null;
+    }
+
+    usageTitle(node) {
+        const drop = this.dropOff(node);
+        let title = `${node.step.reached} ${_t("contacts reached this step")}, ${this.reachPct(node.step)}% ${_t("of the most-reached step")}.`;
+        if (drop !== null) {
+            title += ` ${drop}% ${_t("fewer than the step before")}.`;
+        }
+        return title;
+    }
+
+    // ── Dragging a card ──────────────────────────────────────────────────
+
+    cardDown(ev, node) {
+        if (!this.canEdit || ev.button !== 0) {
+            return;
+        }
+        this.dragging = { id: node.step.id, sx: ev.clientX, sy: ev.clientY, ox: node.x, oy: node.y, moved: false };
+        ev.currentTarget.setPointerCapture(ev.pointerId);
+    }
+
+    cardMove(ev) {
+        const d = this.dragging;
+        if (!d) {
+            return;
+        }
+        const dx = (ev.clientX - d.sx) / this.state.zoom;
+        const dy = (ev.clientY - d.sy) / this.state.zoom;
+        // A few pixels of wobble is still a click, not a drag.
+        if (!d.moved && Math.hypot(dx, dy) < 5) {
+            return;
+        }
+        d.moved = true;
+        this.state.drag = {
+            id: d.id,
+            x: Math.max(0, Math.round(d.ox + dx)),
+            y: Math.max(0, Math.round(d.oy + dy)),
+        };
+    }
+
+    async cardUp() {
+        const d = this.dragging;
+        this.dragging = null;
+        const place = this.state.drag;
+        if (!d || !d.moved || !place) {
+            this.state.drag = null;
+            return;
+        }
+        // The click that follows letting go must not select the card.
+        this.justDragged = true;
+        const step = this.state.data.steps.find((s) => s.id === d.id);
+        Object.assign(step, { placed: true, x: place.x, y: place.y });
+        this.state.drag = null;
+        await this.orm.call(MODEL, "move_step", [d.id, place.x, place.y]);
+    }
+
+    cardClick(id) {
+        if (this.justDragged) {
+            this.justDragged = false;
+            return;
+        }
+        this.select(id);
+    }
+
+    get anyPlaced() {
+        return this.state.data.steps.some((s) => s.placed);
+    }
+
+    async tidy() {
+        this.edits++;
+        this.setData(await this.orm.call(MODEL, "tidy", [this.state.data.flow.id]), this.state.selectedId);
+    }
+
+    // ── Device ───────────────────────────────────────────────────────────
+
+    get devices() {
+        return DEVICES;
+    }
+
+    openDevice() {
+        this.state.panel = "device";
+        this.state.deviceKey++;
+    }
+
+    pickDevice(key) {
+        this.state.device = key;
+    }
+
+    /** The preview's address; the counter makes "Start again" load it afresh. */
+    get deviceUrl() {
+        return `${this.state.data.flow.device_url}&_ts=${this.state.deviceKey}`;
     }
 
     select(id) {

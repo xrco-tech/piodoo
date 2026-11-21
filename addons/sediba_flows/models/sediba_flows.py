@@ -79,6 +79,7 @@ class SedibaFlows(models.AbstractModel):
         if not bot:
             raise UserError(_("This flow no longer exists."))
         steps = bot.step_ids
+        reached = self._reached(bot)
         return {
             'can_edit': bot.has_access('write'),
             'flow': {
@@ -87,11 +88,16 @@ class SedibaFlows(models.AbstractModel):
                 'status': bot.engine_mode,
                 'entry_id': bot.entry_step_id.id or False,
                 'channel_ids': bot.channel_ids.ids,
+                # The most contacts any one step was reached by: what the
+                # share on each card is a share of.
+                'reached_most': max(reached.values(), default=0),
+                'device_url': self._device_url(bot),
             },
             'channels': self._channels(),
             'flows': [{'id': b.id, 'name': b.name}
                       for b in self.env['comm.bot'].search([('id', '!=', bot.id)])],
-            'steps': [self._step(s, bot) for s in steps],
+            'steps': [dict(self._step(s, bot), reached=reached.get(s.id, 0))
+                      for s in steps],
         }
 
     def _step(self, step, bot):
@@ -101,6 +107,9 @@ class SedibaFlows(models.AbstractModel):
             'name': step.name,
             'kind': step.kind,
             'body': step.body or '',
+            'placed': step.flow_placed,
+            'x': step.flow_x,
+            'y': step.flow_y,
             'next_id': step.next_step_id.id or False,
             'options': [{
                 'id': o.id,
@@ -203,6 +212,39 @@ class SedibaFlows(models.AbstractModel):
                             chars=res['chars'], limit=res['limit'])
         return res
 
+    def _reached(self, bot):
+        """{step id: how many real conversations the step spoke in}. Walks in
+        Try it, the engine's own simulator and the web widget's preview are
+        left out, so the numbers are contacts, not tests."""
+        Interaction = self.env['comm.interaction']
+        domain = [
+            ('step_id', 'in', bot.step_ids.ids),
+            ('direction', '=', 'outbound'),
+            ('conversation_id.outcome', '!=', '__preview_walker__'),
+        ]
+        tests = self.env['comm.conversation.leg'].search([
+            ('conversation_id.bot_id', '=', bot.id),
+            '|', '|', ('external_session_id', '=like', 'sediba-flows-try-%'),
+            ('external_session_id', '=like', 'bot-flow-%'),
+            ('external_session_id', '=', 'dry-walk'),
+        ]).conversation_id.ids
+        if 'comm.bot.web.session' in self.env:
+            tests += self.env['comm.bot.web.session'].sudo().search([
+                ('is_preview', '=', True),
+                ('conversation_id.bot_id', '=', bot.id),
+            ]).conversation_id.ids
+        if tests:
+            domain.append(('conversation_id', 'not in', tests))
+        return {step.id: count for step, count in Interaction._read_group(
+            domain, ['step_id'], ['conversation_id:count_distinct'])}
+
+    def _device_url(self, bot):
+        """The address of the web chat widget's preview of this flow, when
+        the web chat add-on is installed. The preview sends nothing."""
+        if 'comm.bot.web.session' not in self.env:
+            return ''
+        return '/comm_chatbot_web/embed/%s?preview=1' % bot.id
+
     # ── Writing ──────────────────────────────────────────────────────────
 
     @api.model
@@ -235,6 +277,24 @@ class SedibaFlows(models.AbstractModel):
                 raise UserError(_("Choose at least one channel before going live."))
             write['engine_mode'] = vals['status']
         bot.write(write)
+        return self.load(bot.id)
+
+    @api.model
+    def move_step(self, step_id, x, y):
+        """Keep where a card was dragged to."""
+        self.env['comm.bot.step'].browse(step_id).write({
+            'flow_placed': True,
+            'flow_x': max(0, int(x)),
+            'flow_y': max(0, int(y)),
+        })
+        return True
+
+    @api.model
+    def tidy(self, bot_id):
+        """Forget every dragged position: the cards place themselves again."""
+        bot = self.env['comm.bot'].browse(bot_id)
+        bot.step_ids.filtered('flow_placed').write(
+            {'flow_placed': False, 'flow_x': 0, 'flow_y': 0})
         return self.load(bot.id)
 
     def _free_name(self, bot, base):

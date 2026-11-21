@@ -121,6 +121,7 @@
                 <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Zoom out" t-on-click="() => this.setZoom(-0.1)">−</button>
                 <span class="o_sfl_zoom" t-esc="zoomLabel"/>
                 <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Zoom in" t-on-click="() => this.setZoom(0.1)">+</button>
+                <button t-if="canEdit and anyPlaced" type="button" class="btn btn-light" title="Put every card back in its own place" t-on-click="tidy">Tidy layout</button>
                 <button t-if="canEdit" type="button" class="btn btn-light" t-on-click="toggleLive">
                     <t t-if="isLive">Pause</t><t t-else="">Go live</t>
                 </button>
@@ -148,7 +149,10 @@
                         <button t-foreach="layout.nodes" t-as="node" t-key="node.step.id" type="button"
                                 t-att-class="cardClass(node)" t-att-style="cardStyle(node)"
                                 t-att-aria-pressed="node.step.id === state.selectedId ? 'true' : 'false'"
-                                t-on-click="() => this.select(node.step.id)">
+                                t-att-title="hasUsage(node.step) ? usageTitle(node) : ''"
+                                t-on-pointerdown="(ev) => this.cardDown(ev, node)" t-on-pointermove="cardMove"
+                                t-on-pointerup="cardUp" t-on-pointercancel="cardUp"
+                                t-on-click="() => this.cardClick(node.step.id)">
                             <span class="o_sfl_card_top">
                                 <i t-att-class="kindIcon(node.step.kind)" aria-hidden="true"/>
                                 <span class="o_sfl_card_kind" t-esc="kindLabel(node.step.kind)"/>
@@ -161,11 +165,17 @@
                             <span class="o_sfl_card_name" t-esc="node.step.name"/>
                             <span t-if="node.back.length" class="o_sfl_card_text">Then back to: <t t-esc="node.back.join(', ')"/></span>
                             <span t-else="" class="o_sfl_card_text" t-esc="cardText(node.step)"/>
+                            <span t-if="hasUsage(node.step)" class="o_sfl_card_usage">
+                                <i class="fa fa-user" aria-hidden="true"/>
+                                <span t-esc="node.step.reached"/>
+                                <span class="o_sfl_card_bar"><span t-att-style="'width:' + reachPct(node.step) + '%'"/></span>
+                                <span t-esc="reachPct(node.step) + '%'"/>
+                            </span>
                         </button>
                     </div>
                 </div>
 
-                <div class="o_sfl_panel">
+                <div t-att-class="'o_sfl_panel' + (state.panel === 'device' ? ' o_sfl_panel_' + state.device : '')">
                     <div class="o_sfl_tabs" role="group" aria-label="Panel">
                         <button type="button" class="o_sfl_tab" t-att-class="{active: state.panel === 'step'}"
                                 t-att-aria-pressed="state.panel === 'step' ? 'true' : 'false'"
@@ -175,8 +185,12 @@
                         <button type="button" class="o_sfl_tab" t-att-class="{active: state.panel === 'try'}"
                                 t-att-aria-pressed="state.panel === 'try' ? 'true' : 'false'"
                                 t-on-click="openTry">Try it</button>
+                        <button t-if="state.data.flow.device_url" type="button" class="o_sfl_tab" t-att-class="{active: state.panel === 'device'}"
+                                t-att-aria-pressed="state.panel === 'device' ? 'true' : 'false'"
+                                t-on-click="openDevice">Device</button>
                     </div>
                     <t t-if="state.panel === 'try'" t-call="sediba_flows.Try"/>
+                    <t t-elif="state.panel === 'device'" t-call="sediba_flows.Device"/>
                     <t t-elif="state.draft" t-call="sediba_flows.Step"/>
                     <t t-else="" t-call="sediba_flows.Flow"/>
                 </div>
@@ -509,6 +523,31 @@
                     </div>
                 </t>
             </t>
+        </div>
+    </t>
+
+    <!-- ── Panel: the web chat widget inside a device ────────────────────── -->
+    <t t-name="sediba_flows.Device">
+        <div class="o_sfl_form o_sfl_device">
+            <div class="o_sfl_try_head">
+                <div class="o_sfl_pills" role="group" aria-label="Device">
+                    <button t-foreach="devices" t-as="device" t-key="device[0]" type="button" class="o_sfl_pill"
+                            t-att-class="{active: state.device === device[0]}"
+                            t-att-aria-pressed="state.device === device[0] ? 'true' : 'false'"
+                            t-on-click="() => this.pickDevice(device[0])" t-esc="device[1]"/>
+                </div>
+                <span class="o_sfl_grow"/>
+                <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Start again" title="Start again" t-on-click="openDevice">
+                    <i class="fa fa-refresh" aria-hidden="true"/>
+                </button>
+            </div>
+            <span class="o_sfl_muted o_sfl_small">The web chat widget as a visitor sees it. It is a preview: nothing is sent and AI steps are not run.</span>
+            <div class="o_sfl_device_scroll">
+                <div t-att-class="'o_sfl_device_shell o_sfl_device_' + state.device">
+                    <div t-if="state.device === 'desktop'" class="o_sfl_browser_bar" aria-hidden="true"><span/><span/><span/></div>
+                    <iframe t-att-src="deviceUrl" t-key="deviceUrl" title="Web chat preview"/>
+                </div>
+            </div>
         </div>
     </t>
 
