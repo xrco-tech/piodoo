@@ -16,6 +16,7 @@
             <field name="supports_media_audio" eval="True"/>
             <field name="supports_media_document" eval="True"/>
             <field name="supports_typing" eval="True"/>
+            <field name="supports_header_footer" eval="True"/>
             <field name="supports_streaming" eval="False"/>
             <field name="max_body_length">10000</field>
             <field name="regulatory_lock" eval="False"/>

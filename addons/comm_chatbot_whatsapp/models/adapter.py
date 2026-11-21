@@ -11,41 +11,111 @@ from odoo.addons.comm_chatbot.models.runtime import adapter_registry
 _logger = logging.getLogger(__name__)
 
 
+# Meta's limits for the parts of a message, in characters.
+HEADER_MAX = 60
+FOOTER_MAX = 60
+BODY_MAX = 1024
+BUTTON_MAX = 20
+ROW_MAX = 24
+ROW_ID_MAX = 200
+CAPTION_MAX = 1024
+
+
+def _framed(payload):
+    """Header, body and footer as one text, for a message that has no place
+    of its own for a header or a footer: bold first line, italic last."""
+    parts = []
+    if payload.get('header'):
+        parts.append('*%s*' % payload['header'])
+    if payload.get('body'):
+        parts.append(payload['body'])
+    if payload.get('footer'):
+        parts.append('_%s_' % payload['footer'])
+    return '\n\n'.join(parts)
+
+
+def build_content(payload):
+    """What to send to WhatsApp for one rendered step, as the Cloud API's
+    type-specific content, or None for a plain text message.
+
+    - Choices: reply buttons (three at most) or a list, with the step's
+      header (its image, else its header line), body and footer.
+    - An image and no choices: the image, with the text as its caption.
+    - Neither: None; the caller sends the text.
+
+    Choices the renderer already numbered into the body are sent as text.
+    """
+    options = [o for o in payload.get('options') or [] if not o.get('numeric_key')]
+    image = next((m for m in payload.get('media') or []
+                  if m.get('kind') == 'image' and m.get('url')), None)
+    if not options:
+        if image:
+            return {'type': 'image', 'image': {
+                'link': image['url'], 'caption': _framed(payload)[:CAPTION_MAX]}}
+        return None
+
+    interactive = {
+        # WhatsApp refuses an interactive message with an empty body.
+        'body': {'text': (payload.get('body') or payload.get('header')
+                          or '-')[:BODY_MAX]},
+    }
+    if image:
+        interactive['header'] = {'type': 'image', 'image': {'link': image['url']}}
+    elif payload.get('header') and payload.get('body'):
+        interactive['header'] = {'type': 'text', 'text': payload['header'][:HEADER_MAX]}
+    if payload.get('footer'):
+        interactive['footer'] = {'text': payload['footer'][:FOOTER_MAX]}
+    if len(options) <= 3:
+        interactive['type'] = 'button'
+        interactive['action'] = {'buttons': [{
+            'type': 'reply',
+            'reply': {'id': (o.get('value') or o['label'])[:ROW_ID_MAX],
+                      'title': o['label'][:BUTTON_MAX]},
+        } for o in options]}
+    else:
+        interactive['type'] = 'list'
+        interactive['action'] = {
+            'button': 'Choose',
+            'sections': [{'rows': [{
+                'id': (o.get('value') or o['label'])[:ROW_ID_MAX],
+                'title': o['label'][:ROW_MAX],
+            } for o in options[:10]]}],
+        }
+    return {'type': 'interactive', 'interactive': interactive}
+
+
 class WhatsappAdapter:
     channel_code = 'whatsapp'
 
     def send(self, env, interaction, payload):
-        """Send an outbound bot message via comm.whatsapp.account.
+        """Send an outbound bot message through the WhatsApp account.
 
-        payload = {'body', 'options', 'media', ...}
+        payload = {'header', 'body', 'footer', 'options', 'media', ...}
         Returns dict with status + source_model + source_id.
         """
         conversation = interaction.conversation_id
         wa_id = conversation.partner_id.whatsapp_id or conversation.partner_id.mobile
         if not wa_id:
             return {'status': 'failed', 'error': 'no wa_id on partner'}
-
-        Account = env['comm.whatsapp.account'].sudo()
-        account = Account.search([('active', '=', True)], limit=1)
+        account = env['comm.whatsapp.account'].sudo().get_default()
         if not account:
             return {'status': 'failed', 'error': 'no active WhatsApp account'}
 
-        body = payload.get('body', '')
-        try:
-            # Basic path: send text message. Interactive buttons/lists could be
-            # added by inspecting payload['options'] and switching to interactive
-            # message send when the account supports it.
-            result = account.send_text_message(to=wa_id, text=body)
-        except AttributeError:
-            _logger.warning('comm.whatsapp.account.send_text_message missing — '
-                            'falling back to whatsapp.message.create')
-            result = {}
-
-        return {
-            'status': 'sent',
-            'source_model': 'whatsapp.message',
-            'source_id': (result or {}).get('id') or False,
-        }
+        Message = env['whatsapp.message'].sudo()
+        content = build_content(payload)
+        text = _framed(payload)
+        if content:
+            result = Message.send_whatsapp_payload(
+                wa_id, content, account=account, log_body=text,
+                log_type=content['type'])
+        else:
+            result = Message.send_whatsapp_message(wa_id, text, account=account)
+        result = result or {}
+        if not result.get('success'):
+            return {'status': 'failed',
+                    'error': result.get('error') or 'WhatsApp did not accept the message'}
+        return {'status': 'sent', 'source_model': 'whatsapp.message',
+                'source_id': False}
 
     def receive(self, env, message):
         """Convert an inbound whatsapp.message into canonical form."""

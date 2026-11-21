@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
 
     <t t-name="sediba_flows.App">
-        <div class="o_sfl">
+        <div class="o_sfl" t-ref="root">
             <t t-if="state.view === 'home'" t-call="sediba_flows.Home"/>
             <t t-else="" t-call="sediba_flows.Builder"/>
         </div>
@@ -166,7 +166,12 @@
                             <span class="o_sfl_card_name" t-esc="node.step.name"/>
                             <t t-set="out" t-value="cardOut(node.step)"/>
                             <span t-if="out" t-att-class="'o_sfl_as o_sfl_as_' + state.showAs">
-                                <span t-if="out.body" class="o_sfl_as_text" t-out="channelText(out.body, state.showAs)"/>
+                                <span t-if="out.body or out.header or out.footer or out.image" class="o_sfl_as_text">
+                                    <img t-if="out.image" class="o_sfl_as_image" t-att-src="out.image" t-att-alt="node.step.image_alt" loading="lazy"/>
+                                    <span t-if="out.header" class="o_sfl_as_header" t-esc="out.header"/>
+                                    <span t-if="out.body" t-out="channelText(out.body, state.showAs)"/>
+                                    <span t-if="out.footer" class="o_sfl_as_footer" t-esc="out.footer"/>
+                                </span>
                                 <span t-if="out.options.length" class="o_sfl_as_buttons">
                                     <span t-foreach="out.options" t-as="label" t-key="label_index" t-esc="label"/>
                                 </span>
@@ -254,10 +259,30 @@
             </div>
 
             <div t-if="d.kind === 'message' or d.kind === 'menu' or d.kind === 'input'" class="o_sfl_field">
+                <label for="o_sfl_header">Header, optional</label>
+                <input id="o_sfl_header" type="text" class="o_sfl_input" maxlength="60" placeholder="A short line above the text" t-model="d.header" t-on-change="saveStep"/>
+            </div>
+            <div t-if="d.kind === 'message' or d.kind === 'menu' or d.kind === 'input'" class="o_sfl_field">
                 <label for="o_sfl_body">What the flow says</label>
                 <textarea id="o_sfl_body" rows="3" class="o_sfl_input" t-model="d.body" t-on-change="saveStep"/>
                 <span class="o_sfl_muted o_sfl_small">{{contact.first_name}} puts in the contact's first name.</span>
             </div>
+            <t t-if="d.kind === 'message' or d.kind === 'menu' or d.kind === 'input'">
+                <div class="o_sfl_field">
+                    <label for="o_sfl_footer">Footer, optional</label>
+                    <input id="o_sfl_footer" type="text" class="o_sfl_input" maxlength="60" placeholder="A short line under the text" t-model="d.footer" t-on-change="saveStep"/>
+                </div>
+                <div class="o_sfl_field">
+                    <label for="o_sfl_image">Image, optional</label>
+                    <input id="o_sfl_image" type="url" class="o_sfl_input" placeholder="https://… the address of a picture" t-model="d.image_url" t-on-change="saveStep"/>
+                    <t t-if="d.image_url">
+                        <label for="o_sfl_image_alt">What the image shows</label>
+                        <input id="o_sfl_image_alt" type="text" class="o_sfl_input" placeholder="for example: our office in Soweto" t-model="d.image_alt" t-on-change="saveStep"/>
+                        <span class="o_sfl_muted o_sfl_small">Channels without pictures get these words: USSD and SMS print them, voice reads them out.</span>
+                    </t>
+                    <span t-else="" class="o_sfl_muted o_sfl_small">Header and footer show as their own lines on WhatsApp and web chat. Elsewhere they are the first and last line of the text.</span>
+                </div>
+            </t>
 
             <div t-if="d.kind === 'menu'" class="o_sfl_group">
                 <b>Choices</b>
@@ -511,7 +536,12 @@
                     <!-- Every other channel: the conversation so far. -->
                     <div t-else="" t-att-class="'o_sfl_chat o_sfl_chat_' + sim.channel" aria-live="polite">
                         <div t-foreach="sim.messages" t-as="message" t-key="message_index"
-                             t-att-class="'o_sfl_bubble ' + (message.direction === 'inbound' ? 'o_sfl_mine' : '')" t-out="simBody(message)"/>
+                             t-att-class="'o_sfl_bubble ' + (message.direction === 'inbound' ? 'o_sfl_mine' : '')">
+                            <img t-if="message.image" class="o_sfl_as_image" t-att-src="message.image" alt=""/>
+                            <span t-if="message.header" class="o_sfl_as_header" t-esc="message.header"/>
+                            <span t-out="simBody(message)"/>
+                            <span t-if="message.footer" class="o_sfl_as_footer" t-esc="message.footer"/>
+                        </div>
                         <div t-if="simButtons.length" class="o_sfl_wa_buttons">
                             <button t-foreach="simButtons" t-as="option" t-key="option_index" type="button"
                                     t-att-disabled="sim.busy" t-on-click="() => this.simSend(option.label)" t-esc="option.label"/>

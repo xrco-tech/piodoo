@@ -178,3 +178,7 @@
         bottom: 76px;
     }
 }
+
+/* A step's header and footer: a bold line above the text, a small one under it. */
+.o_ccw_msg_header { font-weight: 700; margin-bottom: 2px; }
+.o_ccw_msg_footer { margin-top: 4px; font-size: 12px; opacity: .75; }

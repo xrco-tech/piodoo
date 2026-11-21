@@ -21,7 +21,9 @@
                             <field name="guard_expression"/>
                         </group>
                     </group>
+                    <field name="header"/>
                     <field name="body" placeholder="Message body (Mustache: {{state.varname}})"/>
+                    <field name="footer"/>
 
                     <group string="Input" invisible="kind != 'input'">
                         <field name="input_type"/>

@@ -220,6 +220,13 @@ def _serialize(env, session, conversation):
         # render buttons + list + attachments.
         if i.direction == 'outbound' and i.step_id:
             entry['step_name'] = i.step_id.name
+            # The step's header and footer, shown as their own lines.
+            if i.step_id.kind in ('message', 'menu', 'input'):
+                renderer = env['comm.chatbot.renderer']
+                entry['header'] = renderer._substitute(
+                    i.step_id.header or '', conversation, conversation.bot_id)
+                entry['footer'] = renderer._substitute(
+                    i.step_id.footer or '', conversation, conversation.bot_id)
             entry['options'] = [{
                 'label': o.label,
                 'value': o.value or o.label,
