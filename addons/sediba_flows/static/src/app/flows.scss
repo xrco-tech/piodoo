@@ -288,7 +288,6 @@ $o-sfl-kinds: (
     flex-direction: column;
     gap: 2px;
     padding: 8px 12px;
-    overflow: hidden;
     border: 1px solid var(--sfl-line);
     border-radius: 14px;
     background: var(--sfl-box);
@@ -732,3 +731,64 @@ textarea.o_sfl_input { resize: vertical; }
 
     span { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
 }
+
+// A card under "Show as <channel>": what that channel sends, as it shows it.
+.o_sfl_as {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 4px 0;
+    color: #111b21;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.o_sfl_as_text {
+    display: block;
+    max-height: 220px;
+    overflow: hidden;
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: #ffffff;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.o_sfl_as_buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    span {
+        padding: 6px 8px;
+        border: 1px solid #c7d2fe;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #0a5a8c;
+        font-weight: 600;
+        text-align: center;
+    }
+}
+
+// WhatsApp: the green of a message, formatting applied, choices as buttons.
+.o_sfl_as_whatsapp .o_sfl_as_text {
+    background: #d9fdd3;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .12);
+    code { color: inherit; }
+}
+
+// USSD: the handset screen.
+.o_sfl_as_ussd .o_sfl_as_text {
+    border-radius: 6px;
+    background: #111418;
+    color: #f3f4f6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+}
+
+// SMS: a plain grey message.
+.o_sfl_as_sms .o_sfl_as_text { background: #e5e7eb; }
+
+// Voice: what is spoken.
+.o_sfl_as_voice .o_sfl_as_text { font-style: italic; }

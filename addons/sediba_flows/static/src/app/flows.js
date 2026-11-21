@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, markup, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
+import { Component, markup, onMounted, onPatched, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
@@ -96,7 +96,7 @@ function leadsTo(step) {
  * says so in words. Steps nothing leads to sit beside the tree. A card that
  * was dragged keeps its place; `drag` is the card being dragged right now.
  */
-export function layoutFlow(steps, entryId, drag) {
+export function layoutFlow(steps, entryId, drag, heights = {}) {
     const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
     const seen = new Set();
     const make = (id, level, label) => {
@@ -137,12 +137,25 @@ export function layoutFlow(steps, entryId, drag) {
     };
     roots.forEach(place);
 
+    // A card is as tall as what it shows, so each row of the tree is as tall
+    // as its tallest card.
+    const rows = [];
+    const size = (node) => {
+        node.h = heights[node.step.id] || CARD_H;
+        rows[node.level] = Math.max(rows[node.level] || 0, node.h);
+        node.kids.forEach(size);
+    };
+    roots.forEach(size);
+    const rowY = [];
+    rows.forEach((h, level) => {
+        rowY[level] = level ? rowY[level - 1] + rows[level - 1] + GAP_Y : PAD;
+    });
+
     const nodes = [];
-    let deepest = 0;
     const walk = (node, parent) => {
         node.parent = parent;
         node.x = PAD + node.col * (CARD_W + GAP_X);
-        node.y = PAD + node.level * (CARD_H + GAP_Y);
+        node.y = rowY[node.level];
         // A card that was dragged stays where it was put.
         if (node.step.placed) {
             node.x = node.step.x;
@@ -152,7 +165,6 @@ export function layoutFlow(steps, entryId, drag) {
             node.x = drag.x;
             node.y = drag.y;
         }
-        deepest = Math.max(deepest, node.level);
         nodes.push(node);
         node.kids.forEach((kid) => walk(kid, node));
     };
@@ -165,7 +177,7 @@ export function layoutFlow(steps, entryId, drag) {
             continue;
         }
         const x1 = parent.x + CARD_W / 2;
-        const y1 = parent.y + CARD_H;
+        const y1 = parent.y + parent.h;
         const x2 = node.x + CARD_W / 2;
         const y2 = node.y;
         const mid = (y1 + y2) / 2;
@@ -180,7 +192,7 @@ export function layoutFlow(steps, entryId, drag) {
         nodes,
         edges,
         width: Math.max(...nodes.map((n) => n.x), 0) + CARD_W + PAD,
-        height: Math.max(...nodes.map((n) => n.y), 0) + CARD_H + PAD,
+        height: Math.max(...nodes.map((n) => n.y + n.h), 0) + PAD,
     };
 }
 
@@ -202,6 +214,9 @@ export class SedibaFlows extends Component {
         this.INPUT_TYPES = INPUT_TYPES;
         this.edits = 0;
         this.simInput = useRef("simInput");
+        this.canvas = useRef("canvas");
+        onMounted(() => this.measure());
+        onPatched(() => this.measure());
         this.state = useState({
             view: "home",
             home: null,
@@ -213,6 +228,8 @@ export class SedibaFlows extends Component {
             panel: "step",
             zoom: 1,
             wording: false,
+            // How tall each card came out, by step id: read off the page.
+            heights: {},
             // The card being dragged: {id, x, y}.
             drag: null,
             device: "iphone",
@@ -287,7 +304,12 @@ export class SedibaFlows extends Component {
     }
 
     get layout() {
-        return layoutFlow(this.state.data.steps, this.state.data.flow.entry_id, this.state.drag);
+        return layoutFlow(
+            this.state.data.steps,
+            this.state.data.flow.entry_id,
+            this.state.drag,
+            this.state.heights
+        );
     }
 
     get canvasStyle() {
@@ -312,7 +334,7 @@ export class SedibaFlows extends Component {
     }
 
     cardStyle(node) {
-        return `left:${node.x}px;top:${node.y}px;width:${CARD_W}px;height:${CARD_H}px;`;
+        return `left:${node.x}px;top:${node.y}px;width:${CARD_W}px;min-height:${CARD_H}px;`;
     }
 
     cardClass(node) {
@@ -364,6 +386,63 @@ export class SedibaFlows extends Component {
             return "skip";
         }
         return outs.some((o) => o.state === "warn") ? "warn" : "ok";
+    }
+
+    // ── Cards as the chosen channel shows them ───────────────────────────
+
+    /**
+     * Read how tall each card came out, and lay the canvas out again if any
+     * changed. A card's height does not depend on where it sits, so this
+     * settles after one more pass.
+     */
+    measure() {
+        const el = this.canvas.el;
+        if (!el) {
+            return;
+        }
+        const heights = {};
+        for (const card of el.querySelectorAll("[data-step]")) {
+            heights[card.dataset.step] = card.offsetHeight;
+        }
+        const now = this.state.heights;
+        const keys = Object.keys(heights);
+        if (keys.length !== Object.keys(now).length || keys.some((k) => now[k] !== heights[k])) {
+            this.state.heights = heights;
+        }
+    }
+
+    /**
+     * What the chosen channel sends for this step, when there is something
+     * to show as that channel would: its text, and its buttons if it has
+     * any. Nothing under "All", for a step that sends nothing, or for one
+     * the channel skips.
+     */
+    cardOut(step) {
+        const code = this.state.showAs;
+        const out = code === "all" ? null : step.out[code];
+        if (!out || out.state === "skip" || (!out.body && !out.options.length)) {
+            return null;
+        }
+        return out;
+    }
+
+    /**
+     * A text as a channel shows it. WhatsApp turns *bold*, _italic_,
+     * ~strike~ and ```code``` into formatting; every other channel shows
+     * the characters as typed.
+     */
+    channelText(text, code) {
+        const escaped = escapeHTML(text || "");
+        if (code !== "whatsapp") {
+            return markup(escaped);
+        }
+        return markup(
+            escaped
+                .replace(/```([^`]+)```/g, "<code>$1</code>")
+                .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
+                .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?])/g, "$1<em>$2</em>")
+                .replace(/~([^~\n]+)~/g, "<s>$1</s>")
+        );
     }
 
     // ── Usage ────────────────────────────────────────────────────────────
@@ -884,23 +963,9 @@ export class SedibaFlows extends Component {
         return sim.channel === "whatsapp" && sim.waiting === "menu" ? sim.options : [];
     }
 
-    /**
-     * The text of one message as its channel shows it. WhatsApp turns *bold*,
-     * _italic_, ~strike~ and ```code``` into formatting; every other channel
-     * shows the characters as typed.
-     */
+    /** The text of one message in Try it, as its channel shows it. */
     simBody(message) {
-        const escaped = escapeHTML(message.body || "");
-        if (this.state.sim.channel !== "whatsapp") {
-            return markup(escaped);
-        }
-        return markup(
-            escaped
-                .replace(/```([^`]+)```/g, "<code>$1</code>")
-                .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
-                .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?])/g, "$1<em>$2</em>")
-                .replace(/~([^~\n]+)~/g, "<s>$1</s>")
-        );
+        return this.channelText(message.body, this.state.sim.channel);
     }
 }
 
