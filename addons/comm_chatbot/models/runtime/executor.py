@@ -380,6 +380,12 @@ class ExecutorService(models.AbstractModel):
         for o in options:
             if o['value'].lower() == b or o['label'].lower() == b:
                 return o
+        # A button or list row can only carry the start of a long label, and
+        # the reply comes back as that start.
+        if len(b) >= 20:
+            for o in options:
+                if o['label'].lower().startswith(b):
+                    return o
         # Fall back to default
         for o in options:
             if o.get('is_default'):

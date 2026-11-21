@@ -58,6 +58,9 @@ const DEVICES = [
     ["desktop", _t("Desktop")],
 ];
 
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 2;
+
 const BRANCHING = ["menu", "condition"];
 // Kinds with a text the contact reads or hears.
 const SPEAKS = ["message", "menu", "input"];
@@ -215,6 +218,11 @@ export class SedibaFlows extends Component {
         this.edits = 0;
         this.simInput = useRef("simInput");
         this.canvas = useRef("canvas");
+        this.root = useRef("root");
+        // Not passive: the handler stops the browser's own zoom.
+        const onWheel = (ev) => this.canvasWheel(ev);
+        onMounted(() => this.root.el.addEventListener("wheel", onWheel, { passive: false }));
+        onWillUnmount(() => this.root.el && this.root.el.removeEventListener("wheel", onWheel));
         onMounted(() => this.measure());
         onPatched(() => this.measure());
         this.state = useState({
@@ -322,7 +330,27 @@ export class SedibaFlows extends Component {
     }
 
     setZoom(delta) {
-        this.state.zoom = Math.min(1.6, Math.max(0.5, Math.round((this.state.zoom + delta) * 10) / 10));
+        this.zoomTo(Math.round((this.state.zoom + delta) * 10) / 10);
+    }
+
+    zoomTo(zoom) {
+        this.state.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
+    }
+
+    /**
+     * Zoom with the pointer over the canvas: Ctrl or Cmd with the wheel, or
+     * a pinch on a trackpad (which the browser reports the same way). The
+     * browser's own page zoom is held back while the pointer is there. A
+     * plain wheel still scrolls the canvas.
+     */
+    canvasWheel(ev) {
+        if (!(ev.ctrlKey || ev.metaKey) || !ev.target.closest(".o_sfl_canvas_wrap")) {
+            return;
+        }
+        ev.preventDefault();
+        // A pinch sends many small steps, a wheel a few large ones.
+        const step = Math.max(-0.2, Math.min(0.2, -ev.deltaY * 0.01));
+        this.zoomTo(Math.round((this.state.zoom + step) * 100) / 100);
     }
 
     kindLabel(kind) {
@@ -420,7 +448,11 @@ export class SedibaFlows extends Component {
     cardOut(step) {
         const code = this.state.showAs;
         const out = code === "all" ? null : step.out[code];
-        if (!out || out.state === "skip" || (!out.body && !out.options.length)) {
+        if (
+            !out ||
+            out.state === "skip" ||
+            (!out.body && !out.options.length && !out.header && !out.footer && !out.image)
+        ) {
             return null;
         }
         return out;
@@ -607,6 +639,10 @@ export class SedibaFlows extends Component {
                 name: d.name,
                 kind: d.kind,
                 body: d.body,
+                header: d.header,
+                footer: d.footer,
+                image_url: d.image_url,
+                image_alt: d.image_alt,
                 next_id: d.next_id,
                 options: d.options,
                 input_type: d.input_type,

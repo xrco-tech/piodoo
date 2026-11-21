@@ -184,3 +184,34 @@ class TestExecutor(ChatbotTestCase):
         self.assertEqual(self._route('unknown'), 'other',
                          "a value no branch names takes the default branch")
         self.assertEqual(self._route(None), 'other')
+
+    def _render(self, step, channel):
+        c = self.env['comm.conversation'].new({
+            'partner_id': self.partner.id, 'bot_id': self.bot.id,
+            'primary_channel_id': channel.id, 'state': {}})
+        return self.env['comm.chatbot.renderer'].render(step, c)
+
+    def test_header_and_footer_per_channel(self):
+        self.wa.supports_header_footer = True
+        self.step_menu.write({'header': 'Hi {{contact.first_name}}', 'footer': 'Reply STOP to leave'})
+        on_wa = self._render(self.step_menu, self.wa)
+        self.assertEqual((on_wa['header'], on_wa['body'], on_wa['footer']),
+                         ('Hi Test', 'Choose:', 'Reply STOP to leave'))
+        on_ussd = self._render(self.step_menu, self.ussd)
+        self.assertEqual((on_ussd['header'], on_ussd['footer']), ('', ''))
+        self.assertEqual(
+            on_ussd['body'],
+            'Hi Test\nChoose:\n\n1. Balance\n2. Payments\n3. Help\nReply STOP to leave')
+        # A step with neither is unchanged.
+        plain = self._render(self.step_greeting, self.ussd)
+        self.assertEqual(plain['body'], 'Hello Test')
+
+    def test_long_button_label_matches_its_cut_reply(self):
+        option = self.step_menu.option_ids.sorted('sequence')[1]
+        option.write({'label': 'Payments and statements for this month', 'value': 'pay'})
+        c = self.env['comm.conversation'].create({
+            'partner_id': self.partner.id, 'bot_id': self.bot.id,
+            'primary_channel_id': self.wa.id, 'current_step_id': self.step_menu.id})
+        picked = self.env['comm.chatbot.executor']._match_option(
+            self.step_menu, 'Payments and stateme', c)
+        self.assertEqual(picked['value'], 'pay')

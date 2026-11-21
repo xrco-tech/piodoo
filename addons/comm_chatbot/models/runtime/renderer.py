@@ -64,8 +64,11 @@ class RendererService(models.AbstractModel):
             media = self._resolve_media(step, channel)
             self._check_capabilities(step, channel)
             body, options, media = self._degrade(step, channel, body, options, media)
+            header, body, footer = self._frame(step, channel, body, conversation)
             body = self._truncate(body, channel, step, bot)
             return {
+                'header': header,
+                'footer': footer,
                 'body': body,
                 'options': options,
                 'media': media,
@@ -281,6 +284,20 @@ class RendererService(models.AbstractModel):
                 elif m.get('alt'):
                     body = (body + '\n' + m['alt']).strip()
         return body, options, supported
+
+    # ---------- Header and footer ----------
+    @api.model
+    def _frame(self, step, channel, body, conversation):
+        """Return (header, body, footer). A channel that shows a header and a
+        footer gets them apart; on any other they become the first and the
+        last line of the body, so nothing the author wrote is lost."""
+        header = self._substitute(step.header or '', conversation, step.bot_id).strip()
+        footer = self._substitute(step.footer or '', conversation, step.bot_id).strip()
+        if not header and not footer:
+            return '', body, ''
+        if channel.supports_header_footer:
+            return header, body, footer
+        return '', '\n'.join(part for part in (header, body, footer) if part), ''
 
     # ---------- Stage 6: truncation ----------
     @api.model

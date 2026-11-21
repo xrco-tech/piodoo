@@ -253,3 +253,49 @@ class TestSedibaFlows(TransactionCase):
             self.assertEqual(url, '/comm_chatbot_web/embed/%s?preview=1' % self.flow_id)
         else:
             self.assertEqual(url, '')
+
+    def test_header_footer_and_image(self):
+        self.wa.supports_header_footer = True
+        entry = self.bot.entry_step_id
+        data = self.Flows.save_step(entry.id, {
+            'body': 'Welcome', 'header': 'Hi {{contact.first_name}}',
+            'footer': 'Reply STOP to leave',
+            'image_url': 'https://example.com/logo.png', 'image_alt': 'Our logo'})
+        step = self._step(data, entry.id)
+        self.assertEqual((step['header'], step['footer'], step['image_url'], step['image_alt']),
+                         ('Hi {{contact.first_name}}', 'Reply STOP to leave',
+                          'https://example.com/logo.png', 'Our logo'))
+        first = self.env.user.partner_id.name.split(' ')[0]
+        wa, ussd = step['out']['whatsapp'], step['out']['ussd']
+        self.assertEqual((wa['header'], wa['body'], wa['footer'], wa['image']),
+                         ('Hi %s' % first, 'Welcome', 'Reply STOP to leave',
+                          'https://example.com/logo.png'))
+        # USSD has no header, footer or pictures: all of it is in the text.
+        self.assertEqual((ussd['header'], ussd['footer'], ussd['image']), ('', '', ''))
+        self.assertEqual(ussd['body'],
+                         'Hi %s\nWelcome\nOur logo\nReply STOP to leave' % first)
+        # Taking the address away removes the image.
+        data = self.Flows.save_step(entry.id, {'image_url': ''})
+        self.assertFalse(entry.media_ids)
+        self.assertEqual(self._step(data, entry.id)['out']['whatsapp']['image'], '')
+
+    def test_try_it_shows_header_and_footer_where_the_channel_does(self):
+        self.wa.supports_header_footer = True
+        self.Flows.save_step(self.bot.entry_step_id.id, {
+            'body': 'Welcome', 'header': 'Hello', 'footer': 'Bye'})
+        on_wa = self.Flows.try_start(self.flow_id, 'whatsapp', 'T', '', {})['messages'][0]
+        self.assertEqual((on_wa['header'], on_wa['body'], on_wa['footer']),
+                         ('Hello', 'Welcome', 'Bye'))
+        on_ussd = self.Flows.try_start(self.flow_id, 'ussd', 'T', '', {})['messages'][0]
+        self.assertEqual((on_ussd['header'], on_ussd['body'], on_ussd['footer']),
+                         ('', 'Hello\nWelcome\nBye', ''))
+
+    def test_long_whatsapp_button_is_flagged(self):
+        entry = self.bot.entry_step_id
+        data = self.Flows.save_step(entry.id, {
+            'kind': 'menu', 'body': 'Pick',
+            'options': [{'id': False, 'label': 'A label longer than twenty characters', 'next_id': False}]})
+        out = self._step(data, entry.id)['out']
+        self.assertEqual(out['whatsapp']['state'], 'warn')
+        self.assertIn('20', out['whatsapp']['note'])
+        self.assertEqual(out['ussd']['state'], 'ok')

@@ -124,19 +124,18 @@ class SedibaFlowsImporter(models.AbstractModel):
             text or '')
 
     def _body(self, step, names, notes):
-        parts = []
-        if step.header_type == 'text' and step.header_text:
-            parts.append(step.header_text)
-        elif step.header_type:
+        if step.header_type and step.header_type != 'text':
             notes.append(_("“%(step)s”: its %(kind)s header was not carried over.",
                            step=step.name, kind=step.header_type))
-        if step.body_plain:
-            parts.append(step.body_plain)
-        if step.footer:
-            parts.append(step.footer)
         if step.attachment_id:
             notes.append(_("“%s”: its attachment was not carried over.", step.name))
-        return self._wording('\n'.join(parts), names)
+        return self._wording(step.body_plain, names)
+
+    def _frame(self, step, names):
+        """The older step's header line and footer, as the new step's own."""
+        header = step.header_text if step.header_type == 'text' else ''
+        return {'header': self._wording(header, names) or False,
+                'footer': self._wording(step.footer, names) or False}
 
     # ── Steps ────────────────────────────────────────────────────────────
 
@@ -174,6 +173,7 @@ class SedibaFlowsImporter(models.AbstractModel):
             kind = old.step_type
             if kind == 'message' or kind.startswith('question_'):
                 vals['body'] = self._body(old, names, notes)
+                vals.update(self._frame(old, names))
                 is_question = kind != 'message'
                 if self._is_menu(old):
                     vals['kind'] = 'menu'

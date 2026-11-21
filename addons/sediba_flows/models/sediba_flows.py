@@ -9,7 +9,6 @@ engine's own renderer, so the builder shows what the engine will send.
 from odoo import _, api, models
 from odoo.exceptions import UserError
 
-from odoo.addons.comm_chatbot.controllers.bot_flow import _sim_response
 from odoo.addons.comm_chatbot.models.runtime.adapter_registry import get_adapter
 from odoo.addons.comm_chatbot.models.runtime.renderer import (
     CapabilityMismatchError, RenderError)
@@ -23,6 +22,8 @@ STEP_FIELDS = {
     'name': 'name',
     'kind': 'kind',
     'body': 'body',
+    'header': 'header',
+    'footer': 'footer',
     'next_id': 'next_step_id',
     'input_type': 'input_type',
     'save_to': 'input_save_to',
@@ -107,6 +108,10 @@ class SedibaFlows(models.AbstractModel):
             'name': step.name,
             'kind': step.kind,
             'body': step.body or '',
+            'header': step.header or '',
+            'footer': step.footer or '',
+            'image_url': step.media_ids.filtered(lambda m: m.kind == 'image')[:1].url or '',
+            'image_alt': step.media_ids.filtered(lambda m: m.kind == 'image')[:1].alt_text or '',
             'placed': step.flow_placed,
             'x': step.flow_x,
             'y': step.flow_y,
@@ -143,6 +148,7 @@ class SedibaFlows(models.AbstractModel):
         """How this step comes out on one channel: what is said, in what form,
         and anything that will not fit. Asked of the engine's renderer."""
         res = {'state': 'ok', 'how': '', 'body': '', 'options': [],
+               'header': '', 'footer': '', 'image': '',
                'chars': 0, 'limit': channel.max_body_length or 0, 'note': ''}
         override = step.channel_override_ids.filtered(
             lambda o: o.channel_id == channel)
@@ -173,6 +179,8 @@ class SedibaFlows(models.AbstractModel):
             renderer._check_capabilities(step, channel)
             body, options, media = renderer._degrade(
                 step, channel, body, options, media)
+            header, body, footer = renderer._frame(
+                step, channel, body, conversation)
         except CapabilityMismatchError as e:
             reason = str(e)
             if reason == 'menu_no_options':
@@ -186,7 +194,12 @@ class SedibaFlows(models.AbstractModel):
             return dict(res, state='warn', how=_("Cannot be shown"),
                         note=_("A placeholder has no value: %s", str(e)))
 
-        res.update(body=body, chars=len(body))
+        res.update(
+            body=body, chars=len(body), header=header, footer=footer,
+            # The image, where the channel shows images; elsewhere its
+            # description is already in the text.
+            image=next((m['url'] for m in media
+                        if m['kind'] == 'image' and m['url']), ''))
         if options:
             numbered = any(o.get('numeric_key') for o in options)
             count = len(options)
@@ -203,6 +216,13 @@ class SedibaFlows(models.AbstractModel):
             if count < len(step.option_ids):
                 res['state'] = 'warn'
                 res['note'] = _("Only the first %s choices fit here.", count)
+            elif res['options'] and channel.code == 'whatsapp':
+                most = 20 if count <= (channel.max_buttons or 3) else 24
+                if any(len(label) > most for label in res['options']):
+                    res['state'] = 'warn'
+                    res['note'] = _(
+                        "WhatsApp shows only the first %s characters of a "
+                        "choice. Shorten the long ones.", most)
         else:
             res['how'] = (_("Read out") if channel.code == 'voice'
                           else _("Plain message"))
@@ -345,6 +365,19 @@ class SedibaFlows(models.AbstractModel):
         if write:
             step.write(write)
 
+        if 'image_url' in vals or 'image_alt' in vals:
+            # One image per step here: the first image among its attachments.
+            image = step.media_ids.filtered(lambda m: m.kind == 'image')[:1]
+            url = (vals.get('image_url', image.url) or '').strip()
+            alt = (vals.get('image_alt', image.alt_text) or '').strip()
+            if not url:
+                image.unlink()
+            elif image:
+                image.write({'url': url, 'alt_text': alt})
+            else:
+                self.env['comm.bot.step.media'].create({
+                    'step_id': step.id, 'kind': 'image', 'url': url, 'alt_text': alt})
+
         if 'options' in vals:
             Option = self.env['comm.bot.step.option']
             keep = Option
@@ -459,11 +492,51 @@ class SedibaFlows(models.AbstractModel):
                 if value not in (None, False, '')}
 
     def _try_result(self, conversation):
-        res = _sim_response(self.env, conversation, str(conversation.id))
+        """The walk so far, for the panel: what was said each way, what the
+        flow waits for now, and what each variable holds."""
+        channel = conversation.primary_channel_id
+        renderer = self.env['comm.chatbot.renderer']
+        messages = []
+        for i in conversation.interaction_ids.sorted('id'):
+            entry = {
+                'direction': i.direction,
+                'body': i.rendered_body or i.raw_body or '',
+                'step_name': i.step_id.name or '',
+                'header': '', 'footer': '', 'image': '',
+            }
+            step = i.step_id
+            if i.direction == 'outbound' and step.kind in ('message', 'menu', 'input'):
+                # A channel with a header and a footer shows them apart from
+                # the text; on the others they are already in the text.
+                if channel.supports_header_footer:
+                    entry['header'] = renderer._substitute(
+                        step.header or '', conversation, conversation.bot_id)
+                    entry['footer'] = renderer._substitute(
+                        step.footer or '', conversation, conversation.bot_id)
+                if channel.supports_media_image:
+                    entry['image'] = step.media_ids.filtered(
+                        lambda m: m.kind == 'image')[:1].url or ''
+            messages.append(entry)
+
+        step = conversation.current_step_id
+        waiting, options = 'none', []
+        if not step or conversation.lifecycle_state in ('closed', 'timeout'):
+            waiting = 'done'
+        elif step.kind == 'menu':
+            waiting = 'menu'
+            options = [{'label': o.label, 'value': o.value or o.label}
+                       for o in step.option_ids.sorted('sequence')]
+        elif step.kind == 'input':
+            waiting = 'input'
         state = conversation.state or {}
-        res['variables'] = {k: ('' if v is None else str(v))
-                            for k, v in state.items() if not k.startswith('__')}
-        return res
+        return {
+            'session_id': str(conversation.id),
+            'messages': messages,
+            'waiting': waiting,
+            'current_options': options,
+            'variables': {k: ('' if v is None else str(v))
+                          for k, v in state.items() if not k.startswith('__')},
+        }
 
     @api.model
     def try_setup(self, bot_id):

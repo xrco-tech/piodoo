@@ -51,6 +51,14 @@ class CommBotStep(models.Model):
 
     # Canonical body (Mustache templated)
     body = fields.Text()
+    header = fields.Char(
+        help='A short line shown above the body, in bold, on channels that '
+             'have a header (WhatsApp, web chat). On the others it becomes '
+             'the first line of the text. An image on the step takes the '
+             'header\'s place on WhatsApp buttons and lists.')
+    footer = fields.Char(
+        help='A short line shown under the body, small, on channels that '
+             'have a footer. On the others it becomes the last line.')
     body_translation_ids = fields.One2many('comm.bot.step.translation',
                                            'step_id', string='Translations')
 

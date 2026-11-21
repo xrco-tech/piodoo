@@ -33,6 +33,9 @@ class CommChannel(models.Model):
     supports_media_video    = fields.Boolean(default=False)
     supports_media_audio    = fields.Boolean(default=False)
     supports_media_document = fields.Boolean(default=False)
+    supports_header_footer  = fields.Boolean(default=False,
+        help='Shows a step\'s header and footer as their own lines. When '
+             'off, they are put in the text as its first and last line.')
     supports_typing         = fields.Boolean(default=False)
     supports_streaming      = fields.Boolean(default=False,
         help='Can push tokens as they arrive (voice TTS pipeline).')

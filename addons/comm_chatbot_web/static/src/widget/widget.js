@@ -151,10 +151,24 @@
                 : "You";
             bubble.appendChild(meta);
 
+            if (m.header) {
+                const header = document.createElement("div");
+                header.className = "o_ccw_msg_header";
+                header.textContent = m.header;
+                bubble.appendChild(header);
+            }
+
             const body = document.createElement("div");
             body.className = "o_ccw_msg_body";
             body.textContent = m.body || "";
             bubble.appendChild(body);
+
+            if (m.footer) {
+                const footer = document.createElement("div");
+                footer.className = "o_ccw_msg_footer";
+                footer.textContent = m.footer;
+                bubble.appendChild(footer);
+            }
 
             // Media
             if (m.media && m.media.length) {
