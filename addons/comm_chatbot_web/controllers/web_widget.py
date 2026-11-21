@@ -111,13 +111,10 @@ class WebWidgetController(http.Controller):
         Session = env['comm.bot.web.session'].sudo()
         Partner = env['res.partner'].sudo()
 
-        # For preview sessions, mint a throwaway partner; for real ones, an
+        # Preview sessions all run as one hidden contact; real ones get an
         # anonymous "Web visitor" record so partner references resolve.
         if preview:
-            partner = Partner.create({
-                'name': persona_name or 'Web preview',
-                'mobile': persona_mobile or '+27600000000',
-            })
+            partner = Session._preview_partner(persona_name, persona_mobile)
         else:
             partner = Partner.create({
                 'name': persona_name or 'Web visitor',

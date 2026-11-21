@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Comm Chatbot — Web Channel',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Communications',
     'summary': 'Embeddable web chat widget as a channel adapter for comm_chatbot',
     'description': """
