@@ -132,7 +132,7 @@
                     <div t-if="!state.data.steps.length" class="o_sfl_empty">
                         This flow has no steps yet. Add the first one.
                     </div>
-                    <div t-else="" class="o_sfl_canvas" t-att-style="canvasStyle" t-on-click.self="() => this.select(false)">
+                    <div t-else="" class="o_sfl_canvas" t-ref="canvas" t-att-style="canvasStyle" t-on-click.self="() => this.select(false)">
                         <svg class="o_sfl_lines" aria-hidden="true" t-att-width="layout.width" t-att-height="layout.height">
                             <defs>
                                 <marker id="o_sfl_arrow" orient="auto" markerWidth="6" markerHeight="6" refX="3" refY="3">
@@ -148,6 +148,7 @@
                         </t>
                         <button t-foreach="layout.nodes" t-as="node" t-key="node.step.id" type="button"
                                 t-att-class="cardClass(node)" t-att-style="cardStyle(node)"
+                                t-att-data-step="node.step.id"
                                 t-att-aria-pressed="node.step.id === state.selectedId ? 'true' : 'false'"
                                 t-att-title="hasUsage(node.step) ? usageTitle(node) : ''"
                                 t-on-pointerdown="(ev) => this.cardDown(ev, node)" t-on-pointermove="cardMove"
@@ -163,8 +164,15 @@
                                 <span t-if="outState(node.step) === 'skip'" class="o_sfl_card_tag">Skipped</span>
                             </span>
                             <span class="o_sfl_card_name" t-esc="node.step.name"/>
+                            <t t-set="out" t-value="cardOut(node.step)"/>
+                            <span t-if="out" t-att-class="'o_sfl_as o_sfl_as_' + state.showAs">
+                                <span t-if="out.body" class="o_sfl_as_text" t-out="channelText(out.body, state.showAs)"/>
+                                <span t-if="out.options.length" class="o_sfl_as_buttons">
+                                    <span t-foreach="out.options" t-as="label" t-key="label_index" t-esc="label"/>
+                                </span>
+                            </span>
+                            <span t-elif="!node.back.length" class="o_sfl_card_text" t-esc="cardText(node.step)"/>
                             <span t-if="node.back.length" class="o_sfl_card_text">Then back to: <t t-esc="node.back.join(', ')"/></span>
-                            <span t-else="" class="o_sfl_card_text" t-esc="cardText(node.step)"/>
                             <span t-if="hasUsage(node.step)" class="o_sfl_card_usage">
                                 <i class="fa fa-user" aria-hidden="true"/>
                                 <span t-esc="node.step.reached"/>
