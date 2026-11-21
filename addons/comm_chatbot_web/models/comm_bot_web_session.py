@@ -63,3 +63,46 @@ class CommBotWebSession(models.Model):
             '|', ('closed', '=', True), ('last_activity_at', '<', cutoff),
         ], limit=500)
         stale.sudo().unlink()
+
+    # ── The preview's contact ────────────────────────────────────────────
+
+    PREVIEW_REF = 'comm-chatbot-web-preview'
+
+    @api.model
+    def _preview_partner(self, name=None, mobile=None):
+        """The one contact every preview of the widget runs as.
+
+        A preview used to make a new contact each time it was opened, so
+        they piled up in Contacts. It is one record now, kept archived: it
+        does not show in Contacts, and a real message from the same number
+        is never matched to it."""
+        Partner = self.env['res.partner'].sudo().with_context(active_test=False)
+        partner = Partner.search([('ref', '=', self.PREVIEW_REF)], limit=1)
+        vals = {'name': name or 'Web preview', 'mobile': mobile or '+27600000000'}
+        if not partner:
+            return Partner.create(dict(vals, ref=self.PREVIEW_REF, active=False))
+        if partner.name != vals['name'] or partner.mobile != vals['mobile']:
+            partner.write(vals)
+        return partner
+
+    @api.model
+    def _archive_minted_preview_contacts(self):
+        """Archive the contacts older previews left behind. Only contacts
+        that are nothing but a preview's are touched: not one that is a
+        user's, and not one with a conversation outside a preview."""
+        Partner = self.env['res.partner'].sudo()
+        previews = self.sudo().search([('is_preview', '=', True)])
+        minted = previews.partner_id | Partner.search([
+            ('name', '=', 'Web preview'), ('mobile', '=', '+27600000000')])
+        minted = minted.filtered(lambda p: p.active and p.ref != self.PREVIEW_REF)
+        if not minted:
+            return minted
+        users = self.env['res.users'].sudo().with_context(active_test=False).search(
+            [('partner_id', 'in', minted.ids)]).partner_id
+        elsewhere = self.env['comm.conversation'].sudo().search([
+            ('partner_id', 'in', minted.ids),
+            ('id', 'not in', previews.conversation_id.ids),
+        ]).partner_id
+        minted -= users | elsewhere
+        minted.write({'active': False})
+        return minted
