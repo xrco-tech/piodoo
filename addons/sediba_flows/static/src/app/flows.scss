@@ -521,3 +521,105 @@ textarea.o_sfl_input { resize: vertical; }
 .o_sfl_section { margin-top: 20px !important; padding-top: 16px; border-top: 1px solid var(--sfl-soft); }
 .o_sfl_notes ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
 .o_sfl_notes li + li { margin-top: 4px; }
+
+// Try it: the walk's header, and each channel's own look.
+.o_sfl_try_head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.o_sfl_try_channel {
+    padding: 3px 10px;
+    border: 1px solid var(--sfl-text);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.o_sfl_try_who {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    min-height: 40px;
+    padding: 4px 12px;
+    border: 1px solid var(--sfl-line);
+    border-radius: 999px;
+    background: var(--sfl-box);
+    color: inherit;
+    text-align: left;
+
+    span {
+        flex: 1;
+        overflow: hidden;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .fa-pencil { color: var(--sfl-muted); }
+}
+
+// WhatsApp: its paper-coloured ground, white and green bubbles, buttons under the message.
+.o_sfl_chat_whatsapp {
+    background: #efeae2;
+    border-color: #d9d2c5;
+
+    .o_sfl_bubble {
+        border-color: transparent;
+        background: #ffffff;
+        color: #111b21;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, .12);
+        &.o_sfl_mine { background: #d9fdd3; color: #111b21; }
+        code { color: inherit; }
+    }
+}
+
+.o_sfl_wa_buttons {
+    display: flex;
+    flex-direction: column;
+    align-self: flex-start;
+    gap: 4px;
+    width: 88%;
+
+    button {
+        min-height: 40px;
+        border: 0;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #0a5a8c;
+        font-weight: 600;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, .12);
+        &:disabled { opacity: .6; }
+    }
+}
+
+// Voice: what is spoken to the caller.
+.o_sfl_chat_voice .o_sfl_bubble:not(.o_sfl_mine) { font-style: italic; }
+
+// USSD: a handset screen, one screen at a time.
+.o_sfl_handset {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 12px;
+    min-height: 160px;
+    padding: 16px;
+    overflow-y: auto;
+    border-radius: 10px;
+    background: #111418;
+    color: #f3f4f6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.o_sfl_handset_text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.o_sfl_handset_end { color: #cbd5e1; }
