@@ -4,8 +4,8 @@
     <t t-name="chat2work_workspace.AlertsSystray">
         <Dropdown t-if="state.agent" position="'bottom-end'" menuClass="'o_c2w_alerts'">
             <button type="button" class="o_c2w_alerts_btn" title="Chat2Work: people waiting" aria-label="Chat2Work: people waiting">
-                <i class="fa fa-comments-o"/>
-                <span t-if="state.count" class="o_c2w_alerts_n" t-esc="badge"/>
+                <i class="fa fa-lg fa-comments-o" role="img"/>
+                <span t-if="state.count" class="o_c2w_alerts_n badge rounded-pill" t-esc="badge"/>
                 <span t-if="state.budget.length" class="o_c2w_alerts_dot" title="Budget warning" aria-label="Budget warning"/>
             </button>
             <t t-set-slot="content">
