@@ -121,6 +121,9 @@
                 <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Zoom out" t-on-click="() => this.setZoom(-0.1)">−</button>
                 <span class="o_sfl_zoom" t-esc="zoomLabel"/>
                 <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Zoom in" t-on-click="() => this.setZoom(0.1)">+</button>
+                <button t-if="flowNotes.length" type="button" class="btn btn-light" title="What was and was not carried over from the older bot" t-on-click="openNotes">
+                    Notes <span class="o_sfl_count" t-esc="flowNotes.length"/>
+                </button>
                 <button t-if="canEdit and anyPlaced" type="button" class="btn btn-light" title="Put every card back in its own place" t-on-click="tidy">Tidy layout</button>
                 <button t-if="canEdit" type="button" class="btn btn-light" t-on-click="toggleLive">
                     <t t-if="isLive">Pause</t><t t-else="">Go live</t>
@@ -215,13 +218,6 @@
     <t t-name="sediba_flows.Flow">
         <fieldset class="o_sfl_form" t-att-disabled="!canEdit">
             <span class="o_sfl_muted">Click a step to change it. These settings are for the whole flow.</span>
-            <div t-if="state.data.flow.notes and state.data.flow.notes.length" class="o_sfl_group o_sfl_notes">
-                <b>Brought over from an older bot</b>
-                <span class="o_sfl_muted o_sfl_small">Read these before going live. The older bot is unchanged.</span>
-                <ul>
-                    <li t-foreach="state.data.flow.notes" t-as="note" t-key="note_index" t-esc="note"/>
-                </ul>
-            </div>
             <div class="o_sfl_group">
                 <b>Runs on</b>
                 <span class="o_sfl_muted o_sfl_small">Under each channel you tick: the number or account this flow is connected to there, and what starts it.</span>
@@ -651,6 +647,19 @@
                        placeholder="Not set" t-model="variable.value"/>
             </div>
         </div>
+    </t>
+
+    <!-- ── Notes on a flow that was brought over from an older bot ───────── -->
+    <t t-name="sediba_flows.Notes">
+        <Dialog title="props.title" size="'md'">
+            <p class="text-muted">Read these before going live. The older bot is unchanged.</p>
+            <ul class="o_sfl_notes_list">
+                <li t-foreach="props.notes" t-as="note" t-key="note_index" t-esc="note"/>
+            </ul>
+            <t t-set-slot="footer">
+                <button type="button" class="btn btn-primary" t-on-click="props.close">Close</button>
+            </t>
+        </Dialog>
     </t>
 
 </templates>
