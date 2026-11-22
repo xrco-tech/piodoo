@@ -2,6 +2,7 @@
 
 import { Component, markup, onMounted, onPatched, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { Dialog } from "@web/core/dialog/dialog";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
@@ -205,6 +206,13 @@ export function layoutFlow(steps, entryId, drag, heights = {}) {
 function toId(value) {
     const n = Number(value);
     return value && !Number.isNaN(n) ? n : false;
+}
+
+/** What was and was not carried over, for a flow brought over from an older bot. */
+class FlowNotes extends Component {
+    static template = "sediba_flows.Notes";
+    static components = { Dialog };
+    static props = { title: String, notes: Array, close: Function };
 }
 
 export class SedibaFlows extends Component {
@@ -563,6 +571,19 @@ export class SedibaFlows extends Component {
             return;
         }
         this.select(id);
+    }
+
+    /** Notes left by bringing the flow over; none for a flow made here. */
+    get flowNotes() {
+        return this.state.data.flow.notes || [];
+    }
+
+    openNotes() {
+        const from = this.state.data.flow.legacy_name;
+        this.dialog.add(FlowNotes, {
+            title: from ? _t("Brought over from “%s”", from) : _t("Notes"),
+            notes: this.flowNotes,
+        });
     }
 
     get anyPlaced() {

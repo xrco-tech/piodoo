@@ -873,3 +873,24 @@ textarea.o_sfl_input { resize: vertical; }
 
     .o_sfl_row { align-items: center; padding: 0; }
 }
+
+// The Notes button's count, and the notes in their dialog.
+.o_sfl_count {
+    display: inline-block;
+    min-width: 20px;
+    margin-left: 4px;
+    padding: 0 6px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+}
+
+.o_sfl_notes_list {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.5;
+    li + li { margin-top: 6px; }
+}

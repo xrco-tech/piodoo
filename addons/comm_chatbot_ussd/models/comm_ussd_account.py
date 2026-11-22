@@ -8,7 +8,6 @@ class CommUssdAccount(models.Model):
 
     flow_bot_id = fields.Many2one(
         'comm.bot', string='Runs the flow', ondelete='set null', index=True,
-        tracking=True,
         help='When set, a session on this code runs this flow, whatever '
              'gateway it comes through. Empty: the code runs what it ran '
              'before (an older bot, or its own coded menu).')
