@@ -5,10 +5,10 @@
         <div class="o_phone_tray">
             <button class="btn" t-att-title="title" t-on-click="() => this.toggle()">
                 <span class="o_phone_tray_ico">
-                    <i class="fa fa-whatsapp"/>
+                    <i class="fa fa-lg fa-whatsapp" role="img"/>
                     <span class="o_phone_tray_dot" t-att-class="dot"/>
-                    <span t-if="state.missed" class="o_phone_tray_n" t-esc="missed"/>
                 </span>
+                <span t-if="state.missed" class="o_phone_tray_n badge rounded-pill" t-esc="missed"/>
             </button>
         </div>
     </t>

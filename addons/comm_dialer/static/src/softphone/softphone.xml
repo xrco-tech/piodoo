@@ -6,7 +6,7 @@
             <button class="btn o_dialer_sp_btn" t-att-title="statusLabel"
                     t-on-click="() => this.toggleDialer()">
                 <span class="o_dialer_sp_ico">
-                    <i class="fa fa-headphones"/>
+                    <i class="fa fa-lg fa-headphones" role="img"/>
                     <span class="o_dialer_sp_dot" t-att-class="dotClass"/>
                 </span>
             </button>

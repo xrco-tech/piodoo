@@ -1,22 +1,11 @@
 // The Chat2Work "people waiting" icon in the top bar and its menu.
 
 .o_c2w_alerts_btn {
-    // Beside the icon, raised, the way the Discuss counter sits.
-    .o_c2w_alerts_n {
-        display: inline-block;
-        min-width: 16px;
-        margin-left: 2px;
-        padding: 0 4px;
-        border-radius: 8px;
-        background: #ffc414;
-        color: #1b2a41;
-        font-size: 10px;
-        font-weight: 700;
-        line-height: 16px;
-        text-align: center;
-        vertical-align: top;
-        transform: translateY(-4px);
-    }
+    // The count is a stock top-bar badge (same size and place as the Discuss
+    // and Activities counters); only its colours are ours.
+    --o-navbar-badge-bg: #ffc414;
+    --o-navbar-badge-color: #1b2a41;
+    --o-navbar-badge-text-shadow: none;
 }
 
 .o_c2w_alerts {

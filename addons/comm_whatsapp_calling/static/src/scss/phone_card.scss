@@ -296,23 +296,28 @@
     display: flex;
     align-items: center;
 
-    > button { color: inherit; }
-    // The dot and the count hang off the icon itself, not the button: the
-    // button is much bigger than the icon on a phone.
+    > button {
+        // Laid out like the stock top-bar buttons, so icon and count sit level with them.
+        display: flex;
+        align-items: center;
+        color: inherit;
+        // The missed-calls count is a stock top-bar badge (same size and place
+        // as the Discuss and Activities counters); only its colours are ours.
+        --o-navbar-badge-bg: var(--pc-red);
+        --o-navbar-badge-color: #fff;
+        --o-navbar-badge-text-shadow: none;
+    }
+    // The dot hangs off the icon itself, not the button: the button is much
+    // bigger than the icon on a phone.
     .o_phone_tray_ico { position: relative; display: inline-flex; }
     .o_phone_tray_dot {
-        position: absolute; right: -4px; bottom: -3px; width: 8px; height: 8px; border-radius: 50%;
+        position: absolute; right: -5px; bottom: -4px; width: 10px; height: 10px; border-radius: 50%;
         border: 1px solid var(--o-navbar-bg, #fff);
         background: var(--pc-muted);
         &.ok { background: var(--pc-green); }
         &.away { background: var(--pc-amber); }
         &.off { background: var(--pc-red); }
         &.ring { background: var(--pc-amber); animation: o_phone_pulse 1s infinite; }
-    }
-    .o_phone_tray_n {
-        position: absolute; top: -8px; right: -11px; min-width: 15px; height: 15px; padding: 0 4px;
-        border-radius: 999px; background: var(--pc-red); color: #fff;
-        font-size: 10px; font-weight: 700; line-height: 15px; text-align: center;
     }
 }
 
