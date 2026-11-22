@@ -76,7 +76,19 @@ class SedibaAssistant(models.AbstractModel):
     # ── One item, as the assistant is given it ───────────────────────────────
 
     @api.model
-    def _doc_item(self, doc):
+    def _visual_text(self, public=False):
+        """How a visual block in a doc reads to an assistant: the topic's
+        facts as plain lines, and only when the topic's own switch lets this
+        assistant read it. A doc cannot open a topic the switch keeps shut."""
+        def text(block, topic_id):
+            topic = self.env['sediba.topic'].sudo().browse(topic_id).exists()
+            if not topic or not topic.active or not topic['public_allowed' if public else 'ai_allowed']:
+                return ''
+            return "\n".join(topic._visual_lines(topic._visual_part(topic._visual(), block)))
+        return text
+
+    @api.model
+    def _doc_item(self, doc, public=False):
         version = doc._published()
         questions = [(q.get('name') or '', q.get('answer') or '') for q in version.questions or []]
         return {
@@ -85,7 +97,7 @@ class SedibaAssistant(models.AbstractModel):
             'under': doc.parent_id and doc.parent_id._published().name or '',
             'summary': version.summary or '',
             # Flow diagrams are written out as numbered steps where they stand.
-            'text': doc_text(version.body, version.flows),
+            'text': doc_text(version.body, version.flows, self._visual_text(public)),
             'questions': questions,
             'published': version.published_on.date().isoformat(),
         }
@@ -116,7 +128,7 @@ class SedibaAssistant(models.AbstractModel):
         with no question, {'docs': [...], 'research_topics': [...]}.
         `public` is for an assistant that talks to people outside the
         company: it reads by the public switch, not Sidekick's."""
-        docs = [self._doc_item(doc) for doc in self._docs(space, public)]
+        docs = [self._doc_item(doc, public) for doc in self._docs(space, public)]
         findings = self._findings(space, public)
         words = [w for w in WORD.findall((question or '').lower()) if w not in STOP]
         if not words:

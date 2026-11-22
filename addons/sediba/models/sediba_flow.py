@@ -31,6 +31,9 @@ LABEL_CHARS = 24
 NAME_CHARS = 100
 KEY = re.compile(r'^[a-z0-9]{1,12}$')
 BLOCK_CLASS = re.compile(r'(?:^|\s)o_sdb_flow_([a-z0-9]{1,12})(?:\s|$)')
+# A visual block: part of a research topic's visual summary, shown in a doc.
+# It holds no figures of its own: <div class="o_sdb_vis o_sdb_vis_<block>_<topic id>">.
+VISUAL_CLASS = re.compile(r'(?:^|\s)o_sdb_vis_(all|tiles|bars|dates|orgs)_(\d{1,9})(?:\s|$)')
 
 
 def kind_labels():
@@ -137,54 +140,81 @@ def _inner(root):
     return (root.text or '') + ''.join(html.tostring(child, encoding='unicode') for child in root)
 
 
-def clean_doc(body, flows):
+def _visual_key(element):
+    match = VISUAL_CLASS.search(element.get('class') or '')
+    return (match.group(1), int(match.group(2))) if match else False
+
+
+def _blocks(root, name):
+    return root.xpath(".//*[contains(concat(' ', normalize-space(@class), ' '), ' %s ')]" % name)
+
+
+def _stand_alone(root, block, classes, text):
+    """A block stands on its own line, holding only its class and a line of
+    words: lift it out of a list or a table and empty it."""
+    top = block
+    while top.getparent() is not root:
+        top = top.getparent()
+    if top is not block:
+        tail, block.tail = block.tail, None
+        parent = block.getparent()
+        previous = block.getprevious()
+        parent.remove(block)
+        if tail:
+            if previous is not None:
+                previous.tail = (previous.tail or '') + tail
+            else:
+                parent.text = (parent.text or '') + tail
+        top.addnext(block)
+    for child in list(block):
+        block.remove(child)
+    block.tag = 'div'
+    for name in list(block.attrib):
+        del block.attrib[name]
+    # Only a class: it is all the text's cleaner is sure to keep. The
+    # editor makes the block read-only itself when it opens.
+    block.set('class', classes)
+    block.text = text
+
+
+def clean_doc(body, flows, visual_label=None):
     """A doc's text and diagrams as they are stored. Each diagram keeps one
     block in the text, on a line of its own; a block with no diagram behind it
-    goes, and so does a diagram with no block left in the text."""
+    goes, and so does a diagram with no block left in the text.
+
+    A visual block stays when `visual_label(block, topic_id)` gives it a
+    line of words, and goes when it gives none (the topic is gone)."""
     flows = {key: clean_flow(flow) for key, flow in (flows or {}).items()
              if isinstance(key, str) and KEY.match(key)}
-    if not flows and 'o_sdb_flow' not in (body or ''):
+    if not flows and 'o_sdb_flow' not in (body or '') and 'o_sdb_vis' not in (body or ''):
         return body, {}
     root = _parse(body)
     kept = {}
-    for block in root.xpath(".//*[contains(concat(' ', normalize-space(@class), ' '), ' o_sdb_flow ')]"):
+    for block in _blocks(root, 'o_sdb_flow'):
         key = _block_key(block)
         if key not in flows or key in kept:
             block.drop_tree()
             continue
         kept[key] = flows[key]
-        # A diagram stands on its own line: lift it out of a list or a table.
-        top = block
-        while top.getparent() is not root:
-            top = top.getparent()
-        if top is not block:
-            tail, block.tail = block.tail, None
-            parent = block.getparent()
-            previous = block.getprevious()
-            parent.remove(block)
-            if tail:
-                if previous is not None:
-                    previous.tail = (previous.tail or '') + tail
-                else:
-                    parent.text = (parent.text or '') + tail
-            top.addnext(block)
-        for child in list(block):
-            block.remove(child)
-        block.tag = 'div'
-        for name in list(block.attrib):
-            del block.attrib[name]
-        # Only a class: it is all the text's cleaner is sure to keep. The
-        # editor makes the block read-only itself when it opens.
-        block.set('class', 'o_sdb_flow o_sdb_flow_%s' % key)
-        block.text = _("Flow diagram: %(name)s (%(count)s steps)", name=kept[key]['name'], count=len(kept[key]['steps']))
+        _stand_alone(root, block, 'o_sdb_flow o_sdb_flow_%s' % key,
+                     _("Flow diagram: %(name)s (%(count)s steps)", name=kept[key]['name'], count=len(kept[key]['steps'])))
+    for block in _blocks(root, 'o_sdb_vis'):
+        key = _visual_key(block)
+        label = key and visual_label and visual_label(*key)
+        if not label:
+            block.drop_tree()
+            continue
+        _stand_alone(root, block, 'o_sdb_vis o_sdb_vis_%s_%s' % key, label)
     return _inner(root), kept
 
 
 def doc_parts(body, flows):
-    """A doc's text cut at its diagrams, for the page to draw:
-    [{'html': Markup} | {'flow': {'key', 'name', 'steps', 'lines'}}]."""
+    """A doc's text cut at its diagrams and visual blocks, for the page to draw:
+    [{'html': Markup} | {'flow': {'key', 'name', 'steps', 'lines'}}
+     | {'visual': {'block', 'topic_id'}}]. A visual block holds no figures:
+    whoever shows the doc fills it from the topic's verified findings."""
     flows = flows or {}
-    if not flows or 'o_sdb_flow' not in (body or ''):
+    if not ((flows and 'o_sdb_flow' in (body or '')) or 'o_sdb_vis' in (body or '')):
         return [{'html': Markup(body)}] if html2plaintext(body or '').strip() else []
     root = _parse(body)
     parts, run = [], [root.text or '']
@@ -197,9 +227,14 @@ def doc_parts(body, flows):
 
     for child in root:
         key = _block_key(child) if 'o_sdb_flow' in (child.get('class') or '') else False
+        visual = _visual_key(child) if 'o_sdb_vis' in (child.get('class') or '') else False
         if key and key in flows:
             close()
             parts.append({'flow': dict(flows[key], key=key, lines=flow_lines(flows[key]))})
+            run.append(child.tail or '')
+        elif visual:
+            close()
+            parts.append({'visual': {'block': visual[0], 'topic_id': visual[1]}})
             run.append(child.tail or '')
         else:
             run.append(html.tostring(child, encoding='unicode'))
@@ -207,10 +242,14 @@ def doc_parts(body, flows):
     return parts
 
 
-def doc_text(body, flows):
+def doc_text(body, flows, visual_text=None):
     """A doc's text with each diagram written out as numbered steps where it
-    stands. What the assistants read and what search looks through."""
+    stands. What the assistants read and what search looks through. A visual
+    block reads as whatever `visual_text(block, topic_id)` gives, or nothing."""
     chunks = []
     for part in doc_parts(body, flows):
-        chunks.append(flow_text(part['flow']) if 'flow' in part else html2plaintext(part['html']).strip())
+        if 'visual' in part:
+            chunks.append(visual_text(part['visual']['block'], part['visual']['topic_id']) if visual_text else '')
+        else:
+            chunks.append(flow_text(part['flow']) if 'flow' in part else html2plaintext(part['html']).strip())
     return "\n\n".join(chunk for chunk in chunks if chunk)

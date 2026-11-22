@@ -399,9 +399,25 @@
                             </t>
                         </header>
 
-                        <div t-if="d.summary.length or d.our_read" class="o_sdb_pair wide">
-                            <section t-if="d.summary.length">
+                        <section t-if="d.visual">
+                            <div class="o_sdb_known_head">
                                 <h2>What we know</h2>
+                                <div class="o_sdb_switch" role="group" aria-label="Show what we know as">
+                                    <button type="button" t-att-class="{ on: state.visual }" t-att-aria-pressed="state.visual ? 'true' : 'false'"
+                                            t-on-click="() => state.visual = true">Visual</button>
+                                    <button type="button" t-att-class="{ on: !state.visual }" t-att-aria-pressed="state.visual ? 'false' : 'true'"
+                                            t-on-click="() => state.visual = false">Text</button>
+                                </div>
+                            </div>
+                            <t t-if="state.visual">
+                                <SedibaVisual data="d.visual" onOpen.bind="openFinding" orgsTitle="true"/>
+                                <p class="o_sdb_muted small">Every figure here comes from a verified finding. Choose a block to open its finding and sources.</p>
+                            </t>
+                        </section>
+
+                        <div t-if="(d.summary.length and !(d.visual and state.visual)) or d.our_read" class="o_sdb_pair wide">
+                            <section t-if="d.summary.length and !(d.visual and state.visual)">
+                                <h2 t-if="!d.visual">What we know</h2>
                                 <ul class="o_sdb_known">
                                     <li t-foreach="d.summary" t-as="line" t-key="line_index" t-esc="line"/>
                                 </ul>
@@ -510,6 +526,14 @@
                                     </table>
                                 </div>
                                 <p t-else="" class="o_sdb_muted">No sources yet. A finding needs one before it can be verified.</p>
+                            </section>
+
+                            <section t-if="f.facts.length">
+                                <h2>Figures, dates and tags</h2>
+                                <ul class="o_sdb_known">
+                                    <li t-foreach="f.facts" t-as="fact" t-key="fact_index" t-esc="fact"/>
+                                </ul>
+                                <p class="o_sdb_muted small">What the visual blocks draw from this finding<t t-if="f.status !== 'verified'">, once it is verified</t>.</p>
                             </section>
 
                             <section t-if="f.why" class="o_sdb_read">
@@ -635,6 +659,7 @@
 
                             <t t-foreach="d.parts" t-as="part" t-key="part_index">
                                 <section t-if="part.html" class="o_sdb_doc" t-out="part.html"/>
+                                <SedibaVisualBlock t-elif="part.visual" visual="part.visual" onOpen.bind="openFinding" onOpenTopic.bind="openTopic"/>
                                 <SedibaFlowBlock t-else="" flow="part.flow"
                                                  canEdit="state.nav.can_write and !d.viewing and !state.nav.reference ? true : false"
                                                  onEdit="() => this.editFlow(part.flow.key)"/>
@@ -787,6 +812,27 @@
                                     </div>
                                 </div>
                                 <button type="button" class="o_sdb_btn start" t-on-click="insertFlow">Insert flow diagram</button>
+                            </section>
+
+                            <section>
+                                <h2>Visual blocks</h2>
+                                <p class="o_sdb_muted">Show part of a research topic's visual summary in this doc: headline numbers, comparison bars, dates to know or organisation cards. The block holds no figures of its own. It is drawn from the topic's verified findings each time the doc is opened, so it stays up to date.</p>
+                                <div t-if="state.visualKeys.length" class="o_sdb_flow_list">
+                                    <div t-foreach="state.visualKeys" t-as="key" t-key="key" class="o_sdb_flow_row">
+                                        <span t-esc="visualLabel(key)"/>
+                                        <button type="button" class="o_sdb_link danger" t-on-click="() => this.removeVisual(key)">Remove<span class="visually-hidden">: <t t-esc="visualLabel(key)"/></span></button>
+                                    </div>
+                                </div>
+                                <div t-if="e.choices.visual_topics.length" class="o_sdb_vis_pick">
+                                    <select class="o_sdb_input" aria-label="Research topic" t-model="state.visualPick.topic">
+                                        <option t-foreach="e.choices.visual_topics" t-as="t" t-key="t[0]" t-att-value="t[0]" t-esc="t[1]"/>
+                                    </select>
+                                    <select class="o_sdb_input" aria-label="Which block" t-model="state.visualPick.block">
+                                        <option t-foreach="e.choices.visual_blocks" t-as="b" t-key="b[0]" t-att-value="b[0]" t-esc="b[1]"/>
+                                    </select>
+                                    <button type="button" class="o_sdb_btn start" t-on-click="insertVisual">Insert visual block</button>
+                                </div>
+                                <p t-else="" class="o_sdb_muted">There are no research topics yet.</p>
                             </section>
 
                             <section>

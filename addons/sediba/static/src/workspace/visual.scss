@@ -1,0 +1,132 @@
+// Visual blocks: headline numbers, comparison bars, dates to know,
+// organisation cards, tags and logos. On a topic and inside a company doc.
+.o_sdb_ws {
+    // Two series at most. Both pairs pass the palette check on their card colour.
+    --sdb-vis-a: #3b6fb6;
+    --sdb-vis-b: #d9731f;
+    --sdb-vis-act: #92400e;
+    --sdb-vis-logo: #e5e7eb;
+
+    .o_sdb_vis_all { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .o_sdb_vis_all h3, .o_sdb_vis_title { margin: 0; font-size: 16px; font-weight: 600; }
+    .small { font-size: 13px; }
+
+    // Every block is a card. Where it opens its finding it is a button.
+    .o_sdb_tile, .o_sdb_chart, .o_sdb_dates, .o_sdb_org {
+        border: 1px solid var(--sdb-line);
+        border-radius: 12px;
+        background: var(--sdb-card);
+        color: var(--sdb-fg);
+    }
+    button.o_sdb_tile, button.o_sdb_org, button.o_sdb_bar_row, button.o_sdb_date {
+        font: inherit; text-align: left; cursor: pointer;
+        &:hover { background: var(--sdb-soft); }
+        &:focus-visible { outline: 3px solid var(--sdb-link); outline-offset: 2px; }
+    }
+
+    // ── Tags and logos ───────────────────────────────────────────────────
+    .o_sdb_vtag {
+        align-self: flex-start;
+        padding: 0 8px;
+        border: 1px solid var(--sdb-muted);
+        border-radius: 11px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 20px;
+        &.act { border-color: var(--sdb-vis-act); color: var(--sdb-vis-act); }
+    }
+    .o_sdb_logo {
+        flex: none;
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        object-fit: contain;
+        &.letter { display: flex; align-items: center; justify-content: center; background: var(--sdb-vis-logo); font-weight: 700; }
+        &.small { width: 28px; height: 28px; border-radius: 8px; font-size: 13px; }
+        &.none { visibility: hidden; }
+    }
+
+    // ── 1. Headline numbers ──────────────────────────────────────────────
+    .o_sdb_tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+    .o_sdb_tile { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 14px 16px; }
+    .o_sdb_tile_figure { font-size: 24px; line-height: 1.25; overflow-wrap: anywhere; }
+
+    // ── 2. Comparison bars ───────────────────────────────────────────────
+    .o_sdb_vis_row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+    .o_sdb_charts { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+    .o_sdb_chart { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 16px 20px; }
+    .o_sdb_chart_head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; h3 { flex: 1 1 auto; } }
+    .o_sdb_legend { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+    .o_sdb_swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--sdb-vis-a); &.s1 { background: var(--sdb-vis-b); } }
+    .o_sdb_bars { display: flex; flex-direction: column; }
+    .o_sdb_bar_row, .o_sdb_bar_axis { display: flex; align-items: center; gap: 12px; width: 100%; }
+    .o_sdb_bar_row {
+        padding: 7px 0;
+        border: 0;
+        border-bottom: 1px solid var(--sdb-line-soft);
+        background: transparent;
+        color: var(--sdb-fg);
+        &:last-child { border-bottom: 0; }
+    }
+    .o_sdb_bar_name { flex: none; width: 170px; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+    .o_sdb_bar_track { flex: 1 1 auto; min-width: 40px; display: flex; flex-direction: column; gap: 2px; }
+    .o_sdb_bar_fill { height: 9px; border-radius: 0 4px 4px 0; background: var(--sdb-vis-a); &.s1 { background: var(--sdb-vis-b); } }
+    .o_sdb_bar_value { flex: none; width: 118px; text-align: right; overflow-wrap: anywhere; }
+    .o_sdb_bar_axis { color: var(--sdb-muted); font-size: 12px; }
+    .o_sdb_bar_ticks { flex: 1 1 auto; min-width: 40px; display: flex; justify-content: space-between; }
+
+    // ── 3. Dates to know ─────────────────────────────────────────────────
+    .o_sdb_dates { flex: 1 1 280px; max-width: 420px; display: flex; flex-direction: column; gap: 6px; padding: 16px 20px; }
+    .o_sdb_date { display: flex; gap: 12px; padding: 4px 0; border: 0; background: transparent; color: var(--sdb-fg); }
+    .o_sdb_date_day { flex: none; width: 92px; }
+    .o_sdb_date_what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+    // ── 4. Organisation cards ────────────────────────────────────────────
+    .o_sdb_orgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+    .o_sdb_org { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 14px 16px; }
+    .o_sdb_org_head { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+    .o_sdb_org_line { display: flex; justify-content: space-between; gap: 12px; > :last-child { flex: none; max-width: 60%; text-align: right; } }
+    .o_sdb_org_tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+
+    // ── The Visual / Text switch on a topic ──────────────────────────────
+    .o_sdb_known_head { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; h2 { flex: 1 1 auto; } }
+
+    // ── A visual block inside a doc: the flow diagram's inset, full width ──
+    .o_sdb_vis_block { align-self: stretch; }
+    // Dates alone are a short list: the inset fits them, as it fits a diagram.
+    .o_sdb_vis_block.narrow { align-self: flex-start; .o_sdb_dates { max-width: none; } }
+    .o_sdb_vis_stage { padding: 16px; }
+    .o_sdb_vis_text {
+        ul { margin: 6px 0 8px; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; line-height: 1.45; }
+        p { margin: 0 0 8px; }
+    }
+
+    // The block as it stands in the text while the doc is being written.
+    .o_sdb_editable .o_sdb_vis {
+        margin: 10px 0;
+        padding: 14px 16px;
+        border: 1px dashed var(--sdb-line);
+        border-radius: 12px;
+        background: var(--sdb-soft);
+        color: var(--sdb-fg);
+        font-weight: 600;
+        user-select: none;
+    }
+    .o_sdb_vis_pick { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; .o_sdb_input { flex: 1 1 200px; min-height: 40px; } }
+
+    @media (max-width: 767px) {
+        .o_sdb_bar_row, .o_sdb_bar_axis { flex-wrap: wrap; gap: 4px 10px; }
+        .o_sdb_bar_name { flex: 1 1 0; width: auto; }
+        .o_sdb_bar_value { width: auto; }
+        .o_sdb_bar_track, .o_sdb_bar_ticks { flex: 1 0 100%; order: 3; }
+        .o_sdb_bar_axis .o_sdb_logo, .o_sdb_bar_axis .o_sdb_bar_name, .o_sdb_bar_axis .o_sdb_bar_value { display: none; }
+        .o_sdb_dates { max-width: none; }
+    }
+}
+
+// On paper every block gives way to the same facts as lines.
+@media print {
+    .o_sdb_ws .o_sdb_vis_block {
+        .o_sdb_vis_stage, .o_sdb_vis_text summary { display: none !important; }
+        .o_sdb_vis_text > ul { display: flex !important; }
+    }
+}

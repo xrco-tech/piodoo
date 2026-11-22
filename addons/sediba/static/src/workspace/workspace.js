@@ -11,6 +11,7 @@ import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { SedibaFlowBlock, SedibaFlowEditor } from "./flow";
+import { SedibaVisual, SedibaVisualBlock } from "./visual";
 
 const WS = "sediba.workspace";
 const PAGE = 40;
@@ -55,7 +56,7 @@ const CONFIRM = {
  */
 export class SedibaWorkspace extends Component {
     static template = "sediba.Workspace";
-    static components = { Wysiwyg, SedibaFlowBlock, SedibaFlowEditor };
+    static components = { Wysiwyg, SedibaFlowBlock, SedibaFlowEditor, SedibaVisual, SedibaVisualBlock };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -99,6 +100,9 @@ export class SedibaWorkspace extends Component {
             search: "", // the sidebar search, across docs and findings
             topicSearch: "", // the search inside one topic
             board: true, // a topic's findings as a board, or as a list
+            visual: true, // a topic's "What we know" as blocks, or as text
+            visualKeys: [], // the visual blocks in the doc being written: "<block>_<topic id>"
+            visualPick: { topic: "", block: "all" },
             loading: true,
             browsing: false, // phone: the sidebar is open
         });
@@ -345,6 +349,11 @@ export class SedibaWorkspace extends Component {
             getRecordInfo: () => ({ resModel: "sediba.doc", resId: data.id || false }),
         };
         data.flows = data.flows || {};
+        this.state.visualKeys = [...new Set(
+            [...(data.body || "").matchAll(/o_sdb_vis_((?:all|tiles|bars|dates|orgs)_\d+)/g)].map((found) => found[1])
+        )];
+        const topics = (data.choices || {}).visual_topics || [];
+        this.state.visualPick = { topic: topics.length ? String(topics[0][0]) : "", block: "all" };
         this.state.draft = data;
         this.state.data = data;
         this.state.dirty = false;
@@ -370,11 +379,11 @@ export class SedibaWorkspace extends Component {
 
     /** The doc's text with its diagram blocks made read-only, for the editor. */
     lockFlowBlocks(body) {
-        if (!body || !body.includes("o_sdb_flow")) {
+        if (!body || !(body.includes("o_sdb_flow") || body.includes("o_sdb_vis"))) {
             return body;
         }
         const holder = new DOMParser().parseFromString(`<div>${body}</div>`, "text/html").body.firstChild;
-        for (const block of holder.querySelectorAll(".o_sdb_flow")) {
+        for (const block of holder.querySelectorAll(".o_sdb_flow, .o_sdb_vis")) {
             block.setAttribute("contenteditable", "false");
         }
         return holder.innerHTML;
@@ -418,6 +427,70 @@ export class SedibaWorkspace extends Component {
         this.touch();
     }
 
+    // ── Visual blocks in a doc ───────────────────────────────────────────────
+
+    /** "bars_14" as words: which block of which topic. */
+    visualLabel(key) {
+        const [block, topicId] = key.split("_");
+        const choices = this.state.draft.choices;
+        const topic = choices.visual_topics.find((t) => String(t[0]) === topicId);
+        const kind = choices.visual_blocks.find((b) => b[0] === block);
+        return _t("Visual block: %(block)s, %(topic)s", {
+            block: kind ? kind[1] : block,
+            topic: topic ? topic[1] : _t("a topic that is gone"),
+        });
+    }
+
+    /** Part of a topic's visual summary, on a line of its own after the cursor's line. */
+    insertVisual() {
+        const pick = this.state.visualPick;
+        if (!this.editor || !this.editor.editable || !pick.topic) {
+            return;
+        }
+        const key = `${pick.block}_${pick.topic}`;
+        if (this.state.visualKeys.includes(key)) {
+            this.notification.add(_t("That block is already in this doc."), { type: "warning" });
+            return;
+        }
+        const block = this.editor.editable.ownerDocument.createElement("div");
+        block.className = `o_sdb_vis o_sdb_vis_${key}`;
+        block.setAttribute("contenteditable", "false");
+        block.textContent = this.visualLabel(key);
+        this.placeBlock(block);
+        this.state.visualKeys.push(key);
+        this.editorChanged();
+    }
+
+    removeVisual(key) {
+        const editable = this.editor && this.editor.editable;
+        for (const block of editable ? editable.querySelectorAll(`.o_sdb_vis_${key}`) : []) {
+            block.remove();
+        }
+        this.state.visualKeys = this.state.visualKeys.filter((other) => other !== key);
+        this.editorChanged();
+    }
+
+    /** Put a block on a line of its own after the line the cursor is in, with a line to type on after it. */
+    placeBlock(block) {
+        const editable = this.editor.editable;
+        const doc = editable.ownerDocument;
+        const selection = doc.getSelection();
+        let line = selection && selection.rangeCount && editable.contains(selection.anchorNode) ? selection.anchorNode : null;
+        while (line && line.parentNode !== editable) {
+            line = line.parentNode;
+        }
+        if (line) {
+            line.after(block);
+        } else {
+            editable.append(block);
+        }
+        if (!block.nextElementSibling) {
+            const after = doc.createElement("p");
+            after.append(doc.createElement("br"));
+            block.after(after);
+        }
+    }
+
     /** A new diagram, on a line of its own after the line the cursor is in. */
     insertFlow() {
         if (!this.editor || !this.editor.editable) {
@@ -436,21 +509,7 @@ export class SedibaWorkspace extends Component {
         block.className = `o_sdb_flow o_sdb_flow_${key}`;
         block.setAttribute("contenteditable", "false");
         block.textContent = this.flowLabel(flows[key]);
-        const selection = doc.getSelection();
-        let line = selection && selection.rangeCount && editable.contains(selection.anchorNode) ? selection.anchorNode : null;
-        while (line && line.parentNode !== editable) {
-            line = line.parentNode;
-        }
-        if (line) {
-            line.after(block);
-        } else {
-            editable.append(block);
-        }
-        if (!block.nextElementSibling) {
-            const after = doc.createElement("p");
-            after.append(doc.createElement("br"));
-            block.after(after);
-        }
+        this.placeBlock(block);
         this.editorChanged();
         this.state.flowKey = key;
     }

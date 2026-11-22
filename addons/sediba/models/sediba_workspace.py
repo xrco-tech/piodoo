@@ -179,6 +179,8 @@ class SedibaWorkspace(models.AbstractModel):
             'scope': topic.scope or '',
             'summary': [line.strip() for line in (topic.summary or '').splitlines() if line.strip()],
             'our_read': '' if space else (topic.our_read or ''),
+            # The same knowledge as blocks, drawn from facts on verified findings.
+            'visual': topic._visual(),
             'last': self._date(topic.last_researched),
             'due': False if space else self._date(topic.due_date),
             'ai_allowed': False if space else topic.ai_allowed,
@@ -210,6 +212,7 @@ class SedibaWorkspace(models.AbstractModel):
             'origin': finding.origin or '',
             'ref': finding.ref or '',
             'evidence': self._evidence(finding),
+            'facts': [fact._text() for fact in finding.fact_ids],
             'run': self._run_row(finding.run_id) if finding.run_id else False,
             'created': self._date(finding.create_date),
             'changed': self._date(finding.write_date),

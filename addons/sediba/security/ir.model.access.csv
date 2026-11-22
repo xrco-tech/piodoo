@@ -27,3 +27,5 @@ access_sediba_doc_note_writer,sediba.doc.note writer,model_sediba_doc_note,group
 access_sediba_doc_admin,sediba.doc admin,model_sediba_doc,base.group_system,1,1,1,1
 access_sediba_doc_version_admin,sediba.doc.version admin,model_sediba_doc_version,base.group_system,1,1,1,1
 access_sediba_doc_note_admin,sediba.doc.note admin,model_sediba_doc_note,base.group_system,1,1,1,1
+access_sediba_fact,sediba.fact,model_sediba_fact,group_user,1,1,1,1
+access_sediba_fact_reader,sediba.fact reader,model_sediba_fact,group_reader,1,0,0,0

@@ -13,6 +13,7 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tools import format_date, html2plaintext
 
 from .sediba_doc import READ_AGAIN
+from .sediba_fact import BLOCKS
 from .sediba_flow import clean_doc, clean_flow, doc_parts, doc_text, flow_lines
 from .sediba_workspace import DATE_FORMAT
 
@@ -158,6 +159,42 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         return data
 
     @api.model
+    def _visual_label(self, block, topic_id):
+        """The line of words a visual block keeps in a doc's text, or False
+        when its topic is gone."""
+        topic = self.env['sediba.topic'].browse(topic_id).exists()
+        if not topic or not topic.active:
+            return False
+        return _("Visual block: %(block)s, %(topic)s", block=dict(BLOCKS)[block], topic=topic.name)
+
+    @api.model
+    def _doc_parts(self, body, flows, space=False):
+        """A doc cut into text, diagrams and visual blocks, each visual block
+        filled from its topic's verified findings as they stand today. In an
+        app, a block with nothing to draw is left out."""
+        parts = []
+        for part in doc_parts(body, flows):
+            if 'visual' not in part:
+                parts.append(part)
+                continue
+            block, topic = part['visual']['block'], self.env['sediba.topic'].browse(part['visual']['topic_id']).exists()
+            if not topic or not topic.active:
+                continue
+            drawn = topic._visual_part(topic._visual(), block)
+            if not drawn and space:
+                continue
+            parts.append({'visual': {
+                'block': block,
+                'block_label': dict(BLOCKS)[block],
+                'topic': [topic.id, topic.name],
+                'data': drawn,
+                'lines': topic._visual_lines(drawn),
+                # A finding opens only where the reader may see the topic.
+                'can_open': topic in self._topics(space),
+            }})
+        return parts
+
+    @api.model
     def ws_doc(self, doc_id, space=False, version_id=False):
         """One doc to read. In Sediba: the working copy, or an older version
         when `version_id` is given. In an app: the last published version."""
@@ -179,7 +216,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             'summary': summary or '',
             'body': Markup(body) if html2plaintext(body or '').strip() else '',
             # The text cut at its flow diagrams, in the order the page draws them.
-            'parts': doc_parts(body, flows),
+            'parts': self._doc_parts(body, flows, space),
             'questions': questions,
             'parent': [doc.parent_id.id, self._doc_shown(doc.parent_id, space)['name']]
                       if doc.parent_id and doc.parent_id in docs else False,
@@ -271,6 +308,9 @@ class SedibaWorkspaceDocs(models.AbstractModel):
                 'parents': [[d.id, d.name] for d in Doc.search([('parent_id', '=', False), ('id', '!=', doc.id or 0)])],
                 'spaces': [[s.id, s.name] for s in self.env['sediba.space'].search([])],
                 'read_again': READ_AGAIN,
+                # Visual blocks: which part of which topic's summary to show.
+                'visual_blocks': [list(item) for item in BLOCKS],
+                'visual_topics': [[t.id, t.name] for t in self.env['sediba.topic'].search([])],
             },
         }
 
@@ -288,7 +328,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         name = (vals.get('name') or '').strip()
         if not name:
             raise UserError(_("Give the doc a title first."))
-        body, flows = clean_doc(vals.get('body') or '', vals.get('flows'))
+        body, flows = clean_doc(vals.get('body') or '', vals.get('flows'), self._visual_label)
         record = {
             'name': name,
             'summary': (vals.get('summary') or '').strip() or False,
