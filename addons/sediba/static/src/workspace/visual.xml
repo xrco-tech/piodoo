@@ -107,27 +107,30 @@
         </div>
     </t>
 
-    <!-- A visual block inside a company doc -->
+    <!-- A visual block inside a company doc: the same inset as a flow diagram -->
     <t t-name="sediba.VisualBlock">
         <t t-set="b" t-value="props.visual"/>
-        <figure class="o_sdb_vis_block">
-            <figcaption class="o_sdb_vis_head">
-                <b t-esc="b.block_label"/>
-                <span class="o_sdb_muted">from the research topic
-                    <button t-if="b.can_open and props.onOpenTopic" type="button" class="o_sdb_link" t-on-click="() => props.onOpenTopic(b.topic[0])" t-esc="b.topic[1]"/>
-                    <t t-else="" t-esc="b.topic[1]"/></span>
+        <figure class="o_sdb_flow_block o_sdb_vis_block" t-att-class="{ narrow: b.block === 'dates' }">
+            <figcaption class="o_sdb_flow_head">
+                <span class="o_sdb_flow_title"><b>Visual block</b> <t t-esc="b.block_label"/>: <t t-esc="b.topic[1]"/>
+                    <span t-if="b.data" class="o_sdb_muted"><t t-esc="count"/> <t t-if="count === 1">item</t><t t-else="">items</t></span></span>
+                <button t-if="b.can_open and props.onOpenTopic" type="button" class="o_sdb_btn" t-on-click="() => props.onOpenTopic(b.topic[0])">Open topic</button>
             </figcaption>
             <t t-if="b.data">
-                <SedibaVisual data="b.data" onOpen="b.can_open ? props.onOpen : undefined" orgsTitle="b.block === 'all'"/>
-                <details class="o_sdb_vis_text">
+                <div class="o_sdb_flow_scroll o_sdb_vis_stage">
+                    <SedibaVisual data="b.data" onOpen="b.can_open ? props.onOpen : undefined" orgsTitle="b.block === 'all'"/>
+                </div>
+                <details class="o_sdb_flow_text o_sdb_vis_text">
                     <summary>Show as text</summary>
                     <ul>
                         <li t-foreach="b.lines" t-as="line" t-key="line_index" t-esc="line"/>
                     </ul>
+                    <p class="o_sdb_muted small">Drawn from verified findings as they stand today.</p>
                 </details>
-                <p class="o_sdb_muted small o_sdb_vis_foot">Drawn from verified findings as they stand today.</p>
             </t>
-            <p t-else="" class="o_sdb_muted o_sdb_vis_foot">Nothing to draw yet: no verified finding on this topic carries a figure, date or tag for this block. Readers in the apps do not see this block until there is.</p>
+            <div t-else="" class="o_sdb_flow_detail">
+                <p class="o_sdb_muted">Nothing to draw yet: no verified finding on this topic carries a figure, date or tag for this block. Readers in the apps do not see this block until there is.</p>
+            </div>
         </figure>
     </t>
 </templates>

@@ -62,4 +62,10 @@ export class SedibaVisualBlock extends Component {
         onOpen: { type: Function, optional: true },
         onOpenTopic: { type: Function, optional: true },
     };
+
+    /** How many things the block draws: tiles, chart rows, dates and cards. */
+    get count() {
+        const d = this.props.visual.data;
+        return d.tiles.length + d.charts.reduce((sum, chart) => sum + chart.rows.length, 0) + d.dates.length + d.orgs.length;
+    }
 }
