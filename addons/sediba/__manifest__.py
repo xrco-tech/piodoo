@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Sediba',
-    'version': '18.0.1.7.0',
+    'version': '18.0.1.8.0',
     'category': 'Productivity',
     'summary': 'What we know in one place: our own company docs, and research with its sources',
     'description': """
@@ -31,6 +31,11 @@ place, with what is proven kept apart from what is only a lead.
   an owner, it is a draft until a writer publishes it, every published
   version is kept, and it carries a date to read it again. Pages sit one
   level under a doc.
+- Visual blocks: a finding can carry its figures, dates and tags, and a
+  topic's "What we know" then also shows as headline numbers, comparison
+  bars, dates to know and organisation cards with logos. Only verified
+  findings are drawn, every block opens its finding, and the same facts
+  stay readable as text. A company doc can show any of these blocks.
 - Other apps can show the same screen as their Reference: the published
   company docs and the verified findings marked as shown in them, read-only.
   A reader can leave a note for a doc's owner.
@@ -53,6 +58,9 @@ user with no email address can write findings.
             'sediba/static/src/workspace/flow.scss',
             'sediba/static/src/workspace/flow.js',
             'sediba/static/src/workspace/flow.xml',
+            'sediba/static/src/workspace/visual.scss',
+            'sediba/static/src/workspace/visual.js',
+            'sediba/static/src/workspace/visual.xml',
             'sediba/static/src/workspace/workspace.js',
             'sediba/static/src/workspace/workspace.xml',
         ],

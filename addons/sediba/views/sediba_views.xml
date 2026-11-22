@@ -131,6 +131,23 @@
                             <field name="read_on" optional="hide"/>
                         </list>
                     </field>
+                    <separator string="Figures, dates and tags"/>
+                    <p class="text-muted">Write down each number, date or yes-or-no fact this finding carries, so it can be drawn as a headline number, a bar, a date or a tag. Nothing is drawn until the finding is verified.</p>
+                    <field name="fact_ids">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="kind"/>
+                            <field name="label"/>
+                            <field name="subject"/>
+                            <field name="organisation_id"/>
+                            <field name="series" invisible="kind != 'measure'"/>
+                            <field name="value" invisible="kind != 'measure'"/>
+                            <field name="shown" invisible="kind not in ('measure', 'headline')"/>
+                            <field name="date" invisible="kind != 'date'"/>
+                            <field name="tag" invisible="kind != 'date'"/>
+                            <field name="action" invisible="kind not in ('date', 'tag')"/>
+                        </list>
+                    </field>
                     <group>
                         <group>
                             <field name="origin"/>
@@ -314,6 +331,7 @@
         <field name="model">sediba.organisation</field>
         <field name="arch" type="xml">
             <list string="Organisations" editable="bottom">
+                <field name="logo" widget="image" options="{'size': [32, 32]}"/>
                 <field name="name"/>
                 <field name="color" widget="color_picker"/>
             </list>

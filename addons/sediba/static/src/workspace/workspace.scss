@@ -36,6 +36,8 @@
 
     h1 { margin: 0; font-size: 30px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
     h2 { margin: 0; font-size: 18px; font-weight: 600; }
+    // Headings take the screen's own text colour, so they stay readable in dark mode.
+    h1, h2, h3, h4 { color: var(--sdb-fg); }
     p { margin: 0; }
     button { font: inherit; color: inherit; }
     a, .o_sdb_link { color: var(--sdb-link); }

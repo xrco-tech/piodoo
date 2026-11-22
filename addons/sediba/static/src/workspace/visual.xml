@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Logo: the uploaded picture, or a square with the first letter. The name always sits beside it. -->
+    <t t-name="sediba.Logo">
+        <img t-if="org.has_logo" class="o_sdb_logo" t-att-class="size" t-att-src="logoUrl(org)" alt=""/>
+        <span t-else="" class="o_sdb_logo letter" t-att-class="size" aria-hidden="true" t-esc="org.letter"/>
+    </t>
+
+    <!-- Tag: grey for a plain fact, amber only for something that needs action. Always words. -->
+    <t t-name="sediba.VisTag">
+        <span class="o_sdb_vtag" t-att-class="{ act: act }" t-esc="label"/>
+    </t>
+
+    <t t-name="sediba.Visual">
+        <t t-set="v" t-value="props.data"/>
+        <div class="o_sdb_vis_all">
+
+            <!-- 1. Headline numbers -->
+            <div t-if="v.tiles.length" class="o_sdb_tiles">
+                <t t-foreach="v.tiles" t-as="tile" t-key="tile_index">
+                    <t t-tag="tag" t-att-type="buttonType" class="o_sdb_tile" t-on-click="() => this.open(tile.finding)">
+                        <span class="o_sdb_muted small" t-esc="tile.label"/>
+                        <b class="o_sdb_tile_figure" t-esc="tile.figure"/>
+                        <span t-if="tile.about" class="o_sdb_muted small" t-esc="tile.about"/>
+                    </t>
+                </t>
+            </div>
+
+            <div t-if="v.charts.length or v.dates.length" class="o_sdb_vis_row">
+                <!-- 2. Comparison bars -->
+                <div t-if="v.charts.length" class="o_sdb_charts">
+                    <figure t-foreach="v.charts" t-as="chart" t-key="chart_index" class="o_sdb_chart">
+                        <figcaption class="o_sdb_chart_head">
+                            <h3 t-esc="chart.label"/>
+                            <t t-foreach="chart.series" t-as="name" t-key="name_index">
+                                <span class="o_sdb_legend"><span class="o_sdb_swatch" t-att-class="'s' + name_index" aria-hidden="true"/><t t-esc="name"/></span>
+                            </t>
+                        </figcaption>
+                        <div class="o_sdb_bars">
+                            <t t-foreach="chart.rows" t-as="row" t-key="row_index">
+                                <t t-tag="tag" t-att-type="buttonType" class="o_sdb_bar_row" t-on-click="() => this.open(row.finding)">
+                                    <t t-if="row.org" t-call="sediba.Logo"><t t-set="org" t-value="row.org"/><t t-set="size" t-value="'small'"/></t>
+                                    <span t-else="" class="o_sdb_logo small none" aria-hidden="true"/>
+                                    <span class="o_sdb_bar_name"><b t-esc="row.subject"/><span t-if="row.org" class="o_sdb_muted small" t-esc="row.org.name"/></span>
+                                    <span class="o_sdb_bar_track" aria-hidden="true">
+                                        <span t-foreach="row.bars" t-as="bar" t-key="bar_index" class="o_sdb_bar_fill"
+                                              t-att-class="seriesClass(chart, bar)" t-att-style="barStyle(bar)" t-att-title="barTitle(row, bar)"/>
+                                    </span>
+                                    <span class="o_sdb_bar_value" t-esc="row.shown"/>
+                                </t>
+                            </t>
+                        </div>
+                        <div class="o_sdb_bar_axis" aria-hidden="true">
+                            <span class="o_sdb_logo small none"/>
+                            <span class="o_sdb_bar_name"/>
+                            <span class="o_sdb_bar_ticks"><span t-foreach="chart.ticks" t-as="tick" t-key="tick_index" t-esc="tick"/></span>
+                            <span class="o_sdb_bar_value"/>
+                        </div>
+                        <p class="o_sdb_muted small">
+                            <t t-if="chart.sorted_by">Sorted by <t t-esc="chart.sorted_by"/>, highest first. </t><t t-else="">Highest first. </t>
+                            <t t-if="chart.not_drawn.length">No figure in the findings for <t t-esc="chart.not_drawn.join(', ')"/>, so not drawn. </t>
+                            <t t-if="chart.left_out.length">A chart draws two measures at most: <t t-esc="chart.left_out.join(', ')"/> is in the findings but not drawn.</t>
+                        </p>
+                    </figure>
+                </div>
+
+                <!-- 3. Dates to know -->
+                <div t-if="v.dates.length" class="o_sdb_dates">
+                    <h3>Dates to know</h3>
+                    <t t-foreach="v.dates" t-as="date" t-key="date_index">
+                        <t t-tag="tag" t-att-type="buttonType" class="o_sdb_date" t-on-click="() => this.open(date.finding)">
+                            <b class="o_sdb_date_day" t-esc="date.date"/>
+                            <span class="o_sdb_date_what">
+                                <span t-esc="date.label"/>
+                                <span t-if="date.act" class="o_sdb_vtag act">Act before this</span>
+                                <span t-elif="date.tag" class="o_sdb_vtag" t-esc="date.tag"/>
+                            </span>
+                        </t>
+                    </t>
+                </div>
+            </div>
+
+            <!-- 4. Organisation cards -->
+            <t t-if="v.orgs.length">
+                <h3 t-if="props.orgsTitle" class="o_sdb_vis_title">By organisation</h3>
+                <div class="o_sdb_orgs">
+                    <t t-foreach="v.orgs" t-as="card" t-key="card.org.id">
+                        <t t-tag="tag" t-att-type="buttonType" class="o_sdb_org" t-on-click="() => this.open(card.finding)">
+                            <span class="o_sdb_org_head">
+                                <t t-call="sediba.Logo"><t t-set="org" t-value="card.org"/><t t-set="size" t-value="''"/></t>
+                                <b t-esc="card.org.name"/>
+                            </span>
+                            <span t-foreach="card.lines" t-as="line" t-key="line_index" class="o_sdb_org_line">
+                                <span t-esc="line.subject"/>
+                                <span t-if="line.shown" t-esc="line.shown"/>
+                                <span t-else="" class="o_sdb_muted">[no figure found]</span>
+                            </span>
+                            <span t-if="card.more" class="o_sdb_muted small">And <t t-esc="card.more"/> more in the findings.</span>
+                            <span t-if="card.tags.length" class="o_sdb_org_tags">
+                                <span t-foreach="card.tags" t-as="item" t-key="item_index" class="o_sdb_vtag" t-att-class="{ act: item.act }" t-esc="item.label"/>
+                            </span>
+                        </t>
+                    </t>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <!-- A visual block inside a company doc -->
+    <t t-name="sediba.VisualBlock">
+        <t t-set="b" t-value="props.visual"/>
+        <figure class="o_sdb_vis_block">
+            <figcaption class="o_sdb_vis_head">
+                <b t-esc="b.block_label"/>
+                <span class="o_sdb_muted">from the research topic
+                    <button t-if="b.can_open and props.onOpenTopic" type="button" class="o_sdb_link" t-on-click="() => props.onOpenTopic(b.topic[0])" t-esc="b.topic[1]"/>
+                    <t t-else="" t-esc="b.topic[1]"/></span>
+            </figcaption>
+            <t t-if="b.data">
+                <SedibaVisual data="b.data" onOpen="b.can_open ? props.onOpen : undefined" orgsTitle="b.block === 'all'"/>
+                <details class="o_sdb_vis_text">
+                    <summary>Show as text</summary>
+                    <ul>
+                        <li t-foreach="b.lines" t-as="line" t-key="line_index" t-esc="line"/>
+                    </ul>
+                </details>
+                <p class="o_sdb_muted small o_sdb_vis_foot">Drawn from verified findings as they stand today.</p>
+            </t>
+            <p t-else="" class="o_sdb_muted o_sdb_vis_foot">Nothing to draw yet: no verified finding on this topic carries a figure, date or tag for this block. Readers in the apps do not see this block until there is.</p>
+        </figure>
+    </t>
+</templates>
