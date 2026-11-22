@@ -21,6 +21,15 @@ class WebAdapter:
         will serialise into the widget response."""
         return {'status': 'sent'}
 
+    def connections(self, env, bot):
+        """Where the web chat widget of this bot may be shown."""
+        domains = bot._web_allowed_domain_list()
+        if domains:
+            return [{'ok': True, 'text': 'The chat widget may be shown on this '
+                     'Odoo site and on: %s.' % ', '.join(domains)}]
+        return [{'ok': True, 'text': 'The chat widget may be shown on this Odoo '
+                 'site only. No other website is allowed to show it yet.'}]
+
     def receive(self, env, source_record):
         return {
             'wa_id': (source_record.session_token if hasattr(source_record,

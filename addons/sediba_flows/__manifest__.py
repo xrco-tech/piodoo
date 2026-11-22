@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Sediba Flows',
-    'version': '18.0.1.6.0',
+    'version': '18.0.1.7.0',
     'category': 'Communications',
     'summary': 'Design a conversation once and run it on any connected channel',
     'description': """

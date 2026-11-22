@@ -224,12 +224,22 @@
             </div>
             <div class="o_sfl_group">
                 <b>Runs on</b>
-                <label t-foreach="state.data.channels" t-as="channel" t-key="channel.id" class="o_sfl_check">
-                    <input type="checkbox" t-att-checked="state.data.flow.channel_ids.includes(channel.id)"
-                           t-on-change="() => this.toggleChannel(channel.id)"/>
-                    <span t-esc="channel.name"/>
-                    <span t-if="!channel.connected" class="o_sfl_muted o_sfl_small">add-on not installed</span>
-                </label>
+                <span class="o_sfl_muted o_sfl_small">Under each channel you tick: the number or account this flow is connected to there, and what starts it.</span>
+                <t t-foreach="state.data.channels" t-as="channel" t-key="channel.id">
+                    <label class="o_sfl_check">
+                        <input type="checkbox" t-att-checked="state.data.flow.channel_ids.includes(channel.id)"
+                               t-on-change="() => this.toggleChannel(channel.id)"/>
+                        <span t-esc="channel.name"/>
+                        <span t-if="!channel.connected" class="o_sfl_muted o_sfl_small">add-on not installed</span>
+                    </label>
+                    <t t-if="state.data.flow.channel_ids.includes(channel.id)">
+                        <div t-foreach="connectionLines(channel.id)" t-as="line" t-key="line_index"
+                             t-att-class="'o_sfl_conn' + (line.ok ? '' : ' o_sfl_conn_off')">
+                            <i t-att-class="'fa ' + (line.ok ? 'fa-check' : 'fa-exclamation-triangle')" aria-hidden="true"/>
+                            <span t-esc="line.text"/>
+                        </div>
+                    </t>
+                </t>
             </div>
             <div class="o_sfl_field">
                 <label for="o_sfl_entry">Starts at</label>
@@ -274,8 +284,22 @@
                 </div>
                 <div class="o_sfl_field">
                     <label for="o_sfl_image">Image, optional</label>
-                    <input id="o_sfl_image" type="url" class="o_sfl_input" placeholder="https://… the address of a picture" t-model="d.image_url" t-on-change="saveStep"/>
-                    <t t-if="d.image_url">
+                    <t t-if="d.image_file">
+                        <div class="o_sfl_image_row">
+                            <img class="o_sfl_image_thumb" t-att-src="d.image_src" alt=""/>
+                            <span class="o_sfl_image_name" t-esc="d.image_file"/>
+                            <button type="button" class="btn btn-light" t-on-click="removeImage">Remove</button>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <input id="o_sfl_image" type="url" class="o_sfl_input" placeholder="https://… the address of a picture" t-model="d.image_url" t-on-change="saveStep"/>
+                        <label class="btn btn-light o_sfl_start o_sfl_upload">
+                            <i class="fa fa-upload" aria-hidden="true"/> Upload a picture
+                            <input type="file" class="visually-hidden" accept="image/png,image/jpeg" t-on-change="imagePicked"/>
+                        </label>
+                        <span class="o_sfl_muted o_sfl_small">PNG or JPEG, up to 5 MB. Anyone with its address can open an uploaded picture, because WhatsApp fetches it that way.</span>
+                    </t>
+                    <t t-if="d.image_url or d.image_file">
                         <label for="o_sfl_image_alt">What the image shows</label>
                         <input id="o_sfl_image_alt" type="text" class="o_sfl_input" placeholder="for example: our office in Soweto" t-model="d.image_alt" t-on-change="saveStep"/>
                         <span class="o_sfl_muted o_sfl_small">Channels without pictures get these words: USSD and SMS print them, voice reads them out.</span>

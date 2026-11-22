@@ -299,3 +299,46 @@ class TestSedibaFlows(TransactionCase):
         self.assertEqual(out['whatsapp']['state'], 'warn')
         self.assertIn('20', out['whatsapp']['note'])
         self.assertEqual(out['ussd']['state'], 'ok')
+
+    # A 1x1 PNG.
+    PNG = ('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGA'
+           'WjR9awAAAABJRU5ErkJggg==')
+
+    def test_upload_a_picture(self):
+        entry = self.bot.entry_step_id
+        data = self.Flows.set_image(entry.id, 'logo.png', self.PNG)
+        step = self._step(data, entry.id)
+        attachment = entry.media_ids.attachment_id
+        self.assertTrue(attachment.public, "WhatsApp fetches it by address")
+        self.assertEqual((step['image_file'], step['image_url']), ('logo.png', ''))
+        self.assertEqual(step['image_src'], '/web/image/%s' % attachment.id)
+        self.assertEqual(step['out']['whatsapp']['image'], step['image_src'])
+        self.assertEqual(step['out']['ussd']['image'], '')
+        # Saving the step's other fields keeps the uploaded picture.
+        data = self.Flows.save_step(entry.id, {
+            'body': 'Hello', 'image_url': '', 'image_alt': 'Our logo'})
+        self.assertEqual(entry.media_ids.attachment_id, attachment)
+        self.assertEqual(entry.media_ids.alt_text, 'Our logo')
+        # A new upload replaces the old file; removing it leaves nothing.
+        self.Flows.set_image(entry.id, 'new.png', self.PNG)
+        self.assertFalse(attachment.exists())
+        self.assertEqual(len(entry.media_ids), 1)
+        data = self.Flows.remove_image(entry.id)
+        self.assertFalse(entry.media_ids)
+        self.assertEqual(self._step(data, entry.id)['image_src'], '')
+
+    def test_upload_refuses_what_is_not_a_picture(self):
+        import base64
+        entry = self.bot.entry_step_id
+        with self.assertRaises(UserError):
+            self.Flows.set_image(entry.id, 'notes.txt',
+                                 base64.b64encode(b'just some text').decode())
+        self.assertFalse(entry.media_ids)
+
+    def test_connections_say_what_is_and_is_not_connected(self):
+        data = self.Flows.load(self.flow_id)
+        by_channel = {c['channel_id']: c['lines'] for c in data['flow']['connections']}
+        self.assertEqual(set(by_channel), set(self.bot.channel_ids.ids))
+        for lines in by_channel.values():
+            self.assertTrue(lines)
+            self.assertTrue(all(line['text'] and 'ok' in line for line in lines))

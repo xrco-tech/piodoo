@@ -32,6 +32,10 @@ class VoiceAdapter:
                      interaction.conversation_id.id, body[:80])
         return {'status': 'sent'}
 
+    def connections(self, env, bot):
+        return [{'ok': False, 'text': 'No phone line is connected to flows here '
+                 'yet. A flow can be tried as a call, but no real call reaches it.'}]
+
     def receive(self, env, source_record):
         # comm.voice.call.session doesn't carry inbound text on its own — the
         # STT/DTMF pipeline needs to hook here. Placeholder.

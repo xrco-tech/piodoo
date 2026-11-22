@@ -6,12 +6,19 @@ Sediba Flows is a builder on top of the channel-agnostic bot engine
 talks to a channel; how a step comes out on each channel is asked of the
 engine's own renderer, so the builder shows what the engine will send.
 """
+import base64
+
 from odoo import _, api, models
 from odoo.exceptions import UserError
+from odoo.tools.mimetypes import guess_mimetype
 
 from odoo.addons.comm_chatbot.models.runtime.adapter_registry import get_adapter
 from odoo.addons.comm_chatbot.models.runtime.renderer import (
     CapabilityMismatchError, RenderError)
+
+# An uploaded picture: the kinds and the size WhatsApp takes.
+IMAGE_TYPES = ('image/png', 'image/jpeg')
+IMAGE_MAX_BYTES = 5 * 1024 * 1024
 
 # Steps that pick their next step from a list of answers, not from one "then".
 BRANCHING = ('menu', 'condition')
@@ -92,6 +99,7 @@ class SedibaFlows(models.AbstractModel):
                 # The most contacts any one step was reached by: what the
                 # share on each card is a share of.
                 'reached_most': max(reached.values(), default=0),
+                'connections': self._connections(bot),
                 'device_url': self._device_url(bot),
             },
             'channels': self._channels(),
@@ -110,8 +118,11 @@ class SedibaFlows(models.AbstractModel):
             'body': step.body or '',
             'header': step.header or '',
             'footer': step.footer or '',
-            'image_url': step.media_ids.filtered(lambda m: m.kind == 'image')[:1].url or '',
-            'image_alt': step.media_ids.filtered(lambda m: m.kind == 'image')[:1].alt_text or '',
+            'image_url': self._image(step).url or '',
+            'image_alt': self._image(step).alt_text or '',
+            # A picture that was uploaded, as opposed to one given by address.
+            'image_file': self._image(step).attachment_id.name or '',
+            'image_src': self._image_src(step),
             'placed': step.flow_placed,
             'x': step.flow_x,
             'y': step.flow_y,
@@ -198,8 +209,8 @@ class SedibaFlows(models.AbstractModel):
             body=body, chars=len(body), header=header, footer=footer,
             # The image, where the channel shows images; elsewhere its
             # description is already in the text.
-            image=next((m['url'] for m in media
-                        if m['kind'] == 'image' and m['url']), ''))
+            image=self._image_src(step) if any(
+                m['kind'] == 'image' and m['url'] for m in media) else '')
         if options:
             numbered = any(o.get('numeric_key') for o in options)
             count = len(options)
@@ -230,6 +241,36 @@ class SedibaFlows(models.AbstractModel):
             res['state'] = 'warn'
             res['note'] = _("Too long: %(chars)s of %(limit)s characters. It will be cut.",
                             chars=res['chars'], limit=res['limit'])
+        return res
+
+    def _image(self, step):
+        """The step's picture: the first image among its attachments."""
+        return step.media_ids.filtered(lambda m: m.kind == 'image')[:1]
+
+    def _image_src(self, step):
+        """The address this screen shows the step's picture from."""
+        image = self._image(step)
+        if image.url:
+            return image.url
+        return '/web/image/%s' % image.attachment_id.id if image.attachment_id else ''
+
+    def _connections(self, bot):
+        """For each channel the flow runs on, what it is connected to there:
+        the number it sends from, what starts it, or that nothing is
+        connected yet. Each channel's add-on says it for itself."""
+        res = []
+        for channel in bot.channel_ids:
+            adapter = get_adapter(channel.adapter_key)
+            if not adapter:
+                lines = [{'ok': False, 'text': _(
+                    "The add-on for this channel is not installed, so nothing "
+                    "is connected.")}]
+            elif hasattr(adapter, 'connections'):
+                lines = adapter().connections(self.env, bot)
+            else:
+                lines = [{'ok': False, 'text': _(
+                    "This channel does not say what it is connected to.")}]
+            res.append({'channel_id': channel.id, 'lines': lines})
         return res
 
     def _reached(self, bot):
@@ -367,12 +408,17 @@ class SedibaFlows(models.AbstractModel):
 
         if 'image_url' in vals or 'image_alt' in vals:
             # One image per step here: the first image among its attachments.
-            image = step.media_ids.filtered(lambda m: m.kind == 'image')[:1]
+            image = self._image(step)
             url = (vals.get('image_url', image.url) or '').strip()
             alt = (vals.get('image_alt', image.alt_text) or '').strip()
-            if not url:
+            if image.attachment_id and not url:
+                # An uploaded picture has no address; it goes only when
+                # it is removed on purpose.
+                image.alt_text = alt
+            elif not url:
                 image.unlink()
             elif image:
+                image.attachment_id.unlink()
                 image.write({'url': url, 'alt_text': alt})
             else:
                 self.env['comm.bot.step.media'].create({
@@ -419,6 +465,40 @@ class SedibaFlows(models.AbstractModel):
                         'body_override': body,
                         'hide': hide,
                     })
+        return self.load(step.bot_id.id)
+
+    @api.model
+    def set_image(self, step_id, filename, data):
+        """Keep an uploaded picture as the step's image. `data` is the file,
+        base64. The file is public, because WhatsApp fetches it by address."""
+        step = self.env['comm.bot.step'].browse(step_id)
+        raw = base64.b64decode(data or '')
+        if guess_mimetype(raw) not in IMAGE_TYPES:
+            raise UserError(_("Choose a PNG or JPEG picture."))
+        if len(raw) > IMAGE_MAX_BYTES:
+            raise UserError(_("That picture is over 5 MB. Choose a smaller one."))
+        attachment = self.env['ir.attachment'].create({
+            'name': filename or _("picture"),
+            'raw': raw,
+            'res_model': 'comm.bot.step',
+            'res_id': step.id,
+            'public': True,
+        })
+        image = self._image(step)
+        if image:
+            image.attachment_id.unlink()
+            image.write({'attachment_id': attachment.id, 'url': False})
+        else:
+            self.env['comm.bot.step.media'].create({
+                'step_id': step.id, 'kind': 'image', 'attachment_id': attachment.id})
+        return self.load(step.bot_id.id)
+
+    @api.model
+    def remove_image(self, step_id):
+        step = self.env['comm.bot.step'].browse(step_id)
+        image = self._image(step)
+        image.attachment_id.unlink()
+        image.unlink()
         return self.load(step.bot_id.id)
 
     @api.model
@@ -514,8 +594,7 @@ class SedibaFlows(models.AbstractModel):
                     entry['footer'] = renderer._substitute(
                         step.footer or '', conversation, conversation.bot_id)
                 if channel.supports_media_image:
-                    entry['image'] = step.media_ids.filtered(
-                        lambda m: m.kind == 'image')[:1].url or ''
+                    entry['image'] = self._image_src(step)
             messages.append(entry)
 
         step = conversation.current_step_id

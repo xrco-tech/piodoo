@@ -58,6 +58,9 @@ const DEVICES = [
     ["desktop", _t("Desktop")],
 ];
 
+// An uploaded picture may be this large at most: what WhatsApp takes.
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 2;
 
@@ -674,6 +677,41 @@ export class SedibaFlows extends Component {
         this.touch();
         option[name] = isId ? toId(value) : value;
         return this.saveStep();
+    }
+
+    /** Upload a picture from this computer as the step's image. */
+    async imagePicked(ev) {
+        const file = ev.target.files[0];
+        ev.target.value = "";
+        if (!file) {
+            return;
+        }
+        if (file.size > IMAGE_MAX_BYTES) {
+            this.notification.add(_t("That picture is over 5 MB. Choose a smaller one."), { type: "warning" });
+            return;
+        }
+        const data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+        });
+        this.edits++;
+        this.setData(
+            await this.orm.call(MODEL, "set_image", [this.state.draft.id, file.name, data]),
+            this.state.selectedId
+        );
+    }
+
+    async removeImage() {
+        this.edits++;
+        this.setData(await this.orm.call(MODEL, "remove_image", [this.state.draft.id]), this.state.selectedId);
+    }
+
+    /** What the flow is connected to on one channel, as lines to read. */
+    connectionLines(channelId) {
+        const found = this.state.data.flow.connections.find((c) => c.channel_id === channelId);
+        return found ? found.lines : [];
     }
 
     setHide(row, hide) {

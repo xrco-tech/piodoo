@@ -215,3 +215,16 @@ class TestExecutor(ChatbotTestCase):
         picked = self.env['comm.chatbot.executor']._match_option(
             self.step_menu, 'Payments and stateme', c)
         self.assertEqual(picked['value'], 'pay')
+
+    def test_uploaded_image_has_an_address(self):
+        """An image kept as a file is given to the channel by its address."""
+        attachment = self.env['ir.attachment'].create({
+            'name': 'logo.png', 'raw': b'not really a png', 'public': True})
+        media = self.env['comm.bot.step.media'].create({
+            'step_id': self.step_greeting.id, 'kind': 'image',
+            'attachment_id': attachment.id})
+        self.assertTrue(media._address().endswith('/web/image/%s' % attachment.id))
+        rendered = self._render(self.step_greeting, self.wa)
+        self.assertEqual(rendered['media'][0]['url'], media._address())
+        media.write({'url': 'https://example.com/a.png'})
+        self.assertEqual(media._address(), 'https://example.com/a.png')

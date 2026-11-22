@@ -234,8 +234,7 @@ def _serialize(env, session, conversation):
                           if i.step_id.kind == 'menu' and i == conversation.interaction_ids.sorted('at')[-1]]
             entry['media'] = [{
                 'kind': m.kind,
-                'url':  m.url or (m.attachment_id.public_url
-                                    if m.attachment_id else ''),
+                'url':  m._address(),
                 'alt':  m.alt_text or '',
             } for m in i.step_id.media_ids]
         messages.append(entry)

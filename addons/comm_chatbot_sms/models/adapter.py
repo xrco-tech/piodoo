@@ -35,6 +35,21 @@ class SmsAdapter:
         return {'status': 'sent', 'source_model': 'sms.sms',
                 'source_id': sms.id}
 
+    def connections(self, env, bot):
+        """The SMS sender this bot sends from. Replies are not wired yet."""
+        lines = []
+        account = env['comm.sms.account'].sudo().get_default()
+        if account:
+            sender = account.sender_id or 'no sender name or number on the account'
+            lines.append({'ok': True, 'text': 'Sends from %s (%s). Every flow '
+                          'uses the default SMS account.' % (account.name, sender)})
+        else:
+            lines.append({'ok': False, 'text': 'No SMS account is set up, so '
+                          'nothing can be sent.'})
+        lines.append({'ok': False, 'text': 'A reply by SMS is kept in the '
+                      'conversation, but it does not start a flow or move one on yet.'})
+        return lines
+
     def receive(self, env, source_record):
         return {
             'wa_id': source_record.number,

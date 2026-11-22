@@ -27,6 +27,12 @@ Adapter contract (implement in a channel module):
 
         def can_reach(self, env, partner) -> bool:
             # Whether the partner is reachable on this channel.
+
+        def connections(self, env, bot) -> list:      # optional
+            # What a bot is connected to on this channel, for people to
+            # read: the number it sends from, what starts it. A list of
+            # {'text': str, 'ok': bool}; ok=False marks a line that says
+            # something is missing or not connected.
 """
 from odoo import models, api
 
