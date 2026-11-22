@@ -297,6 +297,9 @@
     align-items: center;
 
     > button {
+        // Laid out like the stock top-bar buttons, so icon and count sit level with them.
+        display: flex;
+        align-items: center;
         color: inherit;
         // The missed-calls count is a stock top-bar badge (same size and place
         // as the Discuss and Activities counters); only its colours are ours.

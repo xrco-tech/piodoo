@@ -4,6 +4,8 @@
     align-items: center;
 
     .o_dialer_sp_btn {
+        display: flex;
+        align-items: center;
         color: inherit;
     }
     // The dot hangs off the icon itself, not the button: the button is much
