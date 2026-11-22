@@ -342,3 +342,9 @@ class TestSedibaFlows(TransactionCase):
         for lines in by_channel.values():
             self.assertTrue(lines)
             self.assertTrue(all(line['text'] and 'ok' in line for line in lines))
+
+    def test_connect_channel_needs_something_to_connect(self):
+        with self.assertRaises(UserError):
+            self.Flows.connect_channel(self.flow_id, self.wa.id, 1, True)
+        data = self.Flows.load(self.flow_id)
+        self.assertTrue(all('options' in c for c in data['flow']['connections']))

@@ -708,6 +708,45 @@ export class SedibaFlows extends Component {
         this.setData(await this.orm.call(MODEL, "remove_image", [this.state.draft.id]), this.state.selectedId);
     }
 
+    /** What the flow could be connected to on one channel (USSD: the codes). */
+    connectionOptions(channelId) {
+        const found = this.state.data.flow.connections.find((c) => c.channel_id === channelId);
+        return found ? found.options : [];
+    }
+
+    /** Connect the flow to a code, or take it off, after saying what changes. */
+    connectOption(channelId, option, on) {
+        const flow = this.state.data.flow;
+        const apply = async () => {
+            this.edits++;
+            this.setData(
+                await this.orm.call(MODEL, "connect_channel", [flow.id, channelId, option.id, on]),
+                this.state.selectedId
+            );
+        };
+        this.dialog.add(ConfirmationDialog, {
+            title: on ? _t("Connect this code?") : _t("Disconnect this code?"),
+            body: on
+                ? _t(
+                      "%(code)s runs %(runs)s today. From now on, everyone who dials it gets this flow instead, even while the flow is a draft.",
+                      { code: option.label, runs: option.runs }
+                  )
+                : _t("%s will stop running this flow and go back to what it ran before.", option.label),
+            confirmLabel: on ? _t("Connect") : _t("Disconnect"),
+            confirm: apply,
+            cancel: () => {},
+        });
+    }
+
+    pickOption(channelId, ev) {
+        const id = Number(ev.target.value);
+        ev.target.value = "";
+        const option = this.connectionOptions(channelId).find((o) => o.id === id);
+        if (option) {
+            this.connectOption(channelId, option, true);
+        }
+    }
+
     /** What the flow is connected to on one channel, as lines to read. */
     connectionLines(channelId) {
         const found = this.state.data.flow.connections.find((c) => c.channel_id === channelId);

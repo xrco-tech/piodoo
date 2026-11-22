@@ -863,3 +863,13 @@ textarea.o_sfl_input { resize: vertical; }
     .fa { margin-top: 3px; }
     &.o_sfl_conn_off { color: var(--sfl-warn); }
 }
+
+// Choosing what a channel connects the flow to (USSD: a code).
+.o_sfl_conn_pick {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 4px 0 8px 22px;
+
+    .o_sfl_row { align-items: center; padding: 0; }
+}

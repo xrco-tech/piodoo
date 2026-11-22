@@ -270,8 +270,25 @@ class SedibaFlows(models.AbstractModel):
             else:
                 lines = [{'ok': False, 'text': _(
                     "This channel does not say what it is connected to.")}]
-            res.append({'channel_id': channel.id, 'lines': lines})
+            # What the flow could be connected to here, when the channel's
+            # add-on offers a choice (USSD: the codes).
+            options = adapter().connect_options(self.env, bot) \
+                if adapter and hasattr(adapter, 'connect_options') else []
+            res.append({'channel_id': channel.id, 'lines': lines, 'options': options})
         return res
+
+    @api.model
+    def connect_channel(self, bot_id, channel_id, option_id, on):
+        """Connect the flow to one of a channel's options (a USSD code), or
+        take it off. The channel's add-on does it."""
+        bot = self.env['comm.bot'].browse(bot_id)
+        bot.check_access('write')
+        channel = self.env['comm.channel'].browse(channel_id)
+        adapter = get_adapter(channel.adapter_key)
+        if not adapter or not hasattr(adapter, 'connect'):
+            raise UserError(_("This channel has nothing to connect."))
+        adapter().connect(self.env, bot, option_id, bool(on))
+        return self.load(bot.id)
 
     def _reached(self, bot):
         """{step id: how many real conversations the step spoke in}. Walks in
