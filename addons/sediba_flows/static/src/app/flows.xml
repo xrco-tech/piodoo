@@ -238,6 +238,19 @@
                             <i t-att-class="'fa ' + (line.ok ? 'fa-check' : 'fa-exclamation-triangle')" aria-hidden="true"/>
                             <span t-esc="line.text"/>
                         </div>
+                        <t t-set="options" t-value="connectionOptions(channel.id)"/>
+                        <div t-if="options.length" class="o_sfl_conn_pick">
+                            <div t-foreach="options.filter((o) => o.connected)" t-as="option" t-key="option.id" class="o_sfl_row">
+                                <span t-esc="option.label"/>
+                                <button type="button" class="btn btn-light" t-on-click="() => this.connectOption(channel.id, option, false)">Disconnect</button>
+                            </div>
+                            <select class="o_sfl_input" t-att-aria-label="'Connect a ' + channel.name + ' code'" t-on-change="(ev) => this.pickOption(channel.id, ev)">
+                                <option value="">Connect a code…</option>
+                                <option t-foreach="options.filter((o) => !o.connected)" t-as="option" t-key="option.id" t-att-value="option.id">
+                                    <t t-esc="option.label"/> (now runs <t t-esc="option.runs"/>)
+                                </option>
+                            </select>
+                        </div>
                     </t>
                 </t>
             </div>

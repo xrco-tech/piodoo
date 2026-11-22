@@ -41,8 +41,33 @@ class UssdAdapter:
         return {'status': 'sent'}
 
     def connections(self, env, bot):
-        return [{'ok': False, 'text': 'No USSD code is connected to flows here '
-                 'yet. USSD codes still run the older bots or their own menus.'}]
+        """The USSD codes that run this bot."""
+        accounts = env['comm.ussd.account'].sudo().search([('flow_bot_id', '=', bot.id)])
+        providers = dict(env['comm.ussd.account']._fields['provider'].selection)
+        if not accounts:
+            return [{'ok': False, 'text': 'No USSD code runs this flow yet. '
+                     'Connect one below.'}]
+        return [{'ok': True, 'text': 'Dialling %s reaches this flow (%s, %s).'
+                 % (a.service_code or 'no code set', a.name, providers.get(a.provider, a.provider))}
+                for a in accounts]
+
+    def connect_options(self, env, bot):
+        """The USSD codes this bot could run, and what each runs today."""
+        return [{
+            'id': a.id,
+            'label': '%s  %s' % (a.service_code or '(no code)', a.name),
+            'runs': a._runs_now(),
+            'connected': a.flow_bot_id == bot,
+        } for a in env['comm.ussd.account'].sudo().search([])]
+
+    def connect(self, env, bot, option_id, on):
+        account = env['comm.ussd.account'].sudo().browse(option_id).exists()
+        if not account:
+            return
+        if on:
+            account._connect_flow(bot)
+        elif account.flow_bot_id == bot:
+            account._disconnect_flow()
 
     def receive(self, env, source_record):
         return {
