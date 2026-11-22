@@ -40,6 +40,10 @@ class UssdAdapter:
         interaction.rendered_body = rendered
         return {'status': 'sent'}
 
+    def connections(self, env, bot):
+        return [{'ok': False, 'text': 'No USSD code is connected to flows here '
+                 'yet. USSD codes still run the older bots or their own menus.'}]
+
     def receive(self, env, source_record):
         return {
             'wa_id': source_record.phone_number,

@@ -24,6 +24,10 @@ class VoipAdapter:
                      (body or '')[:80])
         return {'status': 'sent'}
 
+    def connections(self, env, bot):
+        return [{'ok': False, 'text': 'No phone line is connected to flows here '
+                 'yet. A flow can be tried as a call, but no real call reaches it.'}]
+
     def receive(self, env, source_record):
         # Inbound STT/DTMF/webhook pipeline hooks here once a provider is wired.
         return {

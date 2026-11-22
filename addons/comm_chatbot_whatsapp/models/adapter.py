@@ -117,6 +117,32 @@ class WhatsappAdapter:
         return {'status': 'sent', 'source_model': 'whatsapp.message',
                 'source_id': False}
 
+    def connections(self, env, bot):
+        """The WhatsApp number this bot sends from, and what starts it."""
+        lines = []
+        account = env['comm.whatsapp.account'].sudo().get_default()
+        if account:
+            number = account.phone_number or 'no number on the account'
+            lines.append({'ok': True, 'text': 'Sends from %s (%s). Every flow '
+                          'uses the default WhatsApp account.' % (account.name, number)})
+        else:
+            lines.append({'ok': False, 'text': 'No WhatsApp account is set up, '
+                          'so nothing can be sent.'})
+        words = [t.value for t in bot.trigger_ids
+                 if t.active and t.channel_id.code == 'whatsapp'
+                 and t.kind == 'keyword' and t.value]
+        if any(t.active and t.channel_id.code == 'whatsapp' and t.kind == 'any_inbound'
+               for t in bot.trigger_ids):
+            lines.append({'ok': True, 'text': 'Starts on any message that no '
+                          'other flow picks up.'})
+        elif words:
+            lines.append({'ok': True, 'text': 'Starts when someone sends: %s.'
+                          % ', '.join(words)})
+        else:
+            lines.append({'ok': False, 'text': 'No keyword starts this flow, so '
+                          'a message from a contact will not reach it.'})
+        return lines
+
     def receive(self, env, message):
         """Convert an inbound whatsapp.message into canonical form."""
         return {

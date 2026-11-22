@@ -303,6 +303,19 @@ class CommBotStepMedia(models.Model):
     alt_text = fields.Char(
         help='Fallback text when channel cannot render media (voice TTS uses this).')
 
+    def _address(self):
+        """Where a channel can fetch this file: its own address, or the
+        public address of the file uploaded for it. Empty when it has
+        neither."""
+        self.ensure_one()
+        if self.url:
+            return self.url
+        if not self.attachment_id:
+            return ''
+        base = (self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                or '').rstrip('/')
+        return '%s/web/image/%s' % (base, self.attachment_id.id)
+
 
 class CommBotStepTranslation(models.Model):
     _name = 'comm.bot.step.translation'

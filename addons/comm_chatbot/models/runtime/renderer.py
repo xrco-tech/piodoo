@@ -223,7 +223,7 @@ class RendererService(models.AbstractModel):
             source = override[0].media_override_ids
         return [{
             'kind': m.kind,
-            'url':  m.url or (m.attachment_id.public_url if m.attachment_id else ''),
+            'url':  m._address(),
             'alt':  m.alt_text or '',
         } for m in source]
 
