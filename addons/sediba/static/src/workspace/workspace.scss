@@ -138,6 +138,12 @@
         gap: 6px 12px;
         padding: 6px 16px;
         border-bottom: 1px solid var(--sdb-line-soft);
+        // Stays put while the page under it scrolls.
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: var(--sdb-card);
+        border-radius: 8px 8px 0 0;
     }
     .o_sdb_crumbs { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     .o_sdb_body {
@@ -334,6 +340,7 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
         .o_sdb_browse { display: block; }
         .o_sdb_main { flex: none; overflow: visible; }
         .o_sdb_page { overflow: visible; }
+        .o_sdb_bar { position: static; }
         .o_sdb_split { overflow: visible; }
         .o_sdb_body { padding: 20px 16px 28px; }
         .o_sdb_btn, .o_sdb_item, .o_sdb_input { min-height: 44px; }
