@@ -84,27 +84,35 @@
     </t>
 
     <t t-name="sediba.Workspace">
-        <div class="o_action o_sdb_ws" t-att-class="{ browsing: state.browsing }">
+        <div class="o_action o_sdb_ws" t-att-class="{ browsing: state.browsing, side_closed: !state.side }">
 
             <!-- ── Sidebar ──────────────────────────────────────────────── -->
             <nav class="o_sdb_side" t-att-aria-label="state.nav.reference ? 'Reference' : 'Sediba'">
+                <div class="o_sdb_side_head">
+                    <span class="o_sdb_side_title"><t t-if="state.nav.reference">Reference</t><t t-else="">Sediba</t></span>
+                    <button type="button" class="o_sdb_tool o_sdb_side_toggle" t-att-aria-expanded="state.side ? 'true' : 'false'"
+                            t-att-aria-label="sideLabel" t-att-title="sideLabel" t-on-click="toggleSide">
+                        <i class="fa" t-att-class="state.side ? 'fa-angle-double-left' : 'fa-angle-double-right'" aria-hidden="true"/>
+                    </button>
+                </div>
+
                 <div class="o_sdb_side_top">
+                    <i class="fa fa-search" aria-hidden="true"/>
                     <input type="search" class="o_sdb_input" t-att-placeholder="searchLabel" t-att-aria-label="searchLabel"
                            t-att-value="state.search" t-on-input="onSearch"/>
-                    <button t-if="state.nav.can_edit" type="button" class="o_sdb_btn primary square" aria-label="New finding" title="New finding"
-                            t-on-click="newFinding">+</button>
                 </div>
 
                 <!-- Company docs: written by us -->
                 <div class="o_sdb_group">
                     <div class="o_sdb_group_head">
                         <button type="button" class="o_sdb_group_name" t-att-aria-expanded="state.open.docs ? 'true' : 'false'"
-                                t-on-click="() => state.open.docs = !state.open.docs">
-                            <span class="o_sdb_caret" aria-hidden="true"><t t-if="state.open.docs">▾</t><t t-else="">▸</t></span>Company docs
+                                t-on-click="() => this.toggleGroup('docs')">
+                            <i class="fa o_sdb_caret" t-att-class="state.open.docs ? 'fa-caret-down' : 'fa-caret-right'" aria-hidden="true"/>Company docs
                             <span t-if="!state.open.docs" class="o_sdb_note" t-esc="state.nav.doc_count"/>
                         </button>
-                        <button t-if="state.nav.can_write" type="button" class="o_sdb_add" t-att-aria-expanded="state.newMenu ? 'true' : 'false'"
-                                t-on-click="() => state.newMenu = !state.newMenu">New doc</button>
+                        <button t-if="state.nav.can_write" type="button" class="o_sdb_tool" aria-label="New doc" title="New doc"
+                                t-att-aria-expanded="state.newMenu ? 'true' : 'false'"
+                                t-on-click="() => state.newMenu = !state.newMenu"><i class="fa fa-plus" aria-hidden="true"/></button>
                     </div>
                     <div t-if="state.newMenu" class="o_sdb_menu">
                         <span class="o_sdb_muted">Start from</span>
@@ -114,75 +122,116 @@
                     <t t-if="state.open.docs">
                         <div class="o_sdb_group_hint"><t t-if="state.nav.reference">How we do things, written by us.</t><t t-else="">Written by us. No sources needed.</t></div>
                         <t t-foreach="state.nav.docs" t-as="d" t-key="d.id">
-                            <button type="button" class="o_sdb_item" t-att-class="{ on: isDoc(d.id) }" t-att-aria-current="isDoc(d.id) ? 'page' : false"
-                                    t-on-click="() => this.openDoc(d.id)">
-                                <span class="o_sdb_item_name" t-esc="d.name"/>
-                                <t t-set="n" t-value="d"/><t t-call="sediba.DocNote"/>
-                            </button>
-                            <button t-foreach="d.pages" t-as="pg" t-key="pg.id" type="button" class="o_sdb_item child"
-                                    t-att-class="{ on: isDoc(pg.id) }" t-att-aria-current="isDoc(pg.id) ? 'page' : false"
-                                    t-on-click="() => this.openDoc(pg.id)">
-                                <span class="o_sdb_item_name" t-esc="pg.name"/>
-                                <t t-set="n" t-value="pg"/><t t-call="sediba.DocNote"/>
-                            </button>
+                            <div class="o_sdb_leaf" t-att-class="{ on: isDoc(d.id) }">
+                                <button t-if="d.pages.length" type="button" class="o_sdb_twist"
+                                        t-att-aria-expanded="pagesOpen(d) ? 'true' : 'false'" t-att-aria-label="twistLabel(d)" t-att-title="twistLabel(d)"
+                                        t-on-click="() => this.toggleDoc(d.id)">
+                                    <i class="fa" t-att-class="pagesOpen(d) ? 'fa-caret-down' : 'fa-caret-right'" aria-hidden="true"/>
+                                </button>
+                                <span t-else="" class="o_sdb_twist" aria-hidden="true"/>
+                                <button type="button" class="o_sdb_item" t-att-aria-current="isDoc(d.id) ? 'page' : false"
+                                        t-on-click="() => this.openDoc(d.id)">
+                                    <i class="fa fa-file-text-o o_sdb_ico" aria-hidden="true"/>
+                                    <span class="o_sdb_item_name" t-att-title="d.name" t-esc="d.name"/>
+                                    <span t-if="d.pages.length and !pagesOpen(d)" class="o_sdb_note" t-esc="d.pages.length"/>
+                                    <t t-set="n" t-value="d"/><t t-call="sediba.DocNote"/>
+                                </button>
+                            </div>
+                            <t t-if="pagesOpen(d)">
+                                <div t-foreach="d.pages" t-as="pg" t-key="pg.id" class="o_sdb_leaf child" t-att-class="{ on: isDoc(pg.id) }">
+                                    <span class="o_sdb_twist" aria-hidden="true"/>
+                                    <button type="button" class="o_sdb_item" t-att-aria-current="isDoc(pg.id) ? 'page' : false"
+                                            t-on-click="() => this.openDoc(pg.id)">
+                                        <i class="fa fa-file-o o_sdb_ico" aria-hidden="true"/>
+                                        <span class="o_sdb_item_name" t-att-title="pg.name" t-esc="pg.name"/>
+                                        <t t-set="n" t-value="pg"/><t t-call="sediba.DocNote"/>
+                                    </button>
+                                </div>
+                            </t>
                         </t>
                         <p t-if="!state.nav.docs.length and state.nav.reference" class="o_sdb_muted o_sdb_pad">No company docs are shown in <t t-esc="state.nav.space"/> yet. A writer publishes a doc in Sediba and marks it as shown here.</p>
-                        <p t-elif="!state.nav.docs.length" class="o_sdb_muted o_sdb_pad">No company docs yet.<t t-if="state.nav.can_write"> Start one with New doc.</t></p>
+                        <p t-elif="!state.nav.docs.length" class="o_sdb_muted o_sdb_pad">No company docs yet.<t t-if="state.nav.can_write"> Start one with the plus button.</t></p>
                     </t>
                 </div>
-
-                <div class="o_sdb_rule"/>
 
                 <!-- Research: from outside sources -->
                 <div class="o_sdb_group">
                     <div class="o_sdb_group_head">
                         <button type="button" class="o_sdb_group_name" t-att-aria-expanded="state.open.research ? 'true' : 'false'"
-                                t-on-click="() => state.open.research = !state.open.research">
-                            <span class="o_sdb_caret" aria-hidden="true"><t t-if="state.open.research">▾</t><t t-else="">▸</t></span><t t-if="state.nav.reference">Research</t><t t-else="">Research topics</t>
+                                t-on-click="() => this.toggleGroup('research')">
+                            <i class="fa o_sdb_caret" t-att-class="state.open.research ? 'fa-caret-down' : 'fa-caret-right'" aria-hidden="true"/><t t-if="state.nav.reference">Research</t><t t-else="">Research topics</t>
                             <span t-if="!state.open.research" class="o_sdb_note" t-esc="state.nav.topics.length"/>
                         </button>
+                        <button t-if="state.nav.can_edit" type="button" class="o_sdb_tool" aria-label="New finding" title="New finding"
+                                t-on-click="newFinding"><i class="fa fa-plus" aria-hidden="true"/></button>
                     </div>
                     <t t-if="state.open.research">
                         <div class="o_sdb_group_hint"><t t-if="state.nav.reference">Verified findings from outside sources.</t><t t-else="">From outside sources. Shown once verified.</t></div>
-                        <button t-foreach="state.nav.topics" t-as="t" t-key="t.id" type="button" class="o_sdb_item"
-                                t-att-class="{ on: isTopic(t.id) }" t-att-aria-current="isTopic(t.id) ? 'page' : false"
-                                t-on-click="() => this.openTopic(t.id)">
-                            <span class="o_sdb_item_name" t-esc="t.name"/>
-                            <span t-if="state.nav.reference" class="o_sdb_note" t-esc="t.verified"/>
-                            <span t-elif="t.next" class="o_sdb_note next">Next</span>
-                            <span t-elif="t.last" class="o_sdb_note" t-esc="t.last"/>
-                        </button>
+                        <div t-foreach="state.nav.topics" t-as="t" t-key="t.id" class="o_sdb_leaf" t-att-class="{ on: isTopic(t.id) }">
+                            <span class="o_sdb_twist" aria-hidden="true"/>
+                            <button type="button" class="o_sdb_item" t-att-aria-current="isTopic(t.id) ? 'page' : false"
+                                    t-on-click="() => this.openTopic(t.id)">
+                                <i class="fa fa-bookmark-o o_sdb_ico" aria-hidden="true"/>
+                                <span class="o_sdb_item_name" t-att-title="t.name" t-esc="t.name"/>
+                                <span t-if="state.nav.reference" class="o_sdb_note" t-esc="t.verified"/>
+                                <span t-elif="t.next" class="o_sdb_note next">Next</span>
+                                <span t-elif="t.last" class="o_sdb_note" t-esc="t.last"/>
+                            </button>
+                        </div>
                         <p t-if="!state.nav.topics.length and state.nav.space" class="o_sdb_muted o_sdb_pad">Nothing verified is marked for <t t-esc="state.nav.space"/> yet. A researcher marks a topic as shown here in Sediba, and its verified findings appear.</p>
                         <p t-elif="!state.nav.topics.length" class="o_sdb_muted o_sdb_pad">No topics yet. Add them under Configuration.</p>
                     </t>
                 </div>
 
-                <div class="o_sdb_rule"/>
-
                 <div class="o_sdb_group">
-                    <div class="o_sdb_group_head"><span class="o_sdb_group_name">Collections</span></div>
-                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'overview' }" t-on-click="openOverview">
-                        <span class="o_sdb_item_name">Overview</span>
-                        <span t-if="state.nav.doc_review" class="o_sdb_note count" t-esc="state.nav.doc_review"/>
-                    </button>
-                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'docs' }" t-on-click="openDocs">
-                        <span class="o_sdb_item_name">All company docs</span>
-                        <span class="o_sdb_note" t-esc="state.nav.doc_count"/>
-                    </button>
-                    <button type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'list' and state.pill !== 'review' }"
-                            t-on-click="() => this.openList('all')">
-                        <span class="o_sdb_item_name"><t t-if="state.nav.reference">All verified findings</t><t t-else="">All findings</t></span>
-                        <span class="o_sdb_note" t-esc="state.nav.all"/>
-                    </button>
-                    <button t-if="!state.nav.reference" type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'list' and state.pill === 'review' }"
-                            t-on-click="() => this.openList('review')">
-                        <span class="o_sdb_item_name">Findings to review</span>
-                        <span t-if="state.nav.review" class="o_sdb_note count" t-esc="state.nav.review"/>
-                    </button>
-                    <button t-if="!state.nav.reference" type="button" class="o_sdb_item" t-att-class="{ on: state.view === 'runs' }" t-on-click="openRuns">
-                        <span class="o_sdb_item_name">Research runs</span>
-                        <span class="o_sdb_note" t-esc="state.nav.runs"/>
-                    </button>
+                    <div class="o_sdb_group_head">
+                        <button type="button" class="o_sdb_group_name" t-att-aria-expanded="state.open.collections ? 'true' : 'false'"
+                                t-on-click="() => this.toggleGroup('collections')">
+                            <i class="fa o_sdb_caret" t-att-class="state.open.collections ? 'fa-caret-down' : 'fa-caret-right'" aria-hidden="true"/>Collections
+                        </button>
+                    </div>
+                    <t t-if="state.open.collections">
+                        <div class="o_sdb_leaf" t-att-class="{ on: state.view === 'overview' }">
+                            <span class="o_sdb_twist" aria-hidden="true"/>
+                            <button type="button" class="o_sdb_item" t-on-click="openOverview">
+                                <i class="fa fa-home o_sdb_ico" aria-hidden="true"/>
+                                <span class="o_sdb_item_name">Overview</span>
+                                <span t-if="state.nav.doc_review" class="o_sdb_note count" t-esc="state.nav.doc_review"/>
+                            </button>
+                        </div>
+                        <div class="o_sdb_leaf" t-att-class="{ on: state.view === 'docs' }">
+                            <span class="o_sdb_twist" aria-hidden="true"/>
+                            <button type="button" class="o_sdb_item" t-on-click="openDocs">
+                                <i class="fa fa-files-o o_sdb_ico" aria-hidden="true"/>
+                                <span class="o_sdb_item_name">All company docs</span>
+                                <span class="o_sdb_note" t-esc="state.nav.doc_count"/>
+                            </button>
+                        </div>
+                        <div class="o_sdb_leaf" t-att-class="{ on: state.view === 'list' and state.pill !== 'review' }">
+                            <span class="o_sdb_twist" aria-hidden="true"/>
+                            <button type="button" class="o_sdb_item" t-on-click="() => this.openList('all')">
+                                <i class="fa fa-list-ul o_sdb_ico" aria-hidden="true"/>
+                                <span class="o_sdb_item_name"><t t-if="state.nav.reference">All verified findings</t><t t-else="">All findings</t></span>
+                                <span class="o_sdb_note" t-esc="state.nav.all"/>
+                            </button>
+                        </div>
+                        <div t-if="!state.nav.reference" class="o_sdb_leaf" t-att-class="{ on: state.view === 'list' and state.pill === 'review' }">
+                            <span class="o_sdb_twist" aria-hidden="true"/>
+                            <button type="button" class="o_sdb_item" t-on-click="() => this.openList('review')">
+                                <i class="fa fa-check-square-o o_sdb_ico" aria-hidden="true"/>
+                                <span class="o_sdb_item_name">Findings to review</span>
+                                <span t-if="state.nav.review" class="o_sdb_note count" t-esc="state.nav.review"/>
+                            </button>
+                        </div>
+                        <div t-if="!state.nav.reference" class="o_sdb_leaf" t-att-class="{ on: state.view === 'runs' }">
+                            <span class="o_sdb_twist" aria-hidden="true"/>
+                            <button type="button" class="o_sdb_item" t-on-click="openRuns">
+                                <i class="fa fa-history o_sdb_ico" aria-hidden="true"/>
+                                <span class="o_sdb_item_name">Research runs</span>
+                                <span class="o_sdb_note" t-esc="state.nav.runs"/>
+                            </button>
+                        </div>
+                    </t>
                 </div>
             </nav>
 

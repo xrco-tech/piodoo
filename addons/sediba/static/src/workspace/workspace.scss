@@ -369,19 +369,6 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
     .o_sdb_group_name { font-weight: 700; color: var(--sdb-fg); }
     .o_sdb_group_hint { padding: 0 8px 6px; font-size: 12px; color: var(--sdb-muted); }
     .o_sdb_caret { flex: none; width: 14px; font-size: 11px; text-align: center; color: var(--sdb-muted); }
-    .o_sdb_rule { flex: none; height: 1px; margin: 0 8px; background: var(--sdb-line); }
-    .o_sdb_add {
-        flex: none;
-        min-height: 32px;
-        padding: 0 10px;
-        border: 1px solid var(--sdb-line);
-        border-radius: 6px;
-        background: var(--sdb-card);
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        &:hover { background: var(--sdb-soft); }
-    }
     .o_sdb_menu {
         display: flex;
         flex-direction: column;
@@ -393,7 +380,6 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
         background: var(--sdb-card);
         > .o_sdb_muted { padding: 0 8px 2px; font-size: 12px; }
     }
-    .o_sdb_item.child { padding-left: 28px; }
     .o_sdb_note.draft { color: var(--sdb-none-fg); background: var(--sdb-none-bg); border-radius: 10px; padding: 1px 8px; font-weight: 600; }
     .o_sdb_item.on .o_sdb_note.draft { color: var(--sdb-none-fg); }
 
@@ -499,4 +485,94 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
 @media (max-width: 767.98px) {
     .o_sdb_ws .o_sdb_add, .o_sdb_ws button.o_sdb_group_name { min-height: 44px; }
     .o_sdb_ws .o_sdb_title_input { font-size: 26px; }
+}
+
+// ── The left panel: a quiet tree that folds, and closes to a narrow strip ────
+.o_sdb_ws {
+    .o_sdb_side { gap: 14px; padding: 10px 4px 12px; }
+    .o_sdb_side_head { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 4px 0 10px; }
+    .o_sdb_side_title { flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 700; }
+
+    // Small square buttons that carry an icon only.
+    .o_sdb_tool {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        background: none;
+        color: var(--sdb-muted);
+        cursor: pointer;
+        &:hover { background: var(--sdb-none-bg); color: var(--sdb-none-fg); }
+    }
+    .o_sdb_side_toggle { font-size: 16px; }
+
+    .o_sdb_side_top {
+        position: relative;
+        margin: 0 4px;
+        > .fa { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--sdb-muted); pointer-events: none; }
+        .o_sdb_input { flex: 1 1 auto; width: 100%; min-width: 0; height: 34px; padding-left: 32px; }
+    }
+
+    .o_sdb_group { gap: 1px; }
+    .o_sdb_group_head { gap: 4px; padding: 0 4px 0 2px; }
+    button.o_sdb_group_name { min-height: 28px; padding: 0 6px 0 4px; }
+    .o_sdb_group_name { font-size: 12px; font-weight: 700; color: var(--sdb-muted); }
+    .o_sdb_group_name .o_sdb_note { margin-left: 4px; }
+    .o_sdb_group_hint { padding: 0 8px 4px 24px; }
+    .o_sdb_caret { width: 14px; font-size: 12px; }
+    .o_sdb_side .o_sdb_pad { padding: 4px 8px 4px 24px; }
+
+    // One line of the tree: the fold arrow, then the thing itself.
+    .o_sdb_leaf {
+        display: flex;
+        align-items: stretch;
+        border-radius: 6px;
+        &:hover { background: var(--sdb-line-soft); }
+        &.on { background: var(--sdb-none-bg); color: var(--sdb-none-fg); font-weight: 600; }
+        &.child { padding-left: 18px; }
+        .o_sdb_item { flex: 1 1 auto; min-width: 0; min-height: 32px; padding: 3px 8px 3px 2px; color: inherit; font-weight: inherit; }
+        .o_sdb_item:hover { background: none; }
+        &.on .o_sdb_note:not(.next):not(.count):not(.draft) { color: inherit; }
+    }
+    .o_sdb_twist {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        background: none;
+        color: var(--sdb-muted);
+        font-size: 12px;
+    }
+    button.o_sdb_twist { cursor: pointer; &:hover { background: var(--sdb-none-bg); color: var(--sdb-none-fg); } }
+    .o_sdb_ico { flex: none; width: 16px; text-align: center; color: var(--sdb-muted); }
+    .o_sdb_leaf.on .o_sdb_ico { color: inherit; }
+    .o_sdb_item_name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_sdb_menu .o_sdb_item_name { white-space: normal; }
+}
+
+// Closed: only the button that opens it again is left.
+@media (min-width: 768px) {
+    .o_sdb_ws.side_closed {
+        .o_sdb_side { flex-basis: 36px; padding-left: 0; padding-right: 0; overflow: hidden; }
+        .o_sdb_side > :not(.o_sdb_side_head), .o_sdb_side_title { display: none; }
+        .o_sdb_side_head { justify-content: center; padding: 0; }
+    }
+}
+@media (max-width: 767.98px) {
+    .o_sdb_ws {
+        .o_sdb_side_toggle { display: none; }
+        .o_sdb_leaf .o_sdb_item, .o_sdb_side_top .o_sdb_input { min-height: 44px; height: auto; }
+        .o_sdb_twist { width: 32px; }
+        .o_sdb_tool { width: 44px; height: 44px; }
+        button.o_sdb_group_name { min-height: 44px; }
+    }
 }
