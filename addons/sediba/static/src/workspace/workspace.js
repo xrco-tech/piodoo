@@ -54,6 +54,26 @@ const CONFIRM = {
  * sediba.workspace. Research records are changed in their own form; a
  * company doc is written on the page itself.
  */
+// What the left panel remembers between visits, on this device only.
+const KEEP = "sediba.panel.";
+
+function remembered(name, fallback) {
+    try {
+        const kept = browser.localStorage.getItem(KEEP + name);
+        return kept === null ? fallback : JSON.parse(kept);
+    } catch {
+        return fallback;
+    }
+}
+
+function remember(name, value) {
+    try {
+        browser.localStorage.setItem(KEEP + name, JSON.stringify(value));
+    } catch {
+        // Private windows and blocked storage: the panel still works, it just forgets.
+    }
+}
+
 export class SedibaWorkspace extends Component {
     static template = "sediba.Workspace";
     static components = { Wysiwyg, SedibaFlowBlock, SedibaFlowEditor, SedibaVisual, SedibaVisualBlock };
@@ -90,7 +110,9 @@ export class SedibaWorkspace extends Component {
             saving: false,
             newDocFrom: { template: "blank", parentId: false },
             docHits: [], // docs that match the sidebar search
-            open: { docs: true, research: true },
+            open: { docs: true, research: true, collections: true, ...remembered("open", {}) },
+            side: remembered("side", true), // the left panel is open
+            shut: remembered("shut", {}), // docs whose pages are folded away, by id
             newMenu: false,
             history: false,
             telling: false,
@@ -240,6 +262,45 @@ export class SedibaWorkspace extends Component {
     onTopicSearch(ev) {
         this.state.topicSearch = ev.target.value;
         this.topicSearchSoon();
+    }
+
+    // ── The left panel ───────────────────────────────────────────────────────
+
+    get sideLabel() {
+        return this.state.side ? _t("Close the panel") : _t("Open the panel");
+    }
+
+    toggleSide() {
+        this.state.side = !this.state.side;
+        remember("side", this.state.side);
+    }
+
+    toggleGroup(name) {
+        this.state.open[name] = !this.state.open[name];
+        remember("open", this.state.open);
+    }
+
+    /** A doc's pages show unless they were folded away. The open page is never hidden. */
+    pagesOpen(doc) {
+        return !this.state.shut[doc.id] || doc.pages.some((page) => this.isDoc(page.id));
+    }
+
+    twistLabel(doc) {
+        return this.pagesOpen(doc) ? _t("Hide the pages under %s", doc.name) : _t("Show the pages under %s", doc.name);
+    }
+
+    toggleDoc(id) {
+        const doc = this.state.nav.docs.find((d) => d.id === id);
+        if (this.pagesOpen(doc)) {
+            this.state.shut[id] = true;
+            // Folding the doc that holds the open page: step up to the doc itself.
+            if (doc.pages.some((page) => this.isDoc(page.id))) {
+                this.openDoc(id);
+            }
+        } else {
+            delete this.state.shut[id];
+        }
+        remember("shut", this.state.shut);
     }
 
     isTopic(id) {
