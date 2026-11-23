@@ -185,6 +185,9 @@ class SedibaWorkspace(models.AbstractModel):
             'due': False if space else self._date(topic.due_date),
             'ai_allowed': False if space else topic.ai_allowed,
             'public_allowed': False if space else topic.public_allowed,
+            # Which apps show it in their Reference, and the apps to choose from.
+            'space_ids': [] if space else topic.space_ids.ids,
+            'spaces': [] if space else [[s.id, s.name] for s in self.env['sediba.space'].search([])],
             'columns': [{
                 'key': key,
                 'label': label,
@@ -289,6 +292,17 @@ class SedibaWorkspace(models.AbstractModel):
         if not topic:
             return False
         topic['public_allowed' if public else 'ai_allowed'] = bool(allowed)
+        return self.ws_topic(topic.id)
+
+    @api.model
+    def ws_set_topic_spaces(self, topic_id, space_ids, space=False):
+        """Which apps show this topic's verified findings in their Reference."""
+        if space:
+            raise AccessError(_("The Reference inside an app is read-only. Change topics in Sediba."))
+        topic = self.env['sediba.topic'].browse(topic_id).exists()
+        if not topic:
+            return False
+        topic.space_ids = [(6, 0, self.env['sediba.space'].browse(space_ids or []).exists().ids)]
         return self.ws_topic(topic.id)
 
     @api.model

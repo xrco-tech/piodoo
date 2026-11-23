@@ -238,6 +238,8 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             'spaces': doc.space_ids.mapped('name'),
             'ai_allowed': doc.ai_allowed,
             'public_allowed': doc.public_allowed,
+            # What a writer changes right on the reading page.
+            'props': self._doc_props(doc) if self._can_write() else False,
             'updated_by': doc.write_uid.name or '',
             'read_again': dict(READ_AGAIN).get(doc.read_again, ''),
             'read_again_by': self._date(doc.read_again_by),
@@ -274,6 +276,49 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         return {'total': len(rows), 'rows': rows}
 
     @api.model
+    def _doc_owners(self, doc):
+        writers = self.env.ref('sediba.group_writer').users.filtered(lambda u: u.active and not u.share)
+        return [[u.id, u.name] for u in (writers | doc.owner_id | self.env.user).sorted('name')]
+
+    @api.model
+    def _doc_props(self, doc):
+        """The properties a writer sets beside a doc, with their choices."""
+        return {
+            'owner_id': doc.owner_id.id or 0,
+            'space_ids': doc.space_ids.ids,
+            'read_again': doc.read_again,
+            'choices': {
+                'owners': self._doc_owners(doc),
+                'spaces': [[s.id, s.name] for s in self.env['sediba.space'].search([])],
+                'read_again': READ_AGAIN,
+            },
+        }
+
+    @api.model
+    def ws_doc_set(self, doc_id, vals):
+        """Change a doc's properties from the reading page. They are not part
+        of what is published, so they take effect at once."""
+        self._need_writer()
+        doc = self.env['sediba.doc'].browse(doc_id).exists()
+        if not doc:
+            return False
+        record = {}
+        if 'owner_id' in vals:
+            record['owner_id'] = vals['owner_id'] or False
+        if 'space_ids' in vals:
+            record['space_ids'] = [(6, 0, self.env['sediba.space'].browse(vals['space_ids'] or []).exists().ids)]
+        for key in ('ai_allowed', 'public_allowed'):
+            if key in vals:
+                record[key] = bool(vals[key])
+        if 'read_again' in vals:
+            if vals['read_again'] not in dict(READ_AGAIN):
+                raise UserError(_("Choose how often it is read again from the list."))
+            record['read_again'] = vals['read_again']
+        if record:
+            doc.write(record)
+        return self.ws_doc(doc.id)
+
+    @api.model
     def ws_doc_edit(self, doc_id=False, parent_id=False, template='blank'):
         """What the editing page needs: the working copy (or a fresh one from
         a template) and the choices for its properties."""
@@ -284,7 +329,6 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             return False
         parent = Doc.browse(parent_id).exists()
         label, body = TEMPLATES.get(template, TEMPLATES['blank'])
-        writers = self.env.ref('sediba.group_writer').users.filtered(lambda u: u.active and not u.share)
         return {
             'id': doc.id or False,
             'name': doc.name or '',
@@ -304,7 +348,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             'versions': len(doc.version_ids),
             'has_pages': bool(doc.child_ids),
             'choices': {
-                'owners': [[u.id, u.name] for u in (writers | doc.owner_id | self.env.user).sorted('name')],
+                'owners': self._doc_owners(doc),
                 'parents': [[d.id, d.name] for d in Doc.search([('parent_id', '=', False), ('id', '!=', doc.id or 0)])],
                 'spaces': [[s.id, s.name] for s in self.env['sediba.space'].search([])],
                 'read_again': READ_AGAIN,
