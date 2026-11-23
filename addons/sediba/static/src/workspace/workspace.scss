@@ -229,6 +229,8 @@
         padding: 10px 0;
         border-bottom: 1px solid var(--sdb-line-soft);
         > span { flex: 1 1 300px; min-width: 0; }
+        // The label keeps its own width; only the text beside it stretches.
+        > .o_sdb_status, > .o_sdb_badge { flex: none; }
     }
 
     // ── Tables ──────────────────────────────────────────────────────────────
@@ -497,7 +499,7 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
 // ── The left panel: a quiet tree that folds, and closes to a narrow strip ────
 .o_sdb_ws {
     .o_sdb_side { gap: 14px; padding: 10px 4px 12px; }
-    .o_sdb_side_head { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 4px 0 10px; }
+    .o_sdb_side_head { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 4px; }
     .o_sdb_side_title { flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 700; }
 
     // Small square buttons that carry an icon only.
@@ -516,7 +518,22 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
         cursor: pointer;
         &:hover { background: var(--sdb-none-bg); color: var(--sdb-none-fg); }
     }
-    .o_sdb_side_toggle { font-size: 16px; }
+    // Opens and closes the panel: a square button with a line around it.
+    .o_sdb_side_toggle {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--sdb-line);
+        border-radius: 8px;
+        background: var(--sdb-card);
+        color: var(--sdb-fg);
+        cursor: pointer;
+        &:hover { background: var(--sdb-soft); }
+    }
 
     .o_sdb_side_top {
         position: relative;
@@ -569,7 +586,7 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
 // Closed: only the button that opens it again is left.
 @media (min-width: 768px) {
     .o_sdb_ws.side_closed {
-        .o_sdb_side { flex-basis: 36px; padding-left: 0; padding-right: 0; overflow: hidden; }
+        .o_sdb_side { flex-basis: 40px; padding-left: 0; padding-right: 0; overflow: hidden; }
         .o_sdb_side > :not(.o_sdb_side_head), .o_sdb_side_title { display: none; }
         .o_sdb_side_head { justify-content: center; padding: 0; }
     }

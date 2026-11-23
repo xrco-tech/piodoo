@@ -208,6 +208,22 @@ class TestSedibaWorkspace(TransactionCase):
         with self.assertRaises(AccessError):
             self.env['sediba.workspace'].with_user(self.outsider).ws_set_topic_ai(self.first.id, True)
 
+    def test_shown_in_on_a_topic(self):
+        Space = self.env['sediba.space']
+        app = Space.search([('code', '=', 'test_shown')]) or Space.create({'name': 'Shown app', 'code': 'test_shown'})
+        self.first.space_ids = False
+        data = self.Ws.ws_topic(self.first.id)
+        self.assertEqual(data['space_ids'], [])
+        self.assertIn([app.id, 'Shown app'], data['spaces'])
+        data = self.Ws.ws_set_topic_spaces(self.first.id, [app.id, 999999])
+        self.assertEqual((data['space_ids'], self.first.space_ids), ([app.id], app))
+        self.assertEqual(self.Ws.ws_set_topic_spaces(self.first.id, [])['space_ids'], [])
+        self.assertFalse(self.Ws.ws_set_topic_spaces(0, [app.id]))
+        with self.assertRaises(AccessError):
+            self.Ws.ws_set_topic_spaces(self.first.id, [app.id], 'test_shown')
+        with self.assertRaises(AccessError):
+            self.env['sediba.workspace'].with_user(self.outsider).ws_set_topic_spaces(self.first.id, [app.id])
+
     def test_outsiders_are_kept_out(self):
         ws = self.env['sediba.workspace'].with_user(self.outsider)
         for call in (ws.ws_nav, ws.ws_overview, lambda: ws.ws_topic(self.first.id),

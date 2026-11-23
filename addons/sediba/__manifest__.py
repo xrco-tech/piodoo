@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Sediba',
-    'version': '18.0.1.8.2',
+    'version': '18.0.1.9.0',
     'category': 'Productivity',
     'summary': 'What we know in one place: our own company docs, and research with its sources',
     'description': """

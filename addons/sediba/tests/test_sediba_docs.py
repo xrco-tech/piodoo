@@ -272,10 +272,36 @@ class TestSedibaDocsWorkspace(DocsCase):
         self.assertFalse(self.draft.active)
         self.assertEqual(self.Ws.ws_nav()['doc_count'], 3)
 
+    def test_properties_change_on_the_reading_page(self):
+        props = self.Ws.ws_doc(self.how.id)['props']
+        self.assertEqual((props['owner_id'], props['space_ids'], props['read_again']),
+                         (self.writer.id, self.jobs.ids, '3'))
+        self.assertIn([self.calls.id, 'Calls app'], props['choices']['spaces'])
+        self.assertIn([self.writer.id, 'Thandi Writer'], props['choices']['owners'])
+        # Only what was sent changes, and it is live at once: no "changes" to publish.
+        data = self.Ws.ws_doc_set(self.how.id, {'space_ids': (self.jobs | self.calls).ids, 'ai_allowed': True})
+        self.assertEqual((set(data['spaces']), data['ai_allowed'], data['public_allowed'], data['changes']),
+                         ({'Jobs app', 'Calls app'}, True, False, False))
+        self.assertEqual(self.how.owner_id, self.writer)
+        self.assertTrue(self.Ws.ws_doc(self.how.id, 'test_calls'))
+        data = self.Ws.ws_doc_set(self.how.id, {'read_again': '6', 'public_allowed': True, 'space_ids': [], 'owner_id': False})
+        self.assertEqual((data['read_again'], data['public_allowed'], data['spaces'], data['owner']),
+                         ('Every 6 months', True, [], ''))
+        self.assertFalse(self.Ws.ws_doc(self.how.id, 'test_calls'))
+        with self.assertRaises(UserError):
+            self.Ws.ws_doc_set(self.how.id, {'read_again': 'never'})
+        # Nothing else can be slipped in this way.
+        self.Ws.ws_doc_set(self.how.id, {'name': 'Renamed', 'state': 'draft'})
+        self.assertEqual((self.how.name, self.how.state), ('How we work', 'published'))
+        self.assertFalse(self.Ws.ws_doc_set(0, {'ai_allowed': True}))
+        # A reader gets no choices to change.
+        self.assertFalse(self.ReaderWs.ws_doc(self.how.id)['props'])
+
     def test_only_writers_change_docs_and_never_from_an_app(self):
         vals = {'name': 'Changed'}
         for ws in (self.ReaderWs, self.env['sediba.workspace'].with_user(self.researcher)):
             for call in (lambda: ws.ws_doc_edit(self.how.id), lambda: ws.ws_doc_save(self.how.id, vals),
+                         lambda: ws.ws_doc_set(self.how.id, {'ai_allowed': True}),
                          lambda: ws.ws_doc_do(self.how.id, 'take_down'), lambda: ws.ws_doc_note_done(1)):
                 with self.assertRaises(AccessError):
                     call()

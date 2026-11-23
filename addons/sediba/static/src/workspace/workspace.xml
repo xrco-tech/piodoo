@@ -89,11 +89,17 @@
             <!-- ── Sidebar ──────────────────────────────────────────────── -->
             <nav class="o_sdb_side" t-att-aria-label="state.nav.reference ? 'Reference' : 'Sediba'">
                 <div class="o_sdb_side_head">
-                    <span class="o_sdb_side_title"><t t-if="state.nav.reference">Reference</t><t t-else="">Sediba</t></span>
-                    <button type="button" class="o_sdb_tool o_sdb_side_toggle" t-att-aria-expanded="state.side ? 'true' : 'false'"
+                    <button type="button" class="o_sdb_side_toggle" t-att-aria-expanded="state.side ? 'true' : 'false'"
                             t-att-aria-label="sideLabel" t-att-title="sideLabel" t-on-click="toggleSide">
-                        <i class="fa" t-att-class="state.side ? 'fa-angle-double-left' : 'fa-angle-double-right'" aria-hidden="true"/>
+                        <!-- A panel with its side bar, and an arrow for the way it will move. -->
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="2" y="3" width="14" height="12" rx="1.5"/>
+                            <path d="M6.5 3v12"/>
+                            <path t-if="state.side" d="M12.5 6.6 9.7 9l2.8 2.4z" fill="currentColor" stroke-width="1"/>
+                            <path t-else="" d="M9.9 6.6 12.7 9l-2.8 2.4z" fill="currentColor" stroke-width="1"/>
+                        </svg>
                     </button>
+                    <span class="o_sdb_side_title"><t t-if="state.nav.reference">Reference</t><t t-else="">Sediba</t></span>
                 </div>
 
                 <div class="o_sdb_side_top">
@@ -418,8 +424,9 @@
                 </div>
 
                 <!-- A topic -->
-                <div t-elif="state.view === 'topic'" class="o_sdb_page">
+                <div t-elif="state.view === 'topic'" class="o_sdb_split">
                     <t t-set="d" t-value="state.data"/>
+                    <div class="o_sdb_page">
                     <div class="o_sdb_bar">
                         <div class="o_sdb_crumbs"><span class="o_sdb_muted"><t t-if="state.nav.reference">Reference</t><t t-else="">Research topics</t></span><span class="o_sdb_muted">/</span><b t-esc="d.name"/></div>
                         <button t-if="state.nav.can_edit" type="button" class="o_sdb_btn" t-on-click="editTopic">Edit topic</button>
@@ -427,25 +434,11 @@
                     <div class="o_sdb_body">
                         <header>
                             <h1 t-esc="d.name"/>
-                            <dl class="o_sdb_meta">
+                            <dl t-if="state.nav.reference" class="o_sdb_meta">
                                 <div><dt>Topic</dt><dd><t t-esc="d.position"/> of <t t-esc="d.of"/></dd></div>
                                 <div><dt>Last researched</dt><dd t-esc="d.last or 'Not yet'"/></div>
-                                <div t-if="d.due"><dt>Due again</dt><dd t-esc="d.due"/></div>
                             </dl>
                             <p t-if="d.scope" class="o_sdb_muted" t-esc="d.scope"/>
-                            <t t-if="!state.nav.reference">
-                                <label t-if="state.nav.can_edit" class="o_sdb_check o_sdb_ai">
-                                    <input type="checkbox" t-att-checked="d.ai_allowed" t-on-change="toggleTopicAi"/>
-                                    <span>Sidekick may answer from it
-                                        <span class="o_sdb_muted small d-block">The assistant your own staff use. Verified findings only: leads and findings that could not be confirmed are never included.</span></span>
-                                </label>
-                                <label t-if="state.nav.can_edit" class="o_sdb_check o_sdb_ai">
-                                    <input type="checkbox" t-att-checked="d.public_allowed" t-on-change="toggleTopicPublic"/>
-                                    <span>The public chatbot may answer from it
-                                        <span class="o_sdb_muted small d-block">A chatbot that talks to people outside the company. Verified findings only.</span></span>
-                                </label>
-                                <p t-if="!state.nav.can_edit" class="o_sdb_muted small">Sidekick may answer from it: <t t-if="d.ai_allowed">Yes</t><t t-else="">No</t>. The public chatbot may answer from it: <t t-if="d.public_allowed">Yes</t><t t-else="">No</t>.</p>
-                            </t>
                         </header>
 
                         <section t-if="d.visual">
@@ -523,6 +516,48 @@
                             <p t-else="" class="o_sdb_muted">Not researched yet.</p>
                         </section>
                     </div>
+                    </div>
+
+                    <aside t-if="!state.nav.reference" class="o_sdb_props" aria-label="Properties">
+                        <h2>Properties</h2>
+                        <dl>
+                            <div><dt>Kind</dt><dd>Research topic, from outside sources</dd></div>
+                            <div><dt>Topic</dt><dd><t t-esc="d.position"/> of <t t-esc="d.of"/></dd></div>
+                            <div><dt>Last researched</dt><dd t-esc="d.last or 'Not yet'"/></div>
+                            <div t-if="d.due"><dt>Due again</dt><dd t-esc="d.due"/></div>
+                            <t t-if="!state.nav.can_edit">
+                                <div><dt>Shown in</dt><dd t-if="topicSpaces.length" class="o_sdb_chips">
+                                    <span t-foreach="topicSpaces" t-as="sp" t-key="sp" class="o_sdb_chip" t-esc="sp"/></dd>
+                                    <dd t-else="" class="o_sdb_muted">Sediba only</dd></div>
+                                <div><dt>Sidekick may answer from it</dt><dd><t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></dd></div>
+                                <div><dt>The public chatbot may answer from it</dt><dd><t t-if="d.public_allowed">Yes</t><t t-else="">No</t></dd></div>
+                            </t>
+                        </dl>
+                        <t t-if="state.nav.can_edit">
+                            <fieldset class="o_sdb_field">
+                                <legend>Shown in</legend>
+                                <label t-foreach="d.spaces" t-as="sp" t-key="sp[0]" class="o_sdb_check">
+                                    <input type="checkbox" t-att-checked="d.space_ids.includes(sp[0])" t-on-change="() => this.toggleTopicSpace(sp[0])"/>
+                                    <span t-esc="sp[1]"/>
+                                </label>
+                                <span t-if="!d.spaces.length" class="o_sdb_muted small">No app has a Reference menu yet.</span>
+                                <span t-else="" class="o_sdb_muted small">An app's Reference shows only its verified findings.</span>
+                            </fieldset>
+                            <fieldset class="o_sdb_field">
+                                <legend>Assistants</legend>
+                                <label class="o_sdb_check">
+                                    <input type="checkbox" t-att-checked="d.ai_allowed" t-on-change="toggleTopicAi"/>
+                                    <span>Sidekick may answer from it
+                                        <span class="o_sdb_muted small d-block">The assistant your own staff use. Verified findings only: leads and findings that could not be confirmed are never included.</span></span>
+                                </label>
+                                <label class="o_sdb_check">
+                                    <input type="checkbox" t-att-checked="d.public_allowed" t-on-change="toggleTopicPublic"/>
+                                    <span>The public chatbot may answer from it
+                                        <span class="o_sdb_muted small d-block">A chatbot that talks to people outside the company. Verified findings only.</span></span>
+                                </label>
+                            </fieldset>
+                        </t>
+                    </aside>
                 </div>
 
                 <!-- One finding, with its properties beside it -->
@@ -771,15 +806,61 @@
                             <div><dt>Kind</dt><dd>Company doc, written by us</dd></div>
                             <div><dt>Status</dt><dd><t t-if="d.state === 'published'">Published</t><t t-else="">Draft, not shown in any app</t>
                                 <div t-if="d.changes" class="o_sdb_muted">Changed since. The apps show the last published version.</div></dd></div>
-                            <div><dt>Owner</dt><dd t-esc="d.owner or 'Nobody yet'"/></div>
-                            <div><dt>Shown in</dt><dd t-if="d.spaces.length" class="o_sdb_chips">
+                            <t t-if="!d.props or d.viewing">
+                                <div><dt>Owner</dt><dd t-esc="d.owner or 'Nobody yet'"/></div>
+                                <div><dt>Shown in</dt><dd t-if="d.spaces.length" class="o_sdb_chips">
                                 <span t-foreach="d.spaces" t-as="sp" t-key="sp" class="o_sdb_chip" t-esc="sp"/></dd>
-                                <dd t-else="" class="o_sdb_muted">Sediba only</dd></div>
-                            <div><dt>Sidekick may answer from it</dt><dd><t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></dd></div>
-                            <div><dt>The public chatbot may answer from it</dt><dd><t t-if="d.public_allowed">Yes</t><t t-else="">No</t></dd></div>
-                            <div><dt>Last updated</dt><dd><t t-esc="d.updated"/><t t-if="d.updated_by"> by <t t-esc="d.updated_by"/></t></dd></div>
-                            <div><dt>Read again by</dt><dd><t t-esc="d.read_again_by or 'Set when it is published'"/>
+                                    <dd t-else="" class="o_sdb_muted">Sediba only</dd></div>
+                                <div><dt>Sidekick may answer from it</dt><dd><t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></dd></div>
+                                <div><dt>The public chatbot may answer from it</dt><dd><t t-if="d.public_allowed">Yes</t><t t-else="">No</t></dd></div>
+                                <div><dt>Read again by</dt><dd><t t-esc="d.read_again_by or 'Set when it is published'"/>
                                 <div class="o_sdb_muted" t-esc="d.read_again"/></dd></div>
+                            </t>
+                        </dl>
+
+                        <!-- A writer changes these right here; they take effect at once. -->
+                        <t t-if="d.props and !d.viewing">
+                            <div class="o_sdb_field">
+                                <label for="o_sdb_d_owner">Owner</label>
+                                <select id="o_sdb_d_owner" class="o_sdb_input" t-on-change="(ev) => this.setDocProp({ owner_id: Number(ev.target.value) })">
+                                    <option t-if="!d.props.owner_id" value="0" selected="selected">Nobody yet</option>
+                                    <option t-foreach="d.props.choices.owners" t-as="o" t-key="o[0]" t-att-value="o[0]"
+                                            t-att-selected="o[0] === d.props.owner_id" t-esc="o[1]"/>
+                                </select>
+                                <span class="o_sdb_muted small">Keeps it right and is asked to read it again.</span>
+                            </div>
+                            <fieldset class="o_sdb_field">
+                                <legend>Shown in</legend>
+                                <label t-foreach="d.props.choices.spaces" t-as="sp" t-key="sp[0]" class="o_sdb_check">
+                                    <input type="checkbox" t-att-checked="d.props.space_ids.includes(sp[0])" t-on-change="() => this.toggleDocSpace(sp[0])"/>
+                                    <span t-esc="sp[1]"/>
+                                </label>
+                                <span t-if="!d.props.choices.spaces.length" class="o_sdb_muted small">No app has a Reference menu yet.</span>
+                                <span t-elif="d.state !== 'published'" class="o_sdb_muted small">The apps show it once it is published.</span>
+                            </fieldset>
+                            <fieldset class="o_sdb_field">
+                                <legend>Assistants</legend>
+                                <label class="o_sdb_check">
+                                    <input type="checkbox" t-att-checked="d.ai_allowed" t-on-change="(ev) => this.setDocProp({ ai_allowed: ev.target.checked })"/>
+                                    <span>Sidekick may answer from it</span>
+                                </label>
+                                <label class="o_sdb_check">
+                                    <input type="checkbox" t-att-checked="d.public_allowed" t-on-change="(ev) => this.setDocProp({ public_allowed: ev.target.checked })"/>
+                                    <span>The public chatbot may answer from it</span>
+                                </label>
+                            </fieldset>
+                            <div class="o_sdb_field">
+                                <label for="o_sdb_d_again">Read again</label>
+                                <select id="o_sdb_d_again" class="o_sdb_input" t-on-change="(ev) => this.setDocProp({ read_again: ev.target.value })">
+                                    <option t-foreach="d.props.choices.read_again" t-as="o" t-key="o[0]" t-att-value="o[0]"
+                                            t-att-selected="o[0] === d.props.read_again" t-esc="o[1]"/>
+                                </select>
+                                <span class="o_sdb_muted small">Next: <t t-esc="d.read_again_by or 'set when it is published'"/></span>
+                            </div>
+                        </t>
+
+                        <dl>
+                            <div><dt>Last updated</dt><dd><t t-esc="d.updated"/><t t-if="d.updated_by"> by <t t-esc="d.updated_by"/></t></dd></div>
                             <div><dt>Published versions</dt><dd><t t-esc="d.versions.length"/>
                                 <button t-if="d.versions.length" type="button" class="o_sdb_link" t-on-click="() => state.history = !state.history">
                                     <t t-if="state.history">Hide history</t><t t-else="">See history</t></button></dd></div>

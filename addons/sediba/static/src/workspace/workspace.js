@@ -732,6 +732,39 @@ export class SedibaWorkspace extends Component {
         }
     }
 
+    async toggleTopicSpace(id) {
+        const ids = this.state.data.space_ids.filter((spaceId) => spaceId !== id);
+        if (ids.length === this.state.data.space_ids.length) {
+            ids.push(id);
+        }
+        const d = await this.orm.call(WS, "ws_set_topic_spaces", [this.state.topicId, ids, this.space]);
+        if (d) {
+            this.state.data.space_ids = d.space_ids;
+        }
+    }
+
+    /** The apps a topic is shown in, by name: for someone who may not change them. */
+    get topicSpaces() {
+        const d = this.state.data;
+        return d.spaces.filter((space) => d.space_ids.includes(space[0])).map((space) => space[1]);
+    }
+
+    // ── A doc's properties, changed on the reading page ──────────────────────
+
+    async setDocProp(vals) {
+        const d = await this.orm.call(WS, "ws_doc_set", [this.state.docId, vals]);
+        if (d) {
+            this.state.data = this.prepared(d);
+            this.state.nav = await this.orm.call(WS, "ws_nav", [this.space]);
+        }
+    }
+
+    toggleDocSpace(id) {
+        const now = this.state.data.props.space_ids;
+        const ids = now.filter((spaceId) => spaceId !== id);
+        return this.setDocProp({ space_ids: ids.length === now.length ? [...ids, id] : ids });
+    }
+
     async toggleReview() {
         const f = this.state.data;
         this.state.data = await this.orm.call(WS, "ws_set_review", [f.id, !f.review, this.space]);
