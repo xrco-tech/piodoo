@@ -83,8 +83,24 @@
         </div>
     </t>
 
+    <!-- The top of a Properties panel: its name, and the button that closes and opens it. -->
+    <t t-name="sediba.PropsHead">
+        <div class="o_sdb_props_head">
+            <h2>Properties</h2>
+            <button type="button" class="o_sdb_side_toggle o_sdb_props_toggle" t-att-aria-expanded="state.props ? 'true' : 'false'"
+                    t-att-aria-label="propsLabel" t-att-title="propsLabel" t-on-click="toggleProps">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="2" y="3" width="14" height="12" rx="1.5"/>
+                    <path d="M11.5 3v12"/>
+                    <path t-if="state.props" d="M5.5 6.6 8.3 9l-2.8 2.4z" fill="currentColor" stroke-width="1"/>
+                    <path t-else="" d="M8.1 6.6 5.3 9l2.8 2.4z" fill="currentColor" stroke-width="1"/>
+                </svg>
+            </button>
+        </div>
+    </t>
+
     <t t-name="sediba.Workspace">
-        <div class="o_action o_sdb_ws" t-att-class="{ browsing: state.browsing, side_closed: !state.side }">
+        <div class="o_action o_sdb_ws" t-att-class="{ browsing: state.browsing, side_closed: !state.side, props_closed: !state.props }">
 
             <!-- ── Sidebar ──────────────────────────────────────────────── -->
             <nav class="o_sdb_side" t-att-aria-label="state.nav.reference ? 'Reference' : 'Sediba'">
@@ -519,7 +535,7 @@
                     </div>
 
                     <aside t-if="!state.nav.reference" class="o_sdb_props" aria-label="Properties">
-                        <h2>Properties</h2>
+                        <t t-call="sediba.PropsHead"/>
                         <dl>
                             <div><dt>Kind</dt><dd>Research topic, from outside sources</dd></div>
                             <div><dt>Topic</dt><dd><t t-esc="d.position"/> of <t t-esc="d.of"/></dd></div>
@@ -646,7 +662,7 @@
                     </div>
 
                     <aside class="o_sdb_props" aria-label="Properties">
-                        <h2>Properties</h2>
+                        <t t-call="sediba.PropsHead"/>
                         <dl>
                             <div><dt>Status</dt><dd t-esc="statusLabels[f.status]"/></div>
                             <div><dt>Evidence</dt><dd>
@@ -801,7 +817,7 @@
                     </div>
 
                     <aside t-if="!state.nav.reference" class="o_sdb_props" aria-label="Properties">
-                        <h2>Properties</h2>
+                        <t t-call="sediba.PropsHead"/>
                         <dl>
                             <div><dt>Kind</dt><dd>Company doc, written by us</dd></div>
                             <div><dt>Status</dt><dd><t t-if="d.state === 'published'">Published</t><t t-else="">Draft, not shown in any app</t>
@@ -990,7 +1006,7 @@
                     </div>
 
                     <aside class="o_sdb_props" aria-label="Properties">
-                        <h2>Properties</h2>
+                        <t t-call="sediba.PropsHead"/>
                         <div class="o_sdb_field">
                             <label for="o_sdb_p_owner">Owner</label>
                             <select id="o_sdb_p_owner" class="o_sdb_input" t-model.number="state.draft.owner_id" t-on-change="touch">

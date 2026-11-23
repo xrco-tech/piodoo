@@ -1,5 +1,7 @@
 // Dark mode: same layout, the colours redefined.
 .o_sdb_ws {
+    // The browser's own tick boxes, dropdown arrows and scroll bars go dark too.
+    color-scheme: dark;
     --sdb-bg: #1b1d21;
     --sdb-card: #262a31;
     --sdb-line: #3c404a;

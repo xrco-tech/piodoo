@@ -112,6 +112,7 @@ export class SedibaWorkspace extends Component {
             docHits: [], // docs that match the sidebar search
             open: { docs: true, research: true, collections: true, ...remembered("open", {}) },
             side: remembered("side", true), // the left panel is open
+            props: remembered("props", true), // the Properties panel on the right is open
             shut: remembered("shut", {}), // docs whose pages are folded away, by id
             newMenu: false,
             history: false,
@@ -273,6 +274,15 @@ export class SedibaWorkspace extends Component {
     toggleSide() {
         this.state.side = !this.state.side;
         remember("side", this.state.side);
+    }
+
+    get propsLabel() {
+        return this.state.props ? _t("Close Properties") : _t("Open Properties");
+    }
+
+    toggleProps() {
+        this.state.props = !this.state.props;
+        remember("props", this.state.props);
     }
 
     toggleGroup(name) {

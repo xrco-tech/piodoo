@@ -583,6 +583,22 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
     .o_sdb_menu .o_sdb_item_name { white-space: normal; }
 }
 
+// The Properties panel on the right closes the same way.
+.o_sdb_ws {
+    .o_sdb_props_head { display: flex; align-items: center; gap: 10px; h2 { flex: 1 1 auto; min-width: 0; margin: 0; } }
+}
+@media (min-width: 992px) {
+    .o_sdb_ws.props_closed {
+        .o_sdb_props { flex-basis: 40px; padding: 10px 0; overflow: hidden; border: 0; background: none; }
+        .o_sdb_props > :not(.o_sdb_props_head), .o_sdb_props_head h2 { display: none; }
+        .o_sdb_props_head { justify-content: center; }
+    }
+}
+@media (max-width: 991.98px) {
+    // Under the page on a narrow screen: nothing to gain by closing it.
+    .o_sdb_ws .o_sdb_props_toggle { display: none; }
+}
+
 // Closed: only the button that opens it again is left.
 @media (min-width: 768px) {
     .o_sdb_ws.side_closed {
@@ -594,6 +610,8 @@ html .o_web_client > .o_action_manager > .o_action.o_sdb_ws { flex-direction: ro
 @media (max-width: 767.98px) {
     .o_sdb_ws {
         .o_sdb_side_toggle { display: none; }
+        // Tick boxes: a row tall enough for a thumb.
+        .o_sdb_check { min-height: 44px; padding: 11px 0; }
         .o_sdb_leaf .o_sdb_item, .o_sdb_side_top .o_sdb_input { min-height: 44px; height: auto; }
         .o_sdb_twist { width: 32px; }
         .o_sdb_tool { width: 44px; height: 44px; }
