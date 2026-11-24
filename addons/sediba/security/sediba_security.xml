@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="group_reader" model="res.groups">
-        <field name="name">Sediba: reader</field>
+        <field name="name">Library: reader</field>
         <field name="comment">Read research where another app shows it. Changes nothing.</field>
     </record>
     <record id="group_user" model="res.groups">
-        <field name="name">Sediba: researcher</field>
+        <field name="name">Library: researcher</field>
         <field name="comment">Read and write research topics, findings, sources and runs.</field>
         <field name="implied_ids" eval="[(4, ref('group_reader'))]"/>
     </record>
     <record id="group_writer" model="res.groups">
-        <field name="name">Sediba: writer</field>
+        <field name="name">Library: writer</field>
         <field name="comment">Write, publish and look after company docs. Reads research but does not change it.</field>
         <field name="implied_ids" eval="[(4, ref('group_reader'))]"/>
     </record>

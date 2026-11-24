@@ -2,11 +2,11 @@
 <odoo>
 
     <record id="action_sediba_flows" model="ir.actions.client">
-        <field name="name">Sediba Flows</field>
+        <field name="name">Interaction Flows</field>
         <field name="tag">sediba_flows</field>
     </record>
 
-    <menuitem id="menu_sediba_flows_root" name="Sediba Flows" sequence="47"
+    <menuitem id="menu_sediba_flows_root" name="Interaction Flows" sequence="47"
               web_icon="sediba_flows,static/description/icon.png"
               action="action_sediba_flows"
               groups="comm_chatbot.group_chatbot_agent"/>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Reference: Sediba's verified findings on the topics marked as shown in
-         Chat2Work. Read-only; leads never show. Researchers mark topics in Sediba. -->
+    <!-- Reference: the Library's verified findings on the topics marked as shown in
+         Chat2Work. Read-only; leads never show. Researchers mark topics in the Library. -->
     <record id="sediba_space_chat2work" model="sediba.space">
         <field name="name">Chat2Work</field>
         <field name="code">chat2work</field>

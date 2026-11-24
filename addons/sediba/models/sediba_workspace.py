@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""What the Sediba workspace screen reads: one `ws_*` call per page, no tables.
+"""What the Library workspace screen reads: one `ws_*` call per page, no tables.
 
 Everything is read as the signed-in user, so the researcher group decides who
 gets in. The two writes (status and the review flag) go through the finding's
@@ -18,7 +18,7 @@ BOARD_ORDER = ('verified', 'lead', 'unconfirmed')
 
 class SedibaWorkspace(models.AbstractModel):
     _name = 'sediba.workspace'
-    _description = 'Sediba workspace'
+    _description = 'Library workspace'
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -272,7 +272,7 @@ class SedibaWorkspace(models.AbstractModel):
         decides whether verified is allowed."""
         finding = self.env['sediba.finding'].browse(finding_id).exists()
         if space:
-            raise AccessError(_("The Reference inside an app is read-only. Change findings in Sediba."))
+            raise AccessError(_("The Reference inside an app is read-only. Change findings in the Library."))
         if not finding or status not in dict(STATUSES):
             return False
         vals = {'status': status}
@@ -287,7 +287,7 @@ class SedibaWorkspace(models.AbstractModel):
         findings, and (`public`) may a chatbot that talks to people outside
         the company."""
         if space:
-            raise AccessError(_("The Reference inside an app is read-only. Change topics in Sediba."))
+            raise AccessError(_("The Reference inside an app is read-only. Change topics in the Library."))
         topic = self.env['sediba.topic'].browse(topic_id).exists()
         if not topic:
             return False
@@ -298,7 +298,7 @@ class SedibaWorkspace(models.AbstractModel):
     def ws_set_topic_spaces(self, topic_id, space_ids, space=False):
         """Which apps show this topic's verified findings in their Reference."""
         if space:
-            raise AccessError(_("The Reference inside an app is read-only. Change topics in Sediba."))
+            raise AccessError(_("The Reference inside an app is read-only. Change topics in the Library."))
         topic = self.env['sediba.topic'].browse(topic_id).exists()
         if not topic:
             return False
@@ -309,7 +309,7 @@ class SedibaWorkspace(models.AbstractModel):
     def ws_set_review(self, finding_id, needs_review, space=False):
         finding = self.env['sediba.finding'].browse(finding_id).exists()
         if space:
-            raise AccessError(_("The Reference inside an app is read-only. Change findings in Sediba."))
+            raise AccessError(_("The Reference inside an app is read-only. Change findings in the Library."))
         if not finding:
             return False
         finding.needs_review = bool(needs_review)

@@ -200,8 +200,8 @@ class LlmClient(models.AbstractModel):
         return msgs
 
     def _sediba(self, step):
-        """Sediba's look-up for this step, or None: the step must ask for it
-        and Sediba must be installed (this addon does not depend on it)."""
+        """The Library's look-up for this step, or None: the step must ask for it
+        and the Library must be installed (this addon does not depend on it)."""
         return self.env.get('sediba.assistant') if step.llm_use_sediba else None
 
     def _build_tools(self, step):

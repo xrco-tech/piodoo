@@ -136,11 +136,11 @@ class CommBotStep(models.Model):
         domain="[('bot_id', '=', bot_id)]",
         help='For decision mode: allowed next steps.')
     llm_use_sediba = fields.Boolean(
-        string='Answer from Sediba',
+        string='Answer from the Library',
         help='Give this step a look-up of the company docs and verified '
-             'research switched on for the public chatbot in Sediba '
+             'research switched on for the public chatbot in the Library '
              '(published docs and verified findings only). Has no effect '
-             'when Sediba is not installed.')
+             'when the Library is not installed.')
     llm_include_history = fields.Boolean(default=True)
     llm_history_turns = fields.Integer(default=10)
     llm_fallback_step_id = fields.Many2one('comm.bot.step',

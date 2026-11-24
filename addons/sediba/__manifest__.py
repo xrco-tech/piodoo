@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Sediba',
-    'version': '18.0.1.9.1',
+    'name': 'Library',
+    'version': '18.0.1.9.2',
     'category': 'Productivity',
     'summary': 'What we know in one place: our own company docs, and research with its sources',
     'description': """
-Sediba
+Library
 ======
-Sediba (Sesotho and Setswana for a well or spring) keeps research in one
+The Library keeps research in one
 place, with what is proven kept apart from what is only a lead.
 
 - Topics: what is being researched, what is known so far, when it was last

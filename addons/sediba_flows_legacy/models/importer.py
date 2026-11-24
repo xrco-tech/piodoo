@@ -50,7 +50,7 @@ def _slug(text):
 
 class SedibaFlowsImporter(models.AbstractModel):
     _name = 'sediba.flows.importer'
-    _description = 'Brings an older bot into Sediba Flows'
+    _description = 'Brings an older bot into Interaction Flows'
 
     @api.model
     def import_bot(self, chatbot, _done=None):
@@ -71,7 +71,7 @@ class SedibaFlowsImporter(models.AbstractModel):
         channel = self.env['comm.channel'].search(
             [('code', '=', chatbot.channel)], limit=1)
         if not channel:
-            notes.append(_("The channel “%s” is not installed for Sediba Flows; "
+            notes.append(_("The channel “%s” is not installed for Interaction Flows; "
                            "choose a channel before going live.", chatbot.channel))
         bot = Bot.create({
             'name': chatbot.name,
@@ -411,7 +411,7 @@ class SedibaFlowsImporter(models.AbstractModel):
         if chatbot.global_interrupt_ids:
             notes.append(_(
                 "The older bot had %s “at any time” keyword rules (for example "
-                "typing MENU mid-way). Sediba Flows has no such rules yet.",
+                "typing MENU mid-way). Interaction Flows has no such rules yet.",
                 len(chatbot.global_interrupt_ids)))
         if chatbot.ai_agent_prompt_text or chatbot.context_data or chatbot.context_url:
             notes.append(_("The older bot's AI instructions and context were not "

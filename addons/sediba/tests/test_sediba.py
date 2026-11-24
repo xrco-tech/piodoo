@@ -316,7 +316,7 @@ class TestSedibaReference(TransactionCase):
         self.assertFalse(self.Ws.ws_finding(self.jobs_lead.id, 'test_jobs'))
         self.assertFalse(self.Ws.ws_finding(self.jobs_proven.id, 'test_calls'))
         self.assertFalse(self.Ws.ws_finding(self.plain_proven.id, 'test_jobs'))
-        # In Sediba itself the same finding keeps its review flag.
+        # In the Library itself the same finding keeps its review flag.
         self.assertTrue(self.Ws.ws_finding(self.jobs_proven.id)['review'])
 
     def test_nothing_changes_from_inside_an_app(self):
@@ -332,7 +332,7 @@ class TestSedibaReference(TransactionCase):
             with self.assertRaises(AccessError):
                 ws.ws_set_topic_ai(self.jobs_topic.id, True, 'test_jobs')
         self.assertFalse(self.jobs_topic.ai_allowed)
-        # A reader changes nothing in Sediba itself either.
+        # A reader changes nothing in the Library itself either.
         with self.assertRaises(AccessError):
             self.Ws.ws_set_review(self.jobs_proven.id, False)
         with self.assertRaises(AccessError):

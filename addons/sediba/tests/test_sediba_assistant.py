@@ -88,7 +88,7 @@ class TestSedibaAssistant(TransactionCase):
         result = self.Assistant.look_up('does it cost money')
         faq = next(item for item in result['results'] if item['title'] == 'Zebra FAQ')
         self.assertEqual(faq['questions'][0]['answer'], 'No. Zebraworks is free for job seekers.')
-        self.assertEqual(self.Assistant.source_label(result), 'Sediba: Zebra FAQ')
+        self.assertEqual(self.Assistant.source_label(result), 'Library: Zebra FAQ')
         nothing = self.Assistant.look_up('quantum giraffes')
         self.assertEqual((nothing['results'], self.Assistant.source_label(nothing)), ([], ''))
         self.assertTrue(nothing['note'])

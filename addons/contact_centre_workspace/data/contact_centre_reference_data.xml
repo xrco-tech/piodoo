@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Reference: Sediba's verified findings on the topics marked as shown in
+    <!-- Reference: the Library's verified findings on the topics marked as shown in
          the Contact Centre. Read-only; leads never show. -->
     <record id="sediba_space_contact_centre" model="sediba.space">
         <field name="name">Contact Centre</field>

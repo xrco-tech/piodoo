@@ -498,7 +498,7 @@ export class SedibaFlows extends Component {
         await this.openFlow(id);
     }
 
-    /** Copy an older bot into Sediba Flows as a draft, then open the copy. */
+    /** Copy an older bot into Interaction Flows as a draft, then open the copy. */
     async importLegacy(id) {
         this.state.busy = true;
         try {

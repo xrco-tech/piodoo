@@ -42,9 +42,9 @@ class SedibaWorkspaceDocs(models.AbstractModel):
     @api.model
     def _need_writer(self, space=False):
         if space:
-            raise AccessError(_("The Reference inside an app is read-only. Change docs in Sediba."))
+            raise AccessError(_("The Reference inside an app is read-only. Change docs in the Library."))
         if not self.env.user.has_group('sediba.group_writer'):
-            raise AccessError(_("Only a Sediba writer can change company docs."))
+            raise AccessError(_("Only a Library writer can change company docs."))
 
     @api.model
     def _docs(self, space=False):
@@ -57,7 +57,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         return bool(doc.read_again_by and doc.read_again_by <= fields.Date.context_today(self))
 
     def _doc_shown(self, doc, space=False):
-        """The title, line and date to show: the working copy in Sediba, the
+        """The title, line and date to show: the working copy in the Library, the
         last published version anywhere else."""
         version = doc._published() if space else False
         if version:
@@ -196,7 +196,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
 
     @api.model
     def ws_doc(self, doc_id, space=False, version_id=False):
-        """One doc to read. In Sediba: the working copy, or an older version
+        """One doc to read. In the Library: the working copy, or an older version
         when `version_id` is given. In an app: the last published version."""
         doc = self.env['sediba.doc'].browse(doc_id).exists() & self._docs(space)
         if not doc:
@@ -441,10 +441,10 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         if not doc or not text:
             return False
         area = self.env['sediba.space'].search([('code', '=', space)], limit=1) if space else False
-        # Readers cannot write in Sediba; this one note is the exception.
+        # Readers cannot write in the Library; this one note is the exception.
         self.env['sediba.doc.note'].sudo().create({
             'doc_id': doc.id, 'name': text[:2000], 'author': self.env.user.name,
-            'space': area.name if area else 'Sediba'})
+            'space': area.name if area else 'Library'})
         return True
 
     @api.model

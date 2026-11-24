@@ -5,8 +5,8 @@ from .common import ChatbotTestCase
 
 @tagged('comm_chatbot', 'post_install', '-at_install')
 class TestLlmSediba(ChatbotTestCase):
-    """An AI step answers from Sediba only when it is ticked to, and only
-    from what Sediba allowed for the assistants."""
+    """An AI step answers from the Library only when it is ticked to, and only
+    from what the Library allowed for the assistants."""
 
     @classmethod
     def setUpClass(cls):

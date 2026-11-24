@@ -159,7 +159,7 @@ I've created the template. Want me to add it to your Summer Promo campaign now?
 REFERENCE_PROMPT = (
     "\n\nYou also have look_up_reference: the company's own published docs "
     "(about us, how we work, FAQ, policies) and verified research, kept in "
-    "Sediba. Use it for questions about the company, how it works, a policy "
+    "the Library. Use it for questions about the company, how it works, a policy "
     "or the market, and when wording a template or campaign that should "
     "match what the company says about itself. Answer only from what it "
     "returns and name the doc or finding you used; if it returns nothing, "
@@ -806,7 +806,7 @@ class ContactCentreAiChat(models.Model):
 
         return "Sorry, I wasn't able to finish that within the allowed steps."
 
-    # Sediba (company docs and verified research) is read when it is
+    # The Library (company docs and verified research) is read when it is
     # installed; this addon does not depend on it.
     def _reference(self):
         return self.env.get("sediba.assistant")

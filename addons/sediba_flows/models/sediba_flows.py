@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Server side of the Sediba Flows screen.
+"""Server side of the Interaction Flows screen.
 
-Sediba Flows is a builder on top of the channel-agnostic bot engine
+Interaction Flows is a builder on top of the channel-agnostic bot engine
 (comm_chatbot): a flow is a comm.bot, a step is a comm.bot.step. Nothing here
 talks to a channel; how a step comes out on each channel is asked of the
 engine's own renderer, so the builder shows what the engine will send.
@@ -57,7 +57,7 @@ STEP_FIELDS = {
 
 class SedibaFlows(models.AbstractModel):
     _name = 'sediba.flows'
-    _description = 'Sediba Flows screen'
+    _description = 'Interaction Flows screen'
 
     # ── Reading ──────────────────────────────────────────────────────────
 

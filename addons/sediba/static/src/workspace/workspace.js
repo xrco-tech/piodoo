@@ -43,12 +43,12 @@ const REVIEW_LABELS = {
 // What to ask before a button that takes something away.
 const CONFIRM = {
     take_down: _t("The apps will stop showing this doc until it is published again. Take it down?"),
-    archive: _t("This doc will leave Sediba and the apps. It can be brought back from Configuration. Archive it?"),
+    archive: _t("This doc will leave the Library and the apps. It can be brought back from Configuration. Archive it?"),
     restore: _t("The working text will be replaced by this version. Nothing changes in the apps until you publish. Bring it back?"),
 };
 
 /**
- * The Sediba workspace: company docs and research topics down the side, and
+ * The Library workspace: company docs and research topics down the side, and
  * one page at a time beside them (overview, a doc to read or write, a topic
  * with its findings, one finding, the lists, the runs). It reads through
  * sediba.workspace. Research records are changed in their own form; a
