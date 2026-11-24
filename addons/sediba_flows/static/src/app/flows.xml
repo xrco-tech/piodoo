@@ -115,6 +115,7 @@
                     <div class="o_sfl_fcard_foot">
                         <span class="o_sfl_grow o_sfl_muted o_sfl_small"><t t-esc="stepsLabel(flow)"/> · edited <t t-esc="editedLabel(flow)"/></span>
                         <button type="button" class="btn btn-light" t-on-click="() => this.tryFlow(flow.id)">Try it</button>
+                        <button t-if="state.home.can_create" type="button" class="btn btn-light" t-on-click="() => this.duplicateFlow(flow.id, flow.name, flow.steps)">Duplicate</button>
                         <button type="button" class="btn btn-light" t-on-click="() => this.openFlow(flow.id)">Open</button>
                     </div>
                 </div>
@@ -182,6 +183,7 @@
                 <button t-if="flowNotes.length" type="button" class="btn btn-light" title="What was and was not carried over from the older bot" t-on-click="openNotes">
                     Notes <span class="o_sfl_count" t-esc="flowNotes.length"/>
                 </button>
+                <button t-if="state.data.can_create" type="button" class="btn btn-light" title="Make a draft copy of this flow, with nothing connected" t-on-click="duplicateOpenFlow">Duplicate</button>
                 <button t-if="canEdit and anyPlaced" type="button" class="btn btn-light" title="Put every card back in its own place" t-on-click="tidy">Tidy layout</button>
                 <button t-if="canEdit" type="button" class="btn btn-light" t-on-click="toggleLive">
                     <t t-if="isLive">Pause</t><t t-else="">Go live</t>
@@ -713,6 +715,44 @@
     </t>
 
     <!-- ── Notes on a flow that was brought over from an older bot ───────── -->
+    <t t-name="sediba_flows.Duplicate">
+        <Dialog title="'Duplicate this flow?'" size="'md'">
+            <div class="o_sfl_dup">
+                <div class="o_sfl_field">
+                    <label for="o_sfl_dup_name">Name of the copy</label>
+                    <input id="o_sfl_dup_name" type="text" class="o_sfl_input" t-model="state.name" t-on-keydown="(ev) => ev.key === 'Enter' and this.confirm()"/>
+                </div>
+                <div class="o_sfl_dup_lists">
+                    <div>
+                        <b class="o_sfl_dup_yes">Copied</b>
+                        <ul>
+                            <li t-esc="stepsLine"/>
+                            <li>Wording for each channel</li>
+                            <li>Pictures, headers, footers</li>
+                            <li>Variables</li>
+                            <li>Description and notes</li>
+                            <li>Which channels it runs on</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <b class="o_sfl_dup_no">Not copied</b>
+                        <ul>
+                            <li>USSD codes it is connected to</li>
+                            <li>Keywords that start it</li>
+                            <li>Conversations and numbers</li>
+                            <li>Its status: the copy is a Draft</li>
+                        </ul>
+                    </div>
+                </div>
+                <span class="text-muted">The original is not changed and keeps running.</span>
+            </div>
+            <t t-set-slot="footer">
+                <button type="button" class="btn btn-primary" t-att-disabled="state.busy or !state.name.trim()" t-on-click="confirm">Duplicate</button>
+                <button type="button" class="btn btn-light" t-on-click="props.close">Cancel</button>
+            </t>
+        </Dialog>
+    </t>
+
     <t t-name="sediba_flows.Notes">
         <Dialog title="props.title" size="'md'">
             <p class="text-muted">Read these before going live. The older bot is unchanged.</p>

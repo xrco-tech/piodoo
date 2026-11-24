@@ -270,6 +270,61 @@ class TestSedibaFlows(TransactionCase):
         self.assertEqual(usage['stop'], stopped_at.name)
         self.Flows.try_stop(res['session_id'])
 
+    def test_duplicate_copies_the_flow_and_connects_nothing(self):
+        data = self._menu(['Jobs', 'Help'])
+        entry = self.bot.entry_step_id
+        jobs = self.Flows.add_step(self.flow_id, entry.id, data['steps'][0]['options'][0]['id'])
+        self.Flows.save_step(jobs['new_id'], {'body': 'Jobs near you', 'name': 'Jobs'})
+        self.Flows.save_step(entry.id, {'overrides': [
+            {'channel_id': self.ussd.id, 'body': 'Short', 'hide': False}]})
+        self.Flows.set_image(entry.id, 'logo.png', self.PNG)
+        self.Flows.move_step(entry.id, 300, 120)
+        self.env['comm.bot.variable'].create(
+            {'bot_id': self.bot.id, 'name': 'town', 'type': 'string'})
+        self.env['comm.bot.trigger'].create(
+            {'bot_id': self.bot.id, 'channel_id': self.wa.id,
+             'kind': 'keyword', 'value': 'JOBS'})
+        self.bot.write({'description': 'Finds jobs', 'engine_mode': 'shadow'})
+        self.env['comm.chatbot.executor'].start(
+            self.bot, self.env['res.partner'].create({'name': 'One'}), 'whatsapp')
+        steps_before = len(self.bot.step_ids)
+
+        copy = self.env['comm.bot'].browse(
+            self.Flows.duplicate_flow(self.flow_id, '  Jobs v2  '))
+        self.assertEqual((copy.name, copy.engine_mode), ('Jobs v2', 'draft'))
+        self.assertEqual(copy.description, 'Finds jobs')
+        self.assertEqual(copy.channel_ids, self.bot.channel_ids)
+        self.assertEqual(copy.variable_ids.mapped('name'), ['town'])
+        # Every link stays inside the copy.
+        self.assertEqual(len(copy.step_ids), steps_before)
+        self.assertFalse(copy.step_ids & self.bot.step_ids)
+        first = copy.entry_step_id
+        self.assertIn(first, copy.step_ids)
+        self.assertEqual(first.name, entry.name)
+        self.assertEqual(first.option_ids.mapped('label'), ['Jobs', 'Help'])
+        target = first.option_ids[0].next_step_id
+        self.assertEqual((target.bot_id, target.name), (copy, 'Jobs'))
+        self.assertEqual(first.channel_override_ids.body_override, 'Short')
+        self.assertEqual((first.flow_placed, first.flow_x, first.flow_y), (True, 300, 120))
+        # Its own copy of the picture: taking it off one leaves the other.
+        self.assertTrue(first.media_ids.attachment_id)
+        self.assertNotEqual(first.media_ids.attachment_id, entry.media_ids.attachment_id)
+        self.Flows.remove_image(first.id)
+        self.assertTrue(entry.media_ids.attachment_id.exists())
+        # Nothing is connected, and nobody has talked to it.
+        self.assertFalse(copy.trigger_ids)
+        card = next(f for f in self.Flows.home()['flows'] if f['id'] == copy.id)
+        self.assertFalse(card['usage'])
+        # The original is as it was.
+        self.assertEqual(self.bot.engine_mode, 'shadow')
+        self.assertEqual(self.bot.trigger_ids.value, 'JOBS')
+        self.assertEqual(len(self.bot.step_ids), steps_before)
+        self.assertEqual(self.bot.entry_step_id, entry)
+
+    def test_duplicate_gets_a_name_when_none_is_given(self):
+        copy = self.env['comm.bot'].browse(self.Flows.duplicate_flow(self.flow_id))
+        self.assertEqual(copy.name, 'Welcome flow (copy)')
+
     def test_usage_counts_contacts_not_tests(self):
         self._try_flow()
         entry = self.bot.entry_step_id

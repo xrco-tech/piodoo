@@ -226,6 +226,9 @@ $o-sfl-kinds: (
     margin-top: auto;
     padding-top: 10px;
     border-top: 1px solid var(--sfl-soft);
+
+    // On a narrow card the buttons drop under the line of text instead of squeezing it.
+    > .o_sfl_grow { flex: 1 1 130px; }
 }
 
 .o_sfl_flows {
@@ -1014,3 +1017,23 @@ textarea.o_sfl_input { resize: vertical; }
     line-height: 1.5;
     li + li { margin-top: 6px; }
 }
+
+// The Duplicate dialog. It opens outside .o_sfl, so it uses Odoo's own colours.
+.o_sfl_dup {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    .o_sfl_field { display: flex; flex-direction: column; gap: 4px; }
+    .o_sfl_input { min-height: 40px; padding: 4px 10px; border: 1px solid $border-color; border-radius: 6px; background: transparent; color: inherit; }
+    ul { margin: 4px 0 0; padding-left: 18px; line-height: 1.6; }
+}
+
+.o_sfl_dup_lists {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+}
+
+.o_sfl_dup_yes { color: $success; }
+.o_sfl_dup_no { color: $warning; }
