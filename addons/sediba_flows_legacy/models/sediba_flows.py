@@ -12,8 +12,10 @@ class SedibaFlows(models.AbstractModel):
         Old = self.env['whatsapp.chatbot']
         if not Old.has_access('read'):
             return res
-        flows = {b.legacy_chatbot_id.id: b.id for b in self.env['comm.bot'].search(
-            [('legacy_chatbot_id', '!=', False)], order='id desc')}
+        # An older bot that has been brought over is a flow card now, so it
+        # leaves this list; the list goes when every bot has been.
+        done = self.env['comm.bot'].search(
+            [('legacy_chatbot_id', '!=', False)]).legacy_chatbot_id.ids
         channels = dict(Old._fields['channel']._description_selection(self.env))
         statuses = dict(Old._fields['status']._description_selection(self.env))
         res['legacy'] = [{
@@ -22,8 +24,8 @@ class SedibaFlows(models.AbstractModel):
             'channel': channels.get(c.channel, c.channel),
             'status': statuses.get(c.status, c.status),
             'steps': len(c.step_ids),
-            'flow_id': flows.get(c.id, False),
-        } for c in Old.search([])]
+            'flow_id': False,
+        } for c in Old.search([('id', 'not in', done)])]
         return res
 
     def _duplicate_defaults(self, bot, name):
