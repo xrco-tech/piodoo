@@ -105,6 +105,34 @@ $o-sfl-kinds: (
 
 .o_sfl_clear { min-height: 40px; font-weight: 600; }
 
+// Search by name or description, left of the drop-downs.
+.o_sfl_search {
+    flex: 0 1 220px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--sfl-line);
+    border-radius: 999px;
+    background: var(--sfl-box);
+    color: var(--sfl-muted);
+
+    &:focus-within { border-color: var(--sfl-select); }
+
+    input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: none;
+        color: var(--sfl-text);
+        font: inherit;
+        &::placeholder { color: var(--sfl-muted); }
+    }
+}
+
 .o_sfl_count { color: var(--sfl-muted); font-weight: 500; }
 
 .o_sfl_dot {
@@ -641,6 +669,7 @@ textarea.o_sfl_input { resize: vertical; }
     .o_sfl_head { gap: 6px; }
     .o_sfl_head_text { flex-basis: 100%; }
     .o_sfl_head .o_sfl_pill { padding-left: 10px; padding-right: 10px; }
+    .o_sfl_search { flex-basis: 100%; }
 }
 
 // A narrow window: the panel goes under the canvas.
