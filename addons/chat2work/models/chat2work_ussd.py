@@ -191,7 +191,7 @@ class Chat2workFlow(models.AbstractModel):
         return self.env['ir.config_parameter'].sudo().get_param('chat2work.' + key, default)
 
     def _restart_phrase(self):
-        """How this channel starts a new session, e.g. 'dial *134*433*48#'."""
+        """How this channel starts a new session, e.g. 'dial *134*8615#'."""
         raise NotImplementedError
 
     def _restart(self, capital=True):
