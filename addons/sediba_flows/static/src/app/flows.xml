@@ -160,7 +160,6 @@
                 <button type="button" class="btn btn-light o_sfl_icon_btn" aria-label="Back to all flows" title="Back to all flows" t-on-click="backHome">
                     <i class="fa fa-chevron-left" aria-hidden="true"/>
                 </button>
-                <button t-if="canEdit" type="button" class="btn btn-primary" t-on-click="addStepFromToolbar">Add step</button>
                 <input type="text" class="o_sfl_title" aria-label="Flow name" t-model="state.flowName"
                        t-att-disabled="!canEdit" t-on-change="renameFlow"/>
                 <span t-att-class="'o_sfl_tag o_sfl_tag_' + state.data.flow.status" t-esc="statusLabel(state.data.flow.status)"/>
@@ -185,7 +184,7 @@
                 </button>
                 <button t-if="state.data.can_create" type="button" class="btn btn-light" title="Make a draft copy of this flow, with nothing connected" t-on-click="duplicateOpenFlow">Duplicate</button>
                 <button t-if="canEdit and anyPlaced" type="button" class="btn btn-light" title="Put every card back in its own place" t-on-click="tidy">Tidy layout</button>
-                <button t-if="canEdit" type="button" class="btn btn-light" t-on-click="toggleLive">
+                <button t-if="canEdit" type="button" t-att-class="'btn ' + (isLive ? 'btn-light' : 'btn-primary')" t-on-click="toggleLive">
                     <t t-if="isLive">Pause</t><t t-else="">Go live</t>
                 </button>
                 <button type="button" class="btn btn-light o_sfl_icon_btn"
@@ -269,6 +268,11 @@
                         <button t-if="state.data.flow.device_url" type="button" class="o_sfl_tab" t-att-class="{active: state.panel === 'device'}"
                                 t-att-aria-pressed="state.panel === 'device' ? 'true' : 'false'"
                                 t-on-click="openDevice">Device</button>
+                    </div>
+                    <div t-if="canEdit and state.panel === 'step'" class="o_sfl_panel_add">
+                        <button type="button" class="btn btn-light" t-on-click="addStepFromToolbar">
+                            <i class="fa fa-plus" aria-hidden="true"/> Add step
+                        </button>
                     </div>
                     <t t-if="state.panel === 'try'" t-call="sediba_flows.Try"/>
                     <t t-elif="state.panel === 'device'" t-call="sediba_flows.Device"/>

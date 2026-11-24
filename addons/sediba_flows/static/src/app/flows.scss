@@ -477,6 +477,12 @@ $o-sfl-kinds: (
     border-left: 1px solid var(--sfl-line);
 }
 
+// Add step, at the top of the Step / Flow tab.
+.o_sfl_panel_add {
+    padding: 12px 16px 0;
+    .btn { width: 100%; min-height: 40px; }
+}
+
 .o_sfl_tabs {
     display: flex;
     border-bottom: 1px solid var(--sfl-line);

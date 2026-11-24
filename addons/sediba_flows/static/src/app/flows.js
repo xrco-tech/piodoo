@@ -992,8 +992,6 @@ export class SedibaFlows extends Component {
     }
 
     addStepFromToolbar() {
-        // The new step is edited in the side panel, so it comes back.
-        this.state.panelOpen = true;
         const d = this.state.draft;
         return this.addStep(d && HAS_THEN.includes(d.kind) ? d.id : false, false);
     }
