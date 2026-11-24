@@ -172,6 +172,7 @@ class SedibaFlows(models.AbstractModel):
         reached = self._reached(bot)
         return {
             'can_edit': bot.has_access('write'),
+            'can_create': self.env['comm.bot'].has_access('create'),
             'flow': {
                 'id': bot.id,
                 'name': bot.name,
@@ -426,6 +427,93 @@ class SedibaFlows(models.AbstractModel):
         })
         bot.entry_step_id = step
         return bot.id
+
+    @api.model
+    def duplicate_flow(self, bot_id, name=None):
+        """Copy a flow: its steps and how they join, wording per channel,
+        pictures, variables, description and the channels it is meant for.
+        The copy is a draft with nothing connected to it: no USSD code, no
+        keyword that starts it, no conversations. The original is not
+        touched."""
+        bot = self.env['comm.bot'].browse(bot_id).exists()
+        if not bot:
+            raise UserError(_("This flow no longer exists."))
+        bot.check_access('read')
+        name = (name or '').strip() or _("%s (copy)", bot.name)
+        new = bot.copy(self._duplicate_defaults(bot, name))
+
+        Step = self.env['comm.bot.step']
+        to_step = [f for f, field in Step._fields.items()
+                   if field.comodel_name == 'comm.bot.step' and field.store
+                   and field.type in ('many2one', 'many2many')]
+        blank = {f: False for f in to_step}
+        steps = {}
+        for step in bot.step_ids:
+            steps[step.id] = step.copy(dict(
+                blank, bot_id=new.id, name=step.name,
+                # Where the card was dragged to comes along too.
+                flow_placed=step.flow_placed, flow_x=step.flow_x, flow_y=step.flow_y))
+
+        def moved(old):
+            """The copy of a step of this flow; a step of another flow stays."""
+            return steps.get(old.id, old)
+
+        for step in bot.step_ids:
+            copy = steps[step.id]
+            vals = {}
+            for f in to_step:
+                if not step[f]:
+                    continue
+                vals[f] = moved(step[f]).id if Step._fields[f].type == 'many2one' \
+                    else [(6, 0, [moved(s).id for s in step[f]])]
+            # A flow that jumps back into itself jumps into the copy.
+            if step.jump_target_bot_id == bot:
+                vals['jump_target_bot_id'] = new.id
+            if vals:
+                copy.write(vals)
+            for option in step.option_ids:
+                option.copy({'step_id': copy.id,
+                             'next_step_id': moved(option.next_step_id).id or False})
+            for media in step.media_ids:
+                self._duplicate_media(media, {'step_id': copy.id})
+            for override in step.channel_override_ids:
+                over = override.copy({'step_id': copy.id})
+                for media in override.media_override_ids:
+                    self._duplicate_media(media, {'channel_override_id': over.id})
+            for translation in step.body_translation_ids:
+                translation.copy({'step_id': copy.id})
+            for tool in step.llm_tool_ids:
+                tool.copy({
+                    'step_id': copy.id,
+                    'executor_action_step_id': moved(tool.executor_action_step_id).id or False,
+                    'executor_jump_step_id': moved(tool.executor_jump_step_id).id or False,
+                })
+        for variable in bot.variable_ids:
+            variable.copy({'bot_id': new.id})
+        new.write({
+            'entry_step_id': moved(bot.entry_step_id).id or False,
+            'on_error_step_id': moved(bot.on_error_step_id).id or False,
+        })
+        return new.id
+
+    def _duplicate_defaults(self, bot, name):
+        """What the copy of the flow itself starts with."""
+        return {
+            'name': name,
+            'engine_mode': 'draft',
+            'entry_step_id': False,
+            'on_error_step_id': False,
+        }
+
+    def _duplicate_media(self, media, vals):
+        """A picture uploaded for a step is copied with it, so taking it off
+        one flow does not take it off the other."""
+        if media.attachment_id:
+            attachment = media.attachment_id.copy()
+            if attachment.res_model == 'comm.bot.step' and vals.get('step_id'):
+                attachment.res_id = vals['step_id']
+            vals = dict(vals, attachment_id=attachment.id)
+        return media.copy(vals)
 
     @api.model
     def save_flow(self, bot_id, vals):

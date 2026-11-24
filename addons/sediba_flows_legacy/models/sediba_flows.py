@@ -26,6 +26,12 @@ class SedibaFlows(models.AbstractModel):
         } for c in Old.search([])]
         return res
 
+    def _duplicate_defaults(self, bot, name):
+        # The copy keeps the notes (its steps are the same) but is not the
+        # older bot's flow: "Open its flow" stays with the original.
+        return dict(super()._duplicate_defaults(bot, name),
+                    legacy_chatbot_id=False, import_notes=bot.import_notes)
+
     def _card_attention(self, bot):
         res = super()._card_attention(bot)
         notes = len([n for n in (bot.import_notes or '').split('\n') if n])

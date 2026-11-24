@@ -218,6 +218,36 @@ class FlowNotes extends Component {
     static props = { title: String, notes: Array, close: Function };
 }
 
+/** Asks for the copy's name and says what a copy does and does not get. */
+class FlowDuplicate extends Component {
+    static template = "sediba_flows.Duplicate";
+    static components = { Dialog };
+    static props = { name: String, steps: Number, confirm: Function, close: Function };
+
+    setup() {
+        this.state = useState({ name: _t("%s (copy)", this.props.name), busy: false });
+    }
+
+    get stepsLine() {
+        return this.props.steps === 1
+            ? _t("Its 1 step")
+            : _t("All %s steps and how they join", this.props.steps);
+    }
+
+    async confirm() {
+        if (!this.state.name.trim() || this.state.busy) {
+            return;
+        }
+        this.state.busy = true;
+        try {
+            await this.props.confirm(this.state.name.trim());
+            this.props.close();
+        } finally {
+            this.state.busy = false;
+        }
+    }
+}
+
 export class SedibaFlows extends Component {
     static template = "sediba_flows.App";
     static props = { ...standardActionServiceProps };
@@ -347,6 +377,27 @@ export class SedibaFlows extends Component {
     stripStyle(flow, n) {
         const most = Math.max(...flow.usage.days, 1);
         return `height: ${n ? Math.max(3, Math.round((n / most) * 28)) : 2}px`;
+    }
+
+    /** Copy a flow, from its card or from inside it, then open the copy. */
+    duplicateFlow(id, name, steps) {
+        this.dialog.add(FlowDuplicate, {
+            name,
+            steps,
+            confirm: async (copyName) => {
+                const copy = await this.orm.call(MODEL, "duplicate_flow", [id, copyName]);
+                await this.simReset();
+                await this.openFlow(copy);
+                this.notification.add(_t("This is the copy: a draft with nothing connected."), {
+                    type: "success",
+                });
+            },
+        });
+    }
+
+    duplicateOpenFlow() {
+        const { flow, steps } = this.state.data;
+        this.duplicateFlow(flow.id, flow.name, steps.length);
     }
 
     async tryFlow(id) {

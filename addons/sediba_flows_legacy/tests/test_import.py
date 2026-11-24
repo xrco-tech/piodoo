@@ -239,6 +239,17 @@ class TestBringOver(TransactionCase):
         self.assertTrue(any('brought over' in line and str(notes) in line
                             for line in card['attention']))
 
+    def test_duplicate_keeps_the_notes_not_the_link(self):
+        old = self._old('Code bot two')
+        self._step(old, 'Run it', 'execute_code')
+        flow = self.Importer.import_bot(old)
+        Flows = self.env['sediba.flows']
+        copy = self.env['comm.bot'].browse(Flows.duplicate_flow(flow.id))
+        self.assertEqual(copy.import_notes, flow.import_notes)
+        self.assertFalse(copy.legacy_chatbot_id)
+        row = next(b for b in Flows.home()['legacy'] if b['id'] == old.id)
+        self.assertEqual(row['flow_id'], flow.id, '"Open its flow" stays with the original')
+
     def test_screen_lists_older_bots(self):
         old = self._old('Listed')
         self._step(old, 'Only', body_plain='Hi')
