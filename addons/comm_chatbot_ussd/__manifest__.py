@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Comm Chatbot — USSD Adapter',
-    'version': '18.0.1.1.1',
+    'version': '18.0.1.1.2',
     'category': 'Communications',
     'summary': 'USSD channel adapter for comm_chatbot: a USSD code can run a flow',
     'description': """

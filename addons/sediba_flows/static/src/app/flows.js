@@ -425,6 +425,23 @@ export class SedibaFlows extends Component {
         this.duplicateFlow(flow.id, flow.name, steps.length);
     }
 
+    /** An account as one short line: its name, then its number, code or address. */
+    linkLabel(link) {
+        return link.address ? `${link.name} · ${link.address}` : link.name;
+    }
+
+    /** Open the account's own form over the screen, so nothing here is lost. */
+    openRecord(link) {
+        return this.action.doAction({
+            type: "ir.actions.act_window",
+            name: link.name,
+            res_model: link.model,
+            res_id: link.res_id,
+            views: [[false, "form"]],
+            target: "new",
+        });
+    }
+
     async tryFlow(id) {
         await this.openFlow(id);
         await this.openTry();
@@ -730,6 +747,12 @@ export class SedibaFlows extends Component {
         if (this.justDragged) {
             this.justDragged = false;
             return;
+        }
+        // A step is changed in the side panel, so clicking one brings the panel
+        // back, on its Step tab. Dragging a card does not.
+        if (!this.state.panelOpen) {
+            this.state.panelOpen = true;
+            this.state.panel = "step";
         }
         this.select(id);
     }

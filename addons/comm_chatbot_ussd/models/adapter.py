@@ -48,7 +48,9 @@ class UssdAdapter:
             return [{'ok': False, 'text': 'No USSD code runs this flow yet. '
                      'Connect one below.'}]
         return [{'ok': True, 'text': 'Dialling %s reaches this flow (%s, %s).'
-                 % (a.service_code or 'no code set', a.name, providers.get(a.provider, a.provider))}
+                 % (a.service_code or 'no code set', a.name, providers.get(a.provider, a.provider)),
+                 'name': a.name, 'address': a.service_code or '',
+                 'model': a._name, 'res_id': a.id}
                 for a in accounts]
 
     def connect_options(self, env, bot):

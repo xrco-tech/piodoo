@@ -1021,6 +1021,21 @@ textarea.o_sfl_input { resize: vertical; }
     li + li { margin-top: 6px; }
 }
 
+// An account a flow is connected to: its name and number, as a link to its form.
+.o_sfl_conn_link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    text-decoration: underline;
+    text-decoration-color: var(--sfl-line);
+    text-underline-offset: 3px;
+    overflow-wrap: anywhere;
+    &:hover { text-decoration-color: currentColor; }
+}
+
 // The Duplicate dialog. It opens outside .o_sfl, so it uses Odoo's own colours.
 .o_sfl_dup {
     display: flex;
