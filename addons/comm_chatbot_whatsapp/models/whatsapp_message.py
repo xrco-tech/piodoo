@@ -18,8 +18,14 @@ class WhatsappMessage(models.Model):
         for msg in records:
             if not msg.is_incoming:
                 continue
+            # A message starts only a bot connected to the number it came in
+            # on (the default number when the message does not say which).
+            account = msg.account_id or self.env['comm.whatsapp.account'].sudo().get_default()
+            narrowed = {'comm_trigger_domain': [
+                ('bot_id.whatsapp_account_id', '=', account.id or 0)]}
             # Only route to new engine if a comm.bot.trigger matches
-            trigger = Trigger.find_trigger('whatsapp', msg.message_body or '')
+            trigger = Trigger.with_context(**narrowed).find_trigger(
+                'whatsapp', msg.message_body or '')
             if not trigger:
                 # Also route existing open conversation → new engine
                 partner_hint = msg.wa_id
@@ -27,7 +33,7 @@ class WhatsappMessage(models.Model):
                 if not convo:
                     continue
             try:
-                Executor.on_inbound(
+                Executor.with_context(**narrowed).on_inbound(
                     channel_code='whatsapp',
                     source_model='whatsapp.message',
                     source_id=msg.id,

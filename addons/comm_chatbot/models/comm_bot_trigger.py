@@ -50,6 +50,9 @@ class CommBotTrigger(models.Model):
         ]
         if kind:
             domain.append(('kind', '=', kind))
+        # A channel can narrow which bots a message may start: the ones
+        # connected to the number or account the message came in on.
+        domain += list(self.env.context.get('comm_trigger_domain') or [])
         candidates = self.search(domain, order='priority, id')
         for trg in candidates:
             if trg._matches(body):

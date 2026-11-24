@@ -367,7 +367,13 @@ class SedibaFlows(models.AbstractModel):
                 if adapter and hasattr(adapter, 'connect_options') else []
             res.append({'channel_id': channel.id,
                         'lines': [self._connection_line(line) for line in lines],
-                        'options': options})
+                        'options': options,
+                        # What an option is called: a code, a number, a sender.
+                        'noun': getattr(adapter, 'connect_noun', '') or 'code',
+                        # The words that start the flow here, where the
+                        # channel starts flows that way.
+                        'keywords': self._keywords(bot, channel)
+                        if getattr(adapter, 'keyword_start', False) else False})
         return res
 
     def _connection_line(self, line):
@@ -383,6 +389,78 @@ class SedibaFlows(models.AbstractModel):
             line.pop('model')
             line.pop('res_id', None)
         return line
+
+    def _keywords(self, bot, channel):
+        """What starts the flow on a channel: the words someone can send, and
+        whether it also takes any message no other flow picks up."""
+        triggers = bot.trigger_ids.filtered(
+            lambda t: t.active and t.channel_id == channel)
+        return {
+            'words': [t.value for t in triggers if t.kind == 'keyword' and t.value],
+            'any': bool(triggers.filtered(lambda t: t.kind == 'any_inbound')),
+        }
+
+    def _keyword_channel(self, bot_id, channel_id):
+        bot = self.env['comm.bot'].browse(bot_id)
+        bot.check_access('write')
+        channel = self.env['comm.channel'].browse(channel_id)
+        adapter = get_adapter(channel.adapter_key)
+        if not adapter or not getattr(adapter, 'keyword_start', False):
+            raise UserError(_("Flows on this channel are not started by a keyword."))
+        return bot, channel
+
+    @api.model
+    def add_keyword(self, bot_id, channel_id, word):
+        """A word that starts the flow when someone sends exactly it, in any
+        mix of capitals. One word starts one flow on a channel."""
+        bot, channel = self._keyword_channel(bot_id, channel_id)
+        word = ' '.join((word or '').split())
+        if not word:
+            raise UserError(_("Type the word that should start the flow."))
+        Trigger = self.env['comm.bot.trigger'].sudo()
+        taken = Trigger.search([
+            ('channel_id', '=', channel.id), ('kind', '=', 'keyword'),
+            ('active', '=', True), ('value', '=ilike', word)], limit=1)
+        if taken.bot_id == bot:
+            return self.load(bot.id)
+        if taken:
+            raise UserError(_(
+                "“%(word)s” already starts the flow “%(flow)s” on %(channel)s. "
+                "Take it off that flow first, or choose another word.",
+                word=word, flow=taken.bot_id.name, channel=channel.name))
+        Trigger.create({'bot_id': bot.id, 'channel_id': channel.id,
+                        'kind': 'keyword', 'value': word, 'match_mode': 'exact'})
+        return self.load(bot.id)
+
+    @api.model
+    def remove_keyword(self, bot_id, channel_id, word):
+        bot, channel = self._keyword_channel(bot_id, channel_id)
+        self.env['comm.bot.trigger'].sudo().search([
+            ('bot_id', '=', bot.id), ('channel_id', '=', channel.id),
+            ('kind', '=', 'keyword'), ('value', '=ilike', word or '')]).unlink()
+        return self.load(bot.id)
+
+    @api.model
+    def set_any_message(self, bot_id, channel_id, on):
+        """Whether the flow also takes a message that matches no keyword of
+        any flow. Only one flow on a channel can."""
+        bot, channel = self._keyword_channel(bot_id, channel_id)
+        Trigger = self.env['comm.bot.trigger'].sudo()
+        domain = [('channel_id', '=', channel.id), ('kind', '=', 'any_inbound'),
+                  ('active', '=', True)]
+        mine = Trigger.search(domain + [('bot_id', '=', bot.id)])
+        if not on:
+            mine.unlink()
+        elif not mine:
+            other = Trigger.search(domain, limit=1)
+            if other:
+                raise UserError(_(
+                    "The flow “%(flow)s” already takes any message on %(channel)s. "
+                    "Only one flow can.", flow=other.bot_id.name, channel=channel.name))
+            # After every keyword: it is the fallback.
+            Trigger.create({'bot_id': bot.id, 'channel_id': channel.id,
+                            'kind': 'any_inbound', 'priority': 100})
+        return self.load(bot.id)
 
     @api.model
     def connect_channel(self, bot_id, channel_id, option_id, on):

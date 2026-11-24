@@ -97,7 +97,10 @@ class WhatsappAdapter:
         wa_id = conversation.partner_id.whatsapp_id or conversation.partner_id.mobile
         if not wa_id:
             return {'status': 'failed', 'error': 'no wa_id on partner'}
-        account = env['comm.whatsapp.account'].sudo().get_default()
+        # The bot's own number; a conversation with no bot, or a bot that was
+        # taken off its number mid-conversation, still goes out on the default.
+        account = conversation.bot_id.sudo().whatsapp_account_id \
+            or env['comm.whatsapp.account'].sudo().get_default()
         if not account:
             return {'status': 'failed', 'error': 'no active WhatsApp account'}
 
@@ -117,35 +120,62 @@ class WhatsappAdapter:
         return {'status': 'sent', 'source_model': 'whatsapp.message',
                 'source_id': False}
 
+    # Flows on this channel are started by a keyword someone sends.
+    keyword_start = True
+    connect_noun = 'number'
+
     def connections(self, env, bot):
-        """The WhatsApp number this bot sends from, and what starts it."""
+        """The WhatsApp number this bot answers on, and whether anything
+        starts it."""
         lines = []
-        account = env['comm.whatsapp.account'].sudo().get_default()
+        account = bot.sudo().whatsapp_account_id
         if account:
             number = account.phone_number or 'no number on the account'
-            lines.append({'ok': True, 'text': 'Sends from %s (%s). Every flow '
-                          'uses the default WhatsApp account.' % (account.name, number),
+            lines.append({'ok': True, 'text': 'Answers on and sends from %s (%s).'
+                          % (account.name, number),
                           'name': account.name, 'address': account.phone_number or '',
-                          'model': account._name, 'res_id': account.id})
+                          'model': account._name, 'res_id': account.id,
+                          'option_id': account.id})
+        elif env['comm.whatsapp.account'].sudo().search_count([]):
+            lines.append({'ok': False, 'text': 'No WhatsApp number is connected '
+                          'to this flow, so no message starts it.'})
         else:
             lines.append({'ok': False, 'text': 'No WhatsApp account is set up, '
                           'so nothing can be sent.'})
-        words = [t.value for t in bot.trigger_ids
-                 if t.active and t.channel_id.code == 'whatsapp'
-                 and t.kind == 'keyword' and t.value]
-        if any(t.active and t.channel_id.code == 'whatsapp' and t.kind == 'any_inbound'
-               for t in bot.trigger_ids):
-            lines.append({'ok': True, 'text': 'Starts on any message that no '
-                          'other flow picks up.',
-                          'name': 'Starts on', 'address': 'any message'})
-        elif words:
-            lines.append({'ok': True, 'text': 'Starts when someone sends: %s.'
-                          % ', '.join(words),
-                          'name': 'Starts on', 'address': ', '.join(words)})
-        else:
+        starts = [t for t in bot.trigger_ids
+                  if t.active and t.channel_id.code == 'whatsapp'
+                  and (t.kind == 'any_inbound' or (t.kind == 'keyword' and t.value))]
+        if account and not starts:
             lines.append({'ok': False, 'text': 'No keyword starts this flow, so '
                           'a message from a contact will not reach it.'})
         return lines
+
+    def connect_options(self, env, bot):
+        """The WhatsApp numbers this bot could answer on."""
+        return [{
+            'id': a.id,
+            'label': '%s  %s' % (a.phone_number or '(no number)', a.name),
+            'name': a.name,
+            'code': a.phone_number or '',
+            'runs': '',
+            'ask_on': 'A message that comes in on %s and matches one of this '
+                      'flow\'s keywords will start it, once the flow is live or '
+                      'test only. The flow also sends from this number.'
+                      % (a.phone_number or a.name),
+            'ask_off': 'No message will start this flow on %s any more. '
+                       'Conversations already under way carry on.'
+                       % (a.phone_number or a.name),
+            'connected': a == bot.sudo().whatsapp_account_id,
+        } for a in env['comm.whatsapp.account'].sudo().search([])]
+
+    def connect(self, env, bot, option_id, on):
+        account = env['comm.whatsapp.account'].sudo().browse(option_id).exists()
+        if not account:
+            return
+        if on:
+            bot.sudo().whatsapp_account_id = account
+        elif bot.sudo().whatsapp_account_id == account:
+            bot.sudo().whatsapp_account_id = False
 
     def receive(self, env, message):
         """Convert an inbound whatsapp.message into canonical form."""

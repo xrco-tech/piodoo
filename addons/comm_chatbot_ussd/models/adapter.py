@@ -40,6 +40,8 @@ class UssdAdapter:
         interaction.rendered_body = rendered
         return {'status': 'sent'}
 
+    connect_noun = 'code'
+
     def connections(self, env, bot):
         """The USSD codes that run this bot."""
         accounts = env['comm.ussd.account'].sudo().search([('flow_bot_id', '=', bot.id)])
@@ -63,6 +65,11 @@ class UssdAdapter:
             'name': a.name,
             'code': a.service_code or '',
             'runs': a._runs_now(),
+            'ask_on': '%s runs %s today. From now on, everyone who dials it gets '
+                      'this flow instead, even while the flow is a draft.'
+                      % (a.service_code or a.name, a._runs_now()),
+            'ask_off': '%s will stop running this flow and go back to what it '
+                       'ran before.' % (a.service_code or a.name),
             'connected': a.flow_bot_id == bot,
         } for a in env['comm.ussd.account'].sudo().search([])]
 
