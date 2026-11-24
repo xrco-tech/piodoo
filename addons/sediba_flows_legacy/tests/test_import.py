@@ -247,8 +247,10 @@ class TestBringOver(TransactionCase):
         copy = self.env['comm.bot'].browse(Flows.duplicate_flow(flow.id))
         self.assertEqual(copy.import_notes, flow.import_notes)
         self.assertFalse(copy.legacy_chatbot_id)
-        row = next(b for b in Flows.home()['legacy'] if b['id'] == old.id)
-        self.assertEqual(row['flow_id'], flow.id, '"Open its flow" stays with the original')
+        # A copy does not put the older bot back on the list of bots to bring over.
+        self.assertNotIn(old.id, [b['id'] for b in Flows.home()['legacy']])
+        flow.unlink()
+        self.assertNotIn(old.id, [b['id'] for b in Flows.home()['legacy'] if b['flow_id']])
 
     def test_screen_lists_older_bots(self):
         old = self._old('Listed')
@@ -257,6 +259,10 @@ class TestBringOver(TransactionCase):
         row = next(b for b in Flows.home()['legacy'] if b['id'] == old.id)
         self.assertEqual((row['steps'], row['flow_id']), (1, False))
         flow_id = Flows.import_legacy(old.id)
-        row = next(b for b in Flows.home()['legacy'] if b['id'] == old.id)
-        self.assertEqual(row['flow_id'], flow_id)
+        # Once brought over it is a flow card, and leaves the list of older bots.
+        self.assertNotIn(old.id, [b['id'] for b in Flows.home()['legacy']])
+        self.assertIn(flow_id, [f['id'] for f in Flows.home()['flows']])
         self.assertTrue(Flows.load(flow_id)['flow']['notes'])
+        # If its flow is deleted, it can be brought over again.
+        self.env['comm.bot'].browse(flow_id).unlink()
+        self.assertIn(old.id, [b['id'] for b in Flows.home()['legacy']])

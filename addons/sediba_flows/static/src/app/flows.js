@@ -299,7 +299,20 @@ export class SedibaFlows extends Component {
             busy: false,
             sim: this.freshSim(),
         });
-        onWillStart(() => this.loadHome());
+        onWillStart(async () => {
+            await this.loadHome();
+            // The open flow is kept in the address (as the action's record),
+            // so a refresh, or a link someone was sent, comes back to it and
+            // not to the list.
+            if (this.props.resId) {
+                try {
+                    await this.openFlow(this.props.resId);
+                } catch {
+                    // The flow is gone or may not be read: stay on the list.
+                    this.rememberFlow(false);
+                }
+            }
+        });
         onWillUnmount(() => this.simReset());
     }
 
@@ -484,6 +497,13 @@ export class SedibaFlows extends Component {
         }
     }
 
+    /** Put the open flow in the address, or take it out when back on the list. */
+    rememberFlow(id) {
+        if (this.props.updateActionState) {
+            this.props.updateActionState({ resId: id });
+        }
+    }
+
     async openFlow(id) {
         this.setData(await this.orm.call(MODEL, "load", [id]), false);
         this.state.showAs = "all";
@@ -491,6 +511,7 @@ export class SedibaFlows extends Component {
         this.state.zoom = 1;
         this.state.sim = this.freshSim();
         this.state.view = "builder";
+        this.rememberFlow(id);
     }
 
     async backHome() {
@@ -498,6 +519,7 @@ export class SedibaFlows extends Component {
         await this.loadHome();
         this.state.view = "home";
         this.state.data = null;
+        this.rememberFlow(false);
     }
 
     // ── Builder: data ────────────────────────────────────────────────────
