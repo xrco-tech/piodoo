@@ -763,7 +763,8 @@ textarea.o_sfl_input { resize: vertical; }
 }
 
 // Voice: what is spoken to the caller.
-.o_sfl_chat_voice .o_sfl_bubble:not(.o_sfl_mine) { font-style: italic; }
+.o_sfl_chat_voice .o_sfl_bubble:not(.o_sfl_mine),
+.o_sfl_chat_voip .o_sfl_bubble:not(.o_sfl_mine) { font-style: italic; }
 
 // USSD: a handset screen, one screen at a time.
 .o_sfl_handset {
@@ -957,7 +958,8 @@ textarea.o_sfl_input { resize: vertical; }
 .o_sfl_as_sms .o_sfl_as_text { background: #e5e7eb; }
 
 // Voice: what is spoken.
-.o_sfl_as_voice .o_sfl_as_text { font-style: italic; }
+.o_sfl_as_voice .o_sfl_as_text,
+.o_sfl_as_voip .o_sfl_as_text { font-style: italic; }
 
 // A step's image, header and footer, on a card and in Try it.
 .o_sfl_as_image {

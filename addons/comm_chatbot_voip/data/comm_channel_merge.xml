@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Voice and VoIP calls are one channel, shown as "Voice". Runs on install
+         and on every update; it does nothing once the two are merged. -->
+    <function model="comm.channel" name="_merge_voice_into_voip"/>
+</odoo>

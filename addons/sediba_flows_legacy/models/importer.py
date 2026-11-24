@@ -68,8 +68,11 @@ class SedibaFlowsImporter(models.AbstractModel):
             return existing
 
         notes = []
+        # An older voice bot is a call script: it lands on the Voice channel
+        # that calls really run on (VoIP), where that is installed.
+        codes = ['voip', 'voice'] if chatbot.channel == 'voice' else [chatbot.channel]
         channel = self.env['comm.channel'].search(
-            [('code', '=', chatbot.channel)], limit=1)
+            [('code', 'in', codes)], order='code desc' if len(codes) > 1 else None, limit=1)
         if not channel:
             notes.append(_("The channel “%s” is not installed for Interaction Flows; "
                            "choose a channel before going live.", chatbot.channel))
