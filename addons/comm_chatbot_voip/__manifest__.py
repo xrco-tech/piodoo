@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Comm Chatbot — VoIP Channel',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Communications',
     'summary': 'VoIP Calls as a channel: channel registration, provider account & call log (foundation)',
     'description': """
@@ -20,6 +20,7 @@ into the adapter's send()/receive().
     'data': [
         'security/ir.model.access.csv',
         'data/comm_channel_data.xml',
+        'data/comm_channel_merge.xml',
         'views/comm_voip_views.xml',
     ],
     'installable': True,

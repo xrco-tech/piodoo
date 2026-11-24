@@ -27,6 +27,9 @@ IMAGE_MAX_BYTES = 5 * 1024 * 1024
 USAGE_DAYS = 30
 STRIP_DAYS = 14
 
+# Channels where a step is spoken, not shown.
+SPOKEN = ('voice', 'voip')
+
 BRANCHING = ('menu', 'condition')
 # Steps that send nothing themselves.
 SILENT = ('condition', 'action', 'jump', 'wait', 'end', 'set_variable')
@@ -307,7 +310,7 @@ class SedibaFlows(models.AbstractModel):
             count = len(options)
             if numbered:
                 res['how'] = (_("Read out as a numbered list")
-                              if channel.code == 'voice'
+                              if channel.code in SPOKEN
                               else _("Numbered list, reply with a number"))
             elif channel.supports_buttons and count <= (channel.max_buttons or 3):
                 res['how'] = _("%s reply buttons", count)
@@ -326,7 +329,7 @@ class SedibaFlows(models.AbstractModel):
                         "WhatsApp shows only the first %s characters of a "
                         "choice. Shorten the long ones.", most)
         else:
-            res['how'] = (_("Read out") if channel.code == 'voice'
+            res['how'] = (_("Read out") if channel.code in SPOKEN
                           else _("Plain message"))
         if res['limit'] and res['chars'] > res['limit']:
             res['state'] = 'warn'

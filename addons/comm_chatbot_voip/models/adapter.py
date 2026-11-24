@@ -24,9 +24,51 @@ class VoipAdapter:
                      (body or '')[:80])
         return {'status': 'sent'}
 
+    connect_noun = 'number'
+
     def connections(self, env, bot):
-        return [{'ok': False, 'text': 'No phone line is connected to flows here '
-                 'yet. A flow can be tried as a call, but no real call reaches it.'}]
+        """The VoIP line this bot is the calling script for."""
+        lines = []
+        account = bot.sudo().voip_account_id
+        if account:
+            lines.append({'ok': True, 'text': 'The calling script for calls on %s.' % account.name,
+                          'name': account.name, 'address': account.caller_id or '',
+                          'model': account._name, 'res_id': account.id,
+                          'option_id': account.id})
+        elif env['comm.voip.account'].sudo().search_count([]):
+            lines.append({'ok': False, 'text': 'No VoIP number is set for this '
+                          'script yet.'})
+        else:
+            lines.append({'ok': False, 'text': 'No VoIP account is set up.'})
+        lines.append({'ok': False, 'text': 'The softphone does not open a flow '
+                      'as the script during a call yet. This marks which line '
+                      'the script is for.'})
+        return lines
+
+    def connect_options(self, env, bot):
+        """The VoIP lines this bot could be the script for."""
+        return [{
+            'id': a.id,
+            'label': '%s  %s' % (a.caller_id or '(no number)', a.name),
+            'name': a.name,
+            'code': a.caller_id or '',
+            'runs': '',
+            'ask_on': 'This flow will be marked as the calling script for calls '
+                      'on %s. The softphone does not open it by itself yet.'
+                      % (a.caller_id or a.name),
+            'ask_off': 'This flow will no longer be marked as the script for %s.'
+                       % (a.caller_id or a.name),
+            'connected': a == bot.sudo().voip_account_id,
+        } for a in env['comm.voip.account'].sudo().search([])]
+
+    def connect(self, env, bot, option_id, on):
+        account = env['comm.voip.account'].sudo().browse(option_id).exists()
+        if not account:
+            return
+        if on:
+            bot.sudo().voip_account_id = account
+        elif bot.sudo().voip_account_id == account:
+            bot.sudo().voip_account_id = False
 
     def receive(self, env, source_record):
         # Inbound STT/DTMF/webhook pipeline hooks here once a provider is wired.
