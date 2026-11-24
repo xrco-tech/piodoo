@@ -1,1 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_comm_bot_email_thread_agent,comm.bot.email.thread agent,model_comm_bot_email_thread,comm_chatbot.group_chatbot_agent,1,0,0,0
+access_comm_bot_email_thread_admin,comm.bot.email.thread administrator,model_comm_bot_email_thread,comm_chatbot.group_chatbot_administrator,1,1,1,1

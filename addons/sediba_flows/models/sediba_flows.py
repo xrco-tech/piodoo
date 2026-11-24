@@ -373,6 +373,11 @@ class SedibaFlows(models.AbstractModel):
                         'options': options,
                         # What an option is called: a code, a number, a sender.
                         'noun': getattr(adapter, 'connect_noun', '') or 'code',
+                        # Where a new one can be made from here (an email
+                        # address): what the screen shows after the @.
+                        'new': {'hint': adapter().connect_new_hint(self.env, bot)}
+                        if adapter and getattr(adapter, 'connect_new', False)
+                        and callable(adapter.connect_new) else False,
                         # The words that start the flow here, where the
                         # channel starts flows that way.
                         'keywords': self._keywords(bot, channel)
@@ -386,7 +391,15 @@ class SedibaFlows(models.AbstractModel):
         line = dict(line)
         model = line.get('model')
         # An account, a code or a site, as against what starts the flow.
-        line['account'] = bool(model and line.get('name'))
+        # A labelled line ("Sent by <server>") names a record too, without
+        # being something the flow is connected to.
+        line['account'] = bool(model and line.get('name')) and not line.get('label')
+        # A warning can point at where the thing is set up.
+        open_model = line.get('open_model')
+        if open_model and not (open_model in self.env
+                               and self.env[open_model].has_access('read')):
+            line.pop('open_model')
+            line.pop('open_label', None)
         if model and not (model in self.env and self.env[model].has_access('read')
                           and self.env[model].browse(line.get('res_id')).exists()):
             line.pop('model')
@@ -463,6 +476,19 @@ class SedibaFlows(models.AbstractModel):
             # After every keyword: it is the fallback.
             Trigger.create({'bot_id': bot.id, 'channel_id': channel.id,
                             'kind': 'any_inbound', 'priority': 100})
+        return self.load(bot.id)
+
+    @api.model
+    def connect_new(self, bot_id, channel_id, name):
+        """Make a new thing to connect on a channel (an email address) and
+        connect the flow to it."""
+        bot = self.env['comm.bot'].browse(bot_id)
+        bot.check_access('write')
+        channel = self.env['comm.channel'].browse(channel_id)
+        adapter = get_adapter(channel.adapter_key)
+        if not adapter or not callable(getattr(adapter, 'connect_new', None)):
+            raise UserError(_("Nothing new can be made for this channel here."))
+        adapter().connect_new(self.env, bot, name)
         return self.load(bot.id)
 
     @api.model
