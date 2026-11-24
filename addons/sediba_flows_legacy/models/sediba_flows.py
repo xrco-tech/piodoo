@@ -26,6 +26,15 @@ class SedibaFlows(models.AbstractModel):
         } for c in Old.search([])]
         return res
 
+    def _card_attention(self, bot):
+        res = super()._card_attention(bot)
+        notes = len([n for n in (bot.import_notes or '').split('\n') if n])
+        if notes == 1:
+            res.append(_("1 note from when it was brought over"))
+        elif notes:
+            res.append(_("%s notes from when it was brought over", notes))
+        return res
+
     @api.model
     def load(self, bot_id):
         res = super().load(bot_id)

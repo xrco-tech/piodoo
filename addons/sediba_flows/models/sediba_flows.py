@@ -7,8 +7,9 @@ talks to a channel; how a step comes out on each channel is asked of the
 engine's own renderer, so the builder shows what the engine will send.
 """
 import base64
+from datetime import timedelta
 
-from odoo import _, api, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.mimetypes import guess_mimetype
 
@@ -21,6 +22,11 @@ IMAGE_TYPES = ('image/png', 'image/jpeg')
 IMAGE_MAX_BYTES = 5 * 1024 * 1024
 
 # Steps that pick their next step from a list of answers, not from one "then".
+# The home cards: how far back the numbers look, and how many days the
+# activity strip shows.
+USAGE_DAYS = 30
+STRIP_DAYS = 14
+
 BRANCHING = ('menu', 'condition')
 # Steps that send nothing themselves.
 SILENT = ('condition', 'action', 'jump', 'wait', 'end', 'set_variable')
@@ -68,18 +74,94 @@ class SedibaFlows(models.AbstractModel):
     @api.model
     def home(self):
         Bot = self.env['comm.bot']
+        bots = Bot.search([])
         return {
             'can_edit': Bot.has_access('write'),
             'can_create': Bot.has_access('create'),
-            'flows': [{
-                'id': b.id,
-                'name': b.name,
-                'status': b.engine_mode,
-                'steps': len(b.step_ids),
-                'channels': b.channel_ids.mapped('name'),
-            } for b in Bot.search([])],
+            'flows': [self._card(b) for b in bots],
             'channels': self._channels(),
         }
+
+    def _card(self, bot):
+        """One flow as its card on the home screen: what it is, where it
+        runs, how it is doing with real contacts, and what needs a look."""
+        steps = bot.step_ids
+        edited = max([bot.write_date] + [d for d in steps.mapped('write_date') if d])
+        return {
+            'id': bot.id,
+            'name': bot.name,
+            'description': bot.description or '',
+            'status': bot.engine_mode,
+            'steps': len(steps),
+            'channels': bot.channel_ids.mapped('name'),
+            'channel_codes': bot.channel_ids.mapped('code'),
+            'runs': self._card_runs(bot),
+            'usage': self._card_usage(bot),
+            'attention': self._card_attention(bot),
+            'edited': fields.Datetime.to_string(edited),
+        }
+
+    def _card_runs(self, bot):
+        """Per channel, what the flow is connected to there, in one line."""
+        names = {c.id: c.name for c in bot.channel_ids}
+        res = []
+        for connection in self._connections(bot):
+            ok = [line['text'] for line in connection['lines'] if line.get('ok')]
+            res.append({
+                'channel': names[connection['channel_id']],
+                'ok': bool(ok),
+                'text': ' '.join(ok),
+            })
+        return res
+
+    def _card_usage(self, bot):
+        """Real conversations in the last USAGE_DAYS days: how many, how many
+        reached an end step, how many started on each of the last STRIP_DAYS
+        days, and the step where most of the others stopped. False when
+        there were none. Test walks are left out, as on the step cards."""
+        now = fields.Datetime.now()
+        Conversation = self.env['comm.conversation']
+        domain = [
+            ('bot_id', '=', bot.id),
+            ('opened_at', '>=', now - timedelta(days=USAGE_DAYS)),
+            # A conversation with no outcome yet must still count.
+            '|', ('outcome', '=', False), ('outcome', '!=', '__preview_walker__'),
+        ]
+        tests = self._test_conversations(bot)
+        if tests:
+            domain.append(('id', 'not in', tests))
+        talks = Conversation.search(domain)
+        if not talks:
+            return False
+        finished = talks.filtered(lambda t: t.lifecycle_state == 'closed')
+        today = fields.Date.context_today(self)
+        days = [0] * STRIP_DAYS
+        for talk in talks:
+            age = (today - fields.Date.context_today(self, talk.opened_at)).days
+            if 0 <= age < STRIP_DAYS:
+                days[STRIP_DAYS - 1 - age] += 1
+        stops = {}
+        for talk in talks - finished:
+            if talk.current_step_id:
+                stops[talk.current_step_id] = stops.get(talk.current_step_id, 0) + 1
+        stop = max(stops, key=lambda step: (stops[step], -step.id)) if stops else False
+        return {
+            'conversations': len(talks),
+            'finished_pct': round(100 * len(finished) / len(talks)),
+            'days': days,
+            'stop': stop.name if stop else '',
+        }
+
+    def _card_attention(self, bot):
+        """Short lines for what needs a look before the flow can be trusted."""
+        res = []
+        empty = len(bot.step_ids.filtered(
+            lambda s: s.kind == 'action' and not s.action_config))
+        if empty == 1:
+            res.append(_("1 step runs an action that is empty"))
+        elif empty:
+            res.append(_("%s steps run an action that is empty", empty))
+        return res
 
     @api.model
     def load(self, bot_id):
@@ -93,6 +175,7 @@ class SedibaFlows(models.AbstractModel):
             'flow': {
                 'id': bot.id,
                 'name': bot.name,
+                'description': bot.description or '',
                 'status': bot.engine_mode,
                 'entry_id': bot.entry_step_id.id or False,
                 'channel_ids': bot.channel_ids.ids,
@@ -290,16 +373,10 @@ class SedibaFlows(models.AbstractModel):
         adapter().connect(self.env, bot, option_id, bool(on))
         return self.load(bot.id)
 
-    def _reached(self, bot):
-        """{step id: how many real conversations the step spoke in}. Walks in
-        Try it, the engine's own simulator and the web widget's preview are
-        left out, so the numbers are contacts, not tests."""
-        Interaction = self.env['comm.interaction']
-        domain = [
-            ('step_id', 'in', bot.step_ids.ids),
-            ('direction', '=', 'outbound'),
-            ('conversation_id.outcome', '!=', '__preview_walker__'),
-        ]
+    def _test_conversations(self, bot):
+        """Ids of the flow's conversations that were tests, not contacts:
+        walks in Try it, the engine's own simulator and the web widget's
+        preview."""
         tests = self.env['comm.conversation.leg'].search([
             ('conversation_id.bot_id', '=', bot.id),
             '|', '|', ('external_session_id', '=like', 'sediba-flows-try-%'),
@@ -311,6 +388,19 @@ class SedibaFlows(models.AbstractModel):
                 ('is_preview', '=', True),
                 ('conversation_id.bot_id', '=', bot.id),
             ]).conversation_id.ids
+        return tests
+
+    def _reached(self, bot):
+        """{step id: how many real conversations the step spoke in}. Walks in
+        Try it, the engine's own simulator and the web widget's preview are
+        left out, so the numbers are contacts, not tests."""
+        Interaction = self.env['comm.interaction']
+        domain = [
+            ('step_id', 'in', bot.step_ids.ids),
+            ('direction', '=', 'outbound'),
+            ('conversation_id.outcome', '!=', '__preview_walker__'),
+        ]
+        tests = self._test_conversations(bot)
         if tests:
             domain.append(('conversation_id', 'not in', tests))
         return {step.id: count for step, count in Interaction._read_group(
@@ -345,6 +435,8 @@ class SedibaFlows(models.AbstractModel):
             if not (vals['name'] or '').strip():
                 raise UserError(_("A flow needs a name."))
             write['name'] = vals['name'].strip()
+        if 'description' in vals:
+            write['description'] = (vals['description'] or '').strip() or False
         if 'entry_id' in vals:
             write['entry_step_id'] = vals['entry_id'] or False
         if 'channel_ids' in vals:

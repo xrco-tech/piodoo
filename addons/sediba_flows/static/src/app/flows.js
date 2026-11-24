@@ -3,6 +3,8 @@
 import { Component, markup, onMounted, onPatched, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { Dialog } from "@web/core/dialog/dialog";
+import { browser } from "@web/core/browser/browser";
+import { deserializeDateTime } from "@web/core/l10n/dates";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
@@ -10,6 +12,7 @@ import { escape as escapeHTML } from "@web/core/utils/strings";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 const MODEL = "sediba.flows";
+const HOME_SIZE_KEY = "sediba_flows.home_size";
 
 // Card and gap sizes of the canvas, in px. The layout is worked out from
 // these alone, so no card has to be measured.
@@ -239,10 +242,14 @@ export class SedibaFlows extends Component {
         this.state = useState({
             view: "home",
             home: null,
+            homeChannel: "all",
+            homeStatus: "all",
+            homeSize: this.storedHomeSize(),
             data: null,
             selectedId: false,
             draft: null,
             flowName: "",
+            flowDescription: "",
             showAs: "all",
             panel: "step",
             zoom: 1,
@@ -268,6 +275,83 @@ export class SedibaFlows extends Component {
 
     statusLabel(status) {
         return STATUS[status] || status;
+    }
+
+    /** The card size chosen last time, kept in this browser only. */
+    storedHomeSize() {
+        try {
+            return browser.localStorage.getItem(HOME_SIZE_KEY) === "compact" ? "compact" : "detailed";
+        } catch {
+            return "detailed";
+        }
+    }
+
+    get detailed() {
+        return this.state.homeSize === "detailed";
+    }
+
+    pickHomeSize(size) {
+        this.state.homeSize = size;
+        try {
+            browser.localStorage.setItem(HOME_SIZE_KEY, size);
+        } catch {
+            // Private window or blocked storage: the choice lasts for this visit.
+        }
+    }
+
+    pickHomeChannel(code) {
+        this.state.homeChannel = code;
+    }
+
+    pickHomeStatus(status) {
+        this.state.homeStatus = status;
+    }
+
+    /** The flows the two rows of pills leave. */
+    get homeFlows() {
+        const { homeChannel, homeStatus } = this.state;
+        return this.state.home.flows.filter(
+            (f) =>
+                (homeChannel === "all" || f.channel_codes.includes(homeChannel)) &&
+                (homeStatus === "all" || f.status === homeStatus)
+        );
+    }
+
+    /** The statuses some flow has, in the order they are met in a flow's life. */
+    get homeStatuses() {
+        const used = new Set(this.state.home.flows.map((f) => f.status));
+        return ["live", "shadow", "draft", "paused"].filter((s) => used.has(s));
+    }
+
+    channelCount(code) {
+        return this.state.home.flows.filter((f) => f.channel_codes.includes(code)).length;
+    }
+
+    statusCount(status) {
+        return this.state.home.flows.filter((f) => f.status === status).length;
+    }
+
+    stepsLabel(flow) {
+        return flow.steps === 1 ? _t("1 step") : _t("%s steps", flow.steps);
+    }
+
+    editedLabel(flow) {
+        return deserializeDateTime(flow.edited).toRelative();
+    }
+
+    stripLabel(flow) {
+        return _t("Conversations started per day, last %s days", flow.usage.days.length);
+    }
+
+    /** One bar of the activity strip: as tall as its day's share of the busiest day. */
+    stripStyle(flow, n) {
+        const most = Math.max(...flow.usage.days, 1);
+        return `height: ${n ? Math.max(3, Math.round((n / most) * 28)) : 2}px`;
+    }
+
+    async tryFlow(id) {
+        await this.openFlow(id);
+        await this.openTry();
     }
 
     async newFlow() {
@@ -307,6 +391,7 @@ export class SedibaFlows extends Component {
     setData(data, select) {
         this.state.data = data;
         this.state.flowName = data.flow.name;
+        this.state.flowDescription = data.flow.description || "";
         const step = data.steps.find((s) => s.id === select);
         this.state.selectedId = step ? step.id : false;
         this.state.draft = step ? JSON.parse(JSON.stringify(step)) : null;
@@ -878,6 +963,13 @@ export class SedibaFlows extends Component {
         );
         if (this.state.showAs !== "all" && !this.flowChannels.some((c) => c.code === this.state.showAs)) {
             this.state.showAs = "all";
+        }
+    }
+
+    saveDescription() {
+        const description = this.state.flowDescription.trim();
+        if (description !== (this.state.data.flow.description || "")) {
+            return this.saveFlow({ description });
         }
     }
 

@@ -232,6 +232,12 @@ class TestBringOver(TransactionCase):
         self.assertEqual(flow.trigger_ids.value, 'MENU')
         self.assertIn('ran code', flow.import_notes)
         self.assertIn('MENU', flow.import_notes)
+        # The flow's card says what still needs a look.
+        card = next(f for f in self.env['sediba.flows'].home()['flows'] if f['id'] == flow.id)
+        notes = len([n for n in flow.import_notes.split('\n') if n])
+        self.assertIn('1 step runs an action that is empty', card['attention'])
+        self.assertTrue(any('brought over' in line and str(notes) in line
+                            for line in card['attention']))
 
     def test_screen_lists_older_bots(self):
         old = self._old('Listed')

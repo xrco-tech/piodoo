@@ -18,77 +18,136 @@
                 </div>
                 <button t-if="state.home.can_create" type="button" class="btn btn-primary" t-on-click="newFlow">New flow</button>
             </div>
-            <div class="o_sfl_home_body">
-                <div class="o_sfl_box o_sfl_flows">
-                    <div t-if="!state.home.flows.length" class="o_sfl_empty">
-                        No flows yet. A flow is a conversation: what to say, what to ask and where each answer leads.
+            <div class="o_sfl_box o_sfl_filters">
+                <div class="o_sfl_filter_row">
+                    <span class="o_sfl_filter_label">Channel</span>
+                    <div class="o_sfl_pills" role="group" aria-label="Channel">
+                        <button type="button" class="o_sfl_pill" t-att-class="{active: state.homeChannel === 'all'}"
+                                t-att-aria-pressed="state.homeChannel === 'all' ? 'true' : 'false'"
+                                t-on-click="() => this.pickHomeChannel('all')">
+                            All <span class="o_sfl_count" t-esc="state.home.flows.length"/>
+                        </button>
+                        <button t-foreach="state.home.channels" t-as="channel" t-key="channel.id" type="button" class="o_sfl_pill"
+                                t-att-class="{active: state.homeChannel === channel.code}"
+                                t-att-aria-pressed="state.homeChannel === channel.code ? 'true' : 'false'"
+                                t-att-title="channel.connected ? 'Connected' : 'Add-on not installed'"
+                                t-on-click="() => this.pickHomeChannel(channel.code)">
+                            <span class="o_sfl_dot" t-att-class="{o_sfl_dot_off: !channel.connected}" aria-hidden="true"/>
+                            <t t-esc="channel.name"/>
+                            <span class="visually-hidden" t-esc="channel.connected ? ', connected' : ', add-on not installed'"/>
+                            <span class="o_sfl_count" t-esc="channelCount(channel.code)"/>
+                        </button>
                     </div>
-                    <div t-else="" class="o_sfl_scroll_x">
-                        <table class="o_sfl_table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Flow</th>
-                                    <th scope="col">Runs on</th>
-                                    <th scope="col" class="o_sfl_num">Steps</th>
-                                    <th scope="col">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="state.home.flows" t-as="flow" t-key="flow.id">
-                                    <td>
-                                        <button type="button" class="o_sfl_link" t-on-click="() => this.openFlow(flow.id)" t-esc="flow.name"/>
-                                    </td>
-                                    <td>
-                                        <span t-foreach="flow.channels" t-as="name" t-key="name" class="o_sfl_chip" t-esc="name"/>
-                                        <span t-if="!flow.channels.length" class="o_sfl_muted">No channel yet</span>
-                                    </td>
-                                    <td class="o_sfl_num" t-esc="flow.steps"/>
-                                    <td>
-                                        <b t-if="flow.status === 'live'" t-esc="statusLabel(flow.status)"/>
-                                        <span t-else="" class="o_sfl_muted" t-esc="statusLabel(flow.status)"/>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                </div>
+                <div class="o_sfl_filter_row">
+                    <span class="o_sfl_filter_label">Status</span>
+                    <div class="o_sfl_pills" role="group" aria-label="Status">
+                        <button type="button" class="o_sfl_pill" t-att-class="{active: state.homeStatus === 'all'}"
+                                t-att-aria-pressed="state.homeStatus === 'all' ? 'true' : 'false'"
+                                t-on-click="() => this.pickHomeStatus('all')">
+                            All <span class="o_sfl_count" t-esc="state.home.flows.length"/>
+                        </button>
+                        <button t-foreach="homeStatuses" t-as="status" t-key="status" type="button" class="o_sfl_pill"
+                                t-att-class="{active: state.homeStatus === status}"
+                                t-att-aria-pressed="state.homeStatus === status ? 'true' : 'false'"
+                                t-on-click="() => this.pickHomeStatus(status)">
+                            <t t-esc="statusLabel(status)"/> <span class="o_sfl_count" t-esc="statusCount(status)"/>
+                        </button>
                     </div>
-                    <t t-if="state.home.legacy and state.home.legacy.length">
-                        <h2 class="o_sfl_section">Older bots</h2>
-                        <span class="o_sfl_muted o_sfl_small">Bots built in the older WhatsApp chatbot. Bringing one over makes a draft copy here; the older bot is not changed and keeps running.</span>
-                        <div class="o_sfl_scroll_x">
-                            <table class="o_sfl_table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Bot</th>
-                                        <th scope="col">Channel</th>
-                                        <th scope="col" class="o_sfl_num">Steps</th>
-                                        <th scope="col">Status there</th>
-                                        <th scope="col"><span class="visually-hidden">Action</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="state.home.legacy" t-as="bot" t-key="bot.id">
-                                        <td t-esc="bot.name"/>
-                                        <td><span class="o_sfl_chip" t-esc="bot.channel"/></td>
-                                        <td class="o_sfl_num" t-esc="bot.steps"/>
-                                        <td class="o_sfl_muted" t-esc="bot.status"/>
-                                        <td class="o_sfl_num">
-                                            <button t-if="bot.flow_id" type="button" class="btn btn-light" t-on-click="() => this.openFlow(bot.flow_id)">Open its flow</button>
-                                            <button t-elif="state.home.can_create" type="button" class="btn btn-light" t-att-disabled="state.busy" t-on-click="() => this.importLegacy(bot.id)">Bring over</button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <span class="o_sfl_grow"/>
+                    <div class="o_sfl_pills" role="group" aria-label="Card size">
+                        <button type="button" class="o_sfl_pill" t-att-class="{active: !detailed}"
+                                t-att-aria-pressed="detailed ? 'false' : 'true'" t-on-click="() => this.pickHomeSize('compact')">Compact</button>
+                        <button type="button" class="o_sfl_pill" t-att-class="{active: detailed}"
+                                t-att-aria-pressed="detailed ? 'true' : 'false'" t-on-click="() => this.pickHomeSize('detailed')">Detailed</button>
+                    </div>
+                </div>
+            </div>
+
+            <div t-if="!state.home.flows.length" class="o_sfl_box o_sfl_empty">
+                No flows yet. A flow is a conversation: what to say, what to ask and where each answer leads.
+            </div>
+            <div t-elif="!homeFlows.length" class="o_sfl_box o_sfl_empty">
+                No flow matches these filters.
+            </div>
+            <div t-else="" class="o_sfl_cards" t-att-class="{o_sfl_cards_compact: !detailed}">
+                <div t-foreach="homeFlows" t-as="flow" t-key="flow.id" class="o_sfl_box o_sfl_fcard">
+                    <div class="o_sfl_fcard_head">
+                        <button type="button" class="o_sfl_link" t-on-click="() => this.openFlow(flow.id)" t-esc="flow.name"/>
+                        <span t-att-class="'o_sfl_tag o_sfl_tag_' + flow.status" t-esc="statusLabel(flow.status)"/>
+                    </div>
+                    <div t-if="detailed and flow.description" class="o_sfl_fcard_desc" t-esc="flow.description"/>
+                    <div>
+                        <span t-foreach="flow.channels" t-as="name" t-key="name" class="o_sfl_chip" t-esc="name"/>
+                        <span t-if="!flow.channels.length" class="o_sfl_muted">No channel yet</span>
+                    </div>
+                    <t t-if="detailed">
+                        <div t-if="flow.runs.length" class="o_sfl_fcard_runs">
+                            <div t-foreach="flow.runs" t-as="run" t-key="run.channel">
+                                <b t-esc="run.channel"/>: <t t-if="run.ok" t-esc="run.text"/><t t-else="">not connected</t>
+                            </div>
+                        </div>
+                        <t t-if="flow.usage">
+                            <div class="o_sfl_fcard_stats">
+                                <div class="o_sfl_stat">
+                                    <b t-esc="flow.usage.conversations"/>
+                                    <span>conversations, 30 days</span>
+                                </div>
+                                <div class="o_sfl_stat">
+                                    <b><t t-esc="flow.usage.finished_pct"/>%</b>
+                                    <span>reached the end</span>
+                                </div>
+                                <div class="o_sfl_strip" role="img" t-att-aria-label="stripLabel(flow)" t-att-title="stripLabel(flow)">
+                                    <span t-foreach="flow.usage.days" t-as="n" t-key="n_index" t-att-style="stripStyle(flow, n)"/>
+                                </div>
+                            </div>
+                            <div t-if="flow.usage.stop" class="o_sfl_muted o_sfl_small">
+                                Most people stop at: <b class="o_sfl_fcard_stop" t-esc="flow.usage.stop"/>
+                            </div>
+                        </t>
+                        <div t-else="" class="o_sfl_fcard_stats o_sfl_muted o_sfl_small">
+                            No real conversations in the last 30 days.
+                        </div>
+                        <div t-foreach="flow.attention" t-as="line" t-key="line_index" class="o_sfl_fcard_warn">
+                            <i class="fa fa-exclamation-triangle" aria-hidden="true"/>
+                            <span t-esc="line"/>
                         </div>
                     </t>
-                </div>
-                <div class="o_sfl_box o_sfl_channels">
-                    <h2>Channels</h2>
-                    <span class="o_sfl_muted o_sfl_small">Each channel is its own add-on. A flow can use whichever are installed.</span>
-                    <div t-foreach="state.home.channels" t-as="channel" t-key="channel.id" class="o_sfl_row">
-                        <span t-esc="channel.name"/>
-                        <b t-if="channel.connected">Connected</b>
-                        <span t-else="" class="o_sfl_muted">Add-on not installed</span>
+                    <div class="o_sfl_fcard_foot">
+                        <span class="o_sfl_grow o_sfl_muted o_sfl_small"><t t-esc="stepsLabel(flow)"/> · edited <t t-esc="editedLabel(flow)"/></span>
+                        <button type="button" class="btn btn-light" t-on-click="() => this.tryFlow(flow.id)">Try it</button>
+                        <button type="button" class="btn btn-light" t-on-click="() => this.openFlow(flow.id)">Open</button>
                     </div>
+                </div>
+            </div>
+
+            <div t-if="state.home.legacy and state.home.legacy.length" class="o_sfl_box o_sfl_flows">
+                <h2 class="o_sfl_older">Older bots</h2>
+                <span class="o_sfl_muted o_sfl_small">Bots built in the older WhatsApp chatbot. Bringing one over makes a draft copy here; the older bot is not changed and keeps running.</span>
+                <div class="o_sfl_scroll_x">
+                    <table class="o_sfl_table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Bot</th>
+                                <th scope="col">Channel</th>
+                                <th scope="col" class="o_sfl_num">Steps</th>
+                                <th scope="col">Status there</th>
+                                <th scope="col"><span class="visually-hidden">Action</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="state.home.legacy" t-as="bot" t-key="bot.id">
+                                <td t-esc="bot.name"/>
+                                <td><span class="o_sfl_chip" t-esc="bot.channel"/></td>
+                                <td class="o_sfl_num" t-esc="bot.steps"/>
+                                <td class="o_sfl_muted" t-esc="bot.status"/>
+                                <td class="o_sfl_num">
+                                    <button t-if="bot.flow_id" type="button" class="btn btn-light" t-on-click="() => this.openFlow(bot.flow_id)">Open its flow</button>
+                                    <button t-elif="state.home.can_create" type="button" class="btn btn-light" t-att-disabled="state.busy" t-on-click="() => this.importLegacy(bot.id)">Bring over</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -218,6 +277,11 @@
     <t t-name="sediba_flows.Flow">
         <fieldset class="o_sfl_form" t-att-disabled="!canEdit">
             <span class="o_sfl_muted">Click a step to change it. These settings are for the whole flow.</span>
+            <div class="o_sfl_field">
+                <label for="o_sfl_description">Description</label>
+                <textarea id="o_sfl_description" class="o_sfl_input" rows="2" t-model="state.flowDescription" t-on-change="saveDescription"/>
+                <span class="o_sfl_muted o_sfl_small">A line or two about what this flow does. It shows on the flow's card.</span>
+            </div>
             <div class="o_sfl_group">
                 <b>Runs on</b>
                 <span class="o_sfl_muted o_sfl_small">Under each channel you tick: the number or account this flow is connected to there, and what starts it.</span>
