@@ -14,7 +14,7 @@ def steps():
         {'id': 1, 'kind': 'start', 'text': 'Job seeker messages', 'detail': '', 'next': [{'label': '', 'to': 2}]},
         {'id': 2, 'kind': 'decision', 'text': 'Can the chatbot answer it?', 'detail': '',
          'next': [{'label': 'yes', 'to': 3}, {'label': 'no', 'to': 4}]},
-        {'id': 3, 'kind': 'step', 'text': 'Chatbot answers', 'detail': 'From Sediba only', 'next': [{'label': '', 'to': 5}]},
+        {'id': 3, 'kind': 'step', 'text': 'Chatbot answers', 'detail': 'From Library only', 'next': [{'label': '', 'to': 5}]},
         {'id': 4, 'kind': 'handover', 'text': 'Hand over to an agent', 'detail': '', 'next': []},
         {'id': 5, 'kind': 'end', 'text': 'Done', 'detail': '', 'next': []},
     ]
@@ -50,7 +50,7 @@ class TestSedibaFlow(TransactionCase):
         self.assertEqual([(line['label'], line['text']) for line in flow_lines(flow)], [
             ('Start', 'Job seeker messages. Then step 2.'),
             ('Decision', 'Can the chatbot answer it? If yes, step 3. If no, step 4.'),
-            ('Step', 'Chatbot answers. From Sediba only. Then step 5.'),
+            ('Step', 'Chatbot answers. From Library only. Then step 5.'),
             ('Hand-over', 'Hand over to an agent.'),
             ('End', 'Done.'),
         ])

@@ -74,7 +74,7 @@
                             <div t-if="r.summary" class="o_sdb_muted" t-esc="r.summary"/>
                         </td>
                         <td t-esc="r.owner"/>
-                        <td t-if="!state.nav.reference" t-esc="r.spaces or 'Sediba only'"/>
+                        <td t-if="!state.nav.reference" t-esc="r.spaces or 'Library only'"/>
                         <td class="o_sdb_nowrap" t-esc="r.updated"/>
                         <td t-if="!state.nav.reference" class="o_sdb_nowrap"><t t-esc="r.read_again_by or ''"/><span t-if="r.due" class="o_sdb_badge review">Due</span></td>
                     </tr>
@@ -103,7 +103,7 @@
         <div class="o_action o_sdb_ws" t-att-class="{ browsing: state.browsing, side_closed: !state.side, props_closed: !state.props }">
 
             <!-- ── Sidebar ──────────────────────────────────────────────── -->
-            <nav class="o_sdb_side" t-att-aria-label="state.nav.reference ? 'Reference' : 'Sediba'">
+            <nav class="o_sdb_side" t-att-aria-label="state.nav.reference ? 'Reference' : 'Library'">
                 <div class="o_sdb_side_head">
                     <button type="button" class="o_sdb_side_toggle" t-att-aria-expanded="state.side ? 'true' : 'false'"
                             t-att-aria-label="sideLabel" t-att-title="sideLabel" t-on-click="toggleSide">
@@ -115,7 +115,7 @@
                             <path t-else="" d="M9.9 6.6 12.7 9l-2.8 2.4z" fill="currentColor" stroke-width="1"/>
                         </svg>
                     </button>
-                    <span class="o_sdb_side_title"><t t-if="state.nav.reference">Reference</t><t t-else="">Sediba</t></span>
+                    <span class="o_sdb_side_title"><t t-if="state.nav.reference">Reference</t><t t-else="">Library</t></span>
                 </div>
 
                 <div class="o_sdb_side_top">
@@ -171,7 +171,7 @@
                                 </div>
                             </t>
                         </t>
-                        <p t-if="!state.nav.docs.length and state.nav.reference" class="o_sdb_muted o_sdb_pad">No company docs are shown in <t t-esc="state.nav.space"/> yet. A writer publishes a doc in Sediba and marks it as shown here.</p>
+                        <p t-if="!state.nav.docs.length and state.nav.reference" class="o_sdb_muted o_sdb_pad">No company docs are shown in <t t-esc="state.nav.space"/> yet. A writer publishes a doc in the Library and marks it as shown here.</p>
                         <p t-elif="!state.nav.docs.length" class="o_sdb_muted o_sdb_pad">No company docs yet.<t t-if="state.nav.can_write"> Start one with the plus button.</t></p>
                     </t>
                 </div>
@@ -200,7 +200,7 @@
                                 <span t-elif="t.last" class="o_sdb_note" t-esc="t.last"/>
                             </button>
                         </div>
-                        <p t-if="!state.nav.topics.length and state.nav.space" class="o_sdb_muted o_sdb_pad">Nothing verified is marked for <t t-esc="state.nav.space"/> yet. A researcher marks a topic as shown here in Sediba, and its verified findings appear.</p>
+                        <p t-if="!state.nav.topics.length and state.nav.space" class="o_sdb_muted o_sdb_pad">Nothing verified is marked for <t t-esc="state.nav.space"/> yet. A researcher marks a topic as shown here in the Library, and its verified findings appear.</p>
                         <p t-elif="!state.nav.topics.length" class="o_sdb_muted o_sdb_pad">No topics yet. Add them under Configuration.</p>
                     </t>
                 </div>
@@ -272,7 +272,7 @@
                         <header>
                             <t t-if="state.nav.reference">
                                 <h1>Reference</h1>
-                                <p class="o_sdb_lede">Our own company docs for <t t-esc="state.nav.space"/>, and verified research. Everything here is read-only. It is written and checked in Sediba.</p>
+                                <p class="o_sdb_lede">Our own company docs for <t t-esc="state.nav.space"/>, and verified research. Everything here is read-only. It is written and checked in the Library.</p>
                             </t>
                             <t t-else="">
                                 <h1>Overview</h1>
@@ -306,7 +306,7 @@
                             </section>
                         </t>
 
-                        <!-- In Sediba: a box for each half -->
+                        <!-- In the Library: a box for each half -->
                         <div t-else="" class="o_sdb_pair">
                             <section class="o_sdb_box">
                                 <h2>Company docs</h2>
@@ -388,7 +388,7 @@
                                                 <span t-if="r.pages" class="o_sdb_muted"> + <t t-esc="r.pages"/> <t t-if="r.pages === 1">page</t><t t-else="">pages</t></span>
                                                 <span t-if="r.state === 'draft'" class="o_sdb_status draft">Draft</span></td>
                                             <td t-esc="r.owner"/>
-                                            <td t-esc="r.spaces or 'Sediba only'"/>
+                                            <td t-esc="r.spaces or 'Library only'"/>
                                             <td class="o_sdb_nowrap" t-esc="r.updated"/>
                                             <td class="o_sdb_nowrap"><t t-esc="r.read_again_by or ''"/><span t-if="r.due" class="o_sdb_badge review">Due</span></td>
                                         </tr>
@@ -544,7 +544,7 @@
                             <t t-if="!state.nav.can_edit">
                                 <div><dt>Shown in</dt><dd t-if="topicSpaces.length" class="o_sdb_chips">
                                     <span t-foreach="topicSpaces" t-as="sp" t-key="sp" class="o_sdb_chip" t-esc="sp"/></dd>
-                                    <dd t-else="" class="o_sdb_muted">Sediba only</dd></div>
+                                    <dd t-else="" class="o_sdb_muted">Library only</dd></div>
                                 <div><dt>Sidekick may answer from it</dt><dd><t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></dd></div>
                                 <div><dt>The public chatbot may answer from it</dt><dd><t t-if="d.public_allowed">Yes</t><t t-else="">No</t></dd></div>
                             </t>
@@ -826,7 +826,7 @@
                                 <div><dt>Owner</dt><dd t-esc="d.owner or 'Nobody yet'"/></div>
                                 <div><dt>Shown in</dt><dd t-if="d.spaces.length" class="o_sdb_chips">
                                 <span t-foreach="d.spaces" t-as="sp" t-key="sp" class="o_sdb_chip" t-esc="sp"/></dd>
-                                    <dd t-else="" class="o_sdb_muted">Sediba only</dd></div>
+                                    <dd t-else="" class="o_sdb_muted">Library only</dd></div>
                                 <div><dt>Sidekick may answer from it</dt><dd><t t-if="d.ai_allowed">Yes</t><t t-else="">No</t></dd></div>
                                 <div><dt>The public chatbot may answer from it</dt><dd><t t-if="d.public_allowed">Yes</t><t t-else="">No</t></dd></div>
                                 <div><dt>Read again by</dt><dd><t t-esc="d.read_again_by or 'Set when it is published'"/>

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Sediba: research topics, findings with their sources, and research runs.
+"""Library: research topics, findings with their sources, and research runs.
 
 No model here inherits mail.thread and no field is tracked, on purpose: an
 automated user with no email address has to be able to write findings, and
@@ -59,7 +59,7 @@ class SedibaTopic(models.Model):
     scope = fields.Text(help="What to look for under this topic.")
     space_ids = fields.Many2many('sediba.space', string="Shown in",
                                  help="The apps this topic is relevant to. Its verified findings show in "
-                                      "the Reference inside each of them. Sediba itself shows everything.")
+                                      "the Reference inside each of them. The Library itself shows everything.")
     ai_allowed = fields.Boolean(string="Sidekick may answer from it",
                                 help="Sidekick, the assistant your own staff use, may read this topic's "
                                      "verified findings: never leads, and never findings that could not "

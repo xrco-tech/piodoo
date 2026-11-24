@@ -288,7 +288,7 @@ class TestChat2workSidekick(TransactionCase):
             self.env['chat2work.agent.note'].with_user(self.agent).create({'name': 'x', 'body': 'y'})
 
     def test_company_docs_and_research_come_from_sediba(self):
-        """Only what Sediba allowed for the assistants and shows in Chat2Work."""
+        """Only what the Library allowed for the assistants and shows in Chat2Work."""
         here = self.env.ref('chat2work_workspace.sediba_space_chat2work')
         Doc = self.env['sediba.doc']
         ours = Doc.create({'name': 'About Zebraworks', 'body': '<p>Zebraworks is free for job seekers.</p>',
@@ -302,7 +302,7 @@ class TestChat2workSidekick(TransactionCase):
         self.assertIn('Zebraworks is free for job seekers.', sent)
         for kept_out in ('call scripts', 'pays monthly', 'draft'):
             self.assertNotIn(kept_out, sent)
-        self.assertEqual(chat['messages'][-1]['source'], 'From Sediba: About Zebraworks')
+        self.assertEqual(chat['messages'][-1]['source'], 'From Library: About Zebraworks')
         self.assertTrue(chat['actions'][-1]['ok'])
         chat, _sent = self._ask('And giraffes?', said('Nothing written covers it.',
                                                       ('look_up_reference', {'question': 'giraffes'})))

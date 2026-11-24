@@ -6,11 +6,11 @@ sources; a company doc is ours to say, so it has no sources and no "verified".
 Instead it has an owner, it is a draft until someone publishes it, and it
 carries a date by which it should be read again.
 
-People outside Sediba (the Reference inside an app) only ever see the last
+People outside the Library (the Reference inside an app) only ever see the last
 published version. Editing a published doc changes nothing for them until it
 is published again.
 
-Like the rest of Sediba, nothing here inherits mail.thread.
+Like the rest of the Library, nothing here inherits mail.thread.
 """
 from dateutil.relativedelta import relativedelta
 
@@ -121,7 +121,7 @@ class SedibaDoc(models.Model):
         return self.version_ids.sorted('number', reverse=True)[:1]
 
     def _published(self):
-        """The version people outside Sediba see, or nothing for a draft."""
+        """The version people outside the Library see, or nothing for a draft."""
         self.ensure_one()
         return self._latest() if self.state == 'published' else self.env['sediba.doc.version']
 
@@ -156,7 +156,7 @@ class SedibaDoc(models.Model):
 
     def action_restore(self, version):
         """Bring a published version back as the working text. Nothing shows
-        outside Sediba until it is published again."""
+        outside the Library until it is published again."""
         self.ensure_one()
         version = version.filtered(lambda v: v.doc_id == self)
         if not version:

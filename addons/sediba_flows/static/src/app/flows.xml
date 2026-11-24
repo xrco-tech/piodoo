@@ -13,7 +13,7 @@
         <div class="o_sfl_home">
             <div class="o_sfl_head">
                 <div class="o_sfl_head_text">
-                    <h1>Sediba Flows</h1>
+                    <h1>Interaction Flows</h1>
                     <span class="o_sfl_muted">Conversations you design once and run on any channel you have connected.</span>
                 </div>
                 <t t-if="state.home.flows.length">
@@ -533,7 +533,7 @@
                 </div>
                 <label class="o_sfl_check">
                     <input type="checkbox" t-att-checked="d.llm_use_sediba" t-on-change="(ev) => this.setField('llm_use_sediba', ev.target.checked)"/>
-                    <span>Answer from Sediba</span>
+                    <span>Answer from the Library</span>
                 </label>
             </t>
 

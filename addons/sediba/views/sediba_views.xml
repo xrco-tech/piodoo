@@ -498,12 +498,12 @@
     <!-- ── Menus ────────────────────────────────────────────────────────── -->
 
     <record id="action_sediba_workspace" model="ir.actions.client">
-        <field name="name">Sediba</field>
+        <field name="name">Library</field>
         <field name="tag">sediba_workspace</field>
     </record>
 
     <!-- The app opens on the workspace; every other screen is under Configuration. -->
-    <menuitem id="menu_sediba_root" name="Sediba" sequence="46"
+    <menuitem id="menu_sediba_root" name="Library" sequence="46"
               web_icon="sediba,static/description/icon.png" groups="group_user,group_writer"/>
     <menuitem id="menu_sediba_workspace" name="Workspace" parent="menu_sediba_root" action="action_sediba_workspace" sequence="1"/>
     <menuitem id="menu_sediba_config" name="Configuration" parent="menu_sediba_root" sequence="90"/>

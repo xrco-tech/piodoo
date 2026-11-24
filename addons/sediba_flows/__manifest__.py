@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Sediba Flows',
-    'version': '18.0.1.14.0',
+    'name': 'Interaction Flows',
+    'version': '18.0.1.14.1',
     'category': 'Communications',
     'summary': 'Design a conversation once and run it on any connected channel',
     'description': """
-Sediba Flows
+Interaction Flows
 ============
 A flow builder that is its own app and is not tied to any one channel.
 

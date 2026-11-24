@@ -129,7 +129,7 @@ class TestContactCentreWorkspaceAiOps(TransactionCase):
         self.assertEqual(self.Boss.ws_ai_chats(search='Draft a renewal campaign')['rows'][0]['id'], chat.id)
 
     def test_sidekick_reads_company_docs_from_sediba(self):
-        """The copilot looks up only what Sediba allowed and shows in Contact Centre."""
+        """The copilot looks up only what the Library allowed and shows in Contact Centre."""
         here = self.env.ref('contact_centre_workspace.sediba_space_contact_centre')
         Doc = self.env['sediba.doc']
         ours = Doc.create({'name': 'About Zebraworks', 'body': '<p>Zebraworks answers calls all day.</p>',

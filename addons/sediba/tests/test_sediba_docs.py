@@ -191,7 +191,7 @@ class TestSedibaDocsWorkspace(DocsCase):
         self.assertEqual(self.ReaderWs.ws_doc(self.faq.id, 'test_calls')['questions'],
                          [{'name': 'Does it cost anything?', 'answer': 'No, it is free.'}])
         self.assertFalse(self.Ws.ws_doc(0))
-        # An older version can be read in Sediba.
+        # An older version can be read in the Library.
         self.how.body = '<p>We answer faster now.</p>'
         self.how.action_publish()
         first = self.how.version_ids.filtered(lambda v: v.number == 1)
