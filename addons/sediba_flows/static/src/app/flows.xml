@@ -16,6 +16,12 @@
                     <h1>Sediba Flows</h1>
                     <span class="o_sfl_muted">Conversations you design once and run on any channel you have connected.</span>
                 </div>
+                <div t-if="state.home.flows.length" class="o_sfl_pills" role="group" aria-label="Card size">
+                    <button type="button" class="o_sfl_pill" t-att-class="{active: !detailed}"
+                            t-att-aria-pressed="detailed ? 'false' : 'true'" t-on-click="() => this.pickHomeSize('compact')">Compact</button>
+                    <button type="button" class="o_sfl_pill" t-att-class="{active: detailed}"
+                            t-att-aria-pressed="detailed ? 'true' : 'false'" t-on-click="() => this.pickHomeSize('detailed')">Detailed</button>
+                </div>
                 <button t-if="state.home.can_create" type="button" class="btn btn-primary" t-on-click="newFlow">New flow</button>
             </div>
             <div class="o_sfl_box o_sfl_filters">
@@ -53,13 +59,6 @@
                                 t-on-click="() => this.pickHomeStatus(status)">
                             <t t-esc="statusLabel(status)"/> <span class="o_sfl_count" t-esc="statusCount(status)"/>
                         </button>
-                    </div>
-                    <span class="o_sfl_grow"/>
-                    <div class="o_sfl_pills" role="group" aria-label="Card size">
-                        <button type="button" class="o_sfl_pill" t-att-class="{active: !detailed}"
-                                t-att-aria-pressed="detailed ? 'false' : 'true'" t-on-click="() => this.pickHomeSize('compact')">Compact</button>
-                        <button type="button" class="o_sfl_pill" t-att-class="{active: detailed}"
-                                t-att-aria-pressed="detailed ? 'true' : 'false'" t-on-click="() => this.pickHomeSize('detailed')">Detailed</button>
                     </div>
                 </div>
             </div>
