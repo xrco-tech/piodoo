@@ -628,6 +628,21 @@ textarea.o_sfl_input { resize: vertical; }
     gap: 6px;
 }
 
+// The home header on a narrower window. First the line under the heading
+// goes, so the heading and its controls stay on one row; on a phone the
+// controls take their own row and the gaps close up.
+@media (max-width: 1100px) {
+    .o_sfl_head_text .o_sfl_muted { display: none; }
+    .o_sfl_head_text { flex-basis: 160px; }
+}
+
+@media (max-width: 700px) {
+    .o_sfl_home { gap: 10px; padding: 12px; }
+    .o_sfl_head { gap: 6px; }
+    .o_sfl_head_text { flex-basis: 100%; }
+    .o_sfl_head .o_sfl_pill { padding-left: 10px; padding-right: 10px; }
+}
+
 // A narrow window: the panel goes under the canvas.
 @media (max-width: 900px) {
     .o_sfl_body { flex-direction: column; overflow-y: auto; }
