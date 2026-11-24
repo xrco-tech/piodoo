@@ -168,6 +168,9 @@ $o-sfl-kinds: (
     &.o_sfl_tag_shadow { border-color: var(--sfl-warn); color: var(--sfl-warn); }
 }
 
+// Steps and when it was edited, tucked under the name.
+.o_sfl_fcard_meta { margin-top: -6px; }
+
 .o_sfl_fcard_desc { line-height: 1.4; overflow-wrap: anywhere; }
 
 .o_sfl_fcard_runs {
@@ -227,8 +230,7 @@ $o-sfl-kinds: (
     padding-top: 10px;
     border-top: 1px solid var(--sfl-soft);
 
-    // On a narrow card the buttons drop under the line of text instead of squeezing it.
-    > .o_sfl_grow { flex: 1 1 130px; }
+    justify-content: flex-end;
 }
 
 .o_sfl_flows {

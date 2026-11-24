@@ -75,6 +75,7 @@
                         <button type="button" class="o_sfl_link" t-on-click="() => this.openFlow(flow.id)" t-esc="flow.name"/>
                         <span t-att-class="'o_sfl_tag o_sfl_tag_' + flow.status" t-esc="statusLabel(flow.status)"/>
                     </div>
+                    <span class="o_sfl_fcard_meta o_sfl_muted o_sfl_small"><t t-esc="stepsLabel(flow)"/> · edited <t t-esc="editedLabel(flow)"/></span>
                     <div>
                         <span t-foreach="flow.channels" t-as="name" t-key="name" class="o_sfl_chip" t-esc="name"/>
                         <span t-if="!flow.channels.length" class="o_sfl_muted">No channel yet</span>
@@ -113,7 +114,6 @@
                         </div>
                     </t>
                     <div class="o_sfl_fcard_foot">
-                        <span class="o_sfl_grow o_sfl_muted o_sfl_small"><t t-esc="stepsLabel(flow)"/> · edited <t t-esc="editedLabel(flow)"/></span>
                         <button type="button" class="btn btn-light" t-on-click="() => this.tryFlow(flow.id)">Try it</button>
                         <button t-if="state.home.can_create" type="button" class="btn btn-light" t-on-click="() => this.duplicateFlow(flow.id, flow.name, flow.steps)">Duplicate</button>
                         <button type="button" class="btn btn-light" t-on-click="() => this.openFlow(flow.id)">Open</button>
