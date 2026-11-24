@@ -80,7 +80,7 @@
                         <span t-foreach="flow.channels" t-as="name" t-key="name" class="o_sfl_chip" t-esc="name"/>
                         <span t-if="!flow.channels.length" class="o_sfl_muted">No channel yet</span>
                     </div>
-                    <div t-if="detailed and flow.description" class="o_sfl_fcard_desc" t-esc="flow.description"/>
+                    <div t-if="detailed and flow.description" class="o_sfl_fcard_desc" t-att-title="flow.description" t-esc="flow.description"/>
                     <t t-if="detailed">
                         <div t-if="flow.runs.length" class="o_sfl_fcard_runs">
                             <div t-foreach="flow.runs" t-as="run" t-key="run.channel">
@@ -193,7 +193,7 @@
                 </button>
                 <button t-if="state.data.can_create" type="button" class="btn btn-light" title="Make a draft copy of this flow, with nothing connected" t-on-click="duplicateOpenFlow">Duplicate</button>
                 <button t-if="canEdit and anyPlaced" type="button" class="btn btn-light" title="Put every card back in its own place" t-on-click="tidy">Tidy layout</button>
-                <button t-if="canEdit" type="button" t-att-class="'btn ' + (isLive ? 'btn-light' : 'btn-primary')" t-on-click="toggleLive">
+                <button t-if="canEdit" type="button" class="btn btn-primary" t-on-click="toggleLive">
                     <t t-if="isLive">Pause</t><t t-else="">Go live</t>
                 </button>
                 <button type="button" class="btn btn-light o_sfl_icon_btn"
@@ -312,25 +312,32 @@
                         <span t-if="!channel.connected" class="o_sfl_muted o_sfl_small">add-on not installed</span>
                     </label>
                     <t t-if="state.data.flow.channel_ids.includes(channel.id)">
-                        <div t-foreach="connectionLines(channel.id)" t-as="line" t-key="line_index"
-                             t-att-class="'o_sfl_conn' + (line.ok ? '' : ' o_sfl_conn_off')">
-                            <i t-att-class="'fa ' + (line.ok ? 'fa-check' : 'fa-exclamation-triangle')" aria-hidden="true"/>
-                            <button t-if="line.name and line.model" type="button" class="o_sfl_conn_link" t-att-title="'Open ' + line.name"
-                                    t-on-click="() => this.openRecord(line)" t-esc="linkLabel(line)"/>
-                            <span t-elif="line.name" t-esc="linkLabel(line)"/>
-                            <span t-else="" t-esc="line.text"/>
-                        </div>
                         <t t-set="options" t-value="connectionOptions(channel.id)"/>
-                        <div t-if="options.length" class="o_sfl_conn_pick">
-                            <div t-foreach="options.filter((o) => o.connected)" t-as="option" t-key="option.id" class="o_sfl_row">
-                                <span t-esc="option.label"/>
-                                <button type="button" class="btn btn-light" t-on-click="() => this.connectOption(channel.id, option, false)">Disconnect</button>
+                        <t t-foreach="connectionLines(channel.id)" t-as="line" t-key="line_index">
+                            <!-- An account, a code or a site: one row, its name as the link. -->
+                            <div t-if="line.account" class="o_sfl_conn_row">
+                                <div class="o_sfl_conn_what">
+                                    <button t-if="line.model" type="button" class="o_sfl_conn_link" t-att-title="'Open ' + line.name"
+                                            t-on-click="() => this.openRecord(line)" t-esc="line.name"/>
+                                    <b t-else="" t-esc="line.name"/>
+                                    <span t-if="line.address" class="o_sfl_muted o_sfl_small" t-esc="line.address"/>
+                                </div>
+                                <t t-set="option" t-value="lineOption(options, line)"/>
+                                <button t-if="option" type="button" class="btn btn-light" t-on-click="() => this.connectOption(channel.id, option, false)">Disconnect</button>
                             </div>
+                            <!-- What starts the flow on this channel. -->
+                            <div t-elif="line.name" class="o_sfl_conn">
+                                <span t-esc="line.name"/> <b class="o_sfl_conn_value" t-esc="line.address"/>
+                            </div>
+                            <div t-else="" t-att-class="'o_sfl_conn' + (line.ok ? '' : ' o_sfl_conn_off')">
+                                <i t-att-class="'fa ' + (line.ok ? 'fa-check' : 'fa-exclamation-triangle')" aria-hidden="true"/>
+                                <span t-esc="line.text"/>
+                            </div>
+                        </t>
+                        <div t-if="options.some((o) => !o.connected)" class="o_sfl_conn_pick">
                             <select class="o_sfl_input" t-att-aria-label="'Connect a ' + channel.name + ' code'" t-on-change="(ev) => this.pickOption(channel.id, ev)">
-                                <option value="">Connect a code…</option>
-                                <option t-foreach="options.filter((o) => !o.connected)" t-as="option" t-key="option.id" t-att-value="option.id">
-                                    <t t-esc="option.label"/> (now runs <t t-esc="option.runs"/>)
-                                </option>
+                                <option value=""><t t-if="options.some((o) => o.connected)">Connect another code…</t><t t-else="">Connect a code…</t></option>
+                                <option t-foreach="options.filter((o) => !o.connected)" t-as="option" t-key="option.id" t-att-value="option.id" t-esc="optionLabel(option)"/>
                             </select>
                         </div>
                     </t>

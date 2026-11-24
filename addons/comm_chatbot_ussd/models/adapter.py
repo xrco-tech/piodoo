@@ -45,12 +45,14 @@ class UssdAdapter:
         accounts = env['comm.ussd.account'].sudo().search([('flow_bot_id', '=', bot.id)])
         providers = dict(env['comm.ussd.account']._fields['provider'].selection)
         if not accounts:
-            return [{'ok': False, 'text': 'No USSD code runs this flow yet. '
-                     'Connect one below.'}]
+            return [{'ok': False, 'text': 'No USSD code runs this flow yet.'}]
         return [{'ok': True, 'text': 'Dialling %s reaches this flow (%s, %s).'
                  % (a.service_code or 'no code set', a.name, providers.get(a.provider, a.provider)),
                  'name': a.name, 'address': a.service_code or '',
-                 'model': a._name, 'res_id': a.id}
+                 'model': a._name, 'res_id': a.id,
+                 # Which of connect_options() this line is, so the screen can
+                 # put Disconnect on the same row.
+                 'option_id': a.id}
                 for a in accounts]
 
     def connect_options(self, env, bot):
@@ -58,6 +60,8 @@ class UssdAdapter:
         return [{
             'id': a.id,
             'label': '%s  %s' % (a.service_code or '(no code)', a.name),
+            'name': a.name,
+            'code': a.service_code or '',
             'runs': a._runs_now(),
             'connected': a.flow_bot_id == bot,
         } for a in env['comm.ussd.account'].sudo().search([])]
