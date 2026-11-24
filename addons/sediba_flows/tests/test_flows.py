@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
+from unittest.mock import patch
 
 from odoo.exceptions import UserError
 from odoo.tests import tagged
@@ -441,6 +442,47 @@ class TestSedibaFlows(TransactionCase):
         for lines in by_channel.values():
             self.assertTrue(lines)
             self.assertTrue(all(line['text'] and 'ok' in line for line in lines))
+
+    def test_an_account_line_can_be_opened_when_it_may_be_read(self):
+        partner = self.env['res.partner'].create({'name': 'Stands in for an account'})
+        account = {'ok': True, 'text': 'Sends from it.', 'name': 'Main line',
+                   'address': '+27 10 000 0000', 'model': 'res.partner', 'res_id': partner.id}
+        line = self.Flows._connection_line(account)
+        self.assertTrue(line['account'])
+        self.assertEqual((line['model'], line['res_id']), ('res.partner', partner.id))
+        # A record that is gone, or a kind of record that does not exist here,
+        # is still named but cannot be opened.
+        gone = self.Flows._connection_line(dict(account, res_id=partner.id + 100000))
+        self.assertTrue(gone['account'])
+        self.assertNotIn('model', gone)
+        self.assertNotIn('res_id', gone)
+        self.assertNotIn('model', self.Flows._connection_line(dict(account, model='no.such.model')))
+        # What starts a flow is not an account, and a warning is neither.
+        self.assertFalse(self.Flows._connection_line(
+            {'ok': True, 'text': 'x', 'name': 'Starts on', 'address': 'JOBS'})['account'])
+        self.assertFalse(self.Flows._connection_line({'ok': False, 'text': 'Nothing.'})['account'])
+
+    def test_card_names_the_accounts_only(self):
+        partner = self.env['res.partner'].create({'name': 'Stands in for an account'})
+        lines = [
+            {'ok': True, 'text': 's', 'name': 'Main line', 'address': '+27 10 000 0000',
+             'model': 'res.partner', 'res_id': partner.id},
+            {'ok': True, 'text': 's', 'name': 'Starts on', 'address': 'JOBS'},
+            {'ok': False, 'text': 'A warning.'},
+        ]
+        connections = [
+            {'channel_id': self.wa.id, 'options': [],
+             'lines': [self.Flows._connection_line(line) for line in lines]},
+            {'channel_id': self.sms.id, 'options': [],
+             'lines': [{'ok': False, 'text': 'Nothing.', 'account': False}]},
+        ]
+        with patch.object(type(self.Flows), '_connections', lambda self, bot: connections):
+            runs = {r['channel']: r for r in self.Flows._card_runs(self.bot)}
+        self.assertEqual(runs['WhatsApp']['links'], [{
+            'name': 'Main line', 'address': '+27 10 000 0000',
+            'model': 'res.partner', 'res_id': partner.id}])
+        self.assertTrue(runs['WhatsApp']['ok'])
+        self.assertEqual((runs['SMS']['ok'], runs['SMS']['links']), (False, []))
 
     def test_connect_channel_needs_something_to_connect(self):
         with self.assertRaises(UserError):

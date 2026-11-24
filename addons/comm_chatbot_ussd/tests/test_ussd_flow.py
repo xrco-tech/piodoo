@@ -179,5 +179,8 @@ class TestUssdFlow(HttpCase):
         line = adapter.connections(self.env, self.bot)[0]
         self.assertTrue(line['ok'])
         self.assertIn('*555#', line['text'])
+        # The screen shows the account and its code, and can open the account.
+        self.assertEqual((line['name'], line['address']), (self.at.name, '*555#'))
+        self.assertEqual((line['model'], line['res_id']), ('comm.ussd.account', self.at.id))
         adapter.connect(self.env, self.bot, self.at.id, False)
         self.assertFalse(self.at.flow_bot_id)

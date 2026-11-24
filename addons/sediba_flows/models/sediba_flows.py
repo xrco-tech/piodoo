@@ -106,11 +106,18 @@ class SedibaFlows(models.AbstractModel):
         names = {c.id: c.name for c in bot.channel_ids}
         res = []
         for connection in self._connections(bot):
-            ok = [line['text'] for line in connection['lines'] if line.get('ok')]
+            # Only what the flow is connected to: an account, a code, a site.
+            links = [{
+                'name': line['name'],
+                'address': line.get('address') or '',
+                'model': line.get('model') or False,
+                'res_id': line.get('res_id') or False,
+            } for line in connection['lines']
+                if line.get('ok') and line.get('account')]
             res.append({
                 'channel': names[connection['channel_id']],
-                'ok': bool(ok),
-                'text': ' '.join(ok),
+                'ok': bool(links),
+                'links': links,
             })
         return res
 
@@ -358,8 +365,24 @@ class SedibaFlows(models.AbstractModel):
             # add-on offers a choice (USSD: the codes).
             options = adapter().connect_options(self.env, bot) \
                 if adapter and hasattr(adapter, 'connect_options') else []
-            res.append({'channel_id': channel.id, 'lines': lines, 'options': options})
+            res.append({'channel_id': channel.id,
+                        'lines': [self._connection_line(line) for line in lines],
+                        'options': options})
         return res
+
+    def _connection_line(self, line):
+        """A line as the screen shows it. A line that names an account says
+        which record it is, so the screen can open it; that is left out for
+        someone who may not read that kind of record."""
+        line = dict(line)
+        model = line.get('model')
+        # An account, a code or a site, as against what starts the flow.
+        line['account'] = bool(model and line.get('name'))
+        if model and not (model in self.env and self.env[model].has_access('read')
+                          and self.env[model].browse(line.get('res_id')).exists()):
+            line.pop('model')
+            line.pop('res_id', None)
+        return line
 
     @api.model
     def connect_channel(self, bot_id, channel_id, option_id, on):

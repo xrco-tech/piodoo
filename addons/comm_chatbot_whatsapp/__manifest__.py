@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Comm Chatbot — WhatsApp Adapter',
-    'version': '18.0.1.0.2',
+    'version': '18.0.1.0.3',
     'category': 'Communications',
     'summary': 'WhatsApp channel adapter for comm_chatbot',
     'author': 'XR Co.',

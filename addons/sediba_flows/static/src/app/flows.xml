@@ -84,7 +84,16 @@
                     <t t-if="detailed">
                         <div t-if="flow.runs.length" class="o_sfl_fcard_runs">
                             <div t-foreach="flow.runs" t-as="run" t-key="run.channel">
-                                <b t-esc="run.channel"/>: <t t-if="run.ok" t-esc="run.text"/><t t-else="">not connected</t>
+                                <b t-esc="run.channel"/>:
+                                <t t-if="run.ok">
+                                    <t t-foreach="run.links" t-as="link" t-key="link_index">
+                                        <t t-if="link_index">, </t>
+                                        <button t-if="link.model" type="button" class="o_sfl_conn_link" t-att-title="'Open ' + link.name"
+                                                t-on-click="() => this.openRecord(link)" t-esc="linkLabel(link)"/>
+                                        <span t-else="" t-esc="linkLabel(link)"/>
+                                    </t>
+                                </t>
+                                <t t-else="">not connected</t>
                             </div>
                         </div>
                         <t t-if="flow.usage">
@@ -306,7 +315,10 @@
                         <div t-foreach="connectionLines(channel.id)" t-as="line" t-key="line_index"
                              t-att-class="'o_sfl_conn' + (line.ok ? '' : ' o_sfl_conn_off')">
                             <i t-att-class="'fa ' + (line.ok ? 'fa-check' : 'fa-exclamation-triangle')" aria-hidden="true"/>
-                            <span t-esc="line.text"/>
+                            <button t-if="line.name and line.model" type="button" class="o_sfl_conn_link" t-att-title="'Open ' + line.name"
+                                    t-on-click="() => this.openRecord(line)" t-esc="linkLabel(line)"/>
+                            <span t-elif="line.name" t-esc="linkLabel(line)"/>
+                            <span t-else="" t-esc="line.text"/>
                         </div>
                         <t t-set="options" t-value="connectionOptions(channel.id)"/>
                         <div t-if="options.length" class="o_sfl_conn_pick">

@@ -42,7 +42,9 @@ class SmsAdapter:
         if account:
             sender = account.sender_id or 'no sender name or number on the account'
             lines.append({'ok': True, 'text': 'Sends from %s (%s). Every flow '
-                          'uses the default SMS account.' % (account.name, sender)})
+                          'uses the default SMS account.' % (account.name, sender),
+                          'name': account.name, 'address': account.sender_id or '',
+                          'model': account._name, 'res_id': account.id})
         else:
             lines.append({'ok': False, 'text': 'No SMS account is set up, so '
                           'nothing can be sent.'})

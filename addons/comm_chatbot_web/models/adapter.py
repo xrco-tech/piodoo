@@ -24,11 +24,14 @@ class WebAdapter:
     def connections(self, env, bot):
         """Where the web chat widget of this bot may be shown."""
         domains = bot._web_allowed_domain_list()
-        if domains:
-            return [{'ok': True, 'text': 'The chat widget may be shown on this '
-                     'Odoo site and on: %s.' % ', '.join(domains)}]
-        return [{'ok': True, 'text': 'The chat widget may be shown on this Odoo '
-                 'site only. No other website is allowed to show it yet.'}]
+        site = (env['ir.config_parameter'].sudo().get_param('web.base.url') or '').rstrip('/')
+        text = 'The chat widget may be shown on this Odoo site and on: %s.' % ', '.join(domains) \
+            if domains else 'The chat widget may be shown on this Odoo site only. ' \
+                            'No other website is allowed to show it yet.'
+        # The flow's own record is where the allowed websites are kept.
+        return [{'ok': True, 'text': text, 'name': 'Chat widget',
+                 'address': ', '.join([site] + domains),
+                 'model': bot._name, 'res_id': bot.id}]
 
     def receive(self, env, source_record):
         return {

@@ -124,7 +124,9 @@ class WhatsappAdapter:
         if account:
             number = account.phone_number or 'no number on the account'
             lines.append({'ok': True, 'text': 'Sends from %s (%s). Every flow '
-                          'uses the default WhatsApp account.' % (account.name, number)})
+                          'uses the default WhatsApp account.' % (account.name, number),
+                          'name': account.name, 'address': account.phone_number or '',
+                          'model': account._name, 'res_id': account.id})
         else:
             lines.append({'ok': False, 'text': 'No WhatsApp account is set up, '
                           'so nothing can be sent.'})
@@ -134,10 +136,12 @@ class WhatsappAdapter:
         if any(t.active and t.channel_id.code == 'whatsapp' and t.kind == 'any_inbound'
                for t in bot.trigger_ids):
             lines.append({'ok': True, 'text': 'Starts on any message that no '
-                          'other flow picks up.'})
+                          'other flow picks up.',
+                          'name': 'Starts on', 'address': 'any message'})
         elif words:
             lines.append({'ok': True, 'text': 'Starts when someone sends: %s.'
-                          % ', '.join(words)})
+                          % ', '.join(words),
+                          'name': 'Starts on', 'address': ', '.join(words)})
         else:
             lines.append({'ok': False, 'text': 'No keyword starts this flow, so '
                           'a message from a contact will not reach it.'})
