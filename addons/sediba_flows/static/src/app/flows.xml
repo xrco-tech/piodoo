@@ -76,11 +76,11 @@
                         <button type="button" class="o_sfl_link" t-on-click="() => this.openFlow(flow.id)" t-esc="flow.name"/>
                         <span t-att-class="'o_sfl_tag o_sfl_tag_' + flow.status" t-esc="statusLabel(flow.status)"/>
                     </div>
-                    <div t-if="detailed and flow.description" class="o_sfl_fcard_desc" t-esc="flow.description"/>
                     <div>
                         <span t-foreach="flow.channels" t-as="name" t-key="name" class="o_sfl_chip" t-esc="name"/>
                         <span t-if="!flow.channels.length" class="o_sfl_muted">No channel yet</span>
                     </div>
+                    <div t-if="detailed and flow.description" class="o_sfl_fcard_desc" t-esc="flow.description"/>
                     <t t-if="detailed">
                         <div t-if="flow.runs.length" class="o_sfl_fcard_runs">
                             <div t-foreach="flow.runs" t-as="run" t-key="run.channel">
