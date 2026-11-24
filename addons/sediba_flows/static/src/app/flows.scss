@@ -171,7 +171,17 @@ $o-sfl-kinds: (
 // Steps and when it was edited, tucked under the name.
 .o_sfl_fcard_meta { margin-top: -6px; }
 
-.o_sfl_fcard_desc { line-height: 1.4; overflow-wrap: anywhere; }
+.o_sfl_fcard_desc {
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    // Three lines at most; a longer description ends in an ellipsis and can
+    // be read in full by hovering, or in the flow itself.
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+}
 
 .o_sfl_fcard_runs {
     display: flex;
@@ -989,6 +999,33 @@ textarea.o_sfl_input { resize: vertical; }
     .fa { margin-top: 3px; }
     &.o_sfl_conn_off { color: var(--sfl-warn); }
 }
+
+// One thing the flow is connected to: its name, its number or code under it,
+// and what can be done with it on the right.
+.o_sfl_conn_row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 22px;
+    padding: 8px 10px;
+    border: 1px solid var(--sfl-line);
+    border-radius: 8px;
+    background: var(--sfl-box);
+
+    .btn { flex: none; }
+}
+
+.o_sfl_conn_what {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-wrap: anywhere;
+
+    .o_sfl_conn_link, b { font-weight: 600; }
+}
+
+.o_sfl_conn_value { color: var(--sfl-text); font-weight: 600; }
 
 // Choosing what a channel connects the flow to (USSD: a code).
 .o_sfl_conn_pick {

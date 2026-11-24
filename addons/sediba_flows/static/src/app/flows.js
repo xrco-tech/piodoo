@@ -952,6 +952,17 @@ export class SedibaFlows extends Component {
         }
     }
 
+    /** The connected choice a line stands for, so Disconnect can sit on its row. */
+    lineOption(options, line) {
+        return options.find((o) => o.connected && o.id === line.option_id);
+    }
+
+    /** A choice in the list: the account first, then its code and what it runs today. */
+    optionLabel(option) {
+        const what = option.name ? [option.name, option.code].filter(Boolean).join(" · ") : option.label;
+        return option.runs ? _t("%(what)s (now runs %(runs)s)", { what, runs: option.runs }) : what;
+    }
+
     /** What the flow is connected to on one channel, as lines to read. */
     connectionLines(channelId) {
         const found = this.state.data.flow.connections.find((c) => c.channel_id === channelId);
