@@ -278,6 +278,7 @@ export class SedibaFlows extends Component {
             home: null,
             homeChannel: "all",
             homeStatus: "all",
+            homeSearch: "",
             homeSize: this.storedHomeSize(),
             data: null,
             selectedId: false,
@@ -379,12 +380,17 @@ export class SedibaFlows extends Component {
     }
 
     get homeFiltered() {
-        return this.state.homeChannel !== "all" || this.state.homeStatus !== "all";
+        return (
+            this.state.homeChannel !== "all" ||
+            this.state.homeStatus !== "all" ||
+            Boolean(this.state.homeSearch.trim())
+        );
     }
 
     clearHomeFilters() {
         this.state.homeChannel = "all";
         this.state.homeStatus = "all";
+        this.state.homeSearch = "";
     }
 
     /** What the Channel drop-down says is chosen. */
@@ -400,11 +406,16 @@ export class SedibaFlows extends Component {
     /** The flows the Channel and Status drop-downs leave. */
     get homeFlows() {
         const { homeChannel, homeStatus } = this.state;
-        return this.state.home.flows.filter(
-            (f) =>
+        // Every word typed has to be in the flow's name or its description.
+        const words = this.state.homeSearch.toLowerCase().split(/\s+/).filter(Boolean);
+        return this.state.home.flows.filter((f) => {
+            const text = `${f.name} ${f.description}`.toLowerCase();
+            return (
                 (homeChannel === "all" || f.channel_codes.includes(homeChannel)) &&
-                (homeStatus === "all" || f.status === homeStatus)
-        );
+                (homeStatus === "all" || f.status === homeStatus) &&
+                words.every((w) => text.includes(w))
+            );
+        });
     }
 
     /** The statuses some flow has, in the order they are met in a flow's life. */
