@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
@@ -225,6 +227,48 @@ class TestSedibaFlows(TransactionCase):
         self.assertEqual((step['placed'], step['x'], step['y']), (True, 340, 0))
         step = self._step(self.Flows.tidy(self.flow_id), entry.id)
         self.assertFalse(step['placed'])
+
+    def test_card_says_what_the_flow_is_and_where_it_runs(self):
+        self.Flows.save_flow(self.flow_id, {'description': '  Signs people up.  '})
+        self.assertEqual(self.bot.description, 'Signs people up.')
+        card = next(f for f in self.Flows.home()['flows'] if f['id'] == self.flow_id)
+        self.assertEqual(card['description'], 'Signs people up.')
+        self.assertEqual(set(card['channel_codes']), {'whatsapp', 'ussd', 'sms'})
+        self.assertEqual({r['channel'] for r in card['runs']}, {'WhatsApp', 'USSD', 'SMS'})
+        self.assertTrue(card['edited'])
+        # Nobody has talked to it, so there are no numbers to show.
+        self.assertFalse(card['usage'])
+        self.assertEqual(card['attention'], [])
+        self.assertEqual(self.Flows.load(self.flow_id)['flow']['description'], 'Signs people up.')
+
+    def test_card_flags_an_empty_action(self):
+        self.env['comm.bot.step'].create({
+            'bot_id': self.bot.id, 'name': 'Look it up', 'kind': 'action'})
+        card = next(f for f in self.Flows.home()['flows'] if f['id'] == self.flow_id)
+        self.assertEqual(card['attention'], ['1 step runs an action that is empty'])
+
+    def test_card_numbers_count_contacts_not_tests(self):
+        self._try_flow()
+        res = self.Flows.try_start(self.flow_id, 'whatsapp', 'Tester', '', {})
+        card = next(f for f in self.Flows.home()['flows'] if f['id'] == self.flow_id)
+        self.assertFalse(card['usage'], "a walk in Try it is not a conversation")
+        self.bot.engine_mode = 'shadow'
+        Exec = self.env['comm.chatbot.executor']
+        people = self.env['res.partner'].create(
+            [{'name': 'One'}, {'name': 'Two'}, {'name': 'Three'}])
+        talks = [Exec.start(self.bot, p, 'whatsapp') for p in people]
+        stopped_at = talks[1].current_step_id
+        # One of them reaches the end; one started long ago.
+        talks[0].close(outcome='ended', state='closed')
+        talks[2].opened_at = talks[2].opened_at - timedelta(days=45)
+        usage = next(f for f in self.Flows.home()['flows'] if f['id'] == self.flow_id)['usage']
+        self.assertEqual(usage['conversations'], 2)
+        self.assertEqual(usage['finished_pct'], 50)
+        self.assertEqual(len(usage['days']), 14)
+        self.assertEqual(usage['days'][-1], 2)
+        self.assertEqual(sum(usage['days']), 2)
+        self.assertEqual(usage['stop'], stopped_at.name)
+        self.Flows.try_stop(res['session_id'])
 
     def test_usage_counts_contacts_not_tests(self):
         self._try_flow()
