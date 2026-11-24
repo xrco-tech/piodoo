@@ -484,8 +484,73 @@ class TestSedibaFlows(TransactionCase):
         self.assertTrue(runs['WhatsApp']['ok'])
         self.assertEqual((runs['SMS']['ok'], runs['SMS']['links']), (False, []))
 
+    def _keyword_adapter(self):
+        """Stands in for a channel add-on whose flows start on a keyword."""
+        class Keyworded:
+            keyword_start = True
+            connect_noun = 'number'
+
+            def connections(self, env, bot):
+                return [{'ok': False, 'text': 'Nothing connected.'}]
+        return patch('odoo.addons.sediba_flows.models.sediba_flows.get_adapter',
+                     lambda key: Keyworded)
+
+    def _keywords(self, data, channel):
+        return next(c for c in data['flow']['connections']
+                    if c['channel_id'] == channel.id)['keywords']
+
+    def test_keywords_are_added_once_and_removed(self):
+        with self._keyword_adapter():
+            data = self.Flows.add_keyword(self.flow_id, self.wa.id, '  Jobs  ')
+            self.assertEqual(self._keywords(data, self.wa), {'words': ['Jobs'], 'any': False})
+            self.assertEqual(next(c for c in data['flow']['connections']
+                                  if c['channel_id'] == self.wa.id)['noun'], 'number')
+            # The same word again, in other capitals, is not added twice.
+            data = self.Flows.add_keyword(self.flow_id, self.wa.id, 'JOBS')
+            self.assertEqual(self._keywords(data, self.wa)['words'], ['Jobs'])
+            trigger = self.bot.trigger_ids
+            self.assertEqual((trigger.kind, trigger.match_mode, trigger.channel_id),
+                             ('keyword', 'exact', self.wa))
+            with self.assertRaises(UserError):
+                self.Flows.add_keyword(self.flow_id, self.wa.id, '   ')
+            data = self.Flows.remove_keyword(self.flow_id, self.wa.id, 'jobs')
+            self.assertEqual(self._keywords(data, self.wa)['words'], [])
+
+    def test_a_keyword_starts_one_flow_only(self):
+        other = self.env['comm.bot'].browse(self.Flows.create_flow('Other flow'))
+        with self._keyword_adapter():
+            self.Flows.add_keyword(other.id, self.wa.id, 'Jobs')
+            with self.assertRaises(UserError) as error:
+                self.Flows.add_keyword(self.flow_id, self.wa.id, 'jobs')
+            self.assertIn('Other flow', str(error.exception))
+            # The same word on another channel is its own thing.
+            self.Flows.add_keyword(self.flow_id, self.sms.id, 'jobs')
+            self.assertEqual(self.bot.trigger_ids.channel_id, self.sms)
+
+    def test_only_one_flow_takes_any_message(self):
+        other = self.env['comm.bot'].browse(self.Flows.create_flow('Other flow'))
+        with self._keyword_adapter():
+            data = self.Flows.set_any_message(self.flow_id, self.wa.id, True)
+            self.assertTrue(self._keywords(data, self.wa)['any'])
+            with self.assertRaises(UserError):
+                self.Flows.set_any_message(other.id, self.wa.id, True)
+            data = self.Flows.set_any_message(self.flow_id, self.wa.id, False)
+            self.assertFalse(self._keywords(data, self.wa)['any'])
+            self.Flows.set_any_message(other.id, self.wa.id, True)
+
+    def test_keywords_only_where_the_channel_starts_flows_that_way(self):
+        data = self.Flows.load(self.flow_id)
+        if not self._keywords(data, self.ussd):
+            with self.assertRaises(UserError):
+                self.Flows.add_keyword(self.flow_id, self.ussd.id, 'Jobs')
+
     def test_connect_channel_needs_something_to_connect(self):
-        with self.assertRaises(UserError):
+        class Fixed:
+            """A channel add-on with one fixed connection and no choice."""
+            def connections(self, env, bot):
+                return [{'ok': True, 'text': 'Always on.'}]
+        with patch('odoo.addons.sediba_flows.models.sediba_flows.get_adapter',
+                   lambda key: Fixed), self.assertRaises(UserError):
             self.Flows.connect_channel(self.flow_id, self.wa.id, 1, True)
         data = self.Flows.load(self.flow_id)
         self.assertTrue(all('options' in c for c in data['flow']['connections']))

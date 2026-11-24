@@ -984,16 +984,65 @@ export class SedibaFlows extends Component {
                 this.state.selectedId
             );
         };
+        const noun = this.connectionNoun(channelId);
         this.dialog.add(ConfirmationDialog, {
-            title: on ? _t("Connect this code?") : _t("Disconnect this code?"),
-            body: on
-                ? _t(
-                      "%(code)s runs %(runs)s today. From now on, everyone who dials it gets this flow instead, even while the flow is a draft.",
-                      { code: option.label, runs: option.runs }
-                  )
-                : _t("%s will stop running this flow and go back to what it ran before.", option.label),
+            title: on ? _t("Connect this %s?", noun) : _t("Disconnect this %s?", noun),
+            // Each channel says in its own words what connecting changes.
+            body: (on ? option.ask_on : option.ask_off) || option.label,
             confirmLabel: on ? _t("Connect") : _t("Disconnect"),
             confirm: apply,
+            cancel: () => {},
+        });
+    }
+
+    /** What a thing to connect is called on a channel: a code, a number, a sender. */
+    connectionNoun(channelId) {
+        const found = this.state.data.flow.connections.find((c) => c.channel_id === channelId);
+        return (found && found.noun) || "code";
+    }
+
+    /** The words that start the flow on a channel, or false where none can. */
+    connectionKeywords(channelId) {
+        const found = this.state.data.flow.connections.find((c) => c.channel_id === channelId);
+        return found ? found.keywords : false;
+    }
+
+    async keywordCall(method, args) {
+        this.edits++;
+        this.setData(
+            await this.orm.call(MODEL, method, [this.state.data.flow.id, ...args]),
+            this.state.selectedId
+        );
+    }
+
+    async addKeyword(channelId, ev) {
+        const input = ev.target.elements.word;
+        const word = input.value.trim();
+        if (!word) {
+            return;
+        }
+        await this.keywordCall("add_keyword", [channelId, word]);
+        input.value = "";
+    }
+
+    removeKeyword(channelId, word) {
+        return this.keywordCall("remove_keyword", [channelId, word]);
+    }
+
+    /** Taking every other message is a big step, so it asks first. */
+    setAnyMessage(channelId, ev) {
+        const on = ev.target.checked;
+        if (!on) {
+            return this.keywordCall("set_any_message", [channelId, false]);
+        }
+        ev.target.checked = false;
+        this.dialog.add(ConfirmationDialog, {
+            title: _t("Take any message?"),
+            body: _t(
+                "Once this flow is live or test only, every message that comes in on its number and matches no flow's keyword will start it. That includes messages an older bot or Chat2Work also answers, so a contact could get two replies."
+            ),
+            confirmLabel: _t("Take any message"),
+            confirm: () => this.keywordCall("set_any_message", [channelId, true]),
             cancel: () => {},
         });
     }

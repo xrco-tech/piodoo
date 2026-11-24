@@ -224,7 +224,13 @@
                 <button type="button" class="btn btn-light o_sfl_icon_btn"
                         t-att-aria-pressed="state.panelOpen ? 'true' : 'false'"
                         t-att-aria-label="panelToggleLabel" t-att-title="panelToggleLabel" t-on-click="togglePanel">
-                    <i t-att-class="'fa ' + (state.panelOpen ? 'fa-angle-double-right' : 'fa-angle-double-left')" aria-hidden="true"/>
+                    <!-- A window with its side panel marked off; the arrow points the way the panel will go. -->
+                    <svg class="o_sfl_panel_icon" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+                        <rect x="2.5" y="3.5" width="15" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M12.5 3.5v13" fill="none" stroke="currentColor" stroke-width="1.6"/>
+                        <path t-if="state.panelOpen" d="M6.3 7.2L9.7 10L6.3 12.8Z" fill="currentColor"/>
+                        <path t-else="" d="M9.7 7.2L6.3 10L9.7 12.8Z" fill="currentColor"/>
+                    </svg>
                 </button>
             </div>
 
@@ -359,11 +365,34 @@
                                 <span t-esc="line.text"/>
                             </div>
                         </t>
+                        <t t-set="noun" t-value="connectionNoun(channel.id)"/>
                         <div t-if="options.some((o) => !o.connected)" class="o_sfl_conn_pick">
-                            <select class="o_sfl_input" t-att-aria-label="'Connect a ' + channel.name + ' code'" t-on-change="(ev) => this.pickOption(channel.id, ev)">
-                                <option value=""><t t-if="options.some((o) => o.connected)">Connect another code…</t><t t-else="">Connect a code…</t></option>
+                            <select class="o_sfl_input" t-att-aria-label="'Connect a ' + channel.name + ' ' + noun" t-on-change="(ev) => this.pickOption(channel.id, ev)">
+                                <option value=""><t t-if="options.some((o) => o.connected)">Connect another <t t-esc="noun"/>…</t><t t-else="">Connect a <t t-esc="noun"/>…</t></option>
                                 <option t-foreach="options.filter((o) => !o.connected)" t-as="option" t-key="option.id" t-att-value="option.id" t-esc="optionLabel(option)"/>
                             </select>
+                        </div>
+                        <!-- The words that start the flow on this channel. -->
+                        <t t-set="keywords" t-value="connectionKeywords(channel.id)"/>
+                        <div t-if="keywords" class="o_sfl_keys">
+                            <span class="o_sfl_muted o_sfl_small">Starts when someone sends</span>
+                            <div t-if="keywords.words.length" class="o_sfl_keys_list">
+                                <span t-foreach="keywords.words" t-as="word" t-key="word" class="o_sfl_key">
+                                    <t t-esc="word"/>
+                                    <button type="button" t-att-aria-label="'Remove the keyword ' + word" t-att-title="'Remove ' + word"
+                                            t-on-click="() => this.removeKeyword(channel.id, word)">×</button>
+                                </span>
+                            </div>
+                            <form class="o_sfl_keys_add" t-on-submit.prevent="(ev) => this.addKeyword(channel.id, ev)">
+                                <input type="text" name="word" class="o_sfl_input" placeholder="Add a keyword, e.g. JOBS"
+                                       t-att-aria-label="'A keyword that starts this flow on ' + channel.name"/>
+                                <button type="submit" class="btn btn-light">Add</button>
+                            </form>
+                            <span class="o_sfl_muted o_sfl_small">The whole message has to be the keyword. Capitals do not matter.</span>
+                            <label class="o_sfl_check">
+                                <input type="checkbox" t-att-checked="keywords.any" t-on-change="(ev) => this.setAnyMessage(channel.id, ev)"/>
+                                <span>Also any message no keyword picks up</span>
+                            </label>
                         </div>
                     </t>
                 </t>

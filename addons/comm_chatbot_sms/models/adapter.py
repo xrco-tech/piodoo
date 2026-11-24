@@ -19,7 +19,8 @@ class SmsAdapter:
         try:
             # comm.bot has no SMS account of its own, so pin the default one
             # (when there is one) for provider routing and billing.
-            account = env['comm.sms.account'].get_default()
+            account = conversation.bot_id.sudo().sms_account_id \
+                or env['comm.sms.account'].get_default()
             sms = Sms.create({
                 'partner_id': conversation.partner_id.id,
                 'number': number,
@@ -35,22 +36,49 @@ class SmsAdapter:
         return {'status': 'sent', 'source_model': 'sms.sms',
                 'source_id': sms.id}
 
+    connect_noun = 'sender'
+
     def connections(self, env, bot):
-        """The SMS sender this bot sends from. Replies are not wired yet."""
+        """The SMS account this bot sends from. Replies are not wired yet."""
         lines = []
-        account = env['comm.sms.account'].sudo().get_default()
+        account = bot.sudo().sms_account_id
         if account:
             sender = account.sender_id or 'no sender name or number on the account'
-            lines.append({'ok': True, 'text': 'Sends from %s (%s). Every flow '
-                          'uses the default SMS account.' % (account.name, sender),
+            lines.append({'ok': True, 'text': 'Sends from %s (%s).' % (account.name, sender),
                           'name': account.name, 'address': account.sender_id or '',
-                          'model': account._name, 'res_id': account.id})
+                          'model': account._name, 'res_id': account.id,
+                          'option_id': account.id})
+        elif env['comm.sms.account'].sudo().search_count([]):
+            lines.append({'ok': False, 'text': 'No SMS sender is connected to this '
+                          'flow. It would send from the default account.'})
         else:
             lines.append({'ok': False, 'text': 'No SMS account is set up, so '
                           'nothing can be sent.'})
         lines.append({'ok': False, 'text': 'A reply by SMS is kept in the '
                       'conversation, but it does not start a flow or move one on yet.'})
         return lines
+
+    def connect_options(self, env, bot):
+        """The SMS accounts this bot could send from."""
+        return [{
+            'id': a.id,
+            'label': '%s  %s' % (a.sender_id or '(no sender)', a.name),
+            'name': a.name,
+            'code': a.sender_id or '',
+            'runs': '',
+            'ask_on': 'This flow will send its SMS from %s.' % (a.sender_id or a.name),
+            'ask_off': 'This flow will go back to sending from the default SMS account.',
+            'connected': a == bot.sudo().sms_account_id,
+        } for a in env['comm.sms.account'].sudo().search([])]
+
+    def connect(self, env, bot, option_id, on):
+        account = env['comm.sms.account'].sudo().browse(option_id).exists()
+        if not account:
+            return
+        if on:
+            bot.sudo().sms_account_id = account
+        elif bot.sudo().sms_account_id == account:
+            bot.sudo().sms_account_id = False
 
     def receive(self, env, source_record):
         return {
