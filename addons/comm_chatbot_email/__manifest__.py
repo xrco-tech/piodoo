@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Comm Chatbot — Email Adapter',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Communications',
     'summary': 'Email channel adapter for comm_chatbot (via mail.mail)',
     'author': 'XR Co.',

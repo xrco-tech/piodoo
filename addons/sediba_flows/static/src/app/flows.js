@@ -251,6 +251,30 @@ class FlowDuplicate extends Component {
     }
 }
 
+/** Asks for the name of a new thing to connect (an email address). */
+class NewAddress extends Component {
+    static template = "sediba_flows.NewAddress";
+    static components = { Dialog };
+    static props = { title: String, hint: String, confirm: Function, close: Function };
+
+    setup() {
+        this.state = useState({ name: "", busy: false });
+    }
+
+    async confirm() {
+        if (!this.state.name.trim() || this.state.busy) {
+            return;
+        }
+        this.state.busy = true;
+        try {
+            await this.props.confirm(this.state.name.trim());
+            this.props.close();
+        } finally {
+            this.state.busy = false;
+        }
+    }
+}
+
 export class SedibaFlows extends Component {
     static template = "sediba_flows.App";
     static components = { Dropdown, DropdownItem };
@@ -1047,7 +1071,48 @@ export class SedibaFlows extends Component {
         });
     }
 
+    /** Whether a new thing to connect can be made here, and what to show with it. */
+    connectionNew(channelId) {
+        const found = this.state.data.flow.connections.find((c) => c.channel_id === channelId);
+        return found ? found.new : false;
+    }
+
+    /** "a number", "an address". */
+    withArticle(noun) {
+        return (/^[aeiou]/i.test(noun) ? _t("an") : _t("a")) + " " + noun;
+    }
+
+    /** Where a missing thing is set up: its list, opened over the screen. */
+    openSetup(line) {
+        return this.action.doAction({
+            type: "ir.actions.act_window",
+            name: line.open_label,
+            res_model: line.open_model,
+            views: [[false, "list"], [false, "form"]],
+            target: "new",
+        });
+    }
+
+    newConnection(channelId) {
+        const noun = this.connectionNoun(channelId);
+        this.dialog.add(NewAddress, {
+            title: _t("New %s", noun),
+            hint: (this.connectionNew(channelId) || {}).hint || "",
+            confirm: async (name) => {
+                this.edits++;
+                this.setData(
+                    await this.orm.call(MODEL, "connect_new", [this.state.data.flow.id, channelId, name]),
+                    this.state.selectedId
+                );
+            },
+        });
+    }
+
     pickOption(channelId, ev) {
+        if (ev.target.value === "new") {
+            ev.target.value = "";
+            return this.newConnection(channelId);
+        }
         const id = Number(ev.target.value);
         ev.target.value = "";
         const option = this.connectionOptions(channelId).find((o) => o.id === id);
@@ -1064,6 +1129,9 @@ export class SedibaFlows extends Component {
     /** A choice in the list: the account first, then its code and what it runs today. */
     optionLabel(option) {
         const what = option.name ? [option.name, option.code].filter(Boolean).join(" · ") : option.label;
+        if (option.note) {
+            return `${what} (${option.note})`;
+        }
         return option.runs ? _t("%(what)s (now runs %(runs)s)", { what, runs: option.runs }) : what;
     }
 

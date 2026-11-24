@@ -1145,6 +1145,15 @@ textarea.o_sfl_input { resize: vertical; }
     &:hover { text-decoration-color: currentColor; }
 }
 
+.o_sfl_conn_fix { margin-left: 4px; font-weight: 600; }
+
+.o_sfl_new_address {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    .o_sfl_input { flex: 1; min-width: 0; }
+}
+
 // The Duplicate dialog. It opens outside .o_sfl, so it uses Odoo's own colours.
 .o_sfl_dup {
     display: flex;

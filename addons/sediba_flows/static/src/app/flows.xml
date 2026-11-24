@@ -356,20 +356,37 @@
                                 <t t-set="option" t-value="lineOption(options, line)"/>
                                 <button t-if="option" type="button" class="btn btn-light" t-on-click="() => this.connectOption(channel.id, option, false)">Disconnect</button>
                             </div>
+                            <!-- Something worked out for the flow, with a link to it: "Sent by <server>". -->
+                            <div t-elif="line.label" class="o_sfl_conn">
+                                <i class="fa fa-check" aria-hidden="true"/>
+                                <span>
+                                    <t t-esc="line.label"/>
+                                    <button t-if="line.model" type="button" class="o_sfl_conn_link o_sfl_conn_value" t-att-title="'Open ' + line.name"
+                                            t-on-click="() => this.openRecord(line)" t-esc="line.name"/>
+                                    <b t-else="" class="o_sfl_conn_value" t-esc="line.name"/>
+                                </span>
+                            </div>
                             <!-- What starts the flow on this channel. -->
                             <div t-elif="line.name" class="o_sfl_conn">
                                 <span t-esc="line.name"/> <b class="o_sfl_conn_value" t-esc="line.address"/>
                             </div>
                             <div t-else="" t-att-class="'o_sfl_conn' + (line.ok ? '' : ' o_sfl_conn_off')">
                                 <i t-att-class="'fa ' + (line.ok ? 'fa-check' : 'fa-exclamation-triangle')" aria-hidden="true"/>
-                                <span t-esc="line.text"/>
+                                <span>
+                                    <t t-esc="line.text"/>
+                                    <button t-if="line.open_model" type="button" class="o_sfl_conn_link o_sfl_conn_fix"
+                                            t-on-click="() => this.openSetup(line)" t-esc="line.open_label"/>
+                                </span>
                             </div>
                         </t>
                         <t t-set="noun" t-value="connectionNoun(channel.id)"/>
-                        <div t-if="options.some((o) => !o.connected)" class="o_sfl_conn_pick">
-                            <select class="o_sfl_input" t-att-aria-label="'Connect a ' + channel.name + ' ' + noun" t-on-change="(ev) => this.pickOption(channel.id, ev)">
-                                <option value=""><t t-if="options.some((o) => o.connected)">Connect another <t t-esc="noun"/>…</t><t t-else="">Connect a <t t-esc="noun"/>…</t></option>
-                                <option t-foreach="options.filter((o) => !o.connected)" t-as="option" t-key="option.id" t-att-value="option.id" t-esc="optionLabel(option)"/>
+                        <t t-set="fresh" t-value="connectionNew(channel.id)"/>
+                        <div t-if="options.some((o) => !o.connected) or fresh" class="o_sfl_conn_pick">
+                            <select class="o_sfl_input" t-att-aria-label="'Connect ' + withArticle(channel.name + ' ' + noun)" t-on-change="(ev) => this.pickOption(channel.id, ev)">
+                                <option value=""><t t-if="options.some((o) => o.connected)">Connect another <t t-esc="noun"/>…</t><t t-else="">Connect <t t-esc="withArticle(noun)"/>…</t></option>
+                                <option t-foreach="options.filter((o) => !o.connected)" t-as="option" t-key="option.id" t-att-value="option.id"
+                                        t-att-disabled="option.disabled" t-esc="optionLabel(option)"/>
+                                <option t-if="fresh" value="new">New <t t-esc="noun"/>…</option>
                             </select>
                         </div>
                         <!-- The words that start the flow on this channel. -->
@@ -797,6 +814,26 @@
     </t>
 
     <!-- ── Notes on a flow that was brought over from an older bot ───────── -->
+    <t t-name="sediba_flows.NewAddress">
+        <Dialog title="props.title" size="'md'">
+            <div class="o_sfl_dup">
+                <div class="o_sfl_field">
+                    <label for="o_sfl_new_address">The part before the @</label>
+                    <div class="o_sfl_new_address">
+                        <input id="o_sfl_new_address" type="text" class="o_sfl_input" placeholder="jobs" t-model="state.name"
+                               t-on-keydown="(ev) => ev.key === 'Enter' and this.confirm()"/>
+                        <span t-if="props.hint">@<t t-esc="props.hint"/></span>
+                    </div>
+                </div>
+                <span class="text-muted">Mail sent to this address will start the flow, once the flow is live or test only. The flow replies from the same address.</span>
+            </div>
+            <t t-set-slot="footer">
+                <button type="button" class="btn btn-primary" t-att-disabled="state.busy or !state.name.trim()" t-on-click="confirm">Make and connect</button>
+                <button type="button" class="btn btn-light" t-on-click="props.close">Cancel</button>
+            </t>
+        </Dialog>
+    </t>
+
     <t t-name="sediba_flows.Duplicate">
         <Dialog title="'Duplicate this flow?'" size="'md'">
             <div class="o_sfl_dup">
