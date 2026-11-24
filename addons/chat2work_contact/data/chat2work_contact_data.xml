@@ -9,7 +9,7 @@
         <record id="sms_template_missed_call" model="sms.template">
             <field name="name">Chat2Work: we tried to call you</field>
             <field name="model_id" ref="chat2work.model_chat2work_candidate"/>
-            <field name="body">Chat2Work: we tried to call you. Dial *134*433*48# and choose Request Callback, and we'll call again. We never ask for money.</field>
+            <field name="body">Chat2Work: we tried to call you. Dial *134*8615# and choose Request Callback, and we'll call again. We never ask for money.</field>
         </record>
         <!-- WhatsApp call permission asked as Chat2Work; until Meta approves it the generic template is used. -->
         <record id="param_call_permission_template" model="ir.config_parameter">

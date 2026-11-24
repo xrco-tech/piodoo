@@ -110,7 +110,7 @@
             <main>
                 <t t-if="not candidate">
                     <div class="card status">
-                        CV links work for 30 days. To get a new one, dial <b>*134*433*48#</b> or send
+                        CV links work for 30 days. To get a new one, dial <b>*134*8615#</b> or send
                         "Ispani" on WhatsApp.
                     </div>
                 </t>
