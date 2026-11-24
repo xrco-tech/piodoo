@@ -16,51 +16,71 @@
                     <h1>Sediba Flows</h1>
                     <span class="o_sfl_muted">Conversations you design once and run on any channel you have connected.</span>
                 </div>
-                <div t-if="state.home.flows.length" class="o_sfl_pills" role="group" aria-label="Card size">
-                    <button type="button" class="o_sfl_pill" t-att-class="{active: !detailed}"
-                            t-att-aria-pressed="detailed ? 'false' : 'true'" t-on-click="() => this.pickHomeSize('compact')">Compact</button>
-                    <button type="button" class="o_sfl_pill" t-att-class="{active: detailed}"
-                            t-att-aria-pressed="detailed ? 'true' : 'false'" t-on-click="() => this.pickHomeSize('detailed')">Detailed</button>
-                </div>
+                <t t-if="state.home.flows.length">
+                    <t t-if="homeFiltered">
+                        <span class="o_sfl_muted o_sfl_small" aria-live="polite"><t t-esc="homeFlows.length"/> of <t t-esc="state.home.flows.length"/></span>
+                        <button type="button" class="o_sfl_link o_sfl_clear" t-on-click="clearHomeFilters">Clear</button>
+                    </t>
+                    <Dropdown menuClass="'o_sfl_menu'" position="'bottom-end'">
+                        <button type="button" class="o_sfl_pill o_sfl_dd" t-att-class="{active: state.homeChannel !== 'all'}">
+                            <span class="o_sfl_muted">Channel</span>
+                            <b t-esc="homeChannelLabel"/>
+                            <i class="fa fa-caret-down" aria-hidden="true"/>
+                        </button>
+                        <t t-set-slot="content">
+                            <DropdownItem onSelected="() => this.pickHomeChannel('all')">
+                                <div class="o_sfl_menu_row" t-att-class="{o_sfl_menu_on: state.homeChannel === 'all'}">
+                                    <span class="o_sfl_menu_dot"/>
+                                    <span class="o_sfl_menu_name">All channels</span>
+                                    <span class="o_sfl_menu_n" t-esc="state.home.flows.length"/>
+                                    <i t-att-class="'fa fa-check' + (state.homeChannel === 'all' ? '' : ' invisible')" aria-hidden="true"/>
+                                </div>
+                            </DropdownItem>
+                            <DropdownItem t-foreach="state.home.channels" t-as="channel" t-key="channel.id"
+                                          onSelected="() => this.pickHomeChannel(channel.code)">
+                                <div class="o_sfl_menu_row" t-att-class="{o_sfl_menu_on: state.homeChannel === channel.code}"
+                                     t-att-title="channel.connected ? 'Add-on installed' : 'Add-on not installed'">
+                                    <span class="o_sfl_menu_dot" t-att-class="channel.connected ? 'o_sfl_menu_dot_on' : 'o_sfl_menu_dot_off'"/>
+                                    <span class="o_sfl_menu_name"><t t-esc="channel.name"/><span t-if="!channel.connected" class="visually-hidden">, add-on not installed</span></span>
+                                    <span class="o_sfl_menu_n" t-esc="channelCount(channel.code)"/>
+                                    <i t-att-class="'fa fa-check' + (state.homeChannel === channel.code ? '' : ' invisible')" aria-hidden="true"/>
+                                </div>
+                            </DropdownItem>
+                            <div class="o_sfl_menu_note">Green dot: the channel's add-on is installed</div>
+                        </t>
+                    </Dropdown>
+                    <Dropdown menuClass="'o_sfl_menu'" position="'bottom-end'">
+                        <button type="button" class="o_sfl_pill o_sfl_dd" t-att-class="{active: state.homeStatus !== 'all'}">
+                            <span class="o_sfl_muted">Status</span>
+                            <b t-esc="homeStatusLabel"/>
+                            <i class="fa fa-caret-down" aria-hidden="true"/>
+                        </button>
+                        <t t-set-slot="content">
+                            <DropdownItem onSelected="() => this.pickHomeStatus('all')">
+                                <div class="o_sfl_menu_row" t-att-class="{o_sfl_menu_on: state.homeStatus === 'all'}">
+                                    <span class="o_sfl_menu_name">All statuses</span>
+                                    <span class="o_sfl_menu_n" t-esc="state.home.flows.length"/>
+                                    <i t-att-class="'fa fa-check' + (state.homeStatus === 'all' ? '' : ' invisible')" aria-hidden="true"/>
+                                </div>
+                            </DropdownItem>
+                            <DropdownItem t-foreach="homeStatuses" t-as="status" t-key="status"
+                                          onSelected="() => this.pickHomeStatus(status)">
+                                <div class="o_sfl_menu_row" t-att-class="{o_sfl_menu_on: state.homeStatus === status}">
+                                    <span class="o_sfl_menu_name" t-esc="statusLabel(status)"/>
+                                    <span class="o_sfl_menu_n" t-esc="statusCount(status)"/>
+                                    <i t-att-class="'fa fa-check' + (state.homeStatus === status ? '' : ' invisible')" aria-hidden="true"/>
+                                </div>
+                            </DropdownItem>
+                        </t>
+                    </Dropdown>
+                    <div class="o_sfl_pills" role="group" aria-label="Card size">
+                        <button type="button" class="o_sfl_pill" t-att-class="{active: !detailed}"
+                                t-att-aria-pressed="detailed ? 'false' : 'true'" t-on-click="() => this.pickHomeSize('compact')">Compact</button>
+                        <button type="button" class="o_sfl_pill" t-att-class="{active: detailed}"
+                                t-att-aria-pressed="detailed ? 'true' : 'false'" t-on-click="() => this.pickHomeSize('detailed')">Detailed</button>
+                    </div>
+                </t>
                 <button t-if="state.home.can_create" type="button" class="btn btn-primary" t-on-click="newFlow">New flow</button>
-            </div>
-            <div class="o_sfl_box o_sfl_filters">
-                <div class="o_sfl_filter_row">
-                    <span class="o_sfl_filter_label">Channel</span>
-                    <div class="o_sfl_pills" role="group" aria-label="Channel">
-                        <button type="button" class="o_sfl_pill" t-att-class="{active: state.homeChannel === 'all'}"
-                                t-att-aria-pressed="state.homeChannel === 'all' ? 'true' : 'false'"
-                                t-on-click="() => this.pickHomeChannel('all')">
-                            All <span class="o_sfl_count" t-esc="state.home.flows.length"/>
-                        </button>
-                        <button t-foreach="state.home.channels" t-as="channel" t-key="channel.id" type="button" class="o_sfl_pill"
-                                t-att-class="{active: state.homeChannel === channel.code}"
-                                t-att-aria-pressed="state.homeChannel === channel.code ? 'true' : 'false'"
-                                t-att-title="channel.connected ? 'Connected' : 'Add-on not installed'"
-                                t-on-click="() => this.pickHomeChannel(channel.code)">
-                            <span class="o_sfl_dot" t-att-class="{o_sfl_dot_off: !channel.connected}" aria-hidden="true"/>
-                            <t t-esc="channel.name"/>
-                            <span class="visually-hidden" t-esc="channel.connected ? ', connected' : ', add-on not installed'"/>
-                            <span class="o_sfl_count" t-esc="channelCount(channel.code)"/>
-                        </button>
-                    </div>
-                </div>
-                <div class="o_sfl_filter_row">
-                    <span class="o_sfl_filter_label">Status</span>
-                    <div class="o_sfl_pills" role="group" aria-label="Status">
-                        <button type="button" class="o_sfl_pill" t-att-class="{active: state.homeStatus === 'all'}"
-                                t-att-aria-pressed="state.homeStatus === 'all' ? 'true' : 'false'"
-                                t-on-click="() => this.pickHomeStatus('all')">
-                            All <span class="o_sfl_count" t-esc="state.home.flows.length"/>
-                        </button>
-                        <button t-foreach="homeStatuses" t-as="status" t-key="status" type="button" class="o_sfl_pill"
-                                t-att-class="{active: state.homeStatus === status}"
-                                t-att-aria-pressed="state.homeStatus === status ? 'true' : 'false'"
-                                t-on-click="() => this.pickHomeStatus(status)">
-                            <t t-esc="statusLabel(status)"/> <span class="o_sfl_count" t-esc="statusCount(status)"/>
-                        </button>
-                    </div>
-                </div>
             </div>
 
             <div t-if="!state.home.flows.length" class="o_sfl_box o_sfl_empty">

@@ -3,6 +3,8 @@
 import { Component, markup, onMounted, onPatched, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { Dialog } from "@web/core/dialog/dialog";
+import { Dropdown } from "@web/core/dropdown/dropdown";
+import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { browser } from "@web/core/browser/browser";
 import { deserializeDateTime } from "@web/core/l10n/dates";
 import { _t } from "@web/core/l10n/translation";
@@ -251,6 +253,7 @@ class FlowDuplicate extends Component {
 
 export class SedibaFlows extends Component {
     static template = "sediba_flows.App";
+    static components = { Dropdown, DropdownItem };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -362,7 +365,26 @@ export class SedibaFlows extends Component {
         this.state.homeStatus = status;
     }
 
-    /** The flows the two rows of pills leave. */
+    get homeFiltered() {
+        return this.state.homeChannel !== "all" || this.state.homeStatus !== "all";
+    }
+
+    clearHomeFilters() {
+        this.state.homeChannel = "all";
+        this.state.homeStatus = "all";
+    }
+
+    /** What the Channel drop-down says is chosen. */
+    get homeChannelLabel() {
+        const channel = this.state.home.channels.find((c) => c.code === this.state.homeChannel);
+        return channel ? channel.name : _t("All");
+    }
+
+    get homeStatusLabel() {
+        return this.state.homeStatus === "all" ? _t("All") : this.statusLabel(this.state.homeStatus);
+    }
+
+    /** The flows the Channel and Status drop-downs leave. */
     get homeFlows() {
         const { homeChannel, homeStatus } = this.state;
         return this.state.home.flows.filter(

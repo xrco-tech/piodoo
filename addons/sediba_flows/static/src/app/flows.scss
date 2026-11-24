@@ -95,31 +95,15 @@ $o-sfl-kinds: (
     min-width: 0;
 }
 
-// Channel and status pills over the cards, and the card size switch.
-.o_sfl_filters {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 16px;
-}
-
-.o_sfl_filter_row {
-    display: flex;
-    flex-wrap: wrap;
+// Channel and Status drop-downs in the page header, beside the card size switch.
+.o_sfl_dd {
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-
-    .o_sfl_pill { display: inline-flex; align-items: center; gap: 6px; }
+    gap: 6px;
+    b { font-weight: 600; }
 }
 
-.o_sfl_filter_label {
-    flex: 0 0 64px;
-    color: var(--sfl-muted);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-}
+.o_sfl_clear { min-height: 40px; font-weight: 600; }
 
 .o_sfl_count { color: var(--sfl-muted); font-weight: 500; }
 
@@ -1092,3 +1076,34 @@ textarea.o_sfl_input { resize: vertical; }
 
 .o_sfl_dup_yes { color: $success; }
 .o_sfl_dup_no { color: $warning; }
+
+// The Channel and Status menus. They open outside .o_sfl, so they use Odoo's own colours.
+.o_sfl_menu {
+    min-width: 230px;
+
+    .o_sfl_menu_row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        &.o_sfl_menu_on .o_sfl_menu_name { font-weight: 600; }
+        .fa-check { color: $o-brand-primary; }
+    }
+    .o_sfl_menu_name { flex: 1; }
+    .o_sfl_menu_n { opacity: .7; }
+    .o_sfl_menu_dot {
+        flex: none;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        &.o_sfl_menu_dot_on { background: $success; }
+        &.o_sfl_menu_dot_off { border: 1px solid currentColor; opacity: .6; }
+    }
+    .o_sfl_menu_note {
+        margin-top: 4px;
+        padding: 6px 16px 2px;
+        border-top: 1px solid $border-color;
+        font-size: 12px;
+        opacity: .7;
+    }
+}
