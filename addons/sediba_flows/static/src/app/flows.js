@@ -13,6 +13,7 @@ import { standardActionServiceProps } from "@web/webclient/actions/action_servic
 
 const MODEL = "sediba.flows";
 const HOME_SIZE_KEY = "sediba_flows.home_size";
+const PANEL_KEY = "sediba_flows.panel";
 
 // Card and gap sizes of the canvas, in px. The layout is worked out from
 // these alone, so no card has to be measured.
@@ -282,6 +283,8 @@ export class SedibaFlows extends Component {
             flowDescription: "",
             showAs: "all",
             panel: "step",
+            // The side panel can be put away to give the canvas the whole width.
+            panelOpen: this.storedPanelOpen(),
             zoom: 1,
             wording: false,
             // How tall each card came out, by step id: read off the page.
@@ -305,6 +308,28 @@ export class SedibaFlows extends Component {
 
     statusLabel(status) {
         return STATUS[status] || status;
+    }
+
+    /** Whether the builder's side panel was left open, kept in this browser only. */
+    storedPanelOpen() {
+        try {
+            return browser.localStorage.getItem(PANEL_KEY) !== "hidden";
+        } catch {
+            return true;
+        }
+    }
+
+    get panelToggleLabel() {
+        return this.state.panelOpen ? _t("Hide the side panel") : _t("Show the side panel");
+    }
+
+    togglePanel() {
+        this.state.panelOpen = !this.state.panelOpen;
+        try {
+            browser.localStorage.setItem(PANEL_KEY, this.state.panelOpen ? "shown" : "hidden");
+        } catch {
+            // Private window or blocked storage: the choice lasts for this visit.
+        }
     }
 
     /** The card size chosen last time, kept in this browser only. */
@@ -967,6 +992,8 @@ export class SedibaFlows extends Component {
     }
 
     addStepFromToolbar() {
+        // The new step is edited in the side panel, so it comes back.
+        this.state.panelOpen = true;
         const d = this.state.draft;
         return this.addStep(d && HAS_THEN.includes(d.kind) ? d.id : false, false);
     }
@@ -1084,6 +1111,8 @@ export class SedibaFlows extends Component {
     }
 
     async openTry() {
+        // Try it lives in the side panel, so asking for it brings the panel back.
+        this.state.panelOpen = true;
         this.state.panel = "try";
         const sim = this.state.sim;
         if (!sim.channel || !this.flowChannels.some((c) => c.code === sim.channel)) {

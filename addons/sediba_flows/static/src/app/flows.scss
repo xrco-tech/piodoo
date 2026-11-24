@@ -323,11 +323,6 @@ $o-sfl-kinds: (
     &:hover:not(:disabled), &:focus { border-color: var(--sfl-line); }
 }
 
-.o_sfl_status {
-    color: var(--sfl-muted);
-    &.o_sfl_live { color: var(--sfl-text); font-weight: 700; }
-}
-
 .o_sfl_zoom {
     width: 44px;
     color: var(--sfl-muted);

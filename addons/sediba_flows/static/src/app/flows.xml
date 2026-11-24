@@ -163,7 +163,7 @@
                 <button t-if="canEdit" type="button" class="btn btn-primary" t-on-click="addStepFromToolbar">Add step</button>
                 <input type="text" class="o_sfl_title" aria-label="Flow name" t-model="state.flowName"
                        t-att-disabled="!canEdit" t-on-change="renameFlow"/>
-                <span class="o_sfl_status" t-att-class="{o_sfl_live: isLive}" t-esc="statusLabel(state.data.flow.status)"/>
+                <span t-att-class="'o_sfl_tag o_sfl_tag_' + state.data.flow.status" t-esc="statusLabel(state.data.flow.status)"/>
                 <span class="o_sfl_grow"/>
                 <t t-if="flowChannels.length">
                     <span class="o_sfl_muted">Show as</span>
@@ -187,6 +187,11 @@
                 <button t-if="canEdit and anyPlaced" type="button" class="btn btn-light" title="Put every card back in its own place" t-on-click="tidy">Tidy layout</button>
                 <button t-if="canEdit" type="button" class="btn btn-light" t-on-click="toggleLive">
                     <t t-if="isLive">Pause</t><t t-else="">Go live</t>
+                </button>
+                <button type="button" class="btn btn-light o_sfl_icon_btn"
+                        t-att-aria-pressed="state.panelOpen ? 'true' : 'false'"
+                        t-att-aria-label="panelToggleLabel" t-att-title="panelToggleLabel" t-on-click="togglePanel">
+                    <i t-att-class="'fa ' + (state.panelOpen ? 'fa-angle-double-right' : 'fa-angle-double-left')" aria-hidden="true"/>
                 </button>
             </div>
 
@@ -251,7 +256,7 @@
                     </div>
                 </div>
 
-                <div t-att-class="'o_sfl_panel' + (state.panel === 'device' ? ' o_sfl_panel_' + state.device : '')">
+                <div t-if="state.panelOpen" t-att-class="'o_sfl_panel' + (state.panel === 'device' ? ' o_sfl_panel_' + state.device : '')">
                     <div class="o_sfl_tabs" role="group" aria-label="Panel">
                         <button type="button" class="o_sfl_tab" t-att-class="{active: state.panel === 'step'}"
                                 t-att-aria-pressed="state.panel === 'step' ? 'true' : 'false'"
