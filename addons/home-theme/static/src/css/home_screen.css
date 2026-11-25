@@ -102,7 +102,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* From the top, so every icon in a row sits on one line even when a
+       neighbour's name runs to two lines and makes the row taller. */
+    justify-content: flex-start;
 }
 
 .o_home_app_card:hover {
