@@ -344,7 +344,7 @@
 
     <!-- ── Menus ───────────────────────────────────────────────────────── -->
     <menuitem id="menu_chat2work_root" name="Chat2Work" sequence="45" groups="group_agent"
-              web_icon="chat2work,static/description/icon.png"/>
+              web_icon="chat2work,static/description/icon.svg"/>
     <!-- The app has three menus: Workspace and Dashboard (chat2work_workspace) and
          Configuration, which holds every other screen of every Chat2Work module. -->
     <menuitem id="menu_chat2work_config" name="Configuration" parent="menu_chat2work_root" sequence="100"/>

@@ -1,1 +1,31 @@
-<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="c"><path d="M24 2h18a6 6 0 0 1 6 6v10a6 6 0 0 1-6 6h-2v6l-7-6h-9a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6Z"/></clipPath></defs><path d="M24 2h18a6 6 0 0 1 6 6v10a6 6 0 0 1-6 6h-2v6l-7-6h-9a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6Z" fill="#2EBCFA"/><g id="h"><path d="M5 34v-4a15 15 0 0 1 30 0v4" fill="none" stroke="#144496" stroke-width="4"/><rect x="2" y="29" width="9" height="14" rx="3.5" fill="#144496"/><rect x="29" y="29" width="9" height="14" rx="3.5" fill="#144496"/><path d="M33.5 42c0 4-3 6-8 6h-3" fill="none" stroke="#144496" stroke-width="3" stroke-linecap="round"/></g><g clip-path="url(#c)"><path d="M5 34v-4a15 15 0 0 1 30 0v4" fill="none" stroke="#088BF5" stroke-width="4"/><rect x="29" y="29" width="9" height="14" rx="3.5" fill="#088BF5"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="256" height="256">
+  <!-- Contact Centre: the headset rings, then dots appear in the customer's
+       bubble. It moves where the menu shows this file; icon.png is the
+       still frame. -->
+  <style>
+    .set { transform-box: view-box; transform-origin: 20px 30px; animation: ring 7s ease-in-out infinite; }
+    .d1 { animation: d1 7s ease-in-out infinite; }
+    .d2 { animation: d2 7s ease-in-out infinite; }
+    .d3 { animation: d3 7s ease-in-out infinite; }
+    @keyframes ring { 0%, 24%, 100% { transform: rotate(0deg); } 4%, 12%, 20% { transform: rotate(-6deg); } 8%, 16% { transform: rotate(6deg); } }
+    @keyframes d1 { 0%, 36% { opacity: 0; } 41%, 80% { opacity: 1; } 88%, 100% { opacity: 0; } }
+    @keyframes d2 { 0%, 46% { opacity: 0; } 51%, 80% { opacity: 1; } 88%, 100% { opacity: 0; } }
+    @keyframes d3 { 0%, 56% { opacity: 0; } 61%, 80% { opacity: 1; } 88%, 100% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .set, .d1, .d2, .d3 { animation: none; } }
+  </style>
+  <defs><clipPath id="c"><path d="M24 2h18a6 6 0 0 1 6 6v10a6 6 0 0 1-6 6h-2v6l-7-6h-9a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6Z"/></clipPath></defs>
+  <path d="M24 2h18a6 6 0 0 1 6 6v10a6 6 0 0 1-6 6h-2v6l-7-6h-9a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6Z" fill="#2EBCFA"/>
+  <circle class="d1" cx="28" cy="9" r="2.1" fill="#ffffff" opacity="0"/>
+  <circle class="d2" cx="34" cy="9" r="2.1" fill="#ffffff" opacity="0"/>
+  <circle class="d3" cx="40" cy="9" r="2.1" fill="#ffffff" opacity="0"/>
+  <g class="set">
+    <path d="M5 34v-4a15 15 0 0 1 30 0v4" fill="none" stroke="#144496" stroke-width="4"/>
+    <rect x="2" y="29" width="9" height="14" rx="3.5" fill="#144496"/>
+    <rect x="29" y="29" width="9" height="14" rx="3.5" fill="#144496"/>
+    <path d="M33.5 42c0 4-3 6-8 6h-3" fill="none" stroke="#144496" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <g clip-path="url(#c)"><g class="set">
+    <path d="M5 34v-4a15 15 0 0 1 30 0v4" fill="none" stroke="#088BF5" stroke-width="4"/>
+    <rect x="29" y="29" width="9" height="14" rx="3.5" fill="#088BF5"/>
+  </g></g>
+</svg>

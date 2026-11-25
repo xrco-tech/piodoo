@@ -5,7 +5,7 @@
         <menuitem id="menu_contact_centre_main"
                   name="Contact Centre"
                   sequence="10"
-                  web_icon="contact_centre,static/description/icon.png"/>
+                  web_icon="contact_centre,static/description/icon.svg"/>
 
         <!-- The app has three menus: Workspace (contact_centre_workspace),
              Dashboard and Configuration. Everything else lives under
