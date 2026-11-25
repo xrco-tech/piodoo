@@ -97,10 +97,13 @@
             <div t-else="" class="o_sfl_cards" t-att-class="{o_sfl_cards_compact: !detailed}">
                 <div t-foreach="homeFlows" t-as="flow" t-key="flow.id" class="o_sfl_box o_sfl_fcard">
                     <div class="o_sfl_fcard_head">
-                        <button type="button" class="o_sfl_link" t-on-click="() => this.openFlow(flow.id)" t-esc="flow.name"/>
+                        <span class="o_sfl_avatar" aria-hidden="true" t-att-class="'o_sfl_avatar_' + avatarTone(flow)" t-esc="avatarLetter(flow)"/>
+                        <div class="o_sfl_fcard_title">
+                            <button type="button" class="o_sfl_link" t-on-click="() => this.openFlow(flow.id)" t-esc="flow.name"/>
+                            <span class="o_sfl_muted o_sfl_small"><t t-esc="stepsLabel(flow)"/> · edited <t t-esc="editedLabel(flow)"/></span>
+                        </div>
                         <span t-att-class="'o_sfl_tag o_sfl_tag_' + flow.status" t-esc="statusLabel(flow.status)"/>
                     </div>
-                    <span class="o_sfl_fcard_meta o_sfl_muted o_sfl_small"><t t-esc="stepsLabel(flow)"/> · edited <t t-esc="editedLabel(flow)"/></span>
                     <div>
                         <span t-foreach="flow.channels" t-as="name" t-key="name" class="o_sfl_chip" t-esc="name"/>
                         <span t-if="!flow.channels.length" class="o_sfl_muted">No channel yet</span>

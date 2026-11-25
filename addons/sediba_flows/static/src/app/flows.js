@@ -41,6 +41,9 @@ const KINDS = [
 ];
 const KIND = Object.fromEntries(KINDS.map(([key, label, icon]) => [key, { label, icon }]));
 
+// The colours of our own app icons, in the order a flow's avatar takes them.
+const AVATAR_TONES = ["navy", "blue", "sky", "coral", "amber"];
+
 const STATUS = {
     draft: _t("Draft"),
     shadow: _t("Test only"),
@@ -454,6 +457,17 @@ export class SedibaFlows extends Component {
 
     statusCount(status) {
         return this.state.home.flows.filter((f) => f.status === status).length;
+    }
+
+    /** The lettered square on a flow's card: its first letter or digit. */
+    avatarLetter(flow) {
+        const match = (flow.name || "").match(/[\p{L}\p{N}]/u);
+        return match ? match[0].toUpperCase() : "?";
+    }
+
+    /** One of the five icon colours, fixed by the flow itself so it never changes. */
+    avatarTone(flow) {
+        return AVATAR_TONES[flow.id % AVATAR_TONES.length];
     }
 
     stepsLabel(flow) {
