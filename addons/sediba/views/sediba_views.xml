@@ -504,7 +504,7 @@
 
     <!-- The app opens on the workspace; every other screen is under Configuration. -->
     <menuitem id="menu_sediba_root" name="Library" sequence="46"
-              web_icon="sediba,static/description/icon.png" groups="group_user,group_writer"/>
+              web_icon="sediba,static/description/icon.svg" groups="group_user,group_writer"/>
     <menuitem id="menu_sediba_workspace" name="Workspace" parent="menu_sediba_root" action="action_sediba_workspace" sequence="1"/>
     <menuitem id="menu_sediba_config" name="Configuration" parent="menu_sediba_root" sequence="90"/>
     <menuitem id="menu_sediba_docs" name="Company docs" parent="menu_sediba_config" action="action_sediba_doc" sequence="5" groups="group_writer"/>

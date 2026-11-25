@@ -1,11 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="256" height="256">
+  <!-- Interaction Flows: a message leaves the start, goes through the
+       decision and comes out on one branch, then the other. It moves where
+       the menu shows this file; icon.png is the still frame. -->
+  <style>
+    .dot { animation: travel 7s linear infinite; }
+    .end { transform-box: fill-box; transform-origin: center; }
+    .top { animation: bump-top 7s ease-in-out infinite; }
+    .bot { animation: bump-bot 7s ease-in-out infinite; }
+    @keyframes travel {
+      0% { transform: translate(10px, 24px); opacity: 1; }
+      12% { transform: translate(25px, 24px); }
+      18% { transform: translate(30px, 19px); }
+      22% { transform: translate(34px, 13.5px); }
+      26% { transform: translate(38px, 11.5px); }
+      29% { transform: translate(40.5px, 11.5px); opacity: 1; }
+      30%, 49% { transform: translate(40.5px, 11.5px); opacity: 0; }
+      49.5% { transform: translate(10px, 24px); opacity: 0; }
+      50% { transform: translate(10px, 24px); opacity: 1; }
+      62% { transform: translate(25px, 24px); }
+      68% { transform: translate(30px, 29px); }
+      72% { transform: translate(34px, 34.5px); }
+      76% { transform: translate(38px, 36.5px); }
+      79% { transform: translate(40.5px, 36.5px); opacity: 1; }
+      80%, 99% { transform: translate(40.5px, 36.5px); opacity: 0; }
+      100% { transform: translate(10px, 24px); opacity: 0; }
+    }
+    @keyframes bump-top { 0%, 27%, 40%, 100% { transform: scale(1); } 33% { transform: scale(1.28); } }
+    @keyframes bump-bot { 0%, 77%, 90%, 100% { transform: scale(1); } 83% { transform: scale(1.28); } }
+    @media (prefers-reduced-motion: reduce) { .dot, .top, .bot { animation: none; } }
+  </style>
   <g fill="none" stroke-width="4" stroke-linecap="round">
     <path d="M15 24H19" stroke="#144496"/>
     <path d="M30 19C34 15 34 11.5 38 11.5" stroke="#2EBCFA"/>
     <path d="M30 29C34 33 34 36.5 38 36.5" stroke="#F2695C"/>
   </g>
+  <circle class="dot" cx="0" cy="0" r="3.2" fill="#FBB130" opacity="0"/>
   <circle cx="10" cy="24" r="6" fill="#088BF5"/>
   <rect x="19" y="18" width="12" height="12" rx="2.5" fill="#144496" transform="rotate(45 25 24)"/>
-  <rect x="36" y="7" width="9" height="9" rx="3" fill="#2EBCFA"/>
-  <rect x="36" y="32" width="9" height="9" rx="3" fill="#F2695C"/>
+  <rect class="end top" x="36" y="7" width="9" height="9" rx="3" fill="#2EBCFA"/>
+  <rect class="end bot" x="36" y="32" width="9" height="9" rx="3" fill="#F2695C"/>
 </svg>

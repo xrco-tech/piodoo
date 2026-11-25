@@ -7,7 +7,7 @@
     </record>
 
     <menuitem id="menu_sediba_flows_root" name="Interaction Flows" sequence="47"
-              web_icon="sediba_flows,static/description/icon.png"
+              web_icon="sediba_flows,static/description/icon.svg"
               action="action_sediba_flows"
               groups="comm_chatbot.group_chatbot_agent"/>
 
