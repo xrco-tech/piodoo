@@ -161,5 +161,44 @@
             <field name="price_usd">0.000125</field>
         </record>
 
+        <!-- =============== Claude Opus 5.5 ===============
+             $4 / $20 per million tokens at every prompt length. Cache read
+             0.05x input ($0.20), 5-minute cache write 1.25x ($5). The 1-hour
+             cache write ($8) is not modelled here.
+             Checked against platform.claude.com/docs/en/about-claude/pricing
+             on 2026-11-25. -->
+
+        <record id="rate_anthropic_opus_5_5_input" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-opus-5-5</field>
+            <field name="category">llm_input</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.004</field>
+        </record>
+
+        <record id="rate_anthropic_opus_5_5_output" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-opus-5-5</field>
+            <field name="category">llm_output</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.02</field>
+        </record>
+
+        <record id="rate_anthropic_opus_5_5_cache_read" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-opus-5-5</field>
+            <field name="category">llm_cache_read</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.0002</field>
+        </record>
+
+        <record id="rate_anthropic_opus_5_5_cache_write" model="comm.billing.rate">
+            <field name="card_id" ref="rate_card_anthropic_2026"/>
+            <field name="carrier">claude-opus-5-5</field>
+            <field name="category">llm_cache_write</field>
+            <field name="unit">kilotoken</field>
+            <field name="price_usd">0.005</field>
+        </record>
+
     </data>
 </odoo>
