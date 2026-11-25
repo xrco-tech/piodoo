@@ -165,7 +165,39 @@ $o-sfl-kinds: (
     align-items: flex-start;
     gap: 8px;
 
-    .o_sfl_link { flex: 1; min-width: 0; min-height: 0; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
+    .o_sfl_link { min-width: 0; min-height: 0; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
+}
+
+// The name, with steps and when it was edited under it.
+.o_sfl_fcard_title {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+// A lettered square in one of our five icon colours, like the agent cards have.
+// The letter is white, or navy on the two light colours.
+.o_sfl_avatar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+
+    &.o_sfl_avatar_navy { background: #144496; }
+    &.o_sfl_avatar_blue { background: #088bf5; }
+    &.o_sfl_avatar_coral { background: #f2695c; }
+    &.o_sfl_avatar_sky { background: #2ebcfa; color: #144496; }
+    &.o_sfl_avatar_amber { background: #fbb130; color: #144496; }
+
+    .o_sfl_cards_compact & { width: 28px; height: 28px; border-radius: 7px; font-size: 12px; }
 }
 
 .o_sfl_tag {
@@ -180,8 +212,6 @@ $o-sfl-kinds: (
     &.o_sfl_tag_shadow { border-color: var(--sfl-warn); color: var(--sfl-warn); }
 }
 
-// Steps and when it was edited, tucked under the name.
-.o_sfl_fcard_meta { margin-top: -6px; }
 
 .o_sfl_fcard_desc {
     line-height: 1.4;
