@@ -20,12 +20,40 @@
                     <h1>AI Agents</h1>
                     <div class="o_pai_muted o_pai_small">Every assistant in piodoo, what it is told and what it costs.</div>
                 </div>
-                <input type="search" class="form-control o_pai_search" placeholder="Search agents…"
-                       aria-label="Search agents" t-model="state.search"/>
-                <select class="form-select o_pai_filter" aria-label="Works in" t-model="state.work">
-                    <option value="">Works in: All</option>
-                    <option t-foreach="state.works" t-as="work" t-key="work" t-att-value="work" t-esc="work"/>
-                </select>
+                <t t-if="state.agents.length">
+                    <div class="o_pai_search">
+                        <i class="fa fa-search" aria-hidden="true"/>
+                        <input type="search" placeholder="Search agents" aria-label="Search agents by name or description"
+                               t-model="state.search"/>
+                    </div>
+                    <t t-if="filtered">
+                        <span class="o_pai_muted o_pai_small" aria-live="polite"><t t-esc="shown.length"/> of <t t-esc="state.agents.length"/></span>
+                        <button type="button" class="o_pai_clear" t-on-click="() => this.clearFilters()">Clear</button>
+                    </t>
+                    <Dropdown menuClass="'o_pai_menu'" position="'bottom-end'">
+                        <button type="button" class="o_pai_pill" t-att-class="{active: state.work}">
+                            <span class="o_pai_muted">Works in</span>
+                            <b t-esc="state.work || 'All'"/>
+                            <i class="fa fa-caret-down" aria-hidden="true"/>
+                        </button>
+                        <t t-set-slot="content">
+                            <DropdownItem onSelected="() => this.pickWork('')">
+                                <div class="o_pai_menu_row" t-att-class="{o_pai_menu_on: !state.work}">
+                                    <span class="o_pai_menu_name">Everywhere</span>
+                                    <span class="o_pai_menu_n" t-esc="state.agents.length"/>
+                                    <i t-att-class="'fa fa-check' + (state.work ? ' invisible' : '')" aria-hidden="true"/>
+                                </div>
+                            </DropdownItem>
+                            <DropdownItem t-foreach="state.works" t-as="work" t-key="work" onSelected="() => this.pickWork(work)">
+                                <div class="o_pai_menu_row" t-att-class="{o_pai_menu_on: state.work === work}">
+                                    <span class="o_pai_menu_name" t-esc="work"/>
+                                    <span class="o_pai_menu_n" t-esc="workCount(work)"/>
+                                    <i t-att-class="'fa fa-check' + (state.work === work ? '' : ' invisible')" aria-hidden="true"/>
+                                </div>
+                            </DropdownItem>
+                        </t>
+                    </Dropdown>
+                </t>
             </div>
 
             <div t-if="!state.agents.length" class="o_pai_box o_pai_empty">
@@ -34,7 +62,7 @@
             </div>
             <div t-elif="!shown.length" class="o_pai_box o_pai_empty">
                 <b>No agent matches.</b>
-                <span class="o_pai_muted">Clear the search or choose "Works in: All".</span>
+                <span class="o_pai_muted">Clear the search, or set "Works in" back to All.</span>
             </div>
 
             <div class="o_pai_grid">

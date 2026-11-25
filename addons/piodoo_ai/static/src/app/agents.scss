@@ -116,9 +116,79 @@
     align-items: center;
     gap: 10px;
 
-    > .o_pai_grow { min-width: 240px; }
-    .o_pai_search { width: 240px; max-width: 100%; }
-    .o_pai_filter { width: auto; max-width: 100%; }
+    > .o_pai_grow { flex: 1 1 240px; min-width: 0; }
+}
+
+// The header controls, shaped like the ones on the Interaction Flows home.
+.o_pai_search {
+    flex: 0 1 220px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--pai-line);
+    border-radius: 999px;
+    background: var(--pai-box);
+    color: var(--pai-muted);
+
+    &:focus-within { border-color: var(--pai-blue); }
+
+    input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: none;
+        color: var(--pai-text);
+        font: inherit;
+        &::placeholder { color: var(--pai-muted); }
+    }
+}
+
+.o_pai_pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 4px 12px;
+    border: 1px solid var(--pai-line);
+    border-radius: 999px;
+    background: var(--pai-box);
+    color: inherit;
+
+    b { font-weight: 600; }
+    &.active { border-color: #d9a400; background: rgba(255, 196, 20, .3); }
+}
+
+.o_pai_clear {
+    min-height: 40px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--pai-text);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--pai-line);
+    text-underline-offset: 3px;
+
+    &:hover { text-decoration-color: currentColor; }
+}
+
+// The drop-down opens outside .o_pai, so it uses Odoo's own colours.
+.o_pai_menu {
+    min-width: 220px;
+
+    .o_pai_menu_row { display: flex; align-items: center; gap: 8px; width: 100%; }
+    .fa-check { color: $o-brand-primary; }
+    .o_pai_menu_on .o_pai_menu_name { font-weight: 600; }
+    .o_pai_menu_name { flex: 1; }
+    .o_pai_menu_n { opacity: .7; }
+}
+
+@media (max-width: 700px) {
+    .o_pai_search { flex-basis: 100%; }
 }
 
 .o_pai_empty { display: flex; flex-direction: column; gap: 4px; padding: 20px; }

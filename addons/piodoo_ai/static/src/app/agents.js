@@ -3,6 +3,8 @@
 import { Component, onMounted, onPatched, onWillStart, useRef, useState } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { Dialog } from "@web/core/dialog/dialog";
+import { Dropdown } from "@web/core/dropdown/dropdown";
+import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { deserializeDate, deserializeDateTime } from "@web/core/l10n/dates";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
@@ -88,7 +90,7 @@ class LibraryDialog extends Component {
 
 export class AiAgents extends Component {
     static template = "piodoo_ai.App";
-    static components = {};
+    static components = { Dropdown, DropdownItem };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -144,6 +146,23 @@ export class AiAgents extends Component {
                 (!this.state.work || agent.works.includes(this.state.work)) &&
                 (!term || `${agent.name} ${agent.description}`.toLowerCase().includes(term))
         );
+    }
+
+    get filtered() {
+        return Boolean(this.state.work || this.state.search.trim());
+    }
+
+    clearFilters() {
+        this.state.search = "";
+        this.state.work = "";
+    }
+
+    pickWork(work) {
+        this.state.work = work;
+    }
+
+    workCount(work) {
+        return this.state.agents.filter((agent) => agent.works.includes(work)).length;
     }
 
     statusLabel(agent) {
