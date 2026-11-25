@@ -25,15 +25,21 @@ class ExecutorService(models.AbstractModel):
     # ---------- Public: inbound ----------
     @api.model
     def on_inbound(self, channel_code, source_model, source_id,
-                   wa_id, body, at=None, external_session_id=None):
-        """Handle an inbound message from a channel adapter."""
+                   wa_id, body, at=None, external_session_id=None,
+                   partner=None, conversation=None):
+        """Handle an inbound message from a channel adapter. Returns the
+        interaction it logged, or nothing when no bot takes the message.
+
+        A channel that has already worked out who sent the message, or which
+        conversation it belongs to, passes `partner` and `conversation`."""
         channel = self.env['comm.channel'].get_by_code(channel_code)
         if not channel:
             _logger.info('No comm.channel for code=%s', channel_code)
             return
 
-        partner = self._resolve_partner(wa_id, channel)
-        conversation = self._find_open_conversation(partner, channel)
+        partner = partner or (conversation and conversation.partner_id) \
+            or self._resolve_partner(wa_id, channel)
+        conversation = conversation or self._find_open_conversation(partner, channel)
         if not conversation:
             trigger = self.env['comm.bot.trigger'].find_trigger(
                 channel_code, body)
@@ -49,7 +55,7 @@ class ExecutorService(models.AbstractModel):
         conversation.primary_channel_id = channel
 
         # Log the inbound interaction
-        self.env['comm.interaction'].create({
+        interaction = self.env['comm.interaction'].create({
             'conversation_id': conversation.id,
             'leg_id': leg.id,
             'channel_id': channel.id,
@@ -63,13 +69,17 @@ class ExecutorService(models.AbstractModel):
         })
         conversation.touch()
 
-        # If there's a current step waiting for input, handle it
+        # If the current step has been sent and is waiting for an answer,
+        # this is the answer. A conversation that has only just started on a
+        # question has not asked it yet: the keyword that started it is not
+        # the answer.
         if conversation.current_step_id and conversation.current_step_id.kind in (
-                'menu', 'input'):
+                'menu', 'input') and conversation.lifecycle_state == 'waiting':
             self._handle_input(conversation, leg, body)
         else:
             # No pending input — advance from entry or current step
             self.advance(conversation, leg)
+        return interaction
 
     @api.model
     def start(self, bot, partner, channel_code, campaign_id=None):
