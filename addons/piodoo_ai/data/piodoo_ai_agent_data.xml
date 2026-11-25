@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- One record for each assistant that already exists in code. What it is
+         told is not kept here: it is read from the assistant's own add-on
+         until someone changes it on the screen. -->
+
+    <record id="agent_cc_sidekick" model="piodoo.ai.agent">
+        <field name="key">cc_sidekick</field>
+        <field name="sequence">10</field>
+        <field name="name">Sidekick</field>
+        <field name="color">#714b67</field>
+        <field name="works_in">Contact Centre</field>
+        <field name="description">Sets up campaigns, templates, contacts and call teams when you ask. Everything it makes is a draft.</field>
+        <field name="fixed_note">Its tools, the yes or no step before it makes anything, and the rule that everything stays a draft are fixed in code. Changing the wording here cannot switch them off.</field>
+    </record>
+
+    <record id="agent_c2w_sidekick" model="piodoo.ai.agent">
+        <field name="key">c2w_sidekick</field>
+        <field name="sequence">20</field>
+        <field name="name">Chat2Work Sidekick</field>
+        <field name="color">#0f766e</field>
+        <field name="works_in">Chat2Work</field>
+        <field name="description">Answers staff questions about candidates, callbacks, CVs and jobs. It only looks things up.</field>
+        <field name="fixed_note">What it can look up is fixed in code: first names and lists only, never a surname, a phone number or an ID number.</field>
+    </record>
+
+    <record id="agent_reply_helper" model="piodoo.ai.agent">
+        <field name="key">reply_helper</field>
+        <field name="sequence">30</field>
+        <field name="name">Reply helper</field>
+        <field name="color">#1d4ed8</field>
+        <field name="works_in">Contact Centre inbox</field>
+        <field name="description">Sums up a conversation, reads the mood and suggests a reply for the agent to send.</field>
+        <field name="runs_note">Runs on a timer, on conversations with new messages</field>
+        <field name="fixed_note">The screen reads its answer by the three labels SUMMARY, SENTIMENT and SUGGESTED_REPLY. Keep them in the wording or the answer cannot be read.</field>
+    </record>
+
+    <record id="agent_call_notes" model="piodoo.ai.agent">
+        <field name="key">call_notes</field>
+        <field name="sequence">40</field>
+        <field name="name">Call notes</field>
+        <field name="color">#b45309</field>
+        <field name="works_in">Phone, WhatsApp calls</field>
+        <field name="description">Writes up a recorded call: a summary, the mood and the outcome.</field>
+        <field name="runs_note">Runs after a recorded call has been typed out</field>
+        <field name="fixed_note">The transcript is added after this wording. The answer is read as JSON with summary, sentiment and disposition: keep those three names.</field>
+    </record>
+
+    <record id="agent_cv_reader" model="piodoo.ai.agent">
+        <field name="key">cv_reader</field>
+        <field name="sequence">50</field>
+        <field name="name">CV reader</field>
+        <field name="color">#7c3aed</field>
+        <field name="works_in">Chat2Work</field>
+        <field name="description">Reads an uploaded CV into the standard CV form. The candidate is asked to check it.</field>
+        <field name="runs_note">Runs on a timer, on newly uploaded CVs</field>
+        <field name="fixed_note">The CV form it fills in, and the limit of five jobs and five schools or courses, are fixed in code.</field>
+    </record>
+
+    <record id="agent_job_sorter" model="piodoo.ai.agent">
+        <field name="key">job_sorter</field>
+        <field name="sequence">60</field>
+        <field name="name">Job sorter</field>
+        <field name="color">#be185d</field>
+        <field name="works_in">Chat2Work</field>
+        <field name="description">Puts each new job post under the right occupation. Staff can change it; theirs is kept.</field>
+        <field name="runs_note">Runs on a timer, on job posts with no occupation</field>
+        <field name="fixed_note">The list of occupation codes is added after this wording. The cost shown also covers sorting CVs, which has its own wording in code.</field>
+    </record>
+
+</odoo>

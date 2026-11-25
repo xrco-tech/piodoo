@@ -107,10 +107,13 @@ class ContactCentreContact(models.Model):
             'anthropic-version': ANTHROPIC_VERSION,
             'content-type': 'application/json',
         }
+        # The AI Agents app, when installed, holds the wording an admin may have changed.
+        Agent = self.env.get('piodoo.ai.agent')
+        system = Agent._instructions_for('reply_helper', COPILOT_SYSTEM) if Agent is not None else COPILOT_SYSTEM
         payload = {
             'model': ANTHROPIC_MODEL,
             'max_tokens': 512,
-            'system': COPILOT_SYSTEM,
+            'system': system,
             'messages': [{'role': 'user', 'content': prompt}],
         }
 

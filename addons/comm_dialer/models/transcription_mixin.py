@@ -16,6 +16,14 @@ from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
+INSIGHT_MODEL = 'claude-haiku-4-5-20251001'
+INSIGHT_PROMPT = (
+    "You are a contact-centre QA assistant. Read the call transcript and reply with "
+    'STRICT JSON only, no prose: {"summary": "<1-2 sentence summary>", '
+    '"sentiment": "positive|neutral|negative", '
+    '"disposition": "<short suggested call-outcome label>"}.'
+)
+
 
 class CallTranscriptionMixin(models.AbstractModel):
     _name = 'comm.call.transcription.mixin'
@@ -74,14 +82,11 @@ class CallTranscriptionMixin(models.AbstractModel):
                or ICP.get_param('whatsapp.anthropic_api_key') or '').strip()
         if not key:
             return {}
-        model = ICP.get_param('comm_dialer.insight_model') or 'claude-haiku-4-5-20251001'
-        prompt = (
-            "You are a contact-centre QA assistant. Read the call transcript and reply with "
-            'STRICT JSON only, no prose: {"summary": "<1-2 sentence summary>", '
-            '"sentiment": "positive|neutral|negative", '
-            '"disposition": "<short suggested call-outcome label>"}.\n\n'
-            "Transcript:\n" + transcript[:8000]
-        )
+        model = ICP.get_param('comm_dialer.insight_model') or INSIGHT_MODEL
+        # The AI Agents app, when installed, holds the wording an admin may have changed.
+        Agent = self.env.get('piodoo.ai.agent')
+        wording = Agent._instructions_for('call_notes', INSIGHT_PROMPT) if Agent is not None else INSIGHT_PROMPT
+        prompt = wording + "\n\nTranscript:\n" + transcript[:8000]
         resp = requests.post(
             'https://api.anthropic.com/v1/messages',
             headers={'x-api-key': key, 'anthropic-version': '2023-06-01',
@@ -91,7 +96,11 @@ class CallTranscriptionMixin(models.AbstractModel):
             timeout=60,
         )
         resp.raise_for_status()
-        text = ''.join(b.get('text', '') for b in resp.json().get('content', [])
+        body = resp.json()
+        Event = self.env.get('comm.billing.event')
+        if Event is not None:
+            Event._log_llm_usage(model, body.get('usage'), feature='call_notes')
+        text = ''.join(b.get('text', '') for b in body.get('content', [])
                        if b.get('type') == 'text')
         m = re.search(r'\{.*\}', text, re.S)
         if not m:

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_piodoo_ai_agent_admin,piodoo.ai.agent admin,model_piodoo_ai_agent,base.group_system,1,1,0,0
+access_piodoo_ai_agent_version_admin,piodoo.ai.agent.version admin,model_piodoo_ai_agent_version,base.group_system,1,0,1,0

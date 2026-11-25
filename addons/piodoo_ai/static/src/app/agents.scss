@@ -1,0 +1,339 @@
+// AI Agents: the home of cards and the screen of one agent.
+.o_pai {
+    --pai-ground: #f3f4f6;
+    --pai-box: #ffffff;
+    --pai-soft: #f9fafb;
+    --pai-line: #d1d5db;
+    --pai-hair: #e5e7eb;
+    --pai-text: #1f2937;
+    --pai-muted: #5b6470;
+    --pai-mine: #ede9ec;
+    --pai-blue: #1d4ed8;
+    --pai-blue-bg: #eff6ff;
+    --pai-ok: #1f7a45;
+    --pai-warn: #92400e;
+    --pai-warn-bg: #fffbeb;
+    --pai-danger: #b91c1c;
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: var(--pai-ground);
+    color: var(--pai-text);
+    font-size: 14px;
+
+    h1 { margin: 0; color: inherit; font-size: 24px; font-weight: 600; }
+    h2 { margin: 0; color: inherit; font-size: 16px; font-weight: 600; }
+    .btn { min-height: 36px; }
+    .btn-light { border: 1px solid var(--pai-line); }
+}
+
+.o_pai_muted { color: var(--pai-muted); }
+.o_pai_small { font-size: 13px; }
+.o_pai_grow { flex: 1; }
+.o_pai_min { min-width: 0; }
+.o_pai_num { text-align: right; }
+.o_pai_cut { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.o_pai_pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.o_pai_box {
+    background: var(--pai-box);
+    border: 1px solid var(--pai-line);
+    border-radius: 12px;
+}
+
+.o_pai_avatar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.o_pai_tag {
+    flex: none;
+    padding: 0 9px;
+    border: 1px solid var(--pai-muted);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 20px;
+    white-space: nowrap;
+}
+.o_pai_tag_live { border-color: var(--pai-ok); color: var(--pai-ok); }
+.o_pai_tag_test { border-color: var(--pai-warn); color: var(--pai-warn); }
+
+.o_pai_chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.o_pai_chip {
+    padding: 0 9px;
+    border: 1px solid var(--pai-line);
+    border-radius: 999px;
+    background: var(--pai-soft);
+    font-size: 12px;
+    line-height: 20px;
+}
+.o_pai_chip_blue { border-color: var(--pai-blue); background: var(--pai-blue-bg); color: var(--pai-blue); }
+
+.o_pai_btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+.o_pai_hint {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px dashed var(--pai-line);
+    border-radius: 10px;
+    background: var(--pai-soft);
+}
+
+// ── Home ────────────────────────────────────────────────────────────────────
+.o_pai_home {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+    padding: 20px 24px;
+    overflow-y: auto;
+}
+
+.o_pai_bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+
+    > .o_pai_grow { min-width: 240px; }
+    .o_pai_search { width: 240px; max-width: 100%; }
+    .o_pai_filter { width: auto; max-width: 100%; }
+}
+
+.o_pai_empty { display: flex; flex-direction: column; gap: 4px; padding: 20px; }
+
+.o_pai_grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
+}
+
+.o_pai_card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 14px 16px;
+}
+
+.o_pai_card_top { display: flex; align-items: flex-start; gap: 10px; }
+
+.o_pai_name {
+    color: var(--pai-text);
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover, &:focus { color: var(--pai-text); text-decoration: underline; }
+}
+
+.o_pai_stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid var(--pai-hair);
+}
+
+.o_pai_card_btns { display: flex; justify-content: flex-end; gap: 6px; }
+
+// ── One agent ───────────────────────────────────────────────────────────────
+.o_pai_agent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+    padding: 16px 24px 20px;
+}
+
+.o_pai_crumbs { display: flex; align-items: center; gap: 8px; }
+
+.o_pai_cols { flex: 1; display: flex; gap: 12px; min-height: 0; }
+
+.o_pai_left {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 260px;
+    min-height: 0;
+    padding: 12px;
+}
+
+.o_pai_chats { flex: 1; display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; }
+
+.o_pai_chat_row {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+
+    &:hover { background: var(--pai-soft); }
+    &.active { background: var(--pai-mine); }
+    b { font-weight: 600; }
+}
+.o_pai_chat_head { display: flex; align-items: baseline; gap: 8px; }
+
+.o_pai_mid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    min-height: 0;
+    padding: 14px 16px;
+    background: var(--pai-soft);
+}
+
+.o_pai_mid_head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .o_pai_avatar { width: 30px; height: 30px; border-radius: 8px; }
+}
+
+.o_pai_thread {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.o_pai_msg {
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 78%;
+
+    &.o_pai_mine { align-self: flex-end; align-items: flex-end; }
+}
+
+.o_pai_bubble {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--pai-line);
+    border-radius: 10px;
+    background: var(--pai-box);
+
+    .o_pai_mine & { background: var(--pai-mine); }
+}
+
+.o_pai_lines { margin: 0; padding-left: 18px; }
+
+.o_pai_draft {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--pai-line);
+    background: var(--pai-soft);
+}
+
+.o_pai_ask {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--pai-warn);
+    border-radius: 10px;
+    background: var(--pai-warn-bg);
+}
+
+.o_pai_error { color: var(--pai-danger); }
+
+.o_pai_composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+
+    textarea { flex: 1; resize: none; }
+}
+
+.o_pai_days { min-height: 0; overflow-y: auto; }
+
+.o_pai_table {
+    width: 100%;
+    max-width: 460px;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+
+    th, td { padding: 6px 10px; border-bottom: 1px solid var(--pai-hair); }
+    th { color: var(--pai-muted); font-size: 13px; font-weight: 600; }
+}
+
+.o_pai_right {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 400px;
+    min-height: 0;
+    padding: 14px 16px;
+}
+
+.o_pai_label { margin: 0; color: var(--pai-muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+
+.o_pai_text {
+    flex: 1;
+    min-height: 160px;
+    resize: none;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.o_pai_fixed {
+    padding: 8px 10px;
+    border-left: 3px solid var(--pai-warn);
+    background: var(--pai-warn-bg);
+}
+
+// Narrow windows: the three parts stack and the page scrolls as one.
+@media (max-width: 1100px) {
+    .o_pai_agent { overflow-y: auto; }
+    .o_pai_cols { flex: none; flex-direction: column; }
+    .o_pai_left, .o_pai_right { width: auto; }
+    .o_pai_chats { max-height: 220px; }
+    .o_pai_thread { min-height: 280px; max-height: 60vh; }
+    .o_pai_text { min-height: 320px; }
+}
+
+// ── History dialog (outside .o_pai, so it uses Odoo's own colours) ─────────
+.o_pai_history { display: flex; flex-direction: column; }
+.o_pai_version { padding: 8px 0; border-bottom: 1px solid var(--bs-border-color); }
+.o_pai_version_head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.o_pai_version_text {
+    margin: 8px 0 0;
+    padding: 10px 12px;
+    max-height: 320px;
+    overflow: auto;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    white-space: pre-wrap;
+}

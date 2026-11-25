@@ -816,9 +816,14 @@ class ContactCentreAiChat(models.Model):
         return TOOLS + [reference.tool()] if reference is not None else TOOLS
 
     def _system_prompt(self):
+        # The AI Agents app, when installed, holds the wording an admin may
+        # have changed; the tools and the confirm step stay in this file.
+        Agent = self.env.get("piodoo.ai.agent")
+        prompt = (Agent._instructions_for("cc_sidekick", SYSTEM_PROMPT)
+                  if Agent is not None else SYSTEM_PROMPT)
         if self._reference() is None:
-            return SYSTEM_PROMPT
-        return SYSTEM_PROMPT + REFERENCE_PROMPT
+            return prompt
+        return prompt + REFERENCE_PROMPT
 
     def _tool_look_up_reference(self, args):
         return self._reference().look_up(args.get("question") or "", "contact_centre")
