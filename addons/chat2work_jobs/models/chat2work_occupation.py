@@ -93,9 +93,9 @@ CV_BATCH = 20
 CV_DUTIES_CHARS = 200
 
 
-def _ai_json(env, api_key, system, content, schema):
+def _ai_json(env, api_key, system, content, schema, model=None):
     """Claude's JSON answer to `content`, under a cached `system` prompt. Raises when it can't answer."""
-    model = env['ir.config_parameter'].sudo().get_param('chat2work.occupation_model', DEFAULT_MODEL)
+    model = model or env['ir.config_parameter'].sudo().get_param('chat2work.occupation_model', DEFAULT_MODEL)
     response = requests.post(API_URL, timeout=REQUEST_TIMEOUT, headers={
         'x-api-key': api_key,
         'anthropic-version': API_VERSION,
@@ -290,8 +290,10 @@ class Chat2workListingOccupation(models.Model):
             _logger.info("chat2work_jobs: no AI key, so listings are coded by title only")
             return
         Occupation = self.env['chat2work.occupation']
-        # The AI Agents app, when installed, holds the wording an admin may have changed.
+        # The AI Agents app, when installed, holds the wording and monthly limit an admin set.
         Agent = self.env.get('piodoo.ai.agent')
+        if Agent is not None and Agent._stopped('job_sorter'):
+            return
         wording = Agent._instructions_for('job_sorter', SYSTEM) if Agent is not None else SYSTEM
         system = '%s\n\n%s' % (wording, Occupation._c2w_unit_groups_text())
         for rec in self:
@@ -312,10 +314,13 @@ class Chat2workListingOccupation(models.Model):
         self.ensure_one()
         listing = 'Title: %s\nEmployer: %s\n\n%s' % (
             self.title, self.employer or '-', ((self.description or '') + '\n' + (self.requirements or ''))[:DESCRIPTION_CHARS])
+        # The AI Agents app, when installed, holds the model an admin chose for sorting job posts.
+        Agent = self.env.get('piodoo.ai.agent')
+        model = Agent._model_for('job_sorter', False) if Agent is not None else None
         answer = _ai_json(self.env, api_key, system, '<listing>\n%s\n</listing>' % listing.replace('</listing>', ''), {
             'type': 'object', 'additionalProperties': False, 'required': ['code'],
             'properties': {'code': {'type': 'string', 'description': '4-digit unit group code, or "none"'}},
-        })
+        }, model=model)
         return (answer.get('code') or '').strip().lower()
 
     @api.model

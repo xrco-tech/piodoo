@@ -312,7 +312,9 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
             return {'notes': [{'title': note.name, 'text': _clean(note.body, NOTE_CHARS)} for note in notes]}
         if name == 'look_up_reference':
             Assistant = self.env['sediba.assistant']
-            result = Assistant.look_up(args.get('question') or '', 'chat2work')
+            Agent = self.env.get('piodoo.ai.agent')
+            only = Agent._library_only('c2w_sidekick') if Agent is not None else None
+            result = Assistant.look_up(args.get('question') or '', 'chat2work', only=only)
             label = Assistant.source_label(result)
             if label:
                 found['sources'].append(label)
@@ -372,9 +374,11 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
     def _sidekick_request(self, api_key, messages, tools):
         """One call to Claude: its content blocks. Raises when it can't answer."""
         model = self.env['ir.config_parameter'].sudo().get_param('chat2work.occupation_model', DEFAULT_MODEL)
-        # The AI Agents app, when installed, holds the wording an admin may have changed.
+        # The AI Agents app, when installed, holds the wording and model an admin may have changed.
         Agent = self.env.get('piodoo.ai.agent')
         system = Agent._instructions_for('c2w_sidekick', SIDEKICK_SYSTEM) if Agent is not None else SIDEKICK_SYSTEM
+        if Agent is not None:
+            model = Agent._model_for('c2w_sidekick', model)
         response = requests.post(API_URL, timeout=REQUEST_TIMEOUT, headers={
             'x-api-key': api_key, 'anthropic-version': API_VERSION, 'content-type': 'application/json',
         }, json={
@@ -389,7 +393,11 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
         body = response.json()
         Event = self.env.get('comm.billing.event')
         if Event is not None:
-            Event._log_llm_usage(model, body.get('usage'), source='chat2work', feature='sidekick')
+            events = Event._log_llm_usage(model, body.get('usage'), source='chat2work', feature='sidekick')
+            # What this call cost, for the limit on one answer (see _sidekick_answer).
+            spent = self.env.context.get('c2w_sidekick_spent')
+            if Agent is not None and spent is not None:
+                spent.append(Agent._cost_of(events))
         return body.get('content') or []
 
     def _sidekick_answer(self, api_key, question, chat, candidate):
@@ -398,6 +406,13 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
         the look-ups it made). Raises ValueError or a requests error."""
         lists = self._sidekick_lists()
         tools = self._sidekick_tools(lists)
+        # The AI Agents app, when installed: skills switched off, and what one answer may cost.
+        Agent = self.env.get('piodoo.ai.agent')
+        cap, spent = 0.0, []
+        if Agent is not None:
+            tools = Agent._tools_for('c2w_sidekick', tools)
+            cap = Agent._answer_cap('c2w_sidekick')
+        allowed = {tool['name'] for tool in tools}
         found = {'list': False, 'draft': False, 'open': False, 'sources': []}
         asked = question
         if candidate:
@@ -406,8 +421,11 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
         messages = self._sidekick_history(chat) + [{'role': 'user', 'content': asked}]
         actions, text = [], None
         for _round in range(MAX_TOOL_ROUNDS):
-            blocks = self._sidekick_request(api_key, messages, tools)
+            blocks = self.with_context(c2w_sidekick_spent=spent)._sidekick_request(api_key, messages, tools)
             calls = [block for block in blocks if block.get('type') == 'tool_use']
+            if calls and cap and sum(spent) >= cap:
+                text = _("I stopped here: this answer reached the cost limit set for one answer. Try a narrower question.")
+                break
             if not calls:
                 text = ''.join(block.get('text', '') for block in blocks if block.get('type') == 'text')
                 break
@@ -416,6 +434,8 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
             for call in calls:
                 args = call.get('input') or {}
                 try:
+                    if call.get('name') not in allowed:
+                        raise ValueError('This is switched off for the sidekick.')
                     result = self._sidekick_run_tool(call.get('name'), args, lists, found)
                 except Exception as error:      # one bad look-up must not lose the whole answer
                     _logger.warning("chat2work_workspace: sidekick tool %s failed", call.get('name'), exc_info=True)
@@ -596,6 +616,10 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
         api_key = _api_key(self.env)
         if not api_key:
             return {'error': _("The sidekick isn't set up on this system yet.")}
+        Agent = self.env.get('piodoo.ai.agent')
+        stopped = Agent._stopped('c2w_sidekick') if Agent is not None else ''
+        if stopped:
+            return {'error': stopped}
         try:
             answer, content, actions = self._sidekick_answer(api_key, question, chat, candidate)
         except (ValueError, requests.RequestException):

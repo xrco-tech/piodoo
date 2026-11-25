@@ -122,14 +122,19 @@ class SedibaAssistant(models.AbstractModel):
     # ── The look-up ──────────────────────────────────────────────────────────
 
     @api.model
-    def look_up(self, question='', space=False, public=False):
+    def look_up(self, question='', space=False, public=False, only=None):
         """What the Library has on `question`, as something safe to hand to an
         assistant. Returns {'results': [...], 'used': [titles], 'note'} or,
         with no question, {'docs': [...], 'research_topics': [...]}.
         `public` is for an assistant that talks to people outside the
-        company: it reads by the public switch, not Sidekick's."""
-        docs = [self._doc_item(doc, public) for doc in self._docs(space, public)]
-        findings = self._findings(space, public)
+        company: it reads by the public switch, not Sidekick's.
+        `only` narrows it to {'docs': [ids], 'topics': [ids]}; it can never
+        open something the Library's own switches keep shut."""
+        allowed_docs, findings = self._docs(space, public), self._findings(space, public)
+        if only:
+            allowed_docs = allowed_docs.filtered(lambda d: d.id in (only.get('docs') or []))
+            findings = findings.filtered(lambda f: f.topic_id.id in (only.get('topics') or []))
+        docs = [self._doc_item(doc, public) for doc in allowed_docs]
         words = [w for w in WORD.findall((question or '').lower()) if w not in STOP]
         if not words:
             topics = {}

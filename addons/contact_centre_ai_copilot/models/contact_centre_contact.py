@@ -87,6 +87,11 @@ class ContactCentreContact(models.Model):
         api_key = self.env['ir.config_parameter'].sudo().get_param('whatsapp.anthropic_api_key')
         if not api_key:
             return
+        # The AI Agents app, when installed: the wording, model and monthly limit an admin set.
+        Agent = self.env.get('piodoo.ai.agent')
+        if Agent is not None and Agent._stopped('reply_helper'):
+            return
+        model = Agent._model_for('reply_helper', ANTHROPIC_MODEL) if Agent is not None else ANTHROPIC_MODEL
 
         messages = self.centre_message_ids[:TRANSCRIPT_MESSAGE_LIMIT]
         if not messages:
@@ -107,11 +112,9 @@ class ContactCentreContact(models.Model):
             'anthropic-version': ANTHROPIC_VERSION,
             'content-type': 'application/json',
         }
-        # The AI Agents app, when installed, holds the wording an admin may have changed.
-        Agent = self.env.get('piodoo.ai.agent')
         system = Agent._instructions_for('reply_helper', COPILOT_SYSTEM) if Agent is not None else COPILOT_SYSTEM
         payload = {
-            'model': ANTHROPIC_MODEL,
+            'model': model,
             'max_tokens': 512,
             'system': system,
             'messages': [{'role': 'user', 'content': prompt}],
@@ -135,7 +138,7 @@ class ContactCentreContact(models.Model):
         data = response.json()
         Event = self.env.get('comm.billing.event')
         if Event is not None:
-            Event._log_llm_usage(ANTHROPIC_MODEL, data.get('usage'), source='contact_centre', feature='copilot')
+            Event._log_llm_usage(model, data.get('usage'), source='contact_centre', feature='copilot')
         content = data.get('content', [])
         text = content[0].get('text', '') if content else ''
         summary, sentiment, suggested_reply = self._parse_ai_response(text)
