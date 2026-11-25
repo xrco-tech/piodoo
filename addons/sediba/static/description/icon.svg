@@ -1,6 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="256" height="256">
+  <!-- Library: the amber book stands up for a moment, then leans back. It
+       moves where the menu shows this file; icon.png is the still frame. -->
+  <style>
+    .lean { transform-box: view-box; transform-origin: 29px 40px; animation: lean 6s ease-in-out infinite; }
+    @keyframes lean { 0%, 45%, 100% { transform: rotate(12deg); } 62%, 82% { transform: rotate(0deg); } }
+    @media (prefers-reduced-motion: reduce) { .lean { animation: none; } }
+  </style>
   <rect x="8" y="10" width="9" height="30" rx="2.5" fill="#144496"/>
   <rect x="19" y="14" width="9" height="26" rx="2.5" fill="#088BF5"/>
-  <rect x="29" y="12" width="9" height="28" rx="2.5" fill="#FBB130" transform="rotate(12 29 40)"/>
+  <rect class="lean" x="29" y="12" width="9" height="28" rx="2.5" fill="#FBB130" transform="rotate(12 29 40)"/>
   <rect x="5" y="40" width="38" height="3.5" rx="1.75" fill="#144496"/>
 </svg>
