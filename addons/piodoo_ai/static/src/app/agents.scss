@@ -27,6 +27,14 @@
     h2 { margin: 0; color: inherit; font-size: 16px; font-weight: 600; }
     .btn { min-height: 36px; }
     .btn-light { border: 1px solid var(--pai-line); }
+    // Fields take the screen's own colours, so typed text reads in dark mode too.
+    .form-control, .form-select {
+        border-color: var(--pai-line);
+        background-color: var(--pai-box);
+        color: var(--pai-text);
+
+        &::placeholder { color: var(--pai-muted); opacity: 1; }
+    }
 }
 
 .o_pai_muted { color: var(--pai-muted); }

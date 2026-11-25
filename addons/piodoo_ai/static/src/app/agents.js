@@ -302,7 +302,7 @@ export class AiAgents extends Component {
     /** The last message asks for a yes or no before anything is made. */
     isAsk(message) {
         const chat = this.state.chat;
-        return chat.waiting && message === chat.messages[chat.messages.length - 1];
+        return chat.waiting && message.buttons.length && message === chat.messages[chat.messages.length - 1];
     }
 }
 
