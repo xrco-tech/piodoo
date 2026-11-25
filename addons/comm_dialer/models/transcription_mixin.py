@@ -83,8 +83,12 @@ class CallTranscriptionMixin(models.AbstractModel):
         if not key:
             return {}
         model = ICP.get_param('comm_dialer.insight_model') or INSIGHT_MODEL
-        # The AI Agents app, when installed, holds the wording an admin may have changed.
+        # The AI Agents app, when installed, holds the wording, model and monthly limit an admin set.
         Agent = self.env.get('piodoo.ai.agent')
+        if Agent is not None:
+            if Agent._stopped('call_notes'):
+                return {}
+            model = Agent._model_for('call_notes', model)
         wording = Agent._instructions_for('call_notes', INSIGHT_PROMPT) if Agent is not None else INSIGHT_PROMPT
         prompt = wording + "\n\nTranscript:\n" + transcript[:8000]
         resp = requests.post(

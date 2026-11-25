@@ -658,6 +658,11 @@ class ContactCentreAiChat(models.Model):
                            "Configuration > WhatsApp > Settings > AI Agent).",
             })
             return
+        Agent = self._agent()
+        stopped = Agent._stopped("cc_sidekick") if Agent is not None else ""
+        if stopped:
+            Message.create({"session_id": self.id, "role": "assistant", "content": stopped})
+            return
 
         pending = self.pending_state
         if pending:
@@ -717,8 +722,9 @@ class ContactCentreAiChat(models.Model):
             "anthropic-version": ANTHROPIC_VERSION,
             "content-type": "application/json",
         }
+        model = self._model()
         payload = {
-            "model": ANTHROPIC_MODEL,
+            "model": model,
             "max_tokens": 150,
             "system": FALLBACK_SUGGESTIONS_SYSTEM,
             "messages": [{"role": "user", "content": assistant_text}],
@@ -730,7 +736,7 @@ class ContactCentreAiChat(models.Model):
             data = response.json()
             Event = self.env.get('comm.billing.event')
             if Event is not None:
-                Event._log_llm_usage(ANTHROPIC_MODEL, data.get('usage'), source='contact_centre', feature='ai_ops')
+                Event._log_llm_usage(model, data.get('usage'), source='contact_centre', feature='ai_ops')
             text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
             suggestions = json.loads(text.strip())
         except Exception as e:
@@ -749,13 +755,20 @@ class ContactCentreAiChat(models.Model):
             "content-type": "application/json",
         }
 
+        # Set once for the whole answer, so a change made on the AI Agents
+        # screen never lands halfway through it.
+        Agent = self._agent()
+        model, system, tools = self._model(), self._system_prompt(), self._tools()
+        cap = Agent._answer_cap("cc_sidekick") if Agent is not None else 0.0
+        spent = 0.0
+
         for _iteration in range(MAX_TOOL_ITERATIONS):
             payload = {
-                "model": ANTHROPIC_MODEL,
+                "model": model,
                 "max_tokens": 1024,
-                "system": self._system_prompt(),
+                "system": system,
                 "messages": messages,
-                "tools": self._tools(),
+                "tools": tools,
             }
             try:
                 response = requests.post(ANTHROPIC_API_URL, headers=headers, json=payload, timeout=30)
@@ -775,9 +788,15 @@ class ContactCentreAiChat(models.Model):
             data = response.json()
             Event = self.env.get('comm.billing.event')
             if Event is not None:
-                Event._log_llm_usage(ANTHROPIC_MODEL, data.get('usage'), source='contact_centre', feature='ai_ops')
+                events = Event._log_llm_usage(model, data.get('usage'), source='contact_centre', feature='ai_ops')
+                if Agent is not None:
+                    spent += Agent._cost_of(events)
             content = data.get("content", [])
             tool_use_blocks = [b for b in content if b.get("type") == "tool_use"]
+            if tool_use_blocks and cap and spent >= cap:
+                # The limit an admin set for one answer: stop looking things up.
+                return ("I stopped here: this answer reached the cost limit set for one answer. "
+                        "Nothing was made or changed. Try a narrower question.")
 
             if not tool_use_blocks:
                 return "".join(b.get("text", "") for b in content if b.get("type") == "text")
@@ -811,14 +830,25 @@ class ContactCentreAiChat(models.Model):
     def _reference(self):
         return self.env.get("sediba.assistant")
 
+    def _agent(self):
+        """The AI Agents app, when installed: the wording, skills, model and
+        limits an admin set. None otherwise, and everything is as built."""
+        return self.env.get("piodoo.ai.agent")
+
+    def _model(self):
+        Agent = self._agent()
+        return Agent._model_for("cc_sidekick", ANTHROPIC_MODEL) if Agent is not None else ANTHROPIC_MODEL
+
     def _tools(self):
         reference = self._reference()
-        return TOOLS + [reference.tool()] if reference is not None else TOOLS
+        tools = TOOLS + [reference.tool()] if reference is not None else TOOLS
+        Agent = self._agent()
+        return Agent._tools_for("cc_sidekick", tools) if Agent is not None else tools
 
     def _system_prompt(self):
         # The AI Agents app, when installed, holds the wording an admin may
         # have changed; the tools and the confirm step stay in this file.
-        Agent = self.env.get("piodoo.ai.agent")
+        Agent = self._agent()
         prompt = (Agent._instructions_for("cc_sidekick", SYSTEM_PROMPT)
                   if Agent is not None else SYSTEM_PROMPT)
         if self._reference() is None:
@@ -826,7 +856,9 @@ class ContactCentreAiChat(models.Model):
         return prompt + REFERENCE_PROMPT
 
     def _tool_look_up_reference(self, args):
-        return self._reference().look_up(args.get("question") or "", "contact_centre")
+        Agent = self._agent()
+        only = Agent._library_only("cc_sidekick") if Agent is not None else None
+        return self._reference().look_up(args.get("question") or "", "contact_centre", only=only)
 
     def _run_and_log_tool(self, call):
         """Run one tool call, record it in the audit trail, and return the
@@ -859,6 +891,9 @@ class ContactCentreAiChat(models.Model):
 
     def _execute_tool(self, name, args):
         self.ensure_one()
+        Agent = self._agent()
+        if Agent is not None and not Agent._tool_allowed("cc_sidekick", name):
+            return {"error": "This is switched off for the assistant. An administrator can switch it on in AI Agents."}
         handlers = {
             "create_campaign": self._tool_create_campaign,
             "update_campaign": self._tool_update_campaign,

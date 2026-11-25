@@ -11,6 +11,14 @@ import { standardActionServiceProps } from "@web/webclient/actions/action_servic
 
 const MODEL = "piodoo.ai.agent";
 
+const TABS = [
+    ["instructions", _t("Instructions")],
+    ["skills", _t("Skills")],
+    ["knowledge", _t("Knowledge")],
+    ["triggers", _t("Triggers")],
+    ["limits", _t("Limits")],
+];
+
 const STATUS = {
     draft: _t("Draft"),
     test: _t("Test only"),
@@ -53,6 +61,31 @@ class HistoryDialog extends Component {
     }
 }
 
+/** What the Library lets this agent read and is not on its list yet. */
+class LibraryDialog extends Component {
+    static template = "piodoo_ai.Library";
+    static components = { Dialog };
+    static props = { options: Array, add: Function, close: Function };
+
+    setup() {
+        this.state = useState({ search: "", added: [] });
+    }
+
+    get shown() {
+        const term = this.state.search.trim().toLowerCase();
+        return this.props.options.filter((row) => !term || row.title.toLowerCase().includes(term));
+    }
+
+    isAdded(row) {
+        return this.state.added.includes(`${row.kind}-${row.id}`);
+    }
+
+    async add(row) {
+        await this.props.add(row);
+        this.state.added.push(`${row.kind}-${row.id}`);
+    }
+}
+
 export class AiAgents extends Component {
     static template = "piodoo_ai.App";
     static components = {};
@@ -71,6 +104,8 @@ export class AiAgents extends Component {
             work: "",
             // One agent
             agent: null,
+            tab: "instructions",
+            limits: { model: "", monthly: "", answer: "" },
             text: "",
             saving: false,
             chats: [],
@@ -81,6 +116,7 @@ export class AiAgents extends Component {
             pending: "",
             error: "",
         });
+        this.tabs = TABS;
         this.scrollDown = false;
         onWillStart(() => this.loadHome());
         const toEnd = () => {
@@ -129,6 +165,9 @@ export class AiAgents extends Component {
         if (!(await this.leaveText())) {
             return;
         }
+        if (this.limitsDirty && !(await this.leaveLimits())) {
+            return;
+        }
         this.state.view = "home";
         this.state.agent = null;
         await this.loadHome();
@@ -140,6 +179,8 @@ export class AiAgents extends Component {
         const full = await this.orm.call(MODEL, "ui_agent", [agent.id]);
         Object.assign(this.state, {
             agent: full,
+            tab: "instructions",
+            limits: this.limitsOf(full),
             text: full.instructions,
             chats: [],
             chatSearch: "",
@@ -173,6 +214,23 @@ export class AiAgents extends Component {
                 {
                     title: _t("Leave without saving?"),
                     body: _t("Your changes to what this agent is told have not been saved."),
+                    confirmLabel: _t("Leave"),
+                    cancelLabel: _t("Stay"),
+                    confirm: () => resolve(true),
+                    cancel: () => resolve(false),
+                },
+                { onClose: () => resolve(false) }
+            );
+        });
+    }
+
+    leaveLimits() {
+        return new Promise((resolve) => {
+            this.dialog.add(
+                ConfirmationDialog,
+                {
+                    title: _t("Leave without saving?"),
+                    body: _t("Your changes to this agent's limits have not been saved."),
                     confirmLabel: _t("Leave"),
                     cancelLabel: _t("Stay"),
                     confirm: () => resolve(true),
@@ -240,6 +298,98 @@ export class AiAgents extends Component {
 
     day(value) {
         return deserializeDate(value).toFormat("ccc d LLL");
+    }
+
+    // ── Skills, Knowledge, Triggers, Limits ─────────────────────────────────
+    // Each switch saves at once. The wording on the Instructions tab is left
+    // as it is on screen, saved or not.
+
+    async setTab(key) {
+        if (key !== "instructions" && !(await this.leaveText())) {
+            return;
+        }
+        if (key !== "instructions") {
+            this.state.text = this.state.agent.instructions;
+        }
+        this.state.tab = key;
+    }
+
+    async call(method, args) {
+        const full = await this.orm.call(MODEL, method, [this.state.agent.id, ...args]);
+        this.state.agent = full;
+        return full;
+    }
+
+    setSkill(skill, ev) {
+        return this.call("ui_set_skill", [skill.key, ev.target.checked]);
+    }
+
+    setLibraryOnly(ev) {
+        return this.call("ui_set_library_only", [ev.target.checked]);
+    }
+
+    removeKnowledge(item) {
+        return this.call("ui_knowledge_set", [item.kind, item.id, false]);
+    }
+
+    async addKnowledge() {
+        const options = await this.orm.call(MODEL, "ui_knowledge_options", [this.state.agent.id]);
+        this.dialog.add(LibraryDialog, {
+            options,
+            add: (row) => this.call("ui_knowledge_set", [row.kind, row.id, true]),
+        });
+    }
+
+    setCron(cron, ev) {
+        return this.call("ui_set_cron", [cron.id, ev.target.checked]);
+    }
+
+    limitsOf(agent) {
+        const limits = agent.tabs.limits;
+        return {
+            model: limits.model,
+            monthly: limits.monthly_cap ? String(limits.monthly_cap) : "",
+            answer: limits.answer_cap ? String(limits.answer_cap) : "",
+        };
+    }
+
+    get limitsDirty() {
+        const saved = this.limitsOf(this.state.agent);
+        const now = this.state.limits;
+        return saved.model !== now.model || saved.monthly !== now.monthly.trim() || saved.answer !== now.answer.trim();
+    }
+
+    amount(text) {
+        const value = Number((text || "").trim().replace(",", "."));
+        return Number.isFinite(value) ? value : NaN;
+    }
+
+    async saveLimits() {
+        const monthly = this.amount(this.state.limits.monthly);
+        const answer = this.amount(this.state.limits.answer);
+        if (Number.isNaN(monthly) || Number.isNaN(answer) || monthly < 0 || answer < 0) {
+            this.notification.add(_t("A limit is an amount, for example 250. Leave it empty for no limit."), {
+                type: "danger",
+            });
+            return;
+        }
+        const full = await this.call("ui_set_limits", [this.state.limits.model, monthly, answer]);
+        this.state.limits = this.limitsOf(full);
+        this.notification.add(_t("Saved. The agent uses this from its next run."), { type: "success" });
+    }
+
+    discardLimits() {
+        this.state.limits = this.limitsOf(this.state.agent);
+    }
+
+    /** How full the monthly limit is, 0 to 100. */
+    get meter() {
+        const limits = this.state.agent.tabs.limits;
+        return limits.monthly_cap ? Math.min(100, Math.round((limits.spent / limits.monthly_cap) * 100)) : 0;
+    }
+
+    stamp(value) {
+        return value ? deserializeDateTime(value).toFormat("d LLL, HH:mm") : "";
     }
 
     // ── Chat ────────────────────────────────────────────────────────────────

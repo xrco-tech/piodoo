@@ -45,7 +45,8 @@
                             <a href="#" class="o_pai_name" t-on-click.prevent="() => this.open(agent)" t-esc="agent.name"/>
                             <div class="o_pai_muted o_pai_small" t-esc="meta(agent)"/>
                         </div>
-                        <span class="o_pai_tag" t-att-class="'o_pai_tag_' + agent.status" t-esc="statusLabel(agent)"/>
+                        <span t-if="agent.stopped" class="o_pai_tag o_pai_tag_test">Limit reached</span>
+                        <span t-else="" class="o_pai_tag" t-att-class="'o_pai_tag_' + agent.status" t-esc="statusLabel(agent)"/>
                     </div>
                     <div class="o_pai_chips">
                         <span t-foreach="agent.works" t-as="work" t-key="work" class="o_pai_chip o_pai_chip_blue" t-esc="work"/>
@@ -109,7 +110,8 @@
                     <div class="o_pai_mid_head">
                         <t t-call="piodoo_ai.Avatar"/>
                         <h2 t-esc="agent.name"/>
-                        <span class="o_pai_tag" t-att-class="'o_pai_tag_' + agent.status" t-esc="statusLabel(agent)"/>
+                        <span t-if="agent.stopped" class="o_pai_tag o_pai_tag_test">Limit reached</span>
+                        <span t-else="" class="o_pai_tag" t-att-class="'o_pai_tag_' + agent.status" t-esc="statusLabel(agent)"/>
                         <span class="o_pai_grow"/>
                         <span class="o_pai_muted o_pai_small" t-esc="agent.model"/>
                     </div>
@@ -218,6 +220,23 @@
                             <t t-esc="runs(agent)"/><t t-if="agent.usage.cost"> · <t t-esc="agent.usage.cost"/></t> in 30 days
                         </span>
                     </div>
+                    <div class="o_pai_tabs" role="tablist">
+                        <button t-foreach="tabs" t-as="tab" t-key="tab[0]" class="o_pai_tab" role="tab"
+                                t-att-class="{ active: state.tab === tab[0] }"
+                                t-att-aria-selected="state.tab === tab[0] ? 'true' : 'false'"
+                                t-on-click="() => this.setTab(tab[0])" t-esc="tab[1]"/>
+                    </div>
+                    <t t-if="state.tab === 'skills'" t-call="piodoo_ai.Skills"/>
+                    <t t-elif="state.tab === 'knowledge'" t-call="piodoo_ai.Knowledge"/>
+                    <t t-elif="state.tab === 'triggers'" t-call="piodoo_ai.Triggers"/>
+                    <t t-elif="state.tab === 'limits'" t-call="piodoo_ai.Limits"/>
+                    <t t-else="" t-call="piodoo_ai.Instructions"/>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="piodoo_ai.Instructions">
                     <label class="o_pai_label" for="o_pai_text">What this agent is told</label>
                     <t t-if="agent.built_in">
                         <textarea id="o_pai_text" class="form-control o_pai_text" t-model="state.text" spellcheck="true"/>
@@ -238,9 +257,192 @@
                         <b>Its wording could not be read.</b>
                         <span>The agent still works. Nothing can be changed here until its add-on is updated.</span>
                     </div>
+    </t>
+
+
+    <!-- ── Skills: groups of the agent's tools ─────────────────────────── -->
+    <t t-name="piodoo_ai.Skills">
+        <t t-set="skills" t-value="agent.tabs.skills"/>
+        <div class="o_pai_tabbody">
+            <t t-if="skills.length">
+                <div class="o_pai_label">Skills</div>
+                <div t-foreach="skills" t-as="skill" t-key="skill.key" class="o_pai_row">
+                    <div class="o_pai_grow o_pai_min">
+                        <b t-esc="skill.label"/>
+                        <div class="o_pai_muted o_pai_small" t-esc="skill.hint"/>
+                    </div>
+                    <span t-if="skill.level === 'makes'" class="o_pai_chip o_pai_chip_amber">Makes changes</span>
+                    <span t-else="" class="o_pai_chip">Reads only</span>
+                    <span class="form-check form-switch o_pai_switch"><input type="checkbox" class="form-check-input" role="switch" t-att-checked="skill.on" t-att-disabled="false" t-att-aria-label="skill.label" t-on-change="(ev) => this.setSkill(skill, ev)"/></span>
                 </div>
+                <div class="o_pai_muted o_pai_small">A skill that is off is taken away from the agent from its next answer, and it is told so.</div>
+                <t t-if="agent.tabs.asks_first">
+                    <div class="o_pai_label">Before it makes or changes anything</div>
+                    <div class="o_pai_row">
+                        <div class="o_pai_grow o_pai_min">
+                            <b>Ask me first</b>
+                            <div class="o_pai_muted o_pai_small">Shows a yes or no card in the chat. This is fixed in code and cannot be switched off.</div>
+                        </div>
+                        <span class="form-check form-switch o_pai_switch"><input type="checkbox" class="form-check-input" role="switch" t-att-checked="true" t-att-disabled="true" t-att-aria-label="'Ask me first'" t-on-change="() => {}"/></span>
+                    </div>
+                </t>
+            </t>
+            <div t-else="" class="o_pai_hint">
+                <b>No skills.</b>
+                <span>This agent only reads what it is given and writes its answer. It cannot look anything up or change anything.</span>
             </div>
         </div>
+    </t>
+
+    <!-- ── Knowledge: what it reads from the Library ───────────────────── -->
+    <t t-name="piodoo_ai.Knowledge">
+        <t t-set="know" t-value="agent.tabs.knowledge"/>
+        <div class="o_pai_tabbody">
+            <div t-if="!know.reads" class="o_pai_hint">
+                <b>This agent does not read the Library.</b>
+                <span>It works only from what it is handed each time it runs.</span>
+            </div>
+            <div t-elif="!know.installed" class="o_pai_hint">
+                <b>The Library is not installed on this system.</b>
+                <span>Once it is, this agent can look things up in it.</span>
+            </div>
+            <t t-else="">
+                <div class="o_pai_row">
+                    <div class="o_pai_grow o_pai_min">
+                        <b>Answer facts only from the Library</b>
+                        <div class="o_pai_muted o_pai_small">The agent is told to say it does not know when the Library does not cover a fact. This is an instruction, not a lock.</div>
+                    </div>
+                    <span class="form-check form-switch o_pai_switch"><input type="checkbox" class="form-check-input" role="switch" t-att-checked="know.only" t-att-disabled="false" t-att-aria-label="'Answer facts only from the Library'" t-on-change="(ev) => this.setLibraryOnly(ev)"/></span>
+                </div>
+                <div class="o_pai_label">From the Library</div>
+                <div t-if="!know.items.length" class="o_pai_hint">
+                    <b>Everything the Library allows it</b>
+                    <span><t t-esc="know.all_docs"/> published docs and <t t-esc="know.all_topics"/> research topics with verified findings.</span>
+                    <span class="o_pai_muted">Add docs or topics to narrow it to those only.</span>
+                </div>
+                <div t-foreach="know.items" t-as="item" t-key="item.kind + item.id" class="o_pai_row">
+                    <div class="o_pai_grow o_pai_min">
+                        <b t-esc="item.title"/>
+                        <div t-if="item.gone" class="o_pai_warn o_pai_small">The Library no longer lets assistants read this, so the agent cannot either.</div>
+                        <div t-else="" class="o_pai_muted o_pai_small" t-esc="item.meta"/>
+                    </div>
+                    <span class="o_pai_chip"><t t-if="item.kind === 'doc'">Doc</t><t t-else="">Topic</t></span>
+                    <button class="btn btn-light btn-sm" t-att-aria-label="'Remove ' + item.title"
+                            t-on-click="() => this.removeKnowledge(item)"><i class="fa fa-times" aria-hidden="true"/></button>
+                </div>
+                <div t-if="know.items.length" class="o_pai_muted o_pai_small">The agent reads only what is listed. The Library still decides what any assistant may read.</div>
+                <div><button class="btn btn-light btn-sm" t-on-click="() => this.addKnowledge()">Add from the Library</button></div>
+            </t>
+        </div>
+    </t>
+
+    <!-- ── Triggers: when it runs and where it works ───────────────────── -->
+    <t t-name="piodoo_ai.Triggers">
+        <div class="o_pai_tabbody">
+            <div class="o_pai_label">Runs by itself</div>
+            <div t-if="!agent.tabs.crons.length" class="o_pai_hint">
+                <b>Never.</b>
+                <span>It answers when someone asks it something.</span>
+            </div>
+            <div t-foreach="agent.tabs.crons" t-as="cron" t-key="cron.id" class="o_pai_row o_pai_row_top">
+                <div class="o_pai_grow o_pai_min">
+                    <b t-esc="cron.label"/>
+                    <div class="o_pai_muted o_pai_small">
+                        <t t-esc="cron.every"/><t t-if="cron.last">. Last ran <t t-esc="stamp(cron.last)"/></t><t t-if="cron.next">. Next <t t-esc="stamp(cron.next)"/></t>
+                    </div>
+                    <div t-if="!cron.active" class="o_pai_warn o_pai_small">Switched off: it does not run until it is switched on again.</div>
+                    <div t-if="cron.locked" class="o_pai_muted o_pai_small" t-esc="cron.locked"/>
+                </div>
+                <span class="form-check form-switch o_pai_switch"><input type="checkbox" class="form-check-input" role="switch" t-att-checked="cron.active" t-att-disabled="!!cron.locked" t-att-aria-label="cron.label" t-on-change="(ev) => this.setCron(cron, ev)"/></span>
+            </div>
+            <div class="o_pai_label">Where it works</div>
+            <div t-foreach="agent.tabs.places" t-as="place" t-key="place_index" class="o_pai_row">
+                <i class="fa fa-map-marker o_pai_muted" aria-hidden="true"/>
+                <span class="o_pai_grow" t-esc="place"/>
+            </div>
+        </div>
+    </t>
+
+    <!-- ── Limits: model and spending ──────────────────────────────────── -->
+    <t t-name="piodoo_ai.Limits">
+        <t t-set="limits" t-value="agent.tabs.limits"/>
+        <div class="o_pai_tabbody">
+            <label class="o_pai_label" for="o_pai_model">Model</label>
+            <select id="o_pai_model" class="form-select" t-model="state.limits.model">
+                <option value="">As built (<t t-esc="limits.as_built_label"/>)</option>
+                <option t-foreach="limits.options" t-as="option" t-key="option.value" t-att-value="option.value" t-esc="option.label"/>
+            </select>
+            <div class="o_pai_muted o_pai_small">Only models billing has a price for are listed. A different model can answer differently: if runs start to fail, put it back to as built.</div>
+
+            <div class="o_pai_label">Spending</div>
+            <div t-if="!limits.billing" class="o_pai_hint">
+                <b>Limits need billing.</b>
+                <span>Billing is not installed here, so what this agent spends is not known.</span>
+            </div>
+            <t t-else="">
+                <div t-if="agent.stopped" class="o_pai_fixed o_pai_small">
+                    <b>Stopped:</b> it has reached this month's limit and will not run until the limit is raised or the month ends.
+                </div>
+                <div class="o_pai_field">
+                    <label for="o_pai_monthly"><b>Monthly limit</b></label>
+                    <div class="o_pai_money">
+                        <span t-esc="limits.currency"/>
+                        <input id="o_pai_monthly" type="text" inputmode="decimal" class="form-control" placeholder="No limit"
+                               t-model="state.limits.monthly"/>
+                    </div>
+                    <div class="o_pai_muted o_pai_small">The agent stops itself when this is reached, until the next month.</div>
+                </div>
+                <div t-if="limits.monthly_cap" class="o_pai_meter_wrap">
+                    <div class="o_pai_meter" role="img" t-att-aria-label="meter + ' percent of the monthly limit used'">
+                        <div t-att-style="'width:' + meter + '%'"/>
+                    </div>
+                    <span class="o_pai_muted o_pai_small"><t t-esc="limits.spent_text"/> of <t t-esc="limits.monthly_cap_text"/> used this month</span>
+                </div>
+                <div t-else="" class="o_pai_muted o_pai_small"><t t-esc="limits.spent_text"/> spent this month</div>
+                <div t-if="limits.chat" class="o_pai_field">
+                    <label for="o_pai_answer"><b>One answer may cost at most</b></label>
+                    <div class="o_pai_money">
+                        <span t-esc="limits.currency"/>
+                        <input id="o_pai_answer" type="text" inputmode="decimal" class="form-control" placeholder="No limit"
+                               t-model="state.limits.answer"/>
+                    </div>
+                    <div class="o_pai_muted o_pai_small">Stops a question that keeps looking things up. It is checked after each step, so an answer can end slightly over.</div>
+                </div>
+            </t>
+
+            <div class="o_pai_label">Who may use it</div>
+            <div t-esc="limits.who"/>
+            <div class="o_pai_muted o_pai_small">Set by the agent's own app. Only administrators can change the agent itself.</div>
+
+            <div class="o_pai_btns o_pai_foot">
+                <span class="o_pai_grow"/>
+                <button t-if="limitsDirty" class="btn btn-light btn-sm" t-on-click="() => this.discardLimits()">Discard</button>
+                <button class="btn btn-primary btn-sm" t-att-disabled="!limitsDirty" t-on-click="() => this.saveLimits()">Save</button>
+            </div>
+        </div>
+    </t>
+
+    <!-- ── Add from the Library ────────────────────────────────────────── -->
+    <t t-name="piodoo_ai.Library">
+        <Dialog title.translate="Add from the Library" size="'md'">
+            <div class="o_pai_history">
+                <input type="search" class="form-control mb-2" placeholder="Search…" aria-label="Search the Library" t-model="state.search"/>
+                <div t-if="!props.options.length" class="text-muted">Everything the Library lets this agent read is already on its list.</div>
+                <div t-elif="!shown.length" class="text-muted">Nothing matches.</div>
+                <div t-foreach="shown" t-as="row" t-key="row.kind + row.id" class="o_pai_version o_pai_version_head">
+                    <div class="flex-grow-1" style="min-width: 0">
+                        <b t-esc="row.title"/>
+                        <div class="text-muted small" t-esc="row.meta"/>
+                    </div>
+                    <span class="badge text-bg-light border"><t t-if="row.kind === 'doc'">Doc</t><t t-else="">Topic</t></span>
+                    <span t-if="isAdded(row)" class="text-muted"><i class="fa fa-check me-1" aria-hidden="true"/>Added</span>
+                    <button t-else="" class="btn btn-light btn-sm" t-on-click="() => this.add(row)">Add</button>
+                </div>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-on-click="props.close">Done</button>
+            </t>
+        </Dialog>
     </t>
 
     <!-- ── History of one agent's wording ──────────────────────────────── -->

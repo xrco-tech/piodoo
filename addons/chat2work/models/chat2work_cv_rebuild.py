@@ -139,6 +139,8 @@ class Chat2workCandidateCvRebuild(models.Model):
         # The AI Agents app, when installed, holds the wording an admin may have changed.
         Agent = self.env.get('piodoo.ai.agent')
         system = Agent._instructions_for('cv_reader', SYSTEM) if Agent is not None else SYSTEM
+        if Agent is not None:
+            model = Agent._model_for('cv_reader', model)
         response = requests.post(API_URL, timeout=REQUEST_TIMEOUT, headers={
             'x-api-key': api_key,
             'anthropic-version': API_VERSION,
@@ -189,6 +191,9 @@ class Chat2workCandidateCvRebuild(models.Model):
 
     def _c2w_rebuild_one(self):
         self.ensure_one()
+        Agent = self.env.get('piodoo.ai.agent')
+        if Agent is not None and Agent._stopped('cv_reader'):
+            return      # stays queued until the AI Agents limit allows it again
         now = fields.Datetime.now()
         api_key = (self.env['ir.config_parameter'].sudo().get_param('comm_chatbot.anthropic_api_key') or '').strip()
         if self.cv_text_state != 'readable' or not api_key:
