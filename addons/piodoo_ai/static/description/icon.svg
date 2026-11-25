@@ -1,11 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="18" fill="#714b67"/>
-  <rect x="22" y="30" width="56" height="42" rx="10" fill="#ffffff"/>
-  <rect x="47" y="16" width="6" height="14" rx="3" fill="#ffffff"/>
-  <circle cx="50" cy="15" r="6" fill="#ffffff"/>
-  <circle cx="38" cy="48" r="6" fill="#714b67"/>
-  <circle cx="62" cy="48" r="6" fill="#714b67"/>
-  <rect x="38" y="60" width="24" height="5" rx="2.5" fill="#714b67"/>
-  <rect x="12" y="44" width="7" height="16" rx="3.5" fill="#ffffff"/>
-  <rect x="81" y="44" width="7" height="16" rx="3.5" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="256" height="256">
+  <!-- AI Agents: three agents going round a spark. It moves where the menu
+       shows this file; icon.png is the still frame for everywhere else. -->
+  <style>
+    .orbit { transform-box: view-box; transform-origin: center; animation: orbit 10s linear infinite; }
+    .spark { transform-box: fill-box; transform-origin: center; animation: breathe 3s ease-in-out infinite; }
+    @keyframes orbit { to { transform: rotate(360deg); } }
+    @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(.8); } }
+    @media (prefers-reduced-motion: reduce) { .orbit, .spark { animation: none; } }
+  </style>
+  <circle cx="24" cy="24" r="16" fill="none" stroke="#C9D6EE" stroke-width="2"/>
+  <path class="spark" d="M24 14.5c1.1 5.3 4.2 8.4 9.500 9.500-5.300 1.100-8.400 4.200-9.500 9.500-1.100-5.300-4.200-8.400-9.500-9.500 5.300-1.100 8.400-4.200 9.500-9.500z" fill="#FBB130"/>
+  <g class="orbit">
+    <circle cx="24" cy="8" r="5.500" fill="#088BF5"/>
+    <rect x="33.400" y="27.500" width="9" height="9" rx="3" fill="#2EBCFA"/>
+    <rect x="5.600" y="27.500" width="9" height="9" rx="3" fill="#F2695C"/>
+  </g>
 </svg>

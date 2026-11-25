@@ -7,7 +7,7 @@
     </record>
 
     <menuitem id="menu_piodoo_ai_root" name="AI Agents" sequence="48"
-              web_icon="piodoo_ai,static/description/icon.png"
+              web_icon="piodoo_ai,static/description/icon.svg"
               action="action_piodoo_ai"
               groups="base.group_system"/>
 
