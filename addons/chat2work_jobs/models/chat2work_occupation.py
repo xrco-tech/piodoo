@@ -69,9 +69,7 @@ DESCRIPTION_CHARS = 800
 SYSTEM = """You code South African job listings to an ISCO-08 unit group (4 digits). The codes are listed below.
 Pick the unit group for the job the listing hires for. Learnerships, internships and graduate programmes:
 code the work the person will do; if it isn't clear what that is, answer "none". Answer "none" too when
-nothing in the list fits.
-
-%s"""
+nothing in the list fits."""
 
 
 CV_SYSTEM = """You code a South African job seeker's CV for job matching. The ISCO-08 unit groups (4 digits)
@@ -292,7 +290,10 @@ class Chat2workListingOccupation(models.Model):
             _logger.info("chat2work_jobs: no AI key, so listings are coded by title only")
             return
         Occupation = self.env['chat2work.occupation']
-        system = SYSTEM % Occupation._c2w_unit_groups_text()
+        # The AI Agents app, when installed, holds the wording an admin may have changed.
+        Agent = self.env.get('piodoo.ai.agent')
+        wording = Agent._instructions_for('job_sorter', SYSTEM) if Agent is not None else SYSTEM
+        system = '%s\n\n%s' % (wording, Occupation._c2w_unit_groups_text())
         for rec in self:
             try:
                 code = rec._c2w_ai_occupation(api_key, system)

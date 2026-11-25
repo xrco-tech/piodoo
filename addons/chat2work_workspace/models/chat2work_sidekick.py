@@ -372,12 +372,15 @@ class Chat2workWorkspaceSidekick(models.AbstractModel):
     def _sidekick_request(self, api_key, messages, tools):
         """One call to Claude: its content blocks. Raises when it can't answer."""
         model = self.env['ir.config_parameter'].sudo().get_param('chat2work.occupation_model', DEFAULT_MODEL)
+        # The AI Agents app, when installed, holds the wording an admin may have changed.
+        Agent = self.env.get('piodoo.ai.agent')
+        system = Agent._instructions_for('c2w_sidekick', SIDEKICK_SYSTEM) if Agent is not None else SIDEKICK_SYSTEM
         response = requests.post(API_URL, timeout=REQUEST_TIMEOUT, headers={
             'x-api-key': api_key, 'anthropic-version': API_VERSION, 'content-type': 'application/json',
         }, json={
             'model': model,
             'max_tokens': 1500,
-            'system': [{'type': 'text', 'text': SIDEKICK_SYSTEM, 'cache_control': {'type': 'ephemeral'}}],
+            'system': [{'type': 'text', 'text': system, 'cache_control': {'type': 'ephemeral'}}],
             'tools': tools,
             'messages': messages,
         })

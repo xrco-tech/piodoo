@@ -136,6 +136,9 @@ class Chat2workCandidateCvRebuild(models.Model):
     def _c2w_ai_read_cv(self, text, api_key):
         """The details Claude read from `text`, as a dict. Raises when it can't."""
         model = self.env['ir.config_parameter'].sudo().get_param('chat2work.cv_rebuild_model', DEFAULT_MODEL)
+        # The AI Agents app, when installed, holds the wording an admin may have changed.
+        Agent = self.env.get('piodoo.ai.agent')
+        system = Agent._instructions_for('cv_reader', SYSTEM) if Agent is not None else SYSTEM
         response = requests.post(API_URL, timeout=REQUEST_TIMEOUT, headers={
             'x-api-key': api_key,
             'anthropic-version': API_VERSION,
@@ -145,7 +148,7 @@ class Chat2workCandidateCvRebuild(models.Model):
             'model': model,
             'max_tokens': MAX_TOKENS,
             'fallbacks': 'default',
-            'system': SYSTEM,
+            'system': system,
             'output_config': {'effort': 'low', 'format': {'type': 'json_schema', 'schema': CV_SCHEMA}},
             'messages': [{'role': 'user', 'content': '<cv>\n%s\n</cv>' % text.replace('</cv>', '</ cv>')}],
         })

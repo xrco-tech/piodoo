@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_piodoo_ai" model="ir.actions.client">
+        <field name="name">AI Agents</field>
+        <field name="tag">piodoo_ai</field>
+    </record>
+
+    <menuitem id="menu_piodoo_ai_root" name="AI Agents" sequence="48"
+              web_icon="piodoo_ai,static/description/icon.png"
+              action="action_piodoo_ai"
+              groups="base.group_system"/>
+
+</odoo>

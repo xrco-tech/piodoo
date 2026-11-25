@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="piodoo_ai.App">
+        <div class="o_pai">
+            <t t-if="state.view === 'home'" t-call="piodoo_ai.Home"/>
+            <t t-else="" t-call="piodoo_ai.Agent"/>
+        </div>
+    </t>
+
+    <t t-name="piodoo_ai.Avatar">
+        <span class="o_pai_avatar" aria-hidden="true" t-att-style="'background:' + agent.color" t-esc="agent.letter"/>
+    </t>
+
+    <!-- ── Home: every agent as a card ─────────────────────────────────── -->
+    <t t-name="piodoo_ai.Home">
+        <div class="o_pai_home">
+            <div class="o_pai_bar">
+                <div class="o_pai_grow">
+                    <h1>AI Agents</h1>
+                    <div class="o_pai_muted o_pai_small">Every assistant in piodoo, what it is told and what it costs.</div>
+                </div>
+                <input type="search" class="form-control o_pai_search" placeholder="Search agents…"
+                       aria-label="Search agents" t-model="state.search"/>
+                <select class="form-select o_pai_filter" aria-label="Works in" t-model="state.work">
+                    <option value="">Works in: All</option>
+                    <option t-foreach="state.works" t-as="work" t-key="work" t-att-value="work" t-esc="work"/>
+                </select>
+            </div>
+
+            <div t-if="!state.agents.length" class="o_pai_box o_pai_empty">
+                <b>No assistant is installed on this system.</b>
+                <span class="o_pai_muted">An agent appears here when the add-on it belongs to is installed.</span>
+            </div>
+            <div t-elif="!shown.length" class="o_pai_box o_pai_empty">
+                <b>No agent matches.</b>
+                <span class="o_pai_muted">Clear the search or choose "Works in: All".</span>
+            </div>
+
+            <div class="o_pai_grid">
+                <div t-foreach="shown" t-as="agent" t-key="agent.id" class="o_pai_box o_pai_card">
+                    <div class="o_pai_card_top">
+                        <t t-call="piodoo_ai.Avatar"/>
+                        <div class="o_pai_grow o_pai_min">
+                            <a href="#" class="o_pai_name" t-on-click.prevent="() => this.open(agent)" t-esc="agent.name"/>
+                            <div class="o_pai_muted o_pai_small" t-esc="meta(agent)"/>
+                        </div>
+                        <span class="o_pai_tag" t-att-class="'o_pai_tag_' + agent.status" t-esc="statusLabel(agent)"/>
+                    </div>
+                    <div class="o_pai_chips">
+                        <span t-foreach="agent.works" t-as="work" t-key="work" class="o_pai_chip o_pai_chip_blue" t-esc="work"/>
+                    </div>
+                    <div t-esc="agent.description"/>
+                    <div t-if="agent.runs_note" class="o_pai_muted o_pai_small">
+                        <i class="fa fa-repeat me-1" aria-hidden="true"/><t t-esc="agent.runs_note"/>
+                    </div>
+                    <div class="o_pai_stats o_pai_muted o_pai_small">
+                        <t t-if="agent.usage">
+                            <span t-esc="runs(agent)"/>
+                            <span t-if="agent.usage.cost" t-esc="agent.usage.cost"/>
+                            <span>last 30 days</span>
+                        </t>
+                        <span t-else="">Runs and cost show once billing is installed</span>
+                    </div>
+                    <div class="o_pai_card_btns">
+                        <button class="btn btn-light btn-sm" t-on-click="() => this.open(agent)">
+                            <t t-if="agent.chat">Chat</t><t t-else="">Open</t>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ── One agent: chat or runs in the middle, its wording on the right ─ -->
+    <t t-name="piodoo_ai.Agent">
+        <t t-set="agent" t-value="state.agent"/>
+        <div class="o_pai_agent">
+            <div class="o_pai_crumbs">
+                <a href="#" t-on-click.prevent="() => this.goHome()">AI Agents</a>
+                <span class="o_pai_muted">/</span>
+                <b t-esc="agent.name"/>
+            </div>
+            <div class="o_pai_cols">
+
+                <div t-if="agent.chat and !agent.chat_blocked" class="o_pai_box o_pai_left">
+                    <input type="search" class="form-control" placeholder="Search chats…" aria-label="Search chats"
+                           t-model="state.chatSearch" t-on-input="() => this.loadChats()"/>
+                    <div class="o_pai_muted o_pai_small">Your own chats with this agent</div>
+                    <div class="o_pai_chats">
+                        <button t-foreach="state.chats" t-as="row" t-key="row.id" class="o_pai_chat_row"
+                                t-att-class="{ active: state.chat and state.chat.id === row.id }"
+                                t-on-click="() => this.openChat(row)">
+                            <span class="o_pai_chat_head">
+                                <b class="o_pai_grow o_pai_min o_pai_cut" t-esc="row.name"/>
+                                <span class="o_pai_muted o_pai_small" t-esc="when(row.at)"/>
+                            </span>
+                            <span t-if="row.preview" class="o_pai_muted o_pai_small o_pai_cut" t-esc="row.preview"/>
+                        </button>
+                        <div t-if="!state.chats.length" class="o_pai_muted o_pai_small">
+                            <t t-if="state.chatSearch">No chat matches.</t>
+                            <t t-else="">No chats yet.</t>
+                        </div>
+                    </div>
+                    <button class="btn btn-light" t-on-click="() => this.newChat()">New chat</button>
+                </div>
+
+                <div class="o_pai_box o_pai_mid">
+                    <div class="o_pai_mid_head">
+                        <t t-call="piodoo_ai.Avatar"/>
+                        <h2 t-esc="agent.name"/>
+                        <span class="o_pai_tag" t-att-class="'o_pai_tag_' + agent.status" t-esc="statusLabel(agent)"/>
+                        <span class="o_pai_grow"/>
+                        <span class="o_pai_muted o_pai_small" t-esc="agent.model"/>
+                    </div>
+
+                    <t t-if="agent.chat and agent.chat_blocked">
+                        <div class="o_pai_hint">
+                            <b>You cannot chat with this agent here.</b>
+                            <span t-esc="agent.chat_blocked"/>
+                        </div>
+                    </t>
+
+                    <t t-elif="agent.chat">
+                        <div class="o_pai_thread" t-ref="thread">
+                            <div t-if="!state.chat and !state.pending" class="o_pai_hint">
+                                <b>New chat</b>
+                                <span t-esc="agent.description"/>
+                                <span class="o_pai_muted">This is the same agent, with the same rights you have in its own app.</span>
+                            </div>
+                            <t t-if="state.chat">
+                                <t t-foreach="state.chat.messages" t-as="message" t-key="message.id">
+                                    <div t-if="isAsk(message)" class="o_pai_ask">
+                                        <b><t t-esc="agent.name"/> wants to make a change</b>
+                                        <div class="o_pai_pre" t-esc="message.text"/>
+                                        <div class="o_pai_btns">
+                                            <button t-foreach="message.buttons" t-as="label" t-key="label_index"
+                                                    class="btn" t-att-class="label_index ? 'btn-light' : 'btn-primary'"
+                                                    t-att-disabled="state.asking" t-on-click="() => this.ask(label)" t-esc="label"/>
+                                        </div>
+                                    </div>
+                                    <div t-else="" class="o_pai_msg" t-att-class="{ o_pai_mine: message.role === 'me' }">
+                                        <span class="o_pai_muted o_pai_small">
+                                            <t t-if="message.role === 'me'">You</t><t t-else="" t-esc="agent.name"/>
+                                            · <t t-esc="when(message.at)"/>
+                                        </span>
+                                        <div class="o_pai_bubble">
+                                            <div t-if="message.text" class="o_pai_pre" t-esc="message.text"/>
+                                            <ul t-if="message.lines.length" class="o_pai_lines">
+                                                <li t-foreach="message.lines" t-as="line" t-key="line_index" t-esc="line"/>
+                                            </ul>
+                                            <div t-if="message.draft" class="o_pai_draft">
+                                                <span class="o_pai_muted o_pai_small">Draft</span>
+                                                <div class="o_pai_pre" t-esc="message.draft"/>
+                                            </div>
+                                        </div>
+                                        <span t-if="message.note" class="o_pai_muted o_pai_small" t-esc="message.note"/>
+                                        <div t-if="message.buttons.length" class="o_pai_btns">
+                                            <button t-foreach="message.buttons" t-as="label" t-key="label_index"
+                                                    class="btn btn-light btn-sm" t-att-disabled="state.asking"
+                                                    t-on-click="() => this.ask(label)" t-esc="label"/>
+                                        </div>
+                                    </div>
+                                </t>
+                            </t>
+                            <div t-if="state.pending" class="o_pai_msg o_pai_mine">
+                                <span class="o_pai_muted o_pai_small">You</span>
+                                <div class="o_pai_bubble"><div class="o_pai_pre" t-esc="state.pending"/></div>
+                            </div>
+                            <div t-if="state.asking" class="o_pai_muted" role="status">
+                                <i class="fa fa-circle-o-notch fa-spin me-1" aria-hidden="true"/><t t-esc="agent.name"/> is working…
+                            </div>
+                        </div>
+                        <div t-if="state.error" class="o_pai_error" role="alert" t-esc="state.error"/>
+                        <div class="o_pai_composer">
+                            <textarea class="form-control" rows="2" t-att-placeholder="'Message ' + agent.name + '…'"
+                                      t-att-aria-label="'Message ' + agent.name" t-model="state.draft"
+                                      t-on-keydown="onDraftKey"/>
+                            <button class="btn btn-primary" t-att-disabled="state.asking or !state.draft.trim()"
+                                    t-on-click="() => this.ask(state.draft)">Send</button>
+                        </div>
+                    </t>
+
+                    <t t-else="">
+                        <div class="o_pai_hint">
+                            <b>Nobody chats with this agent.</b>
+                            <span t-if="agent.runs_note" t-esc="agent.runs_note + '.'"/>
+                        </div>
+                        <h2>Runs by day, last 30 days</h2>
+                        <div t-if="!agent.usage" class="o_pai_muted">Runs and cost show once billing is installed.</div>
+                        <div t-elif="!agent.days.length" class="o_pai_muted">It has not run in the last 30 days.</div>
+                        <div t-else="" class="o_pai_days">
+                            <table class="o_pai_table">
+                                <thead><tr><th>Day</th><th class="o_pai_num">Runs</th><th class="o_pai_num">Cost</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="agent.days" t-as="row" t-key="row.day">
+                                        <td t-esc="day(row.day)"/>
+                                        <td class="o_pai_num" t-esc="row.runs"/>
+                                        <td class="o_pai_num" t-esc="row.cost"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+                </div>
+
+                <div class="o_pai_box o_pai_right">
+                    <div class="o_pai_card_top">
+                        <t t-call="piodoo_ai.Avatar"/>
+                        <div class="o_pai_grow o_pai_min">
+                            <h2 t-esc="agent.name"/>
+                            <div class="o_pai_muted o_pai_small" t-esc="agent.description"/>
+                        </div>
+                    </div>
+                    <div class="o_pai_chips">
+                        <span t-foreach="agent.works" t-as="work" t-key="work" class="o_pai_chip o_pai_chip_blue" t-esc="work"/>
+                        <span t-if="agent.usage" class="o_pai_chip">
+                            <t t-esc="runs(agent)"/><t t-if="agent.usage.cost"> · <t t-esc="agent.usage.cost"/></t> in 30 days
+                        </span>
+                    </div>
+                    <label class="o_pai_label" for="o_pai_text">What this agent is told</label>
+                    <t t-if="agent.built_in">
+                        <textarea id="o_pai_text" class="form-control o_pai_text" t-model="state.text" spellcheck="true"/>
+                        <div t-if="agent.fixed_note" class="o_pai_fixed o_pai_small">
+                            <b>Stays as it is:</b> <t t-esc="agent.fixed_note"/>
+                        </div>
+                        <div class="o_pai_muted o_pai_small" t-esc="changedLine(agent)"/>
+                        <div class="o_pai_btns">
+                            <button t-if="agent.versions" class="btn btn-light btn-sm" t-on-click="() => this.history()">History</button>
+                            <button t-if="agent.changed" class="btn btn-light btn-sm" t-on-click="() => this.reset()">Back to as built</button>
+                            <span class="o_pai_grow"/>
+                            <button t-if="dirty" class="btn btn-light btn-sm" t-on-click="() => this.discard()">Discard</button>
+                            <button class="btn btn-primary btn-sm" t-att-disabled="!dirty or state.saving"
+                                    t-on-click="() => this.save()">Save</button>
+                        </div>
+                    </t>
+                    <div t-else="" class="o_pai_hint">
+                        <b>Its wording could not be read.</b>
+                        <span>The agent still works. Nothing can be changed here until its add-on is updated.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ── History of one agent's wording ──────────────────────────────── -->
+    <t t-name="piodoo_ai.History">
+        <Dialog title.translate="History" size="'lg'">
+            <div class="o_pai_history">
+                <div t-foreach="props.versions" t-as="version" t-key="version.id" class="o_pai_version">
+                    <div class="o_pai_version_head">
+                        <button class="btn btn-link p-0" t-att-aria-expanded="state.open === version.id ? 'true' : 'false'"
+                                t-on-click="() => this.toggle(version)">
+                            <i class="fa me-1" t-att-class="state.open === version.id ? 'fa-caret-down' : 'fa-caret-right'" aria-hidden="true"/>
+                            <t t-esc="when(version.at)"/>
+                        </button>
+                        <span class="text-muted">by <t t-esc="version.by"/></span>
+                        <span t-if="version.as_built" class="badge text-bg-light border">As built</span>
+                        <span t-if="version_first" class="badge text-bg-light border">In use</span>
+                        <span class="flex-grow-1"/>
+                        <button t-if="!version_first" class="btn btn-light btn-sm" t-on-click="() => this.use(version)">Use this one</button>
+                    </div>
+                    <pre t-if="state.open === version.id" class="o_pai_version_text" t-esc="version.text"/>
+                </div>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-on-click="props.close">Close</button>
+            </t>
+        </Dialog>
+    </t>
+
+</templates>
