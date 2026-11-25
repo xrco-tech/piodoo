@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Enterprise Home Screen - Modern App Dashboard',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Themes/Backend',
     'summary': 'Transform Odoo Community with Enterprise-style home screen, custom backgrounds, and drag-drop app ordering',
     'description': """
