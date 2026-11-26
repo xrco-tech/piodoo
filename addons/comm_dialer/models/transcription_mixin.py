@@ -10,12 +10,20 @@ import json
 import logging
 import re
 import threading
+import time
 
 import requests
 
 from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
+
+# How long one recording may take in the speech service. A track of a few minutes has
+# taken over ten minutes on the Pi, so this is long. Two tracks must fit inside the
+# time a scheduled job is allowed on the server (limit_time_real_cron, 3600 there).
+ASR_TIMEOUT = 1700
+# Once a run has gone on this long it starts nothing new; the next run takes the rest.
+RUN_BUDGET = 600
 
 INSIGHT_MODEL = 'claude-haiku-4-5-20251001'
 INSIGHT_PROMPT = (
@@ -64,12 +72,7 @@ class CallTranscriptionMixin(models.AbstractModel):
             self._whisper_url() + '/asr',
             params={'task': 'transcribe', 'output': 'txt', 'encode': 'true'},
             files={'audio_file': (att.name or 'audio.webm', audio, att.mimetype or 'audio/webm')},
-            # Generous per-request timeout: measured ~1.5x realtime on the box's
-            # 'small' model, so a multi-minute call recording legitimately needs
-            # well over 180s. The cron's lock window is bounded by the small batch
-            # limit below (not by this timeout), and deploys use the stop-odoo
-            # rule — so favour completing long transcriptions over a tight cap.
-            timeout=600,
+            timeout=ASR_TIMEOUT,
         )
         resp.raise_for_status()
         return (resp.text or '').strip()
@@ -145,7 +148,7 @@ class CallTranscriptionMixin(models.AbstractModel):
             params={'task': 'transcribe', 'output': 'json', 'encode': 'true',
                     'vad_filter': 'true'},
             files={'audio_file': (att.name or 'audio.webm', audio, att.mimetype or 'audio/webm')},
-            timeout=600,
+            timeout=ASR_TIMEOUT,
         )
         resp.raise_for_status()
         try:
@@ -212,6 +215,9 @@ class CallTranscriptionMixin(models.AbstractModel):
             except Exception:
                 _logger.exception("cleanup of channel recordings failed for %s %s", self._name, self.id)
 
+    def _transcribe_run_budget(self):
+        return RUN_BUDGET
+
     def action_transcribe(self):
         for rec in self:
             rec._do_transcription()
@@ -242,7 +248,10 @@ class CallTranscriptionMixin(models.AbstractModel):
         the next run moves on. What is finished is saved straight away.
         """
         auto_commit = not getattr(threading.current_thread(), 'testing', False)
+        started = time.monotonic()
         for rec in self:
+            if rec != self[:1] and time.monotonic() - started > self._transcribe_run_budget():
+                break
             rec.transcript_state = 'failed'
             if auto_commit:
                 self.env.cr.commit()
