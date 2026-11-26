@@ -87,6 +87,38 @@ class TestSedibaShare(DocsCase):
         self.assertNotIn('Download PDF', str(Ws._doc_page_html(Ws._doc_page_shared(self.doc.share_token), for_pdf=True)))
         self.assertEqual(Ws._doc_file_name({'name': 'Fish & <chips>: 2027/28'}), 'Fish chips 2027 28.pdf')
 
+    def test_pictures_are_written_into_the_page(self):
+        png = (b'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+        Att = self.env['ir.attachment']
+        own = Att.create({'name': 'own.png', 'datas': png, 'res_model': 'sediba.doc', 'res_id': self.doc.id})
+        loose = Att.create({'name': 'loose.png', 'datas': png, 'res_model': 'ir.ui.view'})
+        other = Att.create({'name': 'other.png', 'datas': png, 'res_model': 'res.partner',
+                            'res_id': self.writer.partner_id.id})
+        note = Att.create({'name': 'note.txt', 'raw': b'secret words', 'mimetype': 'text/plain',
+                           'res_model': 'sediba.doc', 'res_id': self.doc.id})
+        self.assertEqual(own.mimetype, 'image/png')
+        self.doc.write({'body': (
+            '<p>Before</p>'
+            '<p><img class="img-fluid" src="/web/image/%s/own.png" alt="Own"></p>'
+            '<p><img src="/web/image/%s-abc123def/loose.png"></p>'
+            '<p><img src="/web/image/%s/other.png"></p>'
+            '<p><img src="/web/image/%s/note.txt"></p>'
+            '<p><img src="/web/image/99999999"></p>') % (own.id, loose.id, other.id, note.id)})
+        self.doc.action_share()
+        Ws = self.env['sediba.workspace']
+        for page in (Ws.with_user(self.env.ref('base.public_user'))._doc_page_shared(self.doc.share_token),
+                     self.ReaderWs._doc_page_for(self.doc.id)):
+            html = str(page['parts'][0]['html'])
+            self.assertEqual(html.count('src="data:image/png;base64,'), 2)
+            self.assertIn('alt="Own"', html)
+            # Another record's file, a file that is no picture, and one that is gone stay as they were.
+            self.assertIn('src="/web/image/%s/other.png"' % other.id, html)
+            self.assertIn('src="/web/image/%s/note.txt"' % note.id, html)
+            self.assertIn('src="/web/image/99999999"', html)
+            self.assertNotIn('c2VjcmV0', html)
+        # The page a signed-in reader works in is left alone.
+        self.assertNotIn('data:image', str(self.Ws.ws_doc(self.doc.id)['parts'][0]['html']))
+
     def test_signed_in_pdf_follows_what_the_reader_may_see(self):
         self.doc.write({'space_ids': [(6, 0, self.jobs.ids)]})
         # A draft: in the Library yes, from inside an app no.

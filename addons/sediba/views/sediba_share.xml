@@ -30,7 +30,8 @@
         ul, ol { margin: 0 0 12px; padding-left: 24px; }
         li { margin: 0 0 6px; }
         a { color: #174ea6; }
-        img { max-width: 100%; height: auto; }
+        img { max-width: 100%; height: auto; page-break-inside: avoid; }
+        .text img { border: 1px solid #dfe3e8; border-radius: 6px; }
         table { border-collapse: collapse; width: 100%; margin: 0 0 16px; }
         .text table td, .text table th { border: 1px solid #c9d0d8; padding: 6px 10px; vertical-align: top; text-align: left; }
         .text table p { margin: 0; }
