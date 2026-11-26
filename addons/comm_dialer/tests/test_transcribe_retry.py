@@ -48,3 +48,13 @@ class TestTranscribeRetry(TransactionCase):
                 patch.object(model, '_run_ai_insights', return_value={}):
             first.action_transcribe()
         self.assertEqual((first.transcript_state, first.transcript), ('done', 'Hello again'))
+
+    def test_long_run_leaves_the_rest(self):
+        model = type(self.Call)
+        with patch.object(model, '_transcribe_recording', return_value='Hello'), \
+                patch.object(model, '_run_ai_insights', return_value={}), \
+                patch.object(model, '_transcribe_run_budget', return_value=-1):
+            self.Call._cron_transcribe_pending()
+        self.assertEqual(sorted(self.calls.mapped('transcript_state')), ['done', 'none'],
+                         "one is done, the other waits for the next run untouched")
+
