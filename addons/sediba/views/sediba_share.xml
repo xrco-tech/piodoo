@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- One company doc as a plain page: the shared link and the PDF.
+         Whole in itself: no script, no stylesheet to fetch. Laid out with
+         tables and floats only, because the PDF maker knows nothing newer. -->
+    <template id="doc_page" name="Library: a doc as a plain page">&lt;!DOCTYPE html&gt;
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="robots" content="noindex, nofollow, noarchive"/>
+    <meta name="referrer" content="no-referrer"/>
+    <title><t t-esc="name"/></title>
+    <style>
+        html { -webkit-text-size-adjust: 100%; }
+        body { margin: 0; background: #f4f5f7; color: #1c2430; font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 16px; line-height: 1.6; }
+        .sheet { max-width: 760px; margin: 0 auto; padding: 16px; }
+        .paper { background: #ffffff; border: 1px solid #dfe3e8; border-radius: 8px; padding: 32px 40px 40px; }
+        .top { overflow: hidden; margin: 8px 0 16px; font-size: 14px; color: #5a6675; }
+        .top .from { float: left; padding: 8px 0; }
+        .top .get { float: right; display: inline-block; padding: 8px 14px; border: 1px solid #1c2430; border-radius: 6px; color: #1c2430; background: #ffffff; text-decoration: none; font-weight: 600; }
+        .top .get:hover, .top .get:focus { background: #1c2430; color: #ffffff; }
+        h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; }
+        .lede { font-size: 18px; color: #3d4856; margin: 0 0 8px; }
+        .meta { font-size: 14px; color: #5a6675; margin: 0 0 24px; padding-bottom: 16px; border-bottom: 1px solid #dfe3e8; }
+        h2 { font-size: 21px; line-height: 1.3; margin: 28px 0 8px; }
+        h3 { font-size: 17px; line-height: 1.3; margin: 20px 0 6px; }
+        h2, h3 { page-break-after: avoid; }
+        p { margin: 0 0 12px; }
+        ul, ol { margin: 0 0 12px; padding-left: 24px; }
+        li { margin: 0 0 6px; }
+        a { color: #174ea6; }
+        img { max-width: 100%; height: auto; }
+        table { border-collapse: collapse; width: 100%; margin: 0 0 16px; }
+        .text table td, .text table th { border: 1px solid #c9d0d8; padding: 6px 10px; vertical-align: top; text-align: left; }
+        .text table p { margin: 0; }
+        .text blockquote { margin: 0 0 12px; padding-left: 14px; border-left: 3px solid #c9d0d8; color: #3d4856; }
+        .block { border: 1px solid #dfe3e8; border-radius: 6px; padding: 14px 16px 6px; margin: 0 0 16px; page-break-inside: avoid; }
+        .block .cap { font-weight: 600; margin: 0 0 8px; }
+        .block .kind { font-weight: 600; }
+        .small { font-size: 13px; color: #5a6675; }
+        .tiles td { border: 1px solid #dfe3e8; padding: 10px 12px; vertical-align: top; }
+        .tiles b { display: block; font-size: 20px; line-height: 1.3; }
+        .rows td { padding: 6px 8px 6px 0; vertical-align: middle; border-bottom: 1px solid #eceff2; }
+        .rows .who { width: 36%; }
+        .rows .val { width: 22%; text-align: right; white-space: nowrap; font-weight: 600; }
+        .rows .day { width: 26%; white-space: nowrap; font-weight: 600; vertical-align: top; }
+        .track { background: #eceff2; }
+        .fill { height: 8px; margin: 2px 0; background: #3d6fb8; }
+        .fill.s1 { background: #c96a1a; }
+        .swatch { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 12px; background: #3d6fb8; }
+        .swatch.s1 { background: #c96a1a; }
+        .tag { display: inline-block; border: 1px solid #8c97a4; border-radius: 10px; padding: 0 8px; font-size: 13px; }
+        .tag.act { border-color: #8a5a00; background: #fff4d6; color: #5c3c00; font-weight: 600; }
+        .qa { page-break-inside: avoid; }
+        .answer { white-space: pre-line; }
+        .foot { margin: 16px 0 24px; font-size: 13px; color: #5a6675; text-align: center; }
+    </style>
+    <style t-if="not for_pdf">
+        @media (max-width: 600px) {
+            .sheet { padding: 8px; }
+            .paper { padding: 20px 16px 24px; }
+            h1 { font-size: 25px; }
+            .text table, .tiles { display: block; overflow-x: auto; }
+            .rows .who { width: 42%; }
+            .rows .val { width: 30%; white-space: normal; }
+        }
+        @media print {
+            body { background: #ffffff; }
+            .sheet { max-width: none; padding: 0; }
+            .paper { border: 0; padding: 0; }
+            .top, .foot { display: none; }
+        }
+    </style>
+    <style t-if="for_pdf">
+        body { background: #ffffff; font-size: 14px; }
+        .sheet { max-width: none; padding: 0 12mm; }
+        .paper { border: 0; padding: 0; }
+        h1 { font-size: 26px; }
+    </style>
+</head>
+<body>
+<div class="sheet">
+    <div t-if="not for_pdf" class="top">
+        <span class="from">Shared from the <t t-esc="company"/> Library</span>
+        <a t-if="pdf_url" class="get" t-att-href="pdf_url">Download PDF</a>
+    </div>
+    <main class="paper">
+        <h1 t-esc="name"/>
+        <p t-if="summary" class="lede" t-esc="summary"/>
+        <p class="meta"><t t-if="owner">Owner: <t t-esc="owner"/> · </t>Updated <t t-esc="updated"/></p>
+
+        <t t-foreach="parts" t-as="part">
+            <div t-if="part.get('html')" class="text" t-out="part['html']"/>
+
+            <!-- A flow diagram, as numbered steps -->
+            <div t-elif="part.get('flow')" class="block">
+                <p class="cap"><t t-esc="part['flow'].get('name') or 'Flow'"/></p>
+                <ol>
+                    <li t-foreach="part['flow']['lines']" t-as="line"><span class="kind"><t t-esc="line['label']"/>:</span> <t t-esc="line['text']"/></li>
+                </ol>
+            </div>
+
+            <!-- A visual block, as plain tables -->
+            <t t-elif="part.get('visual') and part['visual'].get('data')">
+                <t t-set="v" t-value="part['visual']['data']"/>
+                <div class="block">
+                    <p class="cap"><t t-esc="part['visual']['topic'][1]"/></p>
+                    <table t-if="v['tiles']" class="tiles"><tr>
+                        <td t-foreach="v['tiles']" t-as="tile">
+                            <span class="small" t-esc="tile['label']"/>
+                            <b t-esc="tile['figure']"/>
+                            <span t-if="tile['about']" class="small" t-esc="tile['about']"/>
+                        </td>
+                    </tr></table>
+                    <t t-foreach="v['charts']" t-as="chart">
+                        <p class="cap"><t t-esc="chart['label']"/>
+                            <t t-foreach="chart['series']" t-as="serie"><span t-attf-class="swatch s#{serie_index}"/><span class="small" t-esc="serie"/></t></p>
+                        <table class="rows">
+                            <tr t-foreach="chart['rows']" t-as="row">
+                                <td class="who"><b t-esc="row['subject']"/><t t-if="row['org']"><br/><span class="small" t-esc="row['org']['name']"/></t></td>
+                                <td><div class="track"><t t-foreach="row['bars']" t-as="bar">
+                                    <div t-attf-class="fill s#{chart['series'].index(bar['series']) if bar['series'] in chart['series'] else 0}"
+                                         t-attf-style="width: #{max(bar['percent'], 1)}%;"/></t></div></td>
+                                <td class="val" t-esc="row['shown']"/>
+                            </tr>
+                        </table>
+                        <p t-if="chart['not_drawn']" class="small">No figure found for <t t-esc="', '.join(chart['not_drawn'])"/>.</p>
+                    </t>
+                    <t t-if="v['dates']">
+                        <p class="cap">Dates to know</p>
+                        <table class="rows">
+                            <tr t-foreach="v['dates']" t-as="day">
+                                <td class="day" t-esc="day['date']"/>
+                                <td><t t-esc="day['label']"/>
+                                    <span t-if="day['act']" class="tag act">Act before this</span>
+                                    <span t-elif="day['tag']" class="tag" t-esc="day['tag']"/></td>
+                            </tr>
+                        </table>
+                    </t>
+                    <t t-if="v['orgs']">
+                        <p class="cap">By organisation</p>
+                        <table class="rows">
+                            <tr t-foreach="v['orgs']" t-as="card">
+                                <td class="who"><b t-esc="card['org']['name']"/></td>
+                                <td>
+                                    <t t-foreach="card['lines']" t-as="line"><t t-esc="line['subject']"/>: <t t-esc="line['shown'] or '[no figure found]'"/><br/></t>
+                                    <span t-if="card['more']" class="small">And <t t-esc="card['more']"/> more.<br/></span>
+                                    <t t-foreach="card['tags']" t-as="item"><span t-attf-class="tag #{'act' if item['act'] else ''}" t-esc="item['label']"/> </t>
+                                </td>
+                            </tr>
+                        </table>
+                    </t>
+                    <p class="small">From verified findings as they stood on <t t-esc="today"/>.</p>
+                </div>
+            </t>
+        </t>
+
+        <div t-foreach="questions" t-as="q" class="qa">
+            <h3 t-esc="q['name']"/>
+            <p class="answer" t-esc="q['answer']"/>
+        </div>
+
+        <p t-if="empty" class="small">Nothing written yet.</p>
+    </main>
+    <p t-if="not for_pdf" class="foot">Anyone with this link can read this page. Please do not pass it on without asking the sender.</p>
+</div>
+</body>
+</html></template>
+</odoo>

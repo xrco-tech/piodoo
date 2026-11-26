@@ -769,6 +769,33 @@ export class SedibaWorkspace extends Component {
         }
     }
 
+    /** The PDF of what this page shows: the same text, for the same reader. */
+    get docPdfUrl() {
+        const query = new URLSearchParams();
+        if (this.space) {
+            query.set("space", this.space);
+        }
+        if (this.state.versionId) {
+            query.set("version", this.state.versionId);
+        }
+        const tail = query.toString();
+        return `/library/doc/${this.state.docId}/pdf${tail ? "?" + tail : ""}`;
+    }
+
+    get shareUrl() {
+        const path = this.state.data.props && this.state.data.props.share;
+        return path ? browser.location.origin + path : "";
+    }
+
+    async copyShare() {
+        try {
+            await browser.navigator.clipboard.writeText(this.shareUrl);
+            this.notification.add(_t("Link copied."), { type: "success" });
+        } catch {
+            this.notification.add(_t("Could not copy. Select the link and copy it by hand."), { type: "warning" });
+        }
+    }
+
     toggleDocSpace(id) {
         const now = this.state.data.props.space_ids;
         const ids = now.filter((spaceId) => spaceId !== id);
