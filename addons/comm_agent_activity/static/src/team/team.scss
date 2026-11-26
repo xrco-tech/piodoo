@@ -182,6 +182,168 @@
         > div.bad { background: var(--caa-red); }
     }
 
+    // Which agents: a pill that opens a list to tick.
+    .o_caa_pick { position: relative; }
+    .o_caa_pickbtn { display: inline-flex; align-items: center; gap: 8px; max-width: 240px; span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+    .o_caa_pickback { position: fixed; inset: 0; z-index: 20; }
+    .o_caa_pickmenu {
+        position: absolute;
+        z-index: 21;
+        top: calc(100% + 6px);
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        width: 280px;
+        max-width: calc(100vw - 32px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+    }
+    .o_caa_picklist { max-height: 300px; overflow-y: auto; }
+    .o_caa_pickrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        margin: 0;
+        padding: 4px 14px;
+        cursor: pointer;
+
+        &:hover { background: var(--bs-tertiary-bg, #f1f3f5); }
+        .form-check-input { flex: none; margin: 0; }
+    }
+    .o_caa_pickall { border-bottom: 1px solid var(--caa-line); }
+    .o_caa_pickname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_caa_pickfoot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 14px;
+        border-top: 1px solid var(--caa-line);
+
+        .btn { min-height: 36px; }
+    }
+
+    // Activity per day: bars stacked by kind of work, the period before as a dashed line.
+    --caa-k1: #2a78d6;
+    --caa-k2: #eb6834;
+    --caa-k3: #1baf7a;
+    --caa-k4: #eda100;
+    --caa-k5: #e87ba4;
+    --caa-k6: #008300;
+    --caa-k7: #6250d6;
+    --caa-k8: #e34948;
+
+    .o_caa_chart { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+    .o_caa_charthead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+    .o_caa_grow { flex: 1; }
+    .o_caa_legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+        font-size: 12.5px;
+
+        > span { display: inline-flex; align-items: center; gap: 6px; }
+        i { width: 10px; height: 10px; border-radius: 3px; }
+        i.dash { width: 18px; height: 0; border-radius: 0; border-top: 2px dashed var(--bs-body-color, #212529); opacity: .7; }
+    }
+    @for $i from 1 through 8 {
+        .o_caa_legend i.k#{$i}, .o_caa_stack > .k#{$i} { background: var(--caa-k#{$i}); }
+    }
+    .o_caa_plotwrap { display: flex; gap: 8px; }
+    .o_caa_axis {
+        display: flex;
+        flex: none;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 200px;
+        margin-top: 18px;
+        min-width: 26px;
+        color: var(--caa-muted);
+        font-size: 11px;
+        line-height: 1;
+        text-align: right;
+        white-space: nowrap;
+
+        span:first-child { transform: translateY(-5px); }
+        span:last-child { transform: translateY(5px); }
+    }
+    .o_caa_plotscroll { flex: 1; min-width: 0; overflow-x: auto; }
+    .o_caa_plot { position: relative; height: 200px; margin-top: 18px; }
+    .o_caa_grid {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+
+        span { height: 1px; background: var(--caa-line); }
+        span:last-child { background: var(--caa-muted); }
+    }
+    .o_caa_cols { position: absolute; inset: 0; display: flex; }
+    .o_caa_colm {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        min-width: 0;
+        padding: 0 3px;
+        outline: 0;
+
+        &.on, &:focus-visible { background: rgba(127, 127, 127, .12); }
+    }
+    .o_caa_stack {
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: stretch;
+        width: 100%;
+        max-width: 26px;
+        height: 100%;
+
+        > div { flex: none; box-sizing: border-box; min-height: 3px; border-bottom: 2px solid var(--caa-card); }
+        > div:first-child { border-bottom: 0; }
+        > div.top { border-radius: 4px 4px 0 0; }
+    }
+    .o_caa_top { align-self: center; padding-bottom: 2px; font-size: 11px; font-weight: 600; line-height: 14px; white-space: nowrap; }
+    .o_caa_line {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+
+        polyline { fill: none; stroke: var(--bs-body-color, #212529); stroke-width: 2; stroke-dasharray: 5 4; stroke-linejoin: round; vector-effect: non-scaling-stroke; opacity: .7; }
+        polyline.halo { stroke: var(--caa-card); stroke-width: 5; stroke-dasharray: none; opacity: 1; }
+    }
+    .o_caa_tip {
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 190px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: #1f2937;
+        color: #fff;
+        font-size: 12px;
+        pointer-events: none;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+
+        > span { display: flex; justify-content: space-between; gap: 14px; }
+        > span.all { padding-top: 4px; border-top: 1px solid rgba(255, 255, 255, .25); }
+        > span.was { opacity: .8; }
+    }
+    .o_caa_days {
+        display: flex;
+        margin-top: 4px;
+        font-size: 11px;
+
+        span { flex: 1; min-width: 0; overflow: hidden; text-align: center; white-space: nowrap; }
+        span.weekend { color: var(--caa-muted); }
+        span.now { font-weight: 700; }
+    }
+
     // One agent
     .o_caa_one { display: grid; grid-template-columns: repeat(auto-fit, minmax(#{"min(100%, 340px)"}, 1fr)); gap: 14px; align-items: start; }
     .o_caa_col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }

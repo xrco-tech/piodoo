@@ -94,9 +94,9 @@ class CommAgentActivityReport(models.AbstractModel):
         return users
 
     @api.model
-    def _calls(self, start, end):
+    def _call_list(self, start, end):
         """Calls an agent made or answered on either line. A missed call is nobody's."""
-        calls = super()._calls(start, end)
+        calls = super()._call_list(start, end)
         Ws = self.env['contact.centre.workspace']
         for line, (model, _direction, _status, at) in LINES.items():
             if model not in self.env or 'agent_user_id' not in self.env[model]._fields:
@@ -107,10 +107,7 @@ class CommAgentActivityReport(models.AbstractModel):
                 kind, _words = Ws._call_outcome(line, call)
                 if kind == 'missed':
                     continue
-                row = calls.setdefault(call.agent_user_id.id, [0, 0])
-                row[0] += 1
-                if kind == 'answered' and call.duration:
-                    row[1] += call.duration
+                calls.append((call.agent_user_id.id, call[at], call.duration if kind == 'answered' and call.duration else 0))
         return calls
 
     @api.model

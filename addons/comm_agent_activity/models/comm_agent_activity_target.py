@@ -237,9 +237,11 @@ class CommAgentActivityReport(models.AbstractModel):
                 'rows': rows}
 
     @api.model
-    def team(self, source='both', period='week'):
-        result = super().team(source, period)
+    def team(self, source='both', period='week', agents=None):
+        result = super().team(source, period, agents)
         result['targets'] = self._team_targets(result['source'])
+        if result['picked']:
+            result['targets']['rows'] = [row for row in result['targets']['rows'] if row['user_id'] in result['picked']]
         wait = self.env['comm.agent.activity.target']._for_everyone()['wait']
         if wait[1] and wait[0]:
             result['tiles']['target_seconds'] = round(wait[0] * 60)

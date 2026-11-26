@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Agent Activity',
-    'version': '18.0.1.1.1',
+    'version': '18.0.1.2.0',
     'category': 'Communications',
     'summary': 'What each agent did, how fast and how well: one record per action, and the Team report',
     'description': """
@@ -23,6 +23,9 @@ The Team report is built on those lines:
 - Agents see their own figures beside the team average, never each other's.
 - The score is points per action, less points for each reversed decision.
   Supervisors set the points.
+- Activity per day: bars split by kind of work (per hour for one day), with
+  the period before as a dashed line. It can count actions, score or active
+  time, and the whole page can be narrowed to some agents.
 - Planning: work waiting against the team's pace, and the hours of the day
   when people wait longest.
 - Targets: a supervisor sets what each agent should reach (for everyone, or
@@ -52,6 +55,9 @@ still record.
             'comm_agent_activity/static/src/team/team.xml',
             'comm_agent_activity/static/src/team/strip.js',
             'comm_agent_activity/static/src/team/strip.xml',
+        ],
+        'web.assets_web_dark': [
+            'comm_agent_activity/static/src/team/team.dark.scss',
         ],
     },
     'installable': True,
