@@ -731,6 +731,7 @@
                                 <b t-esc="d.name"/>
                             </div>
                             <span t-if="state.nav.reference" class="o_sdb_muted">Read-only</span>
+                            <a class="o_sdb_btn" t-att-href="docPdfUrl" target="_blank" rel="noopener"><i class="fa fa-file-pdf-o" aria-hidden="true"/> Download PDF</a>
                             <button t-if="state.nav.can_write and !d.viewing" type="button" class="o_sdb_btn primary" t-on-click="editDoc">Edit</button>
                         </div>
                         <div class="o_sdb_body">
@@ -864,6 +865,26 @@
                                     <input type="checkbox" t-att-checked="d.public_allowed" t-on-change="(ev) => this.setDocProp({ public_allowed: ev.target.checked })"/>
                                     <span>The public chatbot may answer from it</span>
                                 </label>
+                            </fieldset>
+                            <fieldset class="o_sdb_field">
+                                <legend>Share with a link</legend>
+                                <label class="o_sdb_check">
+                                    <input type="checkbox" t-att-checked="!!d.props.share" t-on-change="(ev) => this.setDocProp({ shared: ev.target.checked })"/>
+                                    <span>Anyone with the link can read it</span>
+                                </label>
+                                <t t-if="d.props.share">
+                                    <input type="text" class="o_sdb_input o_sdb_share_link" readonly="readonly" aria-label="Link to this doc"
+                                           t-att-value="shareUrl" t-on-focus="(ev) => ev.target.select()"/>
+                                    <div class="o_sdb_row">
+                                        <button type="button" class="o_sdb_btn" t-on-click="copyShare">Copy link</button>
+                                        <a class="o_sdb_link" t-att-href="shareUrl" target="_blank" rel="noopener">Open it</a>
+                                    </div>
+                                    <span class="o_sdb_muted small">No sign-in is needed, so send it only to people who should read this.
+                                        <t t-if="d.state === 'published'">They see the last published version.</t>
+                                        <t t-else="">It is a draft, so they see the text as it stands now.</t>
+                                        Untick to switch the link off for good.</span>
+                                </t>
+                                <span t-else="" class="o_sdb_muted small">Off. Only people signed in to the Library can read it.</span>
                             </fieldset>
                             <div class="o_sdb_field">
                                 <label for="o_sdb_d_again">Read again</label>

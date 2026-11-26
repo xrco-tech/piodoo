@@ -287,6 +287,8 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             'owner_id': doc.owner_id.id or 0,
             'space_ids': doc.space_ids.ids,
             'read_again': doc.read_again,
+            # The link anyone can open without signing in, while it is on.
+            'share': '/library/shared/%s' % doc.share_token if doc.share_token else False,
             'choices': {
                 'owners': self._doc_owners(doc),
                 'spaces': [[s.id, s.name] for s in self.env['sediba.space'].search([])],
@@ -316,6 +318,8 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             record['read_again'] = vals['read_again']
         if record:
             doc.write(record)
+        if 'shared' in vals:
+            doc.action_share(bool(vals['shared']))
         return self.ws_doc(doc.id)
 
     @api.model

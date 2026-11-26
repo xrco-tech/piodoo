@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Library',
-    'version': '18.0.1.9.3',
+    'version': '18.0.1.10.0',
     'category': 'Productivity',
     'summary': 'What we know in one place: our own company docs, and research with its sources',
     'description': """
@@ -51,6 +51,7 @@ user with no email address can write findings.
         'security/sediba_security.xml',
         'security/ir.model.access.csv',
         'views/sediba_views.xml',
+        'views/sediba_share.xml',
     ],
     'assets': {
         'web.assets_backend': [

@@ -12,6 +12,8 @@ is published again.
 
 Like the rest of the Library, nothing here inherits mail.thread.
 """
+import secrets
+
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
@@ -63,6 +65,10 @@ class SedibaDoc(models.Model):
                                     help="A chatbot that talks to people outside the company may read the "
                                          "published version of this doc. Leave it off for anything written "
                                          "for staff only.")
+    share_token = fields.Char(string="Link key", copy=False, index=True, readonly=True,
+                              groups='sediba.group_writer',
+                              help="Set while the doc is shared with a link. Anyone who has the link can "
+                                   "read the doc without signing in, so the key is long and random.")
     read_again = fields.Selection(READ_AGAIN, string="Read again", required=True, default='3')
     state = fields.Selection(DOC_STATES, required=True, default='draft', readonly=True, copy=False, index=True)
     has_changes = fields.Boolean(string="Changed since it was published", readonly=True, copy=False)
@@ -124,6 +130,22 @@ class SedibaDoc(models.Model):
         """The version people outside the Library see, or nothing for a draft."""
         self.ensure_one()
         return self._latest() if self.state == 'published' else self.env['sediba.doc.version']
+
+    def _shown_outside(self):
+        """What someone with the link reads: the last published version, or
+        the working text of a doc that was never published."""
+        self.ensure_one()
+        return self._published() or self
+
+    def action_share(self, on=True):
+        """Turn the link on or off. Turning it off forgets the key, so the old
+        link stops working for good; turning it on again makes a new one."""
+        for doc in self:
+            if on and not doc.share_token:
+                doc.share_token = secrets.token_urlsafe(24)
+            elif not on and doc.share_token:
+                doc.share_token = False
+        return True
 
     def action_publish(self):
         today = fields.Date.context_today(self)
