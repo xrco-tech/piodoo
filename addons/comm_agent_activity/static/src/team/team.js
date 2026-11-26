@@ -300,7 +300,7 @@ export class TeamReport extends Component {
             seconds: hourly ? _t("Time worked each hour") : _t("Time worked each day"),
         };
         const beforeLabel =
-            period === "today" ? _t("Yesterday") : period === "month" ? _t("Last month, same day") : _t("The week before");
+            period === "today" ? _t("Yesterday") : period === "month" ? _t("Four weeks before") : _t("The week before");
         return {
             title: hourly ? _t("Activity per hour") : _t("Activity per day"),
             sub: subs[measure],

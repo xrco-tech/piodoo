@@ -268,20 +268,15 @@ class CommAgentActivityReport(models.AbstractModel):
     @api.model
     def _chart(self, source, period, first, last, users=None):
         """What was done in each day of the period (each hour, when the period is one day), with
-        the same day or hour of the period before beside it. `users` narrows it to those agents."""
+        the same hour of the day before, or the same weekday one or four weeks before, beside it. `users` narrows it to those agents."""
         tz = self._tz()
         hourly = first == last
         utc = lambda day: tz.localize(datetime.combine(day, time.min)).astimezone(pytz.utc).replace(tzinfo=None)
         local = lambda moment: pytz.utc.localize(moment).astimezone(tz)
-        if period == 'month' and not hourly:
-            month_end = first - timedelta(days=1)
-            b_first = month_end.replace(day=1)
-            b_last = b_first.replace(day=min(last.day, month_end.day))
-            forward = lambda day: first.replace(day=day.day)
-        else:
-            shift = timedelta(days=1 if hourly else 7)
-            b_first, b_last = first - shift, last - shift
-            forward = lambda day: day + shift
+        # A month is set beside the days four weeks earlier, so weekdays line up with weekdays.
+        shift = timedelta(days=1 if hourly else 28 if period == 'month' else 7)
+        b_first, b_last = first - shift, last - shift
+        forward = lambda day: day + shift
         Log = self.env['comm.agent.activity'].sudo()
         points = self.env['comm.agent.activity.points']._all()
 
@@ -328,15 +323,13 @@ class CommAgentActivityReport(models.AbstractModel):
             counts['call'] = bucket['calls'] if bucket else 0
             if hourly:
                 label, long, weekend, current = '%02d:00' % key, '%02d:00 to %02d:00' % (key, (key + 1) % 24), False, key == today.hour and first == today.date()
-                compared = True
             else:
                 label = format_date(self.env, key, date_format='d' if period == 'month' else 'EEE d')
                 long = format_date(self.env, key, date_format='EEEE d MMMM')
                 weekend, current = key.weekday() >= 5, key == today.date()
-                compared = period != 'month' or key.day <= b_last.day
             point = figures(bucket)
             point.update({'key': str(key), 'label': label, 'long': long, 'weekend': weekend, 'now': current, 'counts': counts,
-                          'before': figures(before.get(key)) if compared else False})
+                          'before': figures(before.get(key))})
             out.append(point)
         kinds = self._columns(source) + [{'key': 'other', 'label': self.env._("Other work")},
                                          {'key': 'call', 'label': self.env._("Calls")}]
