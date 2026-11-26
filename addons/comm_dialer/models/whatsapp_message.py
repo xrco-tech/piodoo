@@ -62,5 +62,4 @@ class WhatsAppMessage(models.Model):
             ('media_attachment_id', '!=', False),
             ('transcript_state', 'in', ('none', 'pending')),
         ], limit=limit)
-        for rec in pending:
-            rec._do_transcription()
+        pending._transcribe_each()
