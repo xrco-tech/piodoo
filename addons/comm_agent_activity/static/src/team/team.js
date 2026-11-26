@@ -40,6 +40,20 @@ function span(seconds) {
     return _t("%s h", Math.round(seconds / 3600));
 }
 
+/** A round figure for one third of the chart's height: 1, 2, 2.5, 5 times a power of ten, or a round time. */
+function niceStep(raw, seconds) {
+    if (seconds) {
+        const steps = [300, 600, 900, 1800, 3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400];
+        return steps.find((step) => step >= raw) || Math.ceil(raw / 86400) * 86400;
+    }
+    if (raw <= 1) {
+        return 1;
+    }
+    const pow = 10 ** Math.floor(Math.log10(raw));
+    const part = raw / pow;
+    return (part <= 1 ? 1 : part <= 2 ? 2 : part <= 2.5 && pow >= 10 ? 2.5 : part <= 5 ? 5 : 10) * pow;
+}
+
 /** The Team report: every agent for a supervisor, their own figures for an agent. */
 export class TeamReport extends Component {
     static template = "comm_agent_activity.Team";
@@ -65,6 +79,11 @@ export class TeamReport extends Component {
             targetEdits: {},
             person: null,
             busy: false,
+            picked: [], // user ids; none means every agent
+            pickOpen: false,
+            pickDraft: {},
+            measure: "actions", // actions | score | seconds
+            hover: null,
         });
         onWillStart(async () => {
             const params = (this.props.action && this.props.action.params) || {};
@@ -95,7 +114,9 @@ export class TeamReport extends Component {
         this.state.busy = true;
         try {
             if (view === "team") {
-                this.state.team = await this.orm.call(REPORT, "team", [source, period]);
+                this.state.hover = null;
+                this.state.team = await this.orm.call(REPORT, "team", [source, period, this.state.picked]);
+                this.state.picked = this.state.team.picked;
             } else if (view === "agent") {
                 this.state.agent = await this.orm.call(REPORT, "agent", [agentId, source, period]);
             } else if (view === "targets") {
@@ -135,6 +156,193 @@ export class TeamReport extends Component {
         this.state.view = "points";
         this.state.points = null;
         return this.load();
+    }
+
+    // ── Which agents ────────────────────────────────────────────────────
+
+    get agentsLabel() {
+        const picked = this.state.picked;
+        if (!picked.length) {
+            return _t("All agents");
+        }
+        if (picked.length === 1) {
+            const agent = this.state.team.agents.find((one) => one.id === picked[0]);
+            return agent ? agent.name : _t("1 agent");
+        }
+        return _t("%s agents", picked.length);
+    }
+
+    get pickCount() {
+        return this.state.team.agents.filter((agent) => this.state.pickDraft[agent.id]).length;
+    }
+
+    get allPicked() {
+        return this.pickCount === this.state.team.agents.length;
+    }
+
+    get pickNote() {
+        const count = this.pickCount;
+        if (!count) {
+            return _t("Tick at least one agent");
+        }
+        return this.allPicked ? _t("Everyone") : _t("%(n)s of %(all)s", { n: count, all: this.state.team.agents.length });
+    }
+
+    togglePick() {
+        if (this.state.pickOpen) {
+            return this.closePick();
+        }
+        const picked = this.state.picked;
+        this.state.pickDraft = Object.fromEntries(
+            this.state.team.agents.map((agent) => [agent.id, !picked.length || picked.includes(agent.id)])
+        );
+        this.state.pickOpen = true;
+    }
+
+    closePick() {
+        this.state.pickOpen = false;
+    }
+
+    pickAll() {
+        const on = !this.allPicked;
+        this.state.pickDraft = Object.fromEntries(this.state.team.agents.map((agent) => [agent.id, on]));
+    }
+
+    pickOne(id) {
+        this.state.pickDraft[id] = !this.state.pickDraft[id];
+    }
+
+    applyPick() {
+        const ids = this.state.team.agents.filter((agent) => this.state.pickDraft[agent.id]).map((agent) => agent.id);
+        this.state.picked = ids.length === this.state.team.agents.length ? [] : ids;
+        this.state.pickOpen = false;
+        return this.load();
+    }
+
+    // ── Activity per day ────────────────────────────────────────────────
+
+    get measures() {
+        return [
+            { key: "actions", label: _t("Actions") },
+            { key: "score", label: _t("Score") },
+            { key: "seconds", label: _t("Active time") },
+        ];
+    }
+
+    setMeasure(measure) {
+        this.state.measure = measure;
+        this.state.hover = null;
+    }
+
+    setHover(index) {
+        this.state.hover = index;
+    }
+
+    /** One point's figure for what is being counted. A day of reversals can score below nothing: drawn as none. */
+    chartValue(figures) {
+        return Math.max(0, (figures && figures[this.state.measure]) || 0);
+    }
+
+    get chartFormat() {
+        return this.state.measure === "seconds" ? hm : num;
+    }
+
+    get chart() {
+        const { chart, period } = this.state.team;
+        const measure = this.state.measure;
+        const points = chart.points;
+        const format = this.chartFormat;
+        const values = points.map((point) => this.chartValue(point));
+        const before = points.map((point) => (point.before ? this.chartValue(point.before) : null));
+        const top = Math.max(0, ...values, ...before.map((value) => value || 0));
+        const step = niceStep(top / 3, measure === "seconds");
+        const max = step * 3;
+        const share = (value) => `height:${((100 * value) / max).toFixed(2)}%`;
+        const kinds = chart.kinds
+            .map((kind, index) => ({ ...kind, cls: `k${index + 1}` }))
+            .filter((kind) => points.some((point) => point.counts[kind.key]));
+        const peak = values.indexOf(Math.max(...values));
+        const bars = points.map((point, index) => {
+            const value = values[index];
+            let segs = [];
+            if (measure === "actions") {
+                segs = kinds
+                    .filter((kind) => point.counts[kind.key])
+                    .map((kind) => ({ key: kind.key, cls: kind.cls, style: share(point.counts[kind.key]) }));
+            } else if (value) {
+                segs = [{ key: "all", cls: "k1", style: share(value) }];
+            }
+            if (segs.length) {
+                segs[segs.length - 1].cls += " top";
+            }
+            return {
+                key: point.key,
+                label: point.label,
+                weekend: point.weekend,
+                now: point.now,
+                segs,
+                top: value && (index === peak || point.now) ? format(value) : "",
+                aria: `${point.long}: ${format(value)}`,
+            };
+        });
+        const line = before.some((value) => value)
+            ? before
+                  .map((value, index) =>
+                      value === null ? "" : `${(((index + 0.5) * 100) / points.length).toFixed(2)},${(100 - (100 * value) / max).toFixed(2)}`
+                  )
+                  .filter(Boolean)
+                  .join(" ")
+            : "";
+        const hourly = chart.unit === "hour";
+        const subs = {
+            actions: hourly ? _t("Everything done each hour, by kind of work") : _t("Everything done each day, by kind of work"),
+            score: hourly ? _t("Points earned each hour") : _t("Points earned each day"),
+            seconds: hourly ? _t("Time worked each hour") : _t("Time worked each day"),
+        };
+        const beforeLabel =
+            period === "today" ? _t("Yesterday") : period === "month" ? _t("Last month, same day") : _t("The week before");
+        return {
+            title: hourly ? _t("Activity per hour") : _t("Activity per day"),
+            sub: subs[measure],
+            empty: !top,
+            legend: measure === "actions" ? kinds : [],
+            ticks: [3, 2, 1, 0].map((n) => format(step * n)),
+            bars,
+            line,
+            beforeLabel,
+            width: `min-width:${points.length * 22}px`,
+            note: hourly
+                ? _t("Point at a bar for the hour's figures.")
+                : _t("Point at a bar for the day's figures. Saturdays and Sundays have grey labels."),
+        };
+    }
+
+    /** The figures of the bar under the pointer, as a small card beside it. */
+    get hover() {
+        const index = this.state.hover;
+        const { chart } = this.state.team;
+        const point = index === null ? null : chart.points[index];
+        if (!point) {
+            return null;
+        }
+        const format = this.chartFormat;
+        const measure = this.state.measure;
+        const rows =
+            measure === "actions"
+                ? chart.kinds
+                      .filter((kind) => point.counts[kind.key])
+                      .map((kind) => ({ key: kind.key, label: kind.label, n: point.counts[kind.key] }))
+                      .sort((a, b) => b.n - a.n)
+                      .map((row) => ({ ...row, value: num(row.n) }))
+                : [];
+        const at = ((index + 0.5) * 100) / chart.points.length;
+        return {
+            title: point.long,
+            rows,
+            total: format(this.chartValue(point)),
+            before: point.before ? format(this.chartValue(point.before)) : "",
+            style: at > 50 ? `right:${(100 - at + 3).toFixed(1)}%` : `left:${(at + 3).toFixed(1)}%`,
+        };
     }
 
     // ── The team ────────────────────────────────────────────────────────

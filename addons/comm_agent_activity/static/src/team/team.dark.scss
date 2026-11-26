@@ -1,0 +1,14 @@
+// The chart's colours, stepped for a dark card.
+.o_caa {
+    --caa-k1: #3987e5;
+    --caa-k2: #d95926;
+    --caa-k3: #199e70;
+    --caa-k4: #c98500;
+    --caa-k5: #d55181;
+    --caa-k6: #0ca30c;
+    --caa-k7: #9085e9;
+    --caa-k8: #e66767;
+
+    .o_caa_tip { background: #f3f4f6; color: #111827; }
+    .o_caa_tip > span.all { border-top-color: rgba(0, 0, 0, .2); }
+}

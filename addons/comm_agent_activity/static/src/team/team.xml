@@ -24,6 +24,98 @@
         </div>
     </t>
 
+    <!-- Which agents the page is about: all of them, or the ones ticked. -->
+    <t t-name="comm_agent_activity.Team.Agents">
+        <div t-if="state.team and state.team.agents.length > 1" class="o_caa_pick">
+            <button type="button" class="o_caa_chip o_caa_pickbtn" t-att-class="{ on: state.picked.length }"
+                    aria-haspopup="true" t-att-aria-expanded="state.pickOpen ? 'true' : 'false'" t-on-click="togglePick">
+                <i class="fa fa-users" aria-hidden="true"/>
+                <span t-esc="agentsLabel"/>
+                <i class="fa fa-caret-down" aria-hidden="true"/>
+            </button>
+            <t t-if="state.pickOpen">
+                <div class="o_caa_pickback" t-on-click="closePick"/>
+                <div class="o_caa_pickmenu o_caa_box" role="group" aria-label="Agents">
+                    <label class="o_caa_pickrow o_caa_pickall">
+                        <input type="checkbox" class="form-check-input" t-att-checked="allPicked" t-on-change="pickAll"/>
+                        <b>All agents</b>
+                    </label>
+                    <div class="o_caa_picklist">
+                        <label t-foreach="state.team.agents" t-as="agent" t-key="agent.id" class="o_caa_pickrow">
+                            <input type="checkbox" class="form-check-input" t-att-checked="state.pickDraft[agent.id]"
+                                   t-on-change="() => this.pickOne(agent.id)"/>
+                            <span class="o_caa_avatar" aria-hidden="true" t-esc="agent.initials"/>
+                            <span class="o_caa_pickname" t-esc="agent.name"/>
+                        </label>
+                    </div>
+                    <div class="o_caa_pickfoot">
+                        <span class="o_caa_muted" t-esc="pickNote"/>
+                        <button type="button" class="btn btn-primary" t-att-disabled="!pickCount" t-on-click="applyPick">Show</button>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <!-- What was done each day (each hour, for one day), with the period before as a dashed line. -->
+    <t t-name="comm_agent_activity.Team.Chart">
+        <t t-set="chart" t-value="chart"/>
+        <section class="o_caa_box o_caa_chart" aria-label="Activity per day">
+            <div class="o_caa_charthead">
+                <h2 t-esc="chart.title"/>
+                <span class="o_caa_muted" t-esc="chart.sub"/>
+                <span class="o_caa_grow"/>
+                <div class="o_caa_chips" role="group" aria-label="What to count">
+                    <button t-foreach="measures" t-as="m" t-key="m.key" type="button" class="o_caa_chip o_caa_chip_sm"
+                            t-att-class="{ on: state.measure === m.key }" t-att-aria-pressed="state.measure === m.key ? 'true' : 'false'"
+                            t-on-click="() => this.setMeasure(m.key)" t-esc="m.label"/>
+                </div>
+            </div>
+            <div t-if="chart.empty" class="o_caa_none">Nothing recorded in this period yet.</div>
+            <t t-else="">
+                <div class="o_caa_legend">
+                    <span t-foreach="chart.legend" t-as="k" t-key="k.key"><i t-att-class="k.cls" aria-hidden="true"/><t t-esc="k.label"/></span>
+                    <span t-if="chart.line"><i class="dash" aria-hidden="true"/><t t-esc="chart.beforeLabel"/></span>
+                </div>
+                <div class="o_caa_plotwrap">
+                    <div class="o_caa_axis" aria-hidden="true"><span t-foreach="chart.ticks" t-as="tick" t-key="tick_index" t-esc="tick"/></div>
+                    <div class="o_caa_plotscroll">
+                        <div class="o_caa_plotin" t-att-style="chart.width">
+                            <div class="o_caa_plot" t-on-mouseleave="() => this.setHover(null)">
+                                <div class="o_caa_grid" aria-hidden="true"><span/><span/><span/><span/></div>
+                                <div class="o_caa_cols">
+                                    <div t-foreach="chart.bars" t-as="bar" t-key="bar.key" class="o_caa_colm" tabindex="0"
+                                         t-att-class="{ on: state.hover === bar_index }" t-att-aria-label="bar.aria"
+                                         t-on-mouseenter="() => this.setHover(bar_index)" t-on-focus="() => this.setHover(bar_index)"
+                                         t-on-blur="() => this.setHover(null)">
+                                        <div class="o_caa_stack">
+                                            <div t-foreach="bar.segs" t-as="seg" t-key="seg.key" t-att-class="seg.cls" t-att-style="seg.style"/>
+                                            <span t-if="bar.top" class="o_caa_top" t-esc="bar.top"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                <svg t-if="chart.line" class="o_caa_line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                                    <polyline class="halo" t-att-points="chart.line"/>
+                                    <polyline t-att-points="chart.line"/>
+                                </svg>
+                                <div t-if="hover" class="o_caa_tip" t-att-style="hover.style" role="status">
+                                    <b t-esc="hover.title"/>
+                                    <span t-foreach="hover.rows" t-as="row" t-key="row.key"><span t-esc="row.label"/><b t-esc="row.value"/></span>
+                                    <span t-if="hover.total" class="all"><span>All</span><b t-esc="hover.total"/></span>
+                                    <span t-if="hover.before" class="was"><span t-esc="chart.beforeLabel"/><b t-esc="hover.before"/></span>
+                                </div>
+                            </div>
+                            <div class="o_caa_days" aria-hidden="true">
+                                <span t-foreach="chart.bars" t-as="bar" t-key="bar.key" t-att-class="{ weekend: bar.weekend, now: bar.now }" t-esc="bar.label"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <span class="o_caa_muted" t-esc="chart.note"/>
+            </t>
+        </section>
+    </t>
+
     <!-- Everyone, for a supervisor -->
     <t t-name="comm_agent_activity.Team.All">
         <div class="o_caa_head">
@@ -32,6 +124,7 @@
                 <span class="o_caa_muted">What each agent did, how fast, and how well.<t t-if="state.team"> <t t-esc="state.team.label"/>.</t></span>
                 <t t-call="comm_agent_activity.Team.Sources"/>
             </div>
+            <t t-call="comm_agent_activity.Team.Agents"/>
             <t t-call="comm_agent_activity.Team.Periods"/>
             <button t-if="state.team" type="button" class="btn btn-primary" t-on-click="download">
                 <i class="fa fa-download me-1" aria-hidden="true"/> Download
@@ -57,6 +150,8 @@
                     <span class="o_caa_muted" t-att-class="{ bad: tile.bad }" t-esc="tile.note"/>
                 </div>
             </div>
+
+            <t t-call="comm_agent_activity.Team.Chart"/>
 
             <section t-if="team.targets.rows.length" class="o_caa_box o_caa_scroll" aria-label="Targets today">
                 <div class="o_caa_between o_caa_thead2"><h2>Targets today</h2><span class="o_caa_muted">Each agent against their own targets, whatever period is chosen above</span></div>

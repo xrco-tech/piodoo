@@ -69,9 +69,19 @@ class CommAgentActivityReport(models.AbstractModel):
         return []
 
     @api.model
+    def _call_list(self, start, end):
+        """[(user id, when, seconds talking)]: each call an agent made or answered between two UTC times."""
+        return []
+
+    @api.model
     def _calls(self, start, end):
         """{user id: [calls, seconds talking]} between two UTC times."""
-        return {}
+        calls = {}
+        for user_id, _at, talk in self._call_list(start, end):
+            row = calls.setdefault(user_id, [0, 0])
+            row[0] += 1
+            row[1] += talk or 0
+        return calls
 
     # ── Who may see what ─────────────────────────────────────────────────────
     @api.model
@@ -255,6 +265,83 @@ class CommAgentActivityReport(models.AbstractModel):
             rows.append(item)
         return rows, round(extra)
 
+    @api.model
+    def _chart(self, source, period, first, last, users=None):
+        """What was done in each day of the period (each hour, when the period is one day), with
+        the same day or hour of the period before beside it. `users` narrows it to those agents."""
+        tz = self._tz()
+        hourly = first == last
+        utc = lambda day: tz.localize(datetime.combine(day, time.min)).astimezone(pytz.utc).replace(tzinfo=None)
+        local = lambda moment: pytz.utc.localize(moment).astimezone(tz)
+        if period == 'month' and not hourly:
+            month_end = first - timedelta(days=1)
+            b_first = month_end.replace(day=1)
+            b_last = b_first.replace(day=min(last.day, month_end.day))
+            forward = lambda day: first.replace(day=day.day)
+        else:
+            shift = timedelta(days=1 if hourly else 7)
+            b_first, b_last = first - shift, last - shift
+            forward = lambda day: day + shift
+        Log = self.env['comm.agent.activity'].sudo()
+        points = self.env['comm.agent.activity.points']._all()
+
+        def collect(day_from, day_to, key):
+            found = defaultdict(lambda: {'n': defaultdict(int), 'reversed': 0, 'calls': 0, 'moments': defaultdict(list)})
+            start, end = utc(day_from), utc(day_to + timedelta(days=1))
+            domain = self._domain(source, start, end)
+            if users is not None:
+                domain.append(('user_id', 'in', list(users)))
+            for row in Log.search_read(domain, ['user_id', 'at', 'action', 'reversed']):
+                bucket = found[key(local(row['at']))]
+                bucket['n'][row['action']] += 1
+                bucket['reversed'] += bool(row['reversed'])
+                bucket['moments'][row['user_id'][0]].append(row['at'])
+            for user_id, at, _talk in self._call_list(start, end):
+                if users is None or user_id in users:
+                    found[key(local(at))]['calls'] += 1
+            return found
+
+        def figures(bucket):
+            if not bucket:
+                return {'actions': 0, 'score': 0, 'seconds': 0}
+            return {
+                'actions': sum(bucket['n'].values()) + bucket['calls'],
+                'score': self._score(bucket['n'], bucket['calls'], bucket['reversed'], points),
+                'seconds': sum(self._active_seconds(moments) for moments in bucket['moments'].values()),
+            }
+
+        if hourly:
+            now = collect(first, last, lambda at: at.hour)
+            before = collect(b_first, b_last, lambda at: at.hour)
+            keys = list(range(min([FIRST_HOUR] + list(now) + list(before)), max([LAST_HOUR] + list(now) + list(before)) + 1))
+        else:
+            now = collect(first, last, lambda at: at.date())
+            before = collect(b_first, b_last, lambda at: forward(at.date()))
+            keys = [first + timedelta(days=offset) for offset in range((last - first).days + 1)]
+        today = local(fields.Datetime.now())
+        columns = [col['key'] for col in self._columns(source)]
+        out = []
+        for key in keys:
+            bucket = now.get(key)
+            counts = {col: bucket['n'].get(col, 0) if bucket else 0 for col in columns}
+            counts['other'] = sum(n for action, n in bucket['n'].items() if action not in columns) if bucket else 0
+            counts['call'] = bucket['calls'] if bucket else 0
+            if hourly:
+                label, long, weekend, current = '%02d:00' % key, '%02d:00 to %02d:00' % (key, (key + 1) % 24), False, key == today.hour and first == today.date()
+                compared = True
+            else:
+                label = format_date(self.env, key, date_format='d' if period == 'month' else 'EEE d')
+                long = format_date(self.env, key, date_format='EEEE d MMMM')
+                weekend, current = key.weekday() >= 5, key == today.date()
+                compared = period != 'month' or key.day <= b_last.day
+            point = figures(bucket)
+            point.update({'key': str(key), 'label': label, 'long': long, 'weekend': weekend, 'now': current, 'counts': counts,
+                          'before': figures(before.get(key)) if compared else False})
+            out.append(point)
+        kinds = self._columns(source) + [{'key': 'other', 'label': self.env._("Other work")},
+                                         {'key': 'call', 'label': self.env._("Calls")}]
+        return {'unit': 'hour' if hourly else 'day', 'kinds': kinds, 'points': out}
+
     # ── What the screens read ────────────────────────────────────────────────
     @api.model
     def boot(self, source=None):
@@ -267,17 +354,23 @@ class CommAgentActivityReport(models.AbstractModel):
         }
 
     @api.model
-    def team(self, source='both', period='week'):
-        """Everyone, for a supervisor."""
+    def team(self, source='both', period='week', agents=None):
+        """Everyone, for a supervisor. `agents` (user ids) narrows it to some of them; none means all."""
         if not self._is_supervisor():
             raise AccessError(self.env._("Only supervisors see every agent. Your own figures are under My activity."))
         source = self._check_source(source)
         period = period if period in PERIODS else 'week'
-        start, end, before, label, _first, _last = self._period(period)
+        start, end, before, label, first, last = self._period(period)
         rows = self._rows(source, start, end)
+        everyone = sorted(({'id': row['user_id'], 'name': row['name'], 'initials': row['initials']} for row in rows),
+                          key=lambda agent: agent['name'].lower())
+        wanted = {int(user_id) for user_id in (agents or [])} & {agent['id'] for agent in everyone}
+        picked = wanted if wanted and len(wanted) < len(everyone) else None
+        if picked:
+            rows = [row for row in rows if row['user_id'] in picked]
         waits = [wait for row in rows for wait in row['waits']]
         actions = sum(row['actions'] for row in rows)
-        earlier = sum(row['actions'] for row in self._rows(source, before, start))
+        earlier = sum(row['actions'] for row in self._rows(source, before, start) if not picked or row['user_id'] in picked)
         active = [row for row in rows if row['actions']]
         reversed_n = sum(row['reversed'] for row in rows)
         columns = self._columns(source)
@@ -296,6 +389,9 @@ class CommAgentActivityReport(models.AbstractModel):
             'source': source,
             'period': period,
             'label': label,
+            'agents': everyone,
+            'picked': sorted(picked) if picked else [],
+            'chart': self._chart(source, period, first, last, picked),
             'columns': columns,
             'rows': [self._public(row) for row in rows],
             'total': total,

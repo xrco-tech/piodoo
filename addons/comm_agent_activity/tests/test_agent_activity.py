@@ -200,3 +200,50 @@ class TestAgentActivity(TransactionCase):
         self.assertEqual(self.Report.with_user(self.lead).team('chat2work', 'today')['tiles']['target_seconds'], 600)
         self._targets(wait=5)
         self.assertEqual(self.Report.with_user(self.lead).team('chat2work', 'today')['tiles']['target_seconds'], 300)
+
+    def test_chart_per_day(self):
+        self._line(self.thandi, 'job_check', minutes_ago=7 * 24 * 60 + 1)
+        self._line(self.thandi, 'job_check')
+        self._line(self.thandi, 'job_check')
+        self._line(self.sipho, 'match')
+        self._line(self.sipho, 'employer_join')
+        report = type(self.Report)
+        now = fields.Datetime.now()
+        sipho_id = self.sipho.id
+        with patch.object(report, '_call_list', lambda self, start, end: [(sipho_id, now, 30)] if start <= now < end else []):
+            team = self.Report.with_user(self.lead).team('chat2work', 'week')
+        chart = team['chart']
+        self.assertEqual(chart['unit'], 'day')
+        self.assertEqual([kind['key'] for kind in chart['kinds']][-2:], ['other', 'call'])
+        today = [point for point in chart['points'] if point['now']]
+        self.assertEqual(len(today), 1)
+        self.assertEqual(today[0]['counts']['job_check'], 2)
+        self.assertEqual(today[0]['counts']['match'], 1)
+        self.assertEqual(today[0]['counts']['other'], 1, "an action with no column of its own")
+        self.assertEqual(today[0]['counts']['call'], 1)
+        self.assertEqual(today[0]['actions'], 5)
+        self.assertEqual(today[0]['before']['actions'], 1, "the same day a week before")
+        self.assertEqual(sum(point['actions'] for point in chart['points']), team['tiles']['actions'])
+        hours = self.Report.with_user(self.lead).team('chat2work', 'today')['chart']
+        self.assertEqual(hours['unit'], 'hour')
+        self.assertEqual(sum(point['actions'] for point in hours['points']), 4)
+        month = self.Report.with_user(self.lead).team('chat2work', 'month')['chart']
+        self.assertEqual(month['points'][0]['label'], '1')
+
+    def test_some_agents(self):
+        self._line(self.thandi, 'job_check')
+        self._line(self.thandi, 'job_check')
+        self._line(self.sipho, 'match')
+        Report = self.Report.with_user(self.lead)
+        everyone = Report.team('chat2work', 'today')
+        self.assertEqual(everyone['picked'], [])
+        self.assertEqual({agent['id'] for agent in everyone['agents']}, {self.thandi.id, self.sipho.id})
+        one = Report.team('chat2work', 'today', [self.thandi.id])
+        self.assertEqual(one['picked'], [self.thandi.id])
+        self.assertEqual([row['user_id'] for row in one['rows']], [self.thandi.id])
+        self.assertEqual(one['tiles']['actions'], 2)
+        self.assertEqual(sum(point['actions'] for point in one['chart']['points']), 2)
+        self.assertEqual(len(one['agents']), 2, "the list to pick from stays whole")
+        self.assertEqual(Report.team('chat2work', 'today', [self.thandi.id, self.sipho.id])['picked'], [], "all of them is no filter")
+        self.assertEqual(Report.team('chat2work', 'today', [999999])['picked'], [], "nobody known is no filter")
+
