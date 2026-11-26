@@ -9,6 +9,7 @@ import base64
 import json
 import logging
 import re
+import threading
 
 import requests
 
@@ -228,5 +229,23 @@ class CallTranscriptionMixin(models.AbstractModel):
         """
         pending = self.search([('transcript_state', 'in', ('none', 'pending')),
                                ('recording_ids', '!=', False)], limit=limit)
-        for rec in pending:
+        pending._transcribe_each()
+
+    def _transcribe_each(self):
+        """Transcribe these one at a time, saving before and after each one.
+
+        A long call can take longer than the job is allowed to run. The job is then
+        killed and everything it had not saved is lost, so the same call was picked
+        up again by the next run, for ever, with the calls behind it never reached.
+        So each one is marked failed and saved before it starts: a run that dies
+        part-way leaves it failed (it can be retried by hand from the record), and
+        the next run moves on. What is finished is saved straight away.
+        """
+        auto_commit = not getattr(threading.current_thread(), 'testing', False)
+        for rec in self:
+            rec.transcript_state = 'failed'
+            if auto_commit:
+                self.env.cr.commit()
             rec._do_transcription()
+            if auto_commit:
+                self.env.cr.commit()
