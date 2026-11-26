@@ -26,7 +26,7 @@
 
     <!-- Which agents the page is about: all of them, or the ones ticked. -->
     <t t-name="comm_agent_activity.Team.Agents">
-        <div t-if="state.team and state.team.agents.length > 1" class="o_caa_pick">
+        <div t-if="state.team and state.team.agents.length" class="o_caa_pick">
             <button type="button" class="o_caa_chip o_caa_pickbtn" t-att-class="{ on: state.picked.length }"
                     aria-haspopup="true" t-att-aria-expanded="state.pickOpen ? 'true' : 'false'" t-on-click="togglePick">
                 <i class="fa fa-users" aria-hidden="true"/>
