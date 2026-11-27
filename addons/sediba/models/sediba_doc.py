@@ -97,7 +97,9 @@ class SedibaDoc(models.Model):
         as {the menu's icon ("module,path"): {'name': the app's name, 'url': its icon}}. Read with sudo
         so a doc shows its icon to a reader who cannot open that app."""
         icons = {}
-        for menu in self.env['ir.ui.menu'].sudo().search([('parent_id', '=', False), ('web_icon', '!=', False)]):
+        # Without the full list, the search keeps only the menus this person may open.
+        menus = self.env['ir.ui.menu'].sudo().with_context(**{'ir.ui.menu.full_list': True})
+        for menu in menus.search([('parent_id', '=', False), ('web_icon', '!=', False)]):
             module, _sep, path = (menu.web_icon or '').partition(',')
             # An icon drawn from a font ("fa fa-x,#fff,#000") is not a picture.
             if module and path.startswith('static/') and menu.web_icon not in icons:
