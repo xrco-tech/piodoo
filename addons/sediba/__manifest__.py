@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Library',
-    'version': '18.0.1.10.1',
+    'version': '18.0.1.10.2',
     'category': 'Productivity',
     'summary': 'What we know in one place: our own company docs, and research with its sources',
     'description': """

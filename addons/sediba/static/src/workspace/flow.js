@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, useState } from "@odoo/owl";
+import { Component, onMounted, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
@@ -30,6 +30,7 @@ const GAP = 48; // between two rows
 const GAP_LABELLED = 96; // when the lines below a row carry answers
 const PAD = 24;
 const LANE = 14; // between two lines that run down the right-hand side
+const SMALLEST = 0.65; // a diagram in a doc is never drawn smaller than this; past it, it scrolls
 
 /**
  * Where every step and line goes.
@@ -109,7 +110,8 @@ export function layoutFlow(steps) {
         rowTop.push(y);
         y += CARD_H + (labelled[row] ? GAP_LABELLED : GAP);
     }
-    const left = (step) => PAD + column.get(step.id) * COLUMN - COLUMN / 2 + (COLUMN - CARD_W) / 2;
+    // The first column's card starts at the padding, so the picture has the same room on both sides.
+    const left = (step) => PAD + column.get(step.id) * COLUMN - COLUMN / 2;
     const top = (step) => rowTop[depth.get(step.id)];
 
     const nodes = steps.map((step) => ({ step, number: number.get(step.id), left: left(step), top: top(step) }));
@@ -202,8 +204,34 @@ export class SedibaFlowBlock extends Component {
     };
 
     setup() {
-        this.state = useState({ open: false });
+        this.state = useState({ open: false, room: 0 });
         this.kindLabel = KIND_LABEL;
+        // The block is as wide as the doc's text. A picture wider than that is
+        // drawn smaller so it still fits, and only scrolls once it would get too small.
+        this.scroll = useRef("scroll");
+        const measure = () => {
+            const el = this.scroll.el;
+            if (el) {
+                const style = getComputedStyle(el);
+                this.state.room = el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            }
+        };
+        const watcher = window.ResizeObserver ? new ResizeObserver(measure) : null;
+        onMounted(() => {
+            measure();
+            if (watcher) {
+                watcher.observe(this.scroll.el);
+            }
+        });
+        onWillUnmount(() => watcher && watcher.disconnect());
+    }
+
+    get fit() {
+        const width = layoutFlow(this.props.flow.steps).width;
+        if (!this.state.room || !width || width <= this.state.room) {
+            return 1;
+        }
+        return Math.max(SMALLEST, Math.floor((this.state.room / width) * 100) / 100);
     }
 
     get opened() {
