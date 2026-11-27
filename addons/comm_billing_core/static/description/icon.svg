@@ -1,1 +1,17 @@
-<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="c"><path d="M8 3h24a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H16l-8 8v-8a6 6 0 0 1-6-6V9a6 6 0 0 1 6-6Z"/></clipPath></defs><path d="M8 3h24a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H16l-8 8v-8a6 6 0 0 1-6-6V9a6 6 0 0 1 6-6Z" fill="#D1D5DB"/><g fill="#03AF89"><rect x="24" y="42" width="24" height="6" rx="3"/><rect x="24" y="35" width="24" height="6" rx="3"/><rect x="24" y="28" width="24" height="6" rx="3"/><rect x="24" y="21" width="24" height="6" rx="3"/></g><g fill="#1A6F66" clip-path="url(#c)"><rect x="24" y="42" width="24" height="6" rx="3"/><rect x="24" y="35" width="24" height="6" rx="3"/><rect x="24" y="28" width="24" height="6" rx="3"/><rect x="24" y="21" width="24" height="6" rx="3"/></g><g fill="#fff"><rect x="24" y="27" width="24" height="1"/><rect x="24" y="34" width="24" height="1"/><rect x="24" y="41" width="24" height="1"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="256" height="256">
+  <!-- Ops Costs: this month's spend climbs towards the budget line, then
+       the line blinks. It moves where the menu shows this file; icon.png is
+       the still frame. -->
+  <style>
+    .grow { transform-box: fill-box; transform-origin: bottom; animation: grow 7s ease-in-out infinite; }
+    .line { animation: warn 7s ease-in-out infinite; }
+    @keyframes grow { 0%, 45%, 84%, 100% { transform: scaleY(1); } 56%, 62% { transform: scaleY(.5); } }
+    @keyframes warn { 0%, 85%, 92%, 99%, 100% { opacity: 1; } 88.500%, 95.500% { opacity: .25; } }
+    @media (prefers-reduced-motion: reduce) { .grow, .line { animation: none; } }
+  </style>
+  <path class="line" d="M6.500 8.500H41.500" fill="none" stroke="#F2695C" stroke-width="3.500" stroke-linecap="round" stroke-dasharray="6 6.500"/>
+  <rect x="8" y="27" width="9" height="13" rx="2.500" fill="#144496"/>
+  <rect x="19.500" y="21" width="9" height="19" rx="2.500" fill="#088BF5"/>
+  <rect class="grow" x="31" y="13" width="9" height="27" rx="2.500" fill="#FBB130"/>
+  <rect x="5" y="40" width="38" height="3.500" rx="1.750" fill="#144496"/>
+</svg>

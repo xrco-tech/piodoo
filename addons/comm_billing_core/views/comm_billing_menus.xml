@@ -4,7 +4,7 @@
     <menuitem id="menu_comm_billing_root"
               name="Ops Costs"
               sequence="80"
-              web_icon="comm_billing_core,static/description/icon.png"/>
+              web_icon="comm_billing_core,static/description/icon.svg"/>
 
     <menuitem id="menu_comm_billing_reports"
               name="Reports"
@@ -12,22 +12,24 @@
               action="action_comm_billing_reports"
               sequence="5"/>
 
-    <menuitem id="menu_comm_billing_dashboard"
-              name="Analysis"
-              parent="menu_comm_billing_root"
-              action="action_comm_billing_dashboard"
-              sequence="10"/>
-
-    <menuitem id="menu_comm_billing_events"
-              name="Billing Events"
-              parent="menu_comm_billing_root"
-              action="action_comm_billing_event"
-              sequence="20"/>
-
+    <!-- Reports is the app's one everyday screen. Everything else sits under
+         Configuration; menus are read in order, so Configuration comes first. -->
     <menuitem id="menu_comm_billing_config"
               name="Configuration"
               parent="menu_comm_billing_root"
               sequence="90"/>
+
+    <menuitem id="menu_comm_billing_dashboard"
+              name="Analysis"
+              parent="menu_comm_billing_config"
+              action="action_comm_billing_dashboard"
+              sequence="1"/>
+
+    <menuitem id="menu_comm_billing_events"
+              name="Billing Events"
+              parent="menu_comm_billing_config"
+              action="action_comm_billing_event"
+              sequence="0"/>
 
     <menuitem id="menu_comm_billing_budget"
               name="Budget and Warnings"
