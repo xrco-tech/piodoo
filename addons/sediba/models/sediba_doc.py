@@ -99,9 +99,20 @@ class SedibaDoc(models.Model):
         icons = {}
         # Without the full list, the search keeps only the menus this person may open.
         menus = self.env['ir.ui.menu'].sudo().with_context(**{'ir.ui.menu.full_list': True})
+        debug = self.env.ref('base.group_no_one', raise_if_not_found=False) or self.env['res.groups']
+
+        def opens_something(menu):
+            # Odoo keeps a menu off the home screen when only developer mode
+            # shows it, or when nothing sits behind it.
+            if debug and menu.groups_id == debug:
+                return False
+            return bool(menu.action) or any(opens_something(child) for child in menu.child_id)
+
         for menu in menus.search([('parent_id', '=', False), ('web_icon', '!=', False)]):
             module, _sep, path = (menu.web_icon or '').partition(',')
             # An icon drawn from a font ("fa fa-x,#fff,#000") is not a picture.
+            if not opens_something(menu):
+                continue
             if module and path.startswith('static/') and menu.web_icon not in icons:
                 icons[menu.web_icon] = {'name': menu.name, 'url': '/%s/%s' % (module, path)}
         return icons

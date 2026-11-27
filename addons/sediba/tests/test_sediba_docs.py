@@ -334,6 +334,7 @@ class TestSedibaDocIcon(DocsCase):
         super().setUpClass()
         cls.doc = cls.Doc.create({'name': 'Library manual'})
         cls.key = cls.env.ref('sediba.menu_sediba_root').web_icon
+        cls.action = cls.env['ir.actions.act_window'].create({'name': 'Somewhere', 'res_model': 'res.partner'})
 
     def test_writer_picks_from_the_apps_on_the_home_screen(self):
         choices = self.Ws.ws_doc(self.doc.id)['props']['choices']['icons']
@@ -353,9 +354,25 @@ class TestSedibaDocIcon(DocsCase):
         group = self.env['res.groups'].create({'name': 'Nobody is in this group'})
         self.env['ir.ui.menu'].create({
             'name': 'Closed app', 'web_icon': 'sediba,static/description/closed.png',
-            'groups_id': [(6, 0, group.ids)]})
+            'groups_id': [(6, 0, group.ids)], 'action': 'ir.actions.act_window,%d' % self.action.id})
         icons = self.Doc._app_icons()
         self.assertEqual(icons['sediba,static/description/closed.png']['name'], 'Closed app')
+
+    def test_apps_odoo_keeps_off_the_home_screen_are_not_offered(self):
+        Menu = self.env['ir.ui.menu']
+        action = 'ir.actions.act_window,%d' % self.action.id
+        debug = self.env.ref('base.group_no_one')
+        Menu.create({'name': 'Developer only', 'web_icon': 'sediba,static/description/dev.png',
+                     'groups_id': [(6, 0, debug.ids)], 'action': action})
+        Menu.create({'name': 'Nothing behind it', 'web_icon': 'sediba,static/description/empty.png'})
+        shell = Menu.create({'name': 'Developer pages only', 'web_icon': 'sediba,static/description/shell.png'})
+        Menu.create({'name': 'Page', 'parent_id': shell.id, 'groups_id': [(6, 0, debug.ids)], 'action': action})
+        nested = Menu.create({'name': 'Opens through a page', 'web_icon': 'sediba,static/description/nested.png'})
+        Menu.create({'name': 'Page', 'parent_id': nested.id, 'action': action})
+        icons = self.Doc._app_icons()
+        self.assertEqual(
+            sorted(key for key in icons if key.startswith('sediba,static/description/') and key != self.key),
+            ['sediba,static/description/nested.png'])
 
     def test_only_a_listed_app_and_only_a_writer(self):
         with self.assertRaises(UserError):
