@@ -69,7 +69,7 @@
                     <div t-if="campaign.cost" class="o_ccw_card o_ccw_csec">
                         <div class="o_ccw_shead">
                             <h5>Replies and cost</h5>
-                            <span class="o_ccw_muted">Only people with billing access see this</span>
+                            <span class="o_ccw_muted">Only people with Ops Costs access see this</span>
                         </div>
                         <div class="o_ccw_stats">
                             <div t-foreach="campaign.cost.stats" t-as="stat" t-key="stat.label" class="o_ccw_card">

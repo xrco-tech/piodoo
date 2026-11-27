@@ -10,7 +10,7 @@ import { standardActionServiceProps } from "@web/webclient/actions/action_servic
 
 const REPORT = "comm.billing.report";
 
-/** Comm Billing reports: spend overview with the budget, and the monthly statement. */
+/** Ops Costs reports: spend overview with the budget, and the monthly statement. */
 export class CommBillingReports extends Component {
     static template = "comm_billing_core.Reports";
     static props = { ...standardActionServiceProps };

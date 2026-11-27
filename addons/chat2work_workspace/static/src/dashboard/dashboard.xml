@@ -31,7 +31,7 @@
                 <section t-if="data.cost" class="o_c2w_dbox o_c2w_dcard" aria-label="Comms cost">
                     <div class="o_c2w_dshead">
                         <h2>Comms cost <t t-esc="periodWords"/></h2>
-                        <button type="button" class="btn btn-link p-0" t-on-click="openCost">Open in billing ›</button>
+                        <button type="button" class="btn btn-link p-0" t-on-click="openCost">Open in Ops Costs ›</button>
                     </div>
                     <div t-foreach="data.cost.warnings" t-as="warning" t-key="warning.key" class="o_c2w_dwarn" role="alert">
                         <i class="fa fa-exclamation-triangle"/> <b t-esc="warning.text"/>

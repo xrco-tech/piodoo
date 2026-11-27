@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'AI Agents',
-    'version': '18.0.1.1.2',
+    'version': '18.0.1.1.3',
     'category': 'Productivity',
     'summary': 'Every assistant in piodoo in one place: what it is told and what it costs',
     'description': """

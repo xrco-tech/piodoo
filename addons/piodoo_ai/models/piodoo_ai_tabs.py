@@ -431,7 +431,7 @@ class PiodooAiAgentTabs(models.Model):
         agent = self._own(agent_id)
         model = (model or '').strip()
         if model and model not in agent._model_options() + [agent.model_name]:
-            raise UserError(_("Billing has no price for that model, so its cost could not be shown. Add its price first."))
+            raise UserError(_("Ops Costs has no price for that model, so its cost could not be shown. Add its price first."))
         try:
             monthly_cap, answer_cap = float(monthly_cap or 0), float(answer_cap or 0)
         except (TypeError, ValueError):
@@ -439,7 +439,7 @@ class PiodooAiAgentTabs(models.Model):
         if monthly_cap < 0 or answer_cap < 0:
             raise UserError(_("A limit cannot be less than nothing. Leave it empty for no limit."))
         if (monthly_cap or answer_cap) and agent._month_spend() is None:
-            raise UserError(_("Limits need billing, which is not installed here."))
+            raise UserError(_("Limits need Ops Costs, which is not installed here."))
         agent.write({'model_name': model or False, 'monthly_cap': monthly_cap,
                      'answer_cap': answer_cap if agent._spec()['chat'] else 0.0})
         return self.ui_agent(agent.id)

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- WhatsApp-specific tools under the Comm Billing menu -->
+    <!-- WhatsApp-specific tools under the Ops Costs menu -->
     <menuitem id="menu_whatsapp_billing_tools"
               name="WhatsApp Tools"
               parent="comm_billing_core.menu_comm_billing_root"

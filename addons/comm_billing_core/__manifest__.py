@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Communication Billing Core',
-    'version': '18.0.2.7.0',
+    'name': 'Ops Costs',
+    'version': '18.0.2.8.0',
     'category': 'Communications',
     'summary': 'Shared rate cards, FX and event ledger for all comm channels',
     'description': """
-Communication Billing Core
-==========================
+Ops Costs
+=========
 
 Provides the shared plumbing that channel-specific billing modules
 (WhatsApp, SMS, USSD, voice) build on top of:
