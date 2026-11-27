@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'WhatsApp Billing',
-    'version': '18.0.2.1.0',
+    'version': '18.0.2.1.1',
     'category': 'Communications',
     'summary': 'WhatsApp channel adapter for comm_billing_core',
     'description': """

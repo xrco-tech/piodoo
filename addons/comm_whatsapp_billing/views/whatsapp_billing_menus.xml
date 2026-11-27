@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- WhatsApp-specific tools under the Ops Costs menu -->
+    <!-- WhatsApp-specific tools, under Configuration in Ops Costs -->
     <menuitem id="menu_whatsapp_billing_tools"
               name="WhatsApp Tools"
-              parent="comm_billing_core.menu_comm_billing_root"
-              sequence="30"/>
+              parent="comm_billing_core.menu_comm_billing_config"
+              sequence="50"/>
 
     <menuitem id="menu_whatsapp_cost_simulator"
               name="WhatsApp Cost Simulator"
