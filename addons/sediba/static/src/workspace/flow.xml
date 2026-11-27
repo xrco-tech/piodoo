@@ -58,8 +58,8 @@
                     <span class="o_sdb_muted"><t t-esc="props.flow.steps.length"/> <t t-if="props.flow.steps.length === 1">step</t><t t-else="">steps</t></span></span>
                 <button t-if="props.canEdit" type="button" class="o_sdb_btn" t-on-click="props.onEdit">Edit diagram</button>
             </figcaption>
-            <div class="o_sdb_flow_scroll">
-                <SedibaFlow steps="props.flow.steps" selected="state.open" onSelect.bind="toggle" label="props.flow.name"/>
+            <div class="o_sdb_flow_scroll" t-ref="scroll">
+                <SedibaFlow steps="props.flow.steps" selected="state.open" onSelect.bind="toggle" label="props.flow.name" zoom="fit"/>
             </div>
             <div t-if="opened" class="o_sdb_flow_detail" aria-live="polite">
                 <b><t t-esc="openedNumber"/>. <t t-esc="kindLabel[opened.kind]"/>: <t t-esc="opened.text"/></b>
