@@ -349,6 +349,14 @@ class TestSedibaDocIcon(DocsCase):
         data = self.Ws.ws_doc_set(self.doc.id, {'icon_app': ''})
         self.assertFalse(data['icon'] or data['props']['icon_app'])
 
+    def test_an_app_the_person_cannot_open_still_lends_its_icon(self):
+        group = self.env['res.groups'].create({'name': 'Nobody is in this group'})
+        self.env['ir.ui.menu'].create({
+            'name': 'Closed app', 'web_icon': 'sediba,static/description/closed.png',
+            'groups_id': [(6, 0, group.ids)]})
+        icons = self.Doc._app_icons()
+        self.assertEqual(icons['sediba,static/description/closed.png']['name'], 'Closed app')
+
     def test_only_a_listed_app_and_only_a_writer(self):
         with self.assertRaises(UserError):
             self.Ws.ws_doc_set(self.doc.id, {'icon_app': 'no_such_app'})
