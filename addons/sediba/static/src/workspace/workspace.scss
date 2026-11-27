@@ -299,7 +299,25 @@
         &:hover { background: var(--sdb-soft); }
         .o_sdb_muted { font-size: 12px; }
     }
-    .o_sdb_card_name { font-size: 15px; font-weight: 600; }
+    .o_sdb_card_name { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    // An app's icon beside the name of a doc about that app.
+    .o_sdb_appicon {
+        flex: none; width: 28px; height: 28px; border-radius: 6px; object-fit: contain;
+        &.small { width: 18px; height: 18px; border-radius: 4px; vertical-align: -3px; margin-right: 6px; }
+        &.big { width: 40px; height: 40px; border-radius: 9px; }
+        &.o_sdb_ico { width: 18px; height: 18px; border-radius: 4px; }
+    }
+    .o_sdb_crumbs .o_sdb_appicon.small { margin-right: 0; }
+    h1.o_sdb_titled { display: flex; align-items: center; gap: 12px; > span { min-width: 0; } }
+    .o_sdb_icons { display: flex; flex-wrap: wrap; gap: 6px; }
+    .o_sdb_icon_pick {
+        width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;
+        border: 1px solid var(--sdb-line); border-radius: 8px; background: var(--sdb-card); color: var(--sdb-muted); cursor: pointer;
+        img { width: 26px; height: 26px; border-radius: 6px; object-fit: contain; }
+        &:hover { background: var(--sdb-soft); }
+        &.on { border: 2px solid var(--sdb-link); }
+        &:focus-visible { outline: 3px solid var(--sdb-link); outline-offset: 2px; }
+    }
     .o_sdb_empty { padding: 14px; border: 1px dashed var(--sdb-line); border-radius: 8px; color: var(--sdb-muted); }
 
     // ── A finding's properties ──────────────────────────────────────────────

@@ -323,3 +323,62 @@ class TestSedibaDocsWorkspace(DocsCase):
         self.assertIn(('How we work', 'note'), [(r['name'], r['kind']) for r in self.Ws._doc_review()])
         self.assertEqual(self.Ws.ws_doc_note_done(note.id)['notes'], [])
         self.assertTrue(note.done)
+
+
+@tagged('post_install', '-at_install')
+class TestSedibaDocIcon(DocsCase):
+    """A doc about an app can carry that app's icon."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.doc = cls.Doc.create({'name': 'Library manual'})
+        cls.key = cls.env.ref('sediba.menu_sediba_root').web_icon
+
+    def test_writer_picks_from_the_apps_on_the_home_screen(self):
+        choices = self.Ws.ws_doc(self.doc.id)['props']['choices']['icons']
+        library = [choice for choice in choices if choice[0] == self.key]
+        self.assertEqual(len(library), 1)
+        self.assertTrue(library[0][2].startswith('/sediba/static/'))
+        self.assertFalse(self.Ws.ws_doc(self.doc.id)['icon'])
+
+        data = self.Ws.ws_doc_set(self.doc.id, {'icon_app': self.key})
+        self.assertEqual((data['icon'], data['props']['icon_app']), (library[0][2], self.key))
+        self.assertEqual(self.Ws.ws_nav()['docs'][0]['icon'], library[0][2])
+
+        data = self.Ws.ws_doc_set(self.doc.id, {'icon_app': ''})
+        self.assertFalse(data['icon'] or data['props']['icon_app'])
+
+    def test_only_a_listed_app_and_only_a_writer(self):
+        with self.assertRaises(UserError):
+            self.Ws.ws_doc_set(self.doc.id, {'icon_app': 'no_such_app'})
+        with self.assertRaises(UserError):
+            self.Ws.ws_doc_set(self.doc.id, {'icon_app': 'sediba,../../etc/passwd'})
+        with self.assertRaises(AccessError):
+            self.ReaderWs.ws_doc_set(self.doc.id, {'icon_app': self.key})
+
+    def test_it_is_a_property_and_shows_to_readers(self):
+        self.doc.write({'space_ids': [(6, 0, self.jobs.ids)]})
+        self.doc.action_publish()
+        self.Ws.ws_doc_set(self.doc.id, {'icon_app': self.key})
+        self.assertFalse(self.doc.has_changes, "an icon is not a change to publish")
+        # A reader in an app sees it, on the page and on its card.
+        self.assertTrue(self.ReaderWs.ws_doc(self.doc.id, 'test_jobs')['icon'])
+        self.assertTrue(self.ReaderWs.ws_overview('test_jobs')['doc_cards'][0]['icon'])
+        page = self.Doc.create({'name': 'A page', 'parent_id': self.doc.id})
+        self.assertTrue(self.Ws.ws_doc(page.id)['parent'][2])
+
+    def test_an_app_that_is_gone_leaves_the_plain_mark(self):
+        self.doc.sudo().icon_app = 'app_removed_since'
+        data = self.Ws.ws_doc(self.doc.id)
+        self.assertFalse(data['icon'] or data['props']['icon_app'])
+
+    def test_the_plain_page_carries_the_icon_inside_it(self):
+        self.Ws.ws_doc_set(self.doc.id, {'icon_app': self.key})
+        values = self.Ws._doc_page_for(self.doc.id)
+        self.assertTrue(values['icon'].startswith('data:image/'))
+        html = str(self.Ws._doc_page_html(values))
+        self.assertIn('class="appicon"', html)
+        self.assertNotIn('src="/sediba/', html)
+        self.doc.sudo().icon_app = False
+        self.assertNotIn('appicon"', str(self.Ws._doc_page_html(self.Ws._doc_page_for(self.doc.id))))

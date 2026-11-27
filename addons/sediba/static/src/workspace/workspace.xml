@@ -153,7 +153,8 @@
                                 <span t-else="" class="o_sdb_twist" aria-hidden="true"/>
                                 <button type="button" class="o_sdb_item" t-att-aria-current="isDoc(d.id) ? 'page' : false"
                                         t-on-click="() => this.openDoc(d.id)">
-                                    <i class="fa fa-file-text-o o_sdb_ico" aria-hidden="true"/>
+                                    <img t-if="d.icon" class="o_sdb_ico o_sdb_appicon" t-att-src="d.icon" alt=""/>
+                                    <i t-else="" class="fa fa-file-text-o o_sdb_ico" aria-hidden="true"/>
                                     <span class="o_sdb_item_name" t-att-title="d.name" t-esc="d.name"/>
                                     <span t-if="d.pages.length and !pagesOpen(d)" class="o_sdb_note" t-esc="d.pages.length"/>
                                     <t t-set="n" t-value="d"/><t t-call="sediba.DocNote"/>
@@ -164,7 +165,8 @@
                                     <span class="o_sdb_twist" aria-hidden="true"/>
                                     <button type="button" class="o_sdb_item" t-att-aria-current="isDoc(pg.id) ? 'page' : false"
                                             t-on-click="() => this.openDoc(pg.id)">
-                                        <i class="fa fa-file-o o_sdb_ico" aria-hidden="true"/>
+                                        <img t-if="pg.icon" class="o_sdb_ico o_sdb_appicon" t-att-src="pg.icon" alt=""/>
+                                        <i t-else="" class="fa fa-file-o o_sdb_ico" aria-hidden="true"/>
                                         <span class="o_sdb_item_name" t-att-title="pg.name" t-esc="pg.name"/>
                                         <t t-set="n" t-value="pg"/><t t-call="sediba.DocNote"/>
                                     </button>
@@ -296,7 +298,7 @@
                                     <p class="o_sdb_muted">Written by us. Open one to read it.</p>
                                     <div class="o_sdb_cards">
                                         <button t-foreach="d.doc_cards" t-as="c" t-key="c.id" type="button" class="o_sdb_card" t-on-click="() => this.openDoc(c.id)">
-                                            <span class="o_sdb_card_name" t-esc="c.name"/>
+                                            <span class="o_sdb_card_name"><img t-if="c.icon" class="o_sdb_appicon" t-att-src="c.icon" alt=""/><t t-esc="c.name"/></span>
                                             <span t-if="c.summary" class="o_sdb_card_text" t-esc="c.summary"/>
                                             <span class="o_sdb_muted"><t t-if="c.parent"><t t-esc="c.parent[1]"/> · </t>Updated <t t-esc="c.updated"/></span>
                                         </button>
@@ -384,7 +386,7 @@
                                     </thead>
                                     <tbody>
                                         <tr t-foreach="d.doc_rows" t-as="r" t-key="r.id">
-                                            <td><button type="button" class="o_sdb_link" t-on-click="() => this.openDoc(r.id)" t-esc="r.name"/>
+                                            <td><img t-if="r.icon" class="o_sdb_appicon small" t-att-src="r.icon" alt=""/><button type="button" class="o_sdb_link" t-on-click="() => this.openDoc(r.id)" t-esc="r.name"/>
                                                 <span t-if="r.pages" class="o_sdb_muted"> + <t t-esc="r.pages"/> <t t-if="r.pages === 1">page</t><t t-else="">pages</t></span>
                                                 <span t-if="r.state === 'draft'" class="o_sdb_status draft">Draft</span></td>
                                             <td t-esc="r.owner"/>
@@ -728,7 +730,7 @@
                                 <span t-if="state.nav.reference" class="o_sdb_muted">Reference</span><span t-if="state.nav.reference" class="o_sdb_muted">/</span>
                                 <span class="o_sdb_muted">Company docs</span><span class="o_sdb_muted">/</span>
                                 <t t-if="d.parent"><button type="button" class="o_sdb_link" t-on-click="() => this.openDoc(d.parent[0])" t-esc="d.parent[1]"/><span class="o_sdb_muted">/</span></t>
-                                <b t-esc="d.name"/>
+                                <img t-if="d.icon" class="o_sdb_appicon small" t-att-src="d.icon" alt=""/><b t-esc="d.name"/>
                             </div>
                             <span t-if="state.nav.reference" class="o_sdb_muted">Read-only</span>
                             <a class="o_sdb_btn" t-att-href="docPdfUrl" target="_blank" rel="noopener"><i class="fa fa-file-pdf-o" aria-hidden="true"/> Download PDF</a>
@@ -749,7 +751,7 @@
                                         <span t-if="d.due" class="o_sdb_badge review">Read again now</span>
                                     </t>
                                 </div>
-                                <h1 t-esc="d.name"/>
+                                <h1 t-att-class="{ o_sdb_titled: d.icon }"><img t-if="d.icon" class="o_sdb_appicon big" t-att-src="d.icon" alt=""/><span t-esc="d.name"/></h1>
                                 <p t-if="d.summary" class="o_sdb_lede" t-esc="d.summary"/>
                                 <dl class="o_sdb_meta">
                                     <div t-if="d.owner"><dt>Owner</dt><dd t-esc="d.owner"/></div>
@@ -783,7 +785,7 @@
                                 <h2>Pages</h2>
                                 <div class="o_sdb_cards">
                                     <button t-foreach="d.pages" t-as="c" t-key="c.id" type="button" class="o_sdb_card" t-on-click="() => this.openDoc(c.id)">
-                                        <span class="o_sdb_card_name" t-esc="c.name"/>
+                                        <span class="o_sdb_card_name"><img t-if="c.icon" class="o_sdb_appicon" t-att-src="c.icon" alt=""/><t t-esc="c.name"/></span>
                                         <span t-if="c.summary" class="o_sdb_card_text" t-esc="c.summary"/>
                                         <span t-if="c.state === 'draft'" class="o_sdb_badges"><span class="o_sdb_status draft">Draft</span></span>
                                     </button>
@@ -846,6 +848,22 @@
                                 </select>
                                 <span class="o_sdb_muted small">Keeps it right and is asked to read it again.</span>
                             </div>
+                            <fieldset t-if="d.props.choices.icons.length" class="o_sdb_field">
+                                <legend>Page icon</legend>
+                                <div class="o_sdb_icons">
+                                    <button type="button" class="o_sdb_icon_pick" t-att-class="{ on: !d.props.icon_app }"
+                                            t-att-aria-pressed="d.props.icon_app ? 'false' : 'true'" aria-label="No icon" title="No icon"
+                                            t-on-click="() => this.setDocProp({ icon_app: '' })">
+                                        <i class="fa fa-file-text-o" aria-hidden="true"/>
+                                    </button>
+                                    <button t-foreach="d.props.choices.icons" t-as="ic" t-key="ic[0]" type="button" class="o_sdb_icon_pick"
+                                            t-att-class="{ on: ic[0] === d.props.icon_app }" t-att-aria-pressed="ic[0] === d.props.icon_app ? 'true' : 'false'"
+                                            t-att-aria-label="ic[1]" t-att-title="ic[1]" t-on-click="() => this.setDocProp({ icon_app: ic[0] })">
+                                        <img t-att-src="ic[2]" alt=""/>
+                                    </button>
+                                </div>
+                                <span class="o_sdb_muted small"><t t-if="d.props.icon_app" t-esc="iconName"/><t t-else="">None.</t> For a doc about one of the apps: its icon stands beside the title.</span>
+                            </fieldset>
                             <fieldset class="o_sdb_field">
                                 <legend>Shown in</legend>
                                 <label t-foreach="d.props.choices.spaces" t-as="sp" t-key="sp[0]" class="o_sdb_check">

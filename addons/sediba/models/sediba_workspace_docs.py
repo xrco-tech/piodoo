@@ -70,6 +70,7 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         row = self._doc_shown(doc, space)
         row.update({
             'id': doc.id,
+            'icon': doc.icon_url,
             'state': doc.state,
             'changes': False if space else doc.has_changes,
             'due': False if space else self._doc_due(doc),
@@ -212,13 +213,14 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         docs = self._docs(space)
         data = {
             'id': doc.id,
+            'icon': doc.icon_url,
             'name': name,
             'summary': summary or '',
             'body': Markup(body) if html2plaintext(body or '').strip() else '',
             # The text cut at its flow diagrams, in the order the page draws them.
             'parts': self._doc_parts(body, flows, space),
             'questions': questions,
-            'parent': [doc.parent_id.id, self._doc_shown(doc.parent_id, space)['name']]
+            'parent': [doc.parent_id.id, self._doc_shown(doc.parent_id, space)['name'], doc.parent_id.icon_url]
                       if doc.parent_id and doc.parent_id in docs else False,
             'pages': [self._doc_row(page, space) for page in docs.filtered(lambda d: d.parent_id == doc)],
             'owner': doc.owner_id.name or '',
@@ -287,12 +289,16 @@ class SedibaWorkspaceDocs(models.AbstractModel):
             'owner_id': doc.owner_id.id or 0,
             'space_ids': doc.space_ids.ids,
             'read_again': doc.read_again,
+            'icon_app': doc.icon_app if doc.icon_url else '',
             # The link anyone can open without signing in, while it is on.
             'share': '/library/shared/%s' % doc.share_token if doc.share_token else False,
             'choices': {
                 'owners': self._doc_owners(doc),
                 'spaces': [[s.id, s.name] for s in self.env['sediba.space'].search([])],
                 'read_again': READ_AGAIN,
+                # The apps whose icon the doc can carry: [key, name, picture].
+                'icons': [[key, icon['name'], icon['url']]
+                          for key, icon in sorted(doc._app_icons().items(), key=lambda item: item[1]['name'])],
             },
         }
 
@@ -312,6 +318,10 @@ class SedibaWorkspaceDocs(models.AbstractModel):
         for key in ('ai_allowed', 'public_allowed'):
             if key in vals:
                 record[key] = bool(vals[key])
+        if 'icon_app' in vals:
+            if vals['icon_app'] and vals['icon_app'] not in doc._app_icons():
+                raise UserError(_("Choose the page icon from the list."))
+            record['icon_app'] = vals['icon_app'] or False
         if 'read_again' in vals:
             if vals['read_again'] not in dict(READ_AGAIN):
                 raise UserError(_("Choose how often it is read again from the list."))

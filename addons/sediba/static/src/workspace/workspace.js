@@ -769,6 +769,13 @@ export class SedibaWorkspace extends Component {
         }
     }
 
+    /** The name of the app whose icon this doc carries. */
+    get iconName() {
+        const props = this.state.data.props;
+        const found = props.choices.icons.find((icon) => icon[0] === props.icon_app);
+        return found ? `${found[1]}.` : "";
+    }
+
     /** The PDF of what this page shows: the same text, for the same reader. */
     get docPdfUrl() {
         const query = new URLSearchParams();

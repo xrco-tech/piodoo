@@ -69,6 +69,10 @@ class SedibaDoc(models.Model):
                               groups='sediba.group_writer',
                               help="Set while the doc is shared with a link. Anyone who has the link can "
                                    "read the doc without signing in, so the key is long and random.")
+    icon_app = fields.Char(string="Page icon",
+                           help="The app whose icon stands beside this doc's title, for a doc about that app. "
+                                "Empty for the plain page mark.")
+    icon_url = fields.Char(compute='_compute_icon_url')
     read_again = fields.Selection(READ_AGAIN, string="Read again", required=True, default='3')
     state = fields.Selection(DOC_STATES, required=True, default='draft', readonly=True, copy=False, index=True)
     has_changes = fields.Boolean(string="Changed since it was published", readonly=True, copy=False)
@@ -86,6 +90,25 @@ class SedibaDoc(models.Model):
                 doc.read_again_by = doc.last_read_on + relativedelta(months=int(doc.read_again or 3))
             else:
                 doc.read_again_by = False
+
+    @api.model
+    def _app_icons(self):
+        """The icons a doc can carry: one for each app on the home screen,
+        as {the menu's icon ("module,path"): {'name': the app's name, 'url': its icon}}. Read with sudo
+        so a doc shows its icon to a reader who cannot open that app."""
+        icons = {}
+        for menu in self.env['ir.ui.menu'].sudo().search([('parent_id', '=', False), ('web_icon', '!=', False)]):
+            module, _sep, path = (menu.web_icon or '').partition(',')
+            # An icon drawn from a font ("fa fa-x,#fff,#000") is not a picture.
+            if module and path.startswith('static/') and menu.web_icon not in icons:
+                icons[menu.web_icon] = {'name': menu.name, 'url': '/%s/%s' % (module, path)}
+        return icons
+
+    @api.depends('icon_app')
+    def _compute_icon_url(self):
+        icons = self._app_icons() if any(self.mapped('icon_app')) else {}
+        for doc in self:
+            doc.icon_url = icons.get(doc.icon_app, {}).get('url') or False
 
     @api.constrains('parent_id')
     def _check_parent(self):
