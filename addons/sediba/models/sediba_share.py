@@ -13,6 +13,7 @@ import re
 from markupsafe import Markup
 
 from odoo import _, api, fields, models
+from odoo.tools import file_open
 
 # A picture in a doc's text: /web/image/<id>, with or without the checksum
 # and file name the editor adds.
@@ -41,6 +42,7 @@ class SedibaShare(models.AbstractModel):
                 part['html'] = self._doc_page_pictures(doc, part['html'])
         return {
             'name': source.name,
+            'icon': self._doc_page_icon(doc),
             'summary': source.summary or '',
             'parts': parts,
             'questions': questions,
@@ -50,6 +52,25 @@ class SedibaShare(models.AbstractModel):
             'company': self.env.company.name,
             'empty': not parts and not questions,
         }
+
+    @api.model
+    def _doc_page_icon(self, doc):
+        """The doc's app icon written into the page, or False. The PNG beside
+        the app's icon is used when there is one: the PDF maker draws it surely."""
+        url = doc.sudo().icon_url
+        if not url:
+            return False
+        path = url.lstrip('/')
+        for name in (path.rsplit('.', 1)[0] + '.png', path):
+            kind = {'png': 'image/png', 'svg': 'image/svg+xml'}.get(name.rsplit('.', 1)[-1].lower())
+            if not kind:
+                continue
+            try:
+                with file_open(name, 'rb', filter_ext=('.png', '.svg')) as icon:
+                    return 'data:%s;base64,%s' % (kind, base64.b64encode(icon.read()).decode())
+            except (OSError, ValueError):
+                continue
+        return False
 
     @api.model
     def _doc_page_pictures(self, doc, html):
