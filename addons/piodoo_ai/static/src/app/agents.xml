@@ -89,7 +89,7 @@
                             <span t-if="agent.usage.cost" t-esc="agent.usage.cost"/>
                             <span>last 30 days</span>
                         </t>
-                        <span t-else="">Runs and cost show once billing is installed</span>
+                        <span t-else="">Runs and cost show once Ops Costs is installed</span>
                     </div>
                     <div class="o_pai_card_btns">
                         <button class="btn btn-light btn-sm" t-on-click="() => this.open(agent)">
@@ -217,7 +217,7 @@
                             <span t-if="agent.runs_note" t-esc="agent.runs_note + '.'"/>
                         </div>
                         <h2>Runs by day, last 30 days</h2>
-                        <div t-if="!agent.usage" class="o_pai_muted">Runs and cost show once billing is installed.</div>
+                        <div t-if="!agent.usage" class="o_pai_muted">Runs and cost show once Ops Costs is installed.</div>
                         <div t-elif="!agent.days.length" class="o_pai_muted">It has not run in the last 30 days.</div>
                         <div t-else="" class="o_pai_days">
                             <table class="o_pai_table">
@@ -400,12 +400,12 @@
                 <option value="">As built (<t t-esc="limits.as_built_label"/>)</option>
                 <option t-foreach="limits.options" t-as="option" t-key="option.value" t-att-value="option.value" t-esc="option.label"/>
             </select>
-            <div class="o_pai_muted o_pai_small">Only models billing has a price for are listed. A different model can answer differently: if runs start to fail, put it back to as built.</div>
+            <div class="o_pai_muted o_pai_small">Only models Ops Costs has a price for are listed. A different model can answer differently: if runs start to fail, put it back to as built.</div>
 
             <div class="o_pai_label">Spending</div>
             <div t-if="!limits.billing" class="o_pai_hint">
-                <b>Limits need billing.</b>
-                <span>Billing is not installed here, so what this agent spends is not known.</span>
+                <b>Limits need Ops Costs.</b>
+                <span>Ops Costs is not installed here, so what this agent spends is not known.</span>
             </div>
             <t t-else="">
                 <div t-if="agent.stopped" class="o_pai_fixed o_pai_small">

@@ -29,7 +29,7 @@
                         </group>
                         <field name="limits_note" colspan="2" nolabel="1" class="text-muted"/>
                     </group>
-                    <group string="Warn the billing administrators when">
+                    <group string="Warn the Ops Costs administrators when">
                         <group>
                             <field name="warn_pct"/>
                             <field name="warn_pct_level" invisible="not warn_pct"/>

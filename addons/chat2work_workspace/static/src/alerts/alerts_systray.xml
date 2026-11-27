@@ -30,7 +30,7 @@
                     <DropdownItem t-foreach="state.budget" t-as="warning" t-key="warning.key" onSelected="() => this.openBilling()">
                         <div class="o_c2w_alerts_item o_c2w_alerts_warn">
                             <span><b t-esc="warning.text"/></span>
-                            <em><time t-esc="when(warning.at)"/> · Open billing</em>
+                            <em><time t-esc="when(warning.at)"/> · Open Ops Costs</em>
                         </div>
                     </DropdownItem>
                 </t>

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Figures behind the Comm Billing reports screen and the monthly statement.
+"""Figures behind the Ops Costs reports screen and the monthly statement.
 
 Everything is read straight from the event ledger. Amounts are the ledger's
 `price_local` in the company currency; events that could not be converted

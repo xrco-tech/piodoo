@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
     <record id="cron_comm_billing_budget_warnings" model="ir.cron">
-        <field name="name">Comm Billing: budget warnings</field>
+        <field name="name">Ops Costs: budget warnings</field>
         <field name="model_id" ref="model_comm_billing_budget"/>
         <field name="state">code</field>
         <field name="code">model._cron_check_budgets()</field>
@@ -9,7 +9,7 @@
         <field name="interval_type">hours</field>
     </record>
     <record id="cron_comm_billing_fixed_fees" model="ir.cron">
-        <field name="name">Comm Billing: charge fixed fees</field>
+        <field name="name">Ops Costs: charge fixed fees</field>
         <field name="model_id" ref="model_comm_billing_fee"/>
         <field name="state">code</field>
         <field name="code">model._cron_post()</field>

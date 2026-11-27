@@ -18,7 +18,7 @@ def generate_historical_activity(env, registry=None):
     - ~50 interactions inside those conversations
     - ~30 campaign sends attached to the running / completed campaigns
     - ~40 billing events spanning WA / SMS / USSD / voice / LLM over the
-      last 30 days (so the graph in Comm Billing → Dashboard has range)
+      last 30 days (so the graph in Ops Costs → Dashboard has range)
     """
     # Odoo 18 post_init hooks receive `env` (or (cr, registry) in older
     # versions). Handle both signatures.
